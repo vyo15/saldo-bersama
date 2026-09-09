@@ -6,49 +6,9 @@ import Card from "../../../components/common/Card.jsx";
 import ConfirmationModal from "../../../components/common/ConfirmationModal.jsx";
 import { formatRupiah } from "../../../domain/money.js";
 import { MaintenanceSummaryGrid as SummaryGrid, SafetyBackupPreflight } from "../MaintenanceRecoveryPanel.jsx";
+import { RESET_DOMAIN_LABELS, RESET_TRIAL_OPERATIONAL_LABELS, RESET_TRIAL_PRESERVED_LABELS } from "../resetSummaryLabels.js";
 import { formatMaintenanceCount as formatCount } from "../settingsPresentation.js";
 import styles from "../Settings.module.css";
-
-const BUSINESS_SUMMARY_LABELS = Object.freeze([
-  ["transactions", "Transaksi"],
-  ["reconciliations", "Pencocokan saldo"],
-  ["investmentTrades", "Transaksi saham"],
-  ["investmentCorrections", "Koreksi investasi"],
-  ["investmentValuations", "Harga investasi"],
-  ["investmentReconciliations", "Pencocokan portfolio"],
-  ["goals", "Target"],
-  ["goalMovements", "Mutasi target"],
-  ["budgets", "Kebutuhan"],
-  ["allocationRules", "Aturan alokasi"],
-  ["allocationPeriods", "Periode alokasi"],
-  ["allocationMovements", "Mutasi alokasi"],
-  ["recurringRules", "Jadwal rutin"],
-  ["recurringOccurrences", "Kejadian rutin"],
-  ["periodClosures", "Tutup buku"],
-]);
-
-const OPERATIONAL_SUMMARY_LABELS = Object.freeze([
-  ["masterDataRequests", "Pengajuan master data"],
-  ["transferRequests", "Pengajuan transfer"],
-  ["notificationDeliveries", "Delivery notifikasi"],
-  ["manualReminders", "Pengingat manual"],
-  ["notificationQueue", "Queue notifikasi"],
-  ["integrationLinks", "Link integrasi"],
-  ["integrationOutbox", "Queue sinkronisasi trial"],
-  ["importPreviews", "Preview import"],
-]);
-
-const PRESERVED_LABELS = Object.freeze([
-  ["accounts", "Rekening"],
-  ["categories", "Kategori"],
-  ["investmentPortfolios", "Portfolio investasi"],
-  ["investmentInstruments", "Instrumen investasi"],
-  ["users", "Pengguna"],
-  ["audit", "Audit log"],
-  ["backups", "Riwayat backup"],
-  ["pushSubscriptions", "Perangkat notifikasi"],
-  ["notificationPreferences", "Preferensi notifikasi"],
-]);
 
 const RESET_INTENT_STATE_LABELS = Object.freeze({
   processing: "Sedang diproses",
@@ -120,7 +80,7 @@ const ResetPreview = ({ preview }) => (
         <FiDatabase aria-hidden="true" />
         <div><strong>Aktivitas dan perencanaan</strong><small>Data trial finansial, investasi, dan perencanaan yang akan dibersihkan.</small></div>
       </div>
-      <SummaryGrid labels={BUSINESS_SUMMARY_LABELS} summary={preview.summary} ariaLabel="Aktivitas dan perencanaan yang akan dibersihkan" />
+      <SummaryGrid labels={RESET_DOMAIN_LABELS} summary={preview.summary} ariaLabel="Aktivitas dan perencanaan yang akan dibersihkan" />
     </div>
 
     <div className={styles.resetPreviewSection}>
@@ -128,7 +88,7 @@ const ResetPreview = ({ preview }) => (
         <FiRefreshCw aria-hidden="true" />
         <div><strong>Sisa proses testing</strong><small>Pengajuan, pengingat, notifikasi tertunda, data sinkronisasi testing, dan preview sementara ikut dibersihkan. Tugas sinkronisasi baru yang dibuat setelah reset tidak dihitung sebagai data testing.</small></div>
       </div>
-      <SummaryGrid labels={OPERATIONAL_SUMMARY_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dibersihkan" />
+      <SummaryGrid labels={RESET_TRIAL_OPERATIONAL_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dibersihkan" />
     </div>
 
     <BalanceResetPreview balanceReset={preview.balanceReset} />
@@ -139,7 +99,7 @@ const ResetPreview = ({ preview }) => (
         <div><strong>Tetap disimpan</strong><small>Rekening, kategori, master investasi, pengguna, audit, backup, perangkat notifikasi, dan data pemulihan tetap disimpan.</small></div>
       </div>
       <div className={styles.resetPreservedGrid}>
-        {PRESERVED_LABELS.map(([key, label]) => (
+        {RESET_TRIAL_PRESERVED_LABELS.map(([key, label]) => (
           <div key={key}><FiCheckCircle aria-hidden="true" /><span>{label}</span><strong>{formatCount(preview.preserved?.[key])}</strong></div>
         ))}
         <div><FiCheckCircle aria-hidden="true" /><span>Konfigurasi sistem</span><strong>Tetap</strong></div>

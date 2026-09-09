@@ -7,24 +7,21 @@ import { integrationProviderPresentation } from "../src/features/settings/settin
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("reset testing dan full reset menampilkan seluruh kelompok destructive", async () => {
-  const [trial, full] = await Promise.all([
+  const [trial, full, labels] = await Promise.all([
     read("src/features/settings/components/TrialResetPanels.jsx"),
     read("src/features/settings/components/FullResetPanels.jsx"),
+    read("src/features/settings/resetSummaryLabels.js"),
   ]);
 
-  for (const key of ["investmentTrades", "investmentCorrections", "investmentValuations", "investmentReconciliations"]) {
-    assert.equal(trial.includes(`["${key}"`), true, `Trial reset wajib menampilkan ${key}`);
-    assert.equal(full.includes(`["${key}"`), true, `Full reset wajib menampilkan ${key}`);
-  }
+  assert.match(trial, /RESET_DOMAIN_LABELS/);
+  assert.match(trial, /RESET_TRIAL_OPERATIONAL_LABELS/);
+  assert.match(trial, /RESET_TRIAL_PRESERVED_LABELS/);
+  assert.match(full, /RESET_DOMAIN_LABELS/);
+  assert.match(full, /RESET_MASTER_LABELS/);
+  assert.match(full, /RESET_OPERATIONAL_LABELS/);
 
-  for (const key of ["masterDataRequests", "transferRequests", "manualReminders"]) {
-    assert.equal(trial.includes(`["${key}"`), true, `Trial reset wajib menampilkan ${key}`);
-    assert.equal(full.includes(`["${key}"`), true, `Full reset wajib menampilkan ${key}`);
-  }
-
-  for (const key of ["investmentPortfolios", "investmentInstruments"]) {
-    assert.equal(trial.includes(`["${key}"`), true, `Trial reset wajib menjelaskan ${key} yang dipertahankan`);
-    assert.equal(full.includes(`["${key}"`), true, `Full reset wajib menampilkan ${key} yang dihapus`);
+  for (const key of ["investmentTrades", "investmentCorrections", "investmentValuations", "investmentReconciliations", "masterDataRequests", "transferRequests", "manualReminders", "investmentPortfolios", "investmentInstruments"]) {
+    assert.equal(labels.includes(`["${key}"`), true, `Label reset canonical wajib mencakup ${key}`);
   }
 });
 

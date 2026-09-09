@@ -235,7 +235,7 @@ test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provi
 test("mobile finance forms dan planning memakai hierarchy yang compact tanpa teks mikro 9px", async () => {
   const [transactionStyles, allocations, goals, reports, allocationStyles, goalStyles, reportStyles, budgets] = await Promise.all([
     read("src/features/transactions/TransactionForm.module.css"),
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationOverviewLayer.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationOverviewLayer.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/goals/GoalsPage.jsx"), read("src/features/goals/components/GoalCards.jsx"), read("src/features/goals/components/GoalDialogs.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/reports/ReportsPage.jsx"),
     Promise.all([read("src/features/allocations/AllocationOverview.module.css"), read("src/features/allocations/AllocationDetail.module.css")]).then((parts) => parts.join("\n")),

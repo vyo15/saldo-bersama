@@ -1,3 +1,19 @@
+## 9 September 2026 - Investment first-position onboarding tanpa RDN awal
+
+- Menyederhanakan first-time Investasi menjadi dua intent: **Saya sudah punya investasi** atau **Saya mulai investasi dari sekarang**. User tidak perlu membuat/transfer RDN lebih dulu; bila RDN belum dipilih, `investments.portfolios.create` membuat rekening `account_type=investment` canonical dengan saldo Rp0 secara atomik.
+- RDN otomatis milik Administrator dibuat `shared`, sedangkan RDN otomatis yang dibuat Member menjadi `personal` milik actor agar Member tidak membuat ledger shared baru tanpa persetujuan Administrator. RDN tetap `allow_negative=0`, satu portfolio tetap terikat tepat satu RDN, dan pembelian baru tetap wajib memiliki Saldo RDN yang cukup.
+- Mengubah form **Posisi awal** agar mengikuti data yang lazim tersedia di broker: jumlah lot/unit, **harga rata-rata beli**, **harga sekarang**, tanggal posisi, serta Saldo RDN sekarang yang opsional. Frontend menghitung total modal/cost basis, nilai sekarang, dan unrealized P/L secara deterministik sebelum disimpan; backend tetap menyimpan cost basis canonical dan opening position append-only, bukan fake Buy.
+- Menghapus dead-end onboarding yang sebelumnya memaksa pindah ke menu Rekening saat RDN belum ada, sambil mempertahankan kemampuan memilih RDN existing/manual. Flow Tambah dana/Tarik dana sesudah onboarding tetap memakai Transfer canonical.
+- Menambah regression untuk auto-RDN Administrator/Member, opening position tanpa input cash, kalkulasi average/current price, serta sinkronisasi API contract, test plan, project status, product requirement, implementation matrix, dan design system.
+
+## 9 September 2026 - Source hygiene dan lazy interaction hardening
+
+- Menghapus tiga asset visual orphan (`budget-calendar.webp`, `budget-wallet-hero.webp`, dan `hand-phone-dashboard.webp`), dead selector CSS tanpa owner runtime, serta named export/helper tanpa consumer repository; selector `.desktop-user-avatar` yang terduplikasi juga digabung menjadi satu rule canonical.
+- Memusatkan formatter label sinkronisasi Dashboard desktop/mobile dan label summary Reset Testing/Reset Semua agar presentation copy tidak drift tanpa mengubah kontrak finansial/destructive backend.
+- Mengganti fallback kosong pada lazy layer yang dibuka oleh aksi user dengan status/loading aksesibel, menambahkan failure handling pada dynamic workflow Alokasi, dan memisahkan route Alokasi menjadi shell `AllocationsPage` + lazy `AllocationsWorkspace`, lalu memisahkan overlay ke `AllocationOverlayLayer` supaya route 8 KiB punya headroom besar dan interaksi berat tetap on-demand.
+- Memperluas build-budget dengan batas **32 KiB gzip** untuk lazy JS non-route tanpa melonggarkan batas route 8 KiB, serta menambah regression `source-cleanliness` untuk named export tanpa consumer dan asset visual tanpa referensi. Tidak ada perubahan schema, API, ledger, saldo, authorization, atau mutation semantics.
+- Memperbaiki normalisasi path `source-cleanliness` lintas POSIX/Windows memakai `path.sep`, sehingga asset yang valid tidak lagi false-positive di Git Bash/Windows dan orphan asset yang tersisa benar-benar terdeteksi.
+
 ## 9 September 2026 - Financial flow regression hardening
 
 - Memperbaiki input jatuh tempo Jadwal Rutin dan Kebutuhan agar dapat dikosongkan sementara saat diedit tanpa memantul ke nilai default; validasi 1–31 tetap dilakukan saat data disimpan.

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useLocation, useNavigate } from "react-router";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
@@ -273,7 +274,7 @@ const GoalsPage = () => {
     {items.length ? <GoalSummary items={items} /> : null}
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
     {(reminderTarget || creation.open || lifecycle.editGoal || movement.movement.goal || lifecycle.reverseTarget || lifecycle.archiveTarget || lifecycle.statusTarget) ? (
-      <Suspense fallback={null}>
+      <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi target..." />}>
         <GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} movement={movement} lifecycle={lifecycle} />
       </Suspense>
     ) : null}

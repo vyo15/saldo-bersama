@@ -308,8 +308,9 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
     ]).then((parts) => parts.join("\n")),
   ]);
 
-  assert.match(app, /\.desktop-settings-button \{ width:\s*44px; height:\s*44px;/);
-  assert.match(app, /\.user-avatar--md \{ width:\s*44px; height:\s*44px;/);
+  assert.match(app, /\.desktop-app-header__actions \.icon-button \{ width:\s*44px; height:\s*44px;/);
+  assert.match(app, /\.desktop-user-avatar \{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/);
+  assert.doesNotMatch(app, /desktop-settings-button|user-avatar--md/);
   assert.match(components, /\.icon-button \{ width:\s*44px; height:\s*44px;/);
   assert.match(components, /\.quick-amounts button \{ min-height:\s*44px;/);
   assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
@@ -528,8 +529,9 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
   assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(budgetCard, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-card__expand \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-limit-row__actions :global\(\.button\),[\s\S]*?\.allocation-limit-row__more summary,[\s\S]*?\.allocation-limit-row__more-menu button \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-related-row small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-limit-row__actions :global\(\.button\)\{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-limit-row__identity small,[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.doesNotMatch(pages, /allocation-limit-row__more|allocation-related-row/);
 });
 
 test("!important hanya tersisa untuk reduced-motion compatibility yang terdokumentasi", async () => {

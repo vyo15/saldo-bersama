@@ -107,7 +107,7 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   assert.match(page, /"budgets\.list"/, "cancel/restore transaksi juga harus menginvalidasi pemakaian anggaran");
   assert.match(hook, /subscribeToInvalidation\(action/);
   assert.match(composer, /lazy\(\(\) => import\("\.\.\/features\/transactions\/TransactionForm\.jsx"\)\)/, "composer global tidak boleh memaksa form transaksi masuk main bundle");
-  assert.match(composer, /composer\.open \? <Suspense fallback=\{null\}>/);
+  assert.match(composer, /composer\.open \? <Suspense fallback=\{<LazyActionFallback label="Menyiapkan form transaksi\.\.\." \/>\}>/);
 });
 
 

@@ -109,7 +109,6 @@ export const operableAccountSql = (actor, alias = "") => {
 
 // Backward-compatible aliases remain write-oriented. Read paths must opt into readable*Sql explicitly.
 export const visibleScopeSql = operableScopeSql;
-export const visibleAccountSql = operableAccountSql;
 
 export const normalizeOwnedScope = async (db, actor, payload = {}, fallback = { scope: "shared", owner_user_id: null }) => {
   const requested = payload.scope === undefined ? fallback.scope : String(payload.scope);
@@ -147,4 +146,3 @@ export const assertOwner = (actor) => {
   if (actor.role !== "owner") throw appError("OWNER_ONLY", "Operasi ini hanya dapat dilakukan Administrator.", 403);
 };
 
-export const redactErrorMessage = (error) => sanitizeText(error?.message || "Operasi gagal.", 300).replace(/(?:turso|libsql):\/\/[^\s]+/gi, "[database]");

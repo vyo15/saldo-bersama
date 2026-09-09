@@ -19,23 +19,7 @@ export const EXPENSE_NATURE_OPTIONS = Object.freeze([
   { value: CATEGORY_NATURES.OTHER, label: "Lainnya", example: "Pengeluaran khusus" },
 ]);
 
-export const CATEGORY_NATURE_LABELS = Object.freeze({
-  ...Object.fromEntries(EXPENSE_NATURE_OPTIONS.map((item) => [item.value, item.label])),
-  [CATEGORY_NATURES.SAVINGS]: "Tabungan (kategori lama)",
-});
-
 export const categoryTypeLabel = (value) => CATEGORY_TYPE_LABELS[value] || value || "Tidak diketahui";
 
-export const categoryNatureLabel = (nature, transactionType) => transactionType === "expense"
-  ? CATEGORY_NATURE_LABELS[nature] || nature || "Belum diklasifikasikan"
-  : "Tidak memakai sifat pengeluaran";
 
-export const categoryNatureForType = (transactionType, currentNature = "variable") => {
-  if (transactionType !== CATEGORY_TYPES.EXPENSE) return CATEGORY_NATURES.OTHER;
-  if (currentNature === CATEGORY_NATURES.SAVINGS || EXPENSE_NATURE_OPTIONS.some((item) => item.value === currentNature)) return currentNature;
-  return CATEGORY_NATURES.VARIABLE;
-};
 
-export const expenseNatureOptions = ({ includeLegacySavings = false } = {}) => includeLegacySavings
-  ? [...EXPENSE_NATURE_OPTIONS, { value: CATEGORY_NATURES.SAVINGS, label: "Tabungan (kategori lama, sebaiknya diganti)", legacy: true }]
-  : EXPENSE_NATURE_OPTIONS;

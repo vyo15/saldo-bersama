@@ -1,4 +1,5 @@
 /** Lazy UI composer only; transaction validation and persistence remain in canonical form/API paths. */
+import LazyActionFallback from "../components/feedback/LazyActionFallback.jsx";
 import { createContext, lazy, Suspense, useContext, useMemo, useState } from "react";
 import { TRANSACTION_TYPES } from "../domain/constants.js";
 const TransactionForm = lazy(() => import("../features/transactions/TransactionForm.jsx"));
@@ -56,7 +57,7 @@ export const TransactionComposerProvider = ({ children }) => {
   return (
     <TransactionComposerContext.Provider value={value}>
       {children}
-      {composer.open ? <Suspense fallback={null}><TransactionForm
+      {composer.open ? <Suspense fallback={<LazyActionFallback label="Menyiapkan form transaksi..." />}><TransactionForm
         open
         onClose={closeComposer}
         initialType={composer.initialType}

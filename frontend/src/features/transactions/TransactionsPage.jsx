@@ -188,7 +188,7 @@ const memberTransferRequestsEnabled = (role) => Boolean(role) && role !== "owner
 
 const MemberTransferRequests = ({ role, resource, accounts }) => {
   if (!memberTransferRequestsEnabled(role)) return null;
-  return <Suspense fallback={null}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>;
+  return <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan pengajuan transfer..." />}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>;
 };
 
 const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters, mobileLayout }) => {
@@ -279,7 +279,7 @@ const TransactionsPage = () => {
     <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} help="Catat pemasukan, pengeluaran, dan transfer di sini. Perubahan saldo baru dianggap selesai setelah server mengonfirmasi transaksi." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button> : null} />
     <MemberTransferRequests role={bootstrap?.user?.role} resource={transferRequests} accounts={bootstrap?.accounts} />
     {mobileLayout ? (
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan riwayat transaksi..." />}>
         <MobileTransactionHistory
           period={filters.period}
           periodLocked={Boolean(resource.data?.periodLocked)}

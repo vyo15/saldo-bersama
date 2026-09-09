@@ -6,7 +6,7 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 
 test("frontend Kebutuhan memakai capability backend dan tidak mempertahankan authorization policy lokal", async () => {
   const [allocationPage, detail, budgetAccess] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
     read("src/features/budgets/budgetAccess.js").catch(() => ""),
   ]);

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import LazyActionFallback from "../../../components/feedback/LazyActionFallback.jsx";
 import { FiEye, FiEyeOff, FiList, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
@@ -444,7 +445,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
       <p id="mobile-account-stack-hint" className="sr-only">Geser kartu aktif ke kiri atau kanan, gunakan tombol panah kiri dan kanan, atau indikator posisi. Tekan kartu aktif untuk membuka detail.</p>
       <p ref={mobileStackStatusRef} id="mobile-account-stack-status" className="sr-only" aria-live="polite" />
     </section>
-    {selectedAccount ? <Suspense fallback={null}><MobileAccountActivity key={selectedAccount.account_id} selectedAccount={selectedAccount} bootstrap={bootstrap} onViewTransactions={onViewTransactions} /></Suspense> : null}
+    {selectedAccount ? <Suspense fallback={<LazyActionFallback label="Menyiapkan aktivitas rekening..." />}><MobileAccountActivity key={selectedAccount.account_id} selectedAccount={selectedAccount} bootstrap={bootstrap} onViewTransactions={onViewTransactions} /></Suspense> : null}
   </div>;
 };
 

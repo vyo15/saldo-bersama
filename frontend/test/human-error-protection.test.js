@@ -86,7 +86,7 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
 
 test("planning master memakai server lifecycle preview sebelum hard-delete unused", async () => {
   const [allocations, allocationsApi, recurring, recurringApi, goals, goalsApi, budgets, budgetsApi] = await Promise.all([
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/allocations/allocations.api.js"),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/recurring.api.js"),
@@ -246,7 +246,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
   ] = await Promise.all([
     read("src/features/transactions/TransactionForm.jsx"),
     Promise.all([read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     goalsSource(),
     read("src/features/recurring/RecurringDialogs.jsx"),
     read("src/features/categories/CategoriesPage.jsx"),
@@ -281,7 +281,7 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
     read("src/components/common/ConfirmationModal.jsx"),
     goalsSource(),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/transactions/TransactionForm.jsx"), read("src/features/transactions/transactionFormController.js")]).then((parts) => parts.join("\n")),
     read("src/features/settings/DeviceNotificationsPage.jsx"),
   ]);
@@ -334,7 +334,7 @@ test("jadwal rutin memuat dialog secara lazy dan helper filter tidak mengotori m
   ]);
   assert.match(page, /lazy\(\(\) => import\("\.\/RecurringDialogLayer\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/RecurringScheduleView\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{null\}>/);
+  assert.match(page, /<Suspense fallback=\{<LazyActionFallback label="Menyiapkan aksi jadwal rutin\.\.\." \/>\}>/);
   assert.doesNotMatch(page, /from "\.\/RecurringDialogs\.jsx"/);
   assert.match(layer, /from "\.\/RecurringDialogs\.jsx"/);
   assert.match(schedule, /from "\.\/recurringPresentation\.js"/);
@@ -401,7 +401,7 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
 test("feedback transient konsisten tanpa mengganti notice persisten untuk operasi kritis", async () => {
   const transientPages = await Promise.all([
     read("src/features/goals/GoalsPage.jsx"),
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/budgets/useBudgetActions.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/budgets/useBudgetActions.js")]).then((parts) => parts.join("\n")),
     read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/settings/ExportDataPage.jsx"),
@@ -573,19 +573,24 @@ test("FinanceContext memakai epoch per resource agar refresh overview dan bootst
   assert.match(epoch, /invalidateFinanceSession/);
 });
 
-test("lapisan alokasi sekunder dimuat lazy agar route planning menjaga headroom bundle", async () => {
-  const [page, layer, overview] = await Promise.all([
+test("route dan lapisan Alokasi dimuat lazy agar planning punya headroom bundle", async () => {
+  const [route, workspace, overlay, layer, overview] = await Promise.all([
     read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
+    read("src/features/allocations/AllocationOverlayLayer.jsx"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
   ]);
-  assert.match(page, /const AllocationDialogLayer = lazy\(\(\) => import\("\.\/AllocationDialogLayer\.jsx"\)\)/);
-  assert.match(page, /const AllocationOverviewLayer = lazy\(\(\) => import\("\.\/AllocationOverviewLayer\.jsx"\)\)/);
-  assert.match(page, /const ManualReminderModal = lazy\(\(\) => import\("\.\.\/reminders\/ManualReminderModal\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{null\}>[\s\S]*<AllocationDialogLayer/);
-  assert.match(page, /<AllocationOverviewLayer \{\.\.\.overviewProps\} \/>/);
-  assert.doesNotMatch(page, /from "\.\/AllocationDialogLayer\.jsx";/);
-  assert.doesNotMatch(page, /from "\.\/AllocationOverviewLayer\.jsx";/);
+  assert.match(route, /const AllocationsWorkspace = lazy\(\(\) => import\("\.\/AllocationsWorkspace\.jsx"\)\)/);
+  assert.match(route, /<LoadingScreen label="Memuat Alokasi Dana\.\.\." \/>/);
+  assert.match(workspace, /const AllocationOverlayLayer = lazy\(\(\) => import\("\.\/AllocationOverlayLayer\.jsx"\)\)/);
+  assert.match(workspace, /const AllocationOverviewLayer = lazy\(\(\) => import\("\.\/AllocationOverviewLayer\.jsx"\)\)/);
+  assert.match(overlay, /const AllocationDialogLayer = lazy\(\(\) => import\("\.\/AllocationDialogLayer\.jsx"\)\)/);
+  assert.match(overlay, /const ManualReminderModal = lazy\(\(\) => import\("\.\.\/reminders\/ManualReminderModal\.jsx"\)\)/);
+  assert.match(overlay, /LazyActionFallback/);
+  assert.match(workspace, /<AllocationOverviewLayer \{\.\.\.overviewProps\} \/>/);
+  assert.doesNotMatch(workspace, /from "\.\/AllocationDialogLayer\.jsx";/);
+  assert.doesNotMatch(workspace, /from "\.\/AllocationOverviewLayer\.jsx";/);
   for (const modal of ["CreateEnvelopeModal", "MoveEnvelopeModal", "AllocationModals"]) assert.match(layer, new RegExp(`const ${modal}`));
   for (const marker of ["AllocationSummary", "allocation-header-actions", "allocation-filters", "allocation-card__expand"]) assert.match(overview, new RegExp(marker));
 });

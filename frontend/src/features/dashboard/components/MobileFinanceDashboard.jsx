@@ -20,7 +20,7 @@ import { formatDateLongIndonesia } from "../../../domain/dates.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { financialNotificationTitle, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
-import { dashboardDueLabel, dashboardInsightState, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod } from "../dashboardPresentation.js";
+import { dashboardDueLabel, dashboardInsightState, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
@@ -30,18 +30,6 @@ const FEATURE_QUICK_ACTIONS = Object.freeze([
   { to: "/kategori", label: "Kategori", icon: FiTag, tone: "category" },
   { to: "/rekonsiliasi", label: "Cocokkan Saldo", icon: FiCheckCircle, tone: "reconciliation" },
 ]);
-
-const compactSyncLabel = (value) => {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Sinkronisasi belum tersedia";
-  const time = new Intl.DateTimeFormat("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Jakarta",
-  }).format(parsed);
-  return `Diperbarui ${time}`;
-};
 
 const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
   const operatingAccountCount = (overview.accountBalances || []).filter((account) => account.account_type !== "investment").length;
@@ -75,7 +63,7 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
         </div>
         <div className={dashboardClass("mobile-finance-meta")}>
           <span>{operatingAccountCount} rekening aktif</span>
-          <span aria-live="polite"><i aria-hidden="true" />{compactSyncLabel(overview.lastSyncedAt)}</span>
+          <span aria-live="polite"><i aria-hidden="true" />{dashboardSyncLabel(overview.lastSyncedAt)}</span>
         </div>
       </div>
 

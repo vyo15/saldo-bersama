@@ -53,30 +53,26 @@ test("styling Investasi memakai token tema dan kontrak responsive mobile canonic
   assert.doesNotMatch(styles, /#[0-9a-f]{3,8}/i);
 });
 
-test("first-time setup RDN kembali otomatis ke Investasi dan kompatibilitas accountPrefill tetap dibaca", async () => {
-  const [setup, accountsPage, continuation, accountEditor, accountPresentation] = await Promise.all([
+test("first-time setup Investasi dapat membuat RDN Rp0 otomatis tanpa menghapus flow RDN manual yang sudah ada", async () => {
+  const [setup, page, continuation, accountsPage, accountEditor, accountPresentation] = await Promise.all([
     read("src/features/investments/InvestmentSetupDialog.jsx"),
-    read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/investments/InvestmentsPage.jsx"),
     read("src/shared/workflows/investmentContinuation.js"),
+    read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/AccountEditorDialogs.jsx"),
     read("src/shared/presentation/account.js"),
   ]);
-  assert.match(setup, /investmentRdnAccountSetupState/);
+  assert.match(setup, /AUTO_RDN_VALUE/);
+  assert.match(setup, /Lewati untuk sekarang/);
+  assert.match(setup, /RDN dibuat otomatis dengan saldo Rp0/);
+  assert.match(setup, /auto_create_rdn: automaticRdn/);
+  assert.match(page, /Anda tidak perlu mengisi RDN lebih dulu/);
+  assert.match(page, />Tambah investasi<\/Button>/);
+  assert.doesNotMatch(page, /Buat rekening RDN<\/Button>/);
   assert.match(continuation, /accountPrefill: \{ account_type: "investment" \}/);
-  assert.match(continuation, /state\.accountPrefill\?\.account_type === "investment"/);
-  assert.match(continuation, /state\.workflowSource === "accounts" && state\.workflowAction === "setup-portfolio"/);
-  assert.match(continuation, /!path\.startsWith\("\/\/"\)/);
   assert.match(accountsPage, /initialCreateOpen: investmentRdnFlow/);
-  assert.match(accountsPage, /action: "setup-portfolio"/);
-  assert.match(accountsPage, /rdnAccountId: accountId/);
   assert.match(accountEditor, /Nama pembeda RDN/);
-  assert.match(accountEditor, /BCA ••••1234/);
-  assert.match(accountEditor, /Nama pembeda RDN \(opsional\)/);
-  assert.match(accountEditor, /existingAccounts/);
   assert.match(accountPresentation, /investmentRdnDisplayLabel/);
-  assert.match(accountPresentation, /Pribadi/);
-  assert.match(accountPresentation, /Bersama/);
-  assert.match(accountPresentation, /Pasangan/);
 });
 
 test("Investasi menjelaskan pencatatan manual dan memakai terminologi pencatatan, bukan order trading", async () => {
@@ -230,29 +226,30 @@ test("draft pembelian dipertahankan saat Saldo RDN kurang dan dipulihkan setelah
   assert.match(continuation, /continue-after-rdn-funding/);
 });
 
-test("onboarding existing investment memakai opening_position, Saldo RDN awal, dan bukan fake buy", async () => {
-  const [page, dialog, api, model] = await Promise.all([
+test("onboarding existing investment memakai lot + harga rata-rata + harga sekarang, RDN opsional, dan bukan fake buy", async () => {
+  const [page, setup, dialog, api, model] = await Promise.all([
     read("src/features/investments/InvestmentsPage.jsx"),
+    read("src/features/investments/InvestmentSetupDialog.jsx"),
     read("src/features/investments/InvestmentDialog.jsx"),
     read("src/features/investments/investments.api.js"),
     read("src/features/investments/investments.model.js"),
   ]);
-  assert.match(page, /Portofolio siap\. Saya mau mulai dari:/);
-  assert.match(page, /Mulai mencatat transaksi baru/);
-  assert.match(page, /Saya sudah punya investasi/);
-  assert.match(page, /Tambah posisi awal lain/);
+  assert.match(setup, /Saya sudah punya investasi/);
+  assert.match(setup, /Saya mulai investasi dari sekarang/);
   assert.match(dialog, /opening_position: createOpeningPosition/);
   assert.match(dialog, /Jumlah lot/);
   assert.doesNotMatch(dialog, /Jumlah lembar/);
-  assert.match(dialog, /Total modal \/ cost basis/);
-  assert.match(dialog, /Average cost tercatat/);
-  assert.match(dialog, /Harga referensi saat ini/);
-  assert.match(dialog, /Saldo RDN awal/);
-  assert.match(dialog, /tidak ada transfer atau pemasukan\/pengeluaran yang dibuat otomatis/);
+  assert.match(dialog, /Harga rata-rata beli/);
+  assert.match(dialog, /Harga sekarang/);
+  assert.match(dialog, /Total modal/);
+  assert.match(dialog, /Nilai sekarang/);
+  assert.match(dialog, /Untung\/rugi belum terealisasi/);
+  assert.match(dialog, /Saldo RDN sekarang \(opsional\)/);
+  assert.match(dialog, /RDN otomatis dimulai dari Rp0/);
+  assert.match(page, /opening_position/);
   assert.match(api, /investments\.openingPositions\.create/);
-  assert.match(model, /opening_position/);
-  assert.match(dialog, /Catat aset investasi dan Saldo RDN yang sudah dimiliki saat mulai menggunakan Saldo Bersama/);
-  assert.doesNotMatch(dialog, /Posisi awal mencatat kondisi yang sudah ada saat Anda mulai memakai Saldo Bersama/);
+  assert.match(model, /investmentOpeningPositionPreview/);
+  assert.doesNotMatch(dialog, /Total modal \/ cost basis/);
 });
 
 test("penjualan selesai di Saldo RDN; rekonsiliasi menampilkan semua perbandingan dan koreksi tetap eksplisit", async () => {

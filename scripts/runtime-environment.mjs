@@ -43,10 +43,6 @@ export const GOOGLE_BRIDGE_ENV_KEYS = Object.freeze([
   "JOBS_SHARED_SECRET",
 ]);
 
-export const DEVELOPMENT_REQUIRED_ENV_KEYS = Object.freeze([
-  ...CORE_RUNTIME_ENV_KEYS,
-  ...WEB_PUSH_ENV_KEYS,
-]);
 
 export const SETTINGS_ENV_KEYS = Object.freeze([
   ...GOOGLE_BRIDGE_ENV_KEYS,
@@ -61,8 +57,6 @@ export const PRODUCTION_SYNC_ENV_KEYS = Object.freeze([
   ...WEB_PUSH_ENV_KEYS,
 ]);
 
-// Backward-compatible alias for existing imports that mean the canonical core keys.
-export const REQUIRED_RUNTIME_ENV_KEYS = CORE_RUNTIME_ENV_KEYS;
 
 const unquote = (value) => {
   const trimmed = String(value ?? "").trim();

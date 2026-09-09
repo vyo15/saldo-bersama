@@ -6,11 +6,6 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat("id-ID", {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-export const budgetTotals = (items = []) => items.reduce((result, item) => ({
-  amount: result.amount + Number(item.amount || 0),
-  used: result.used + Number(item.used_amount || 0),
-}), { amount: 0, used: 0 });
-
 export const budgetPercentage = (item = {}) => {
   const amount = Number(item.amount || 0);
   return amount > 0 ? (Number(item.used_amount || 0) / amount) * 100 : 0;
@@ -72,7 +67,3 @@ export const budgetVisualState = (item = {}, periodMeta = {}) => {
   return { key: "safe", label: "Aman", attention: false, usedPercent, warningThreshold, remaining };
 };
 
-export const budgetSafeDailyAmount = (remaining, periodMeta = {}) => {
-  if (!periodMeta.isCurrent || Number(periodMeta.daysLeft || 0) <= 0) return 0;
-  return Math.max(0, Math.floor(Number(remaining || 0) / periodMeta.daysLeft));
-};

@@ -229,5 +229,4 @@ export const getDatabase = () => {
   return singleton;
 };
 
-export const setDatabaseForTests = (database) => { singleton = database; };
 export { appError as databaseError };

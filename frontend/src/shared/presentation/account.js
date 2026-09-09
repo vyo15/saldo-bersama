@@ -34,11 +34,6 @@ export const ACCOUNT_TYPE_LABELS = Object.freeze({
   [ACCOUNT_TYPES.OTHER]: "Lainnya",
 });
 
-export const ACCOUNT_SCOPE_LABELS = Object.freeze({
-  shared: "Bersama",
-  personal: "Pribadi",
-});
-
 export const isInvestmentAccount = (account = {}) => account.account_type === ACCOUNT_TYPES.INVESTMENT;
 
 const TEMPLATE_MATCHERS = Object.freeze([
@@ -101,8 +96,6 @@ export const defaultAccountName = ({ account_type: type, ewallet_template: ewall
   }
   return "";
 };
-
-export const accountScopeLabel = (scope) => ACCOUNT_SCOPE_LABELS[scope] || String(scope || "");
 
 export const accountOwnerName = (account = {}) => String(account.owner_name || "").trim();
 

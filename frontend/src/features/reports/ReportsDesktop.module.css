@@ -26,8 +26,3 @@
 .report-period-controls :global(.field) {
   min-width: 9.375rem;
 }
-
-.report-alert-panel {
-  display: grid;
-  gap: var(--space-1);
-}

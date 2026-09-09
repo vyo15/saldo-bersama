@@ -69,7 +69,6 @@ const spawnStep = (step, { cwd = root, stdio = "inherit" } = {}) => {
   return result;
 };
 
-export const executeVerificationStep = (step, options = {}) => spawnStep(step, options);
 
 const parseNodeVersion = (version) => {
   const normalized = String(version || "").replace(/^v/, "").trim();

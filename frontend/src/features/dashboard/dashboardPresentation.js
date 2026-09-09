@@ -9,6 +9,18 @@ export const formatPeriod = (value) => {
 
 export const absoluteAmount = (value) => Math.abs(Number(value || 0));
 
+export const dashboardSyncLabel = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Sinkronisasi belum tersedia";
+  const time = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Jakarta",
+  }).format(parsed);
+  return `Diperbarui ${time}`;
+};
+
 const jakartaDate = (value) => {
   const normalized = String(value || "").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;

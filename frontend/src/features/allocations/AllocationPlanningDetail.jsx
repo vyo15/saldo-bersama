@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useNavigate } from "react-router";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import { FiArrowLeft, FiArrowRight, FiBell, FiEdit2, FiPlus, FiSliders } from "react-icons/fi";
@@ -143,7 +144,7 @@ const AllocationNeedsPanel = ({
 
 const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleController, canManage, canLifecycle, expenseCategories, users, usersStatus, item, onBudgetReminder }) => {
   if (!budgetFormController.formOpen && !budgetLifecycleController.archiveTarget) return null;
-  return <Suspense fallback={null}><BudgetDialogLayer
+  return <Suspense fallback={<LazyActionFallback label="Menyiapkan form Kebutuhan..." />}><BudgetDialogLayer
     canManage={canManage}
     canLifecycle={canLifecycle}
     categories={expenseCategories}

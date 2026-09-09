@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { investmentActivityForInstrument, investmentActivityLabel, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation, validateInvestmentSetup } from "../../frontend/src/features/investments/investments.model.js";
+import { investmentActivityForInstrument, investmentActivityLabel, investmentOpeningPositionPreview, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation, validateInvestmentSetup } from "../../frontend/src/features/investments/investments.model.js";
 
 const active = { instrument_id: "active", ticker: "BBCA", status: "active" };
 const inactiveHeld = { instrument_id: "inactive-held", ticker: "OLD", status: "inactive" };
@@ -110,14 +110,32 @@ test("validasi harga, rekonsiliasi, dan opening position menutup field finansial
   assert.match(reconcileErrors["quantity:goto"], /lot aktual tidak valid/);
 
   assert.deepEqual(validateInvestmentOperation("opening_position", {
-    instrument_id: "bmri", opening_quantity: 1, cost_basis: 1_000_000, reference_price: 10_000, actual_cash: 500_000, position_date: "2026-09-02", notes: "Posisi awal dari broker",
+    instrument_id: "bmri", opening_quantity: 1, average_price: 10_000, reference_price: 11_000, actual_cash: "", position_date: "2026-09-02", notes: "Posisi awal dari broker",
   }, options), {});
+  const openingPreview = investmentOpeningPositionPreview({
+    instrument_id: "bmri", opening_quantity: 10, average_price: 8_750, reference_price: 9_400,
+  }, options.instruments);
+  assert.equal(openingPreview.shares, 1_000);
+  assert.equal(openingPreview.costBasis, 8_750_000);
+  assert.equal(openingPreview.marketValue, 9_400_000);
+  assert.equal(openingPreview.unrealizedPl, 650_000);
+  assert.ok(Math.abs(openingPreview.returnPercent - 7.428571428571429) < 1e-9);
+
+  const overflowPreview = investmentOpeningPositionPreview({
+    instrument_id: "active",
+    opening_quantity: Number.MAX_SAFE_INTEGER,
+    average_price: Number.MAX_SAFE_INTEGER,
+    reference_price: Number.MAX_SAFE_INTEGER,
+  }, [active]);
+  assert.equal(overflowPreview.costBasis, 0);
+  assert.equal(overflowPreview.marketValue, 0);
+
   const openingErrors = validateInvestmentOperation("opening_position", {
-    instrument_id: "active", opening_quantity: 0, cost_basis: 0, reference_price: 0, actual_cash: -1, position_date: "2026-09-03", notes: "x".repeat(501),
+    instrument_id: "active", opening_quantity: 0, average_price: 0, reference_price: 0, actual_cash: -1, position_date: "2026-09-03", notes: "x".repeat(501),
   }, options);
   assert.equal(openingErrors.instrument_id, "Pilih saham untuk posisi awal.");
   assert.match(openingErrors.opening_quantity, /lebih dari 0/);
-  assert.match(openingErrors.cost_basis, /lebih dari 0/);
+  assert.match(openingErrors.average_price, /lebih dari 0/);
   assert.match(openingErrors.reference_price, /lebih dari 0/);
   assert.match(openingErrors.actual_cash, /0 atau lebih/);
   assert.match(openingErrors.position_date, /masa depan/);
@@ -137,9 +155,12 @@ test("validasi koreksi menjaga input konsisten sebelum server melakukan validasi
   assert.match(member._form, /Administrator/);
 });
 
-test("validasi setup Investasi mencegah dead-end RDN dan input instrumen invalid", () => {
-  const noRdn = validateInvestmentSetup("portfolio", { rdn_account_id: "" }, []);
-  assert.match(noRdn.rdn_account_id, /Buat rekening jenis Investasi/);
+test("validasi setup Investasi mengizinkan RDN otomatis tetapi tetap menjaga pilihan setup dan instrumen", () => {
+  assert.deepEqual(validateInvestmentSetup("portfolio", { start_mode: "existing", rdn_account_id: "__auto_rdn__" }, []), {});
+  const invalidMode = validateInvestmentSetup("portfolio", { start_mode: "", rdn_account_id: "__auto_rdn__" }, []);
+  assert.match(invalidMode.start_mode, /Pilih cara memulai/);
+  const invalidRdn = validateInvestmentSetup("portfolio", { start_mode: "new", rdn_account_id: "missing" }, []);
+  assert.match(invalidRdn.rdn_account_id, /RDN otomatis/);
   const instrument = validateInvestmentSetup("instrument", { ticker: "bb ca", exchange: "I", instrument_name: "", lot_size: 0 }, []);
   assert.ok(instrument.ticker);
   assert.ok(instrument.exchange);

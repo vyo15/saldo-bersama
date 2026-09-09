@@ -4,47 +4,9 @@ import Button from "../../../components/common/Button.jsx";
 import Card from "../../../components/common/Card.jsx";
 import ConfirmationModal from "../../../components/common/ConfirmationModal.jsx";
 import MaintenanceRecoveryPanel, { MaintenanceSummaryGrid as SummaryGrid, SafetyBackupPreflight } from "../MaintenanceRecoveryPanel.jsx";
+import { RESET_DOMAIN_LABELS, RESET_MASTER_LABELS, RESET_OPERATIONAL_LABELS } from "../resetSummaryLabels.js";
 import { formatMaintenanceCount as formatCount } from "../settingsPresentation.js";
 import styles from "../Settings.module.css";
-
-const DOMAIN_LABELS = Object.freeze([
-  ["transactions", "Transaksi"],
-  ["reconciliations", "Pencocokan saldo"],
-  ["investmentTrades", "Transaksi saham"],
-  ["investmentCorrections", "Koreksi investasi"],
-  ["investmentValuations", "Harga investasi"],
-  ["investmentReconciliations", "Pencocokan portfolio"],
-  ["goals", "Target"],
-  ["goalMovements", "Mutasi target"],
-  ["budgets", "Kebutuhan"],
-  ["allocationRules", "Aturan alokasi"],
-  ["allocationPeriods", "Periode alokasi"],
-  ["allocationMovements", "Mutasi alokasi"],
-  ["recurringRules", "Jadwal rutin"],
-  ["recurringOccurrences", "Kejadian rutin"],
-  ["periodClosures", "Tutup buku"],
-]);
-
-const MASTER_LABELS = Object.freeze([
-  ["accounts", "Rekening"],
-  ["categories", "Kategori"],
-  ["investmentPortfolios", "Portfolio investasi"],
-  ["investmentInstruments", "Instrumen investasi"],
-]);
-
-const OPERATIONAL_LABELS = Object.freeze([
-  ["masterDataRequests", "Pengajuan master data"],
-  ["transferRequests", "Pengajuan transfer"],
-  ["notificationDeliveries", "Delivery notifikasi"],
-  ["manualReminders", "Pengingat manual"],
-  ["notificationQueue", "Queue notifikasi"],
-  ["integrationLinks", "Link integrasi"],
-  ["integrationOutbox", "Queue sinkronisasi"],
-  ["notificationPreferences", "Preferensi notifikasi"],
-  ["pushSubscriptions", "Perangkat notifikasi"],
-  ["importPreviews", "Preview import"],
-  ["restorePreviews", "Preview restore"],
-]);
 
 const FullResetPreview = ({ preview }) => (
   <div className={styles.resetPreview}>
@@ -58,21 +20,21 @@ const FullResetPreview = ({ preview }) => (
         <FiDatabase aria-hidden="true" />
         <div><strong>Finansial dan perencanaan</strong><small>Seluruh riwayat keuangan, investasi, dan perencanaan aplikasi akan dikosongkan.</small></div>
       </div>
-      <SummaryGrid labels={DOMAIN_LABELS} summary={preview.summary} ariaLabel="Data finansial dan perencanaan yang akan dihapus" />
+      <SummaryGrid labels={RESET_DOMAIN_LABELS} summary={preview.summary} ariaLabel="Data finansial dan perencanaan yang akan dihapus" />
     </div>
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiTrash2 aria-hidden="true" />
         <div><strong>Master aplikasi</strong><small>Rekening, kategori, portfolio, dan instrumen investasi ikut dihapus. Setelah reset, aplikasi kembali tanpa master finansial.</small></div>
       </div>
-      <SummaryGrid labels={MASTER_LABELS} summary={preview.summary} ariaLabel="Master data yang akan dihapus" />
+      <SummaryGrid labels={RESET_MASTER_LABELS} summary={preview.summary} ariaLabel="Master data yang akan dihapus" />
     </div>
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiRefreshCw aria-hidden="true" />
         <div><strong>Data operasional</strong><small>Pengajuan, pengingat, notifikasi, sinkronisasi, dan preview sementara ikut dibersihkan.</small></div>
       </div>
-      <SummaryGrid labels={OPERATIONAL_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dihapus" />
+      <SummaryGrid labels={RESET_OPERATIONAL_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dihapus" />
     </div>
     <div className={styles.resetPreserved}>
       <div className={styles.resetPreviewSectionHeading}>

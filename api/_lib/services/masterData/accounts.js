@@ -222,9 +222,8 @@ export const prepareAccountCreatePayload = async (db, actor, payload = {}, { tod
   };
 };
 
-export const createAccount = async (db, context) => {
-  assertOwner(context.actor);
-  const prepared = await prepareAccountCreatePayload(db, context.actor, context.payload || {}, { today: context.today });
+export const createAccountInternal = async (db, context, payload = context.payload || {}) => {
+  const prepared = await prepareAccountCreatePayload(db, context.actor, payload, { today: context.today });
   const timestamp = nowIso();
   const record = {
     account_id: uuid(), ...prepared, allow_negative: prepared.allow_negative ? 1 : 0,
@@ -235,6 +234,11 @@ export const createAccount = async (db, context) => {
   await appendAudit(db, context, { entityType: "account", entityId: record.account_id, next: accountAuditRow(record) });
   await context.enqueueMirror?.(db, "account", record.account_id);
   return publicRow(record, ["allow_negative"]);
+};
+
+export const createAccount = async (db, context) => {
+  assertOwner(context.actor);
+  return createAccountInternal(db, context);
 };
 
 export const updateAccount = async (db, context) => {

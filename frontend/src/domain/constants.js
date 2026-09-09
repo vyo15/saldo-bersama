@@ -73,4 +73,3 @@ export const NOTIFICATION_TYPES = Object.freeze({
   UNALLOCATED_EXPENSE: "unallocated_expense",
 });
 
-export const ACTIVE_STATUS = "active";

@@ -175,9 +175,9 @@ const AccountListSection = ({ mobileLayout, accounts, allAccounts, selectedAccou
     <section aria-labelledby="account-list-title" className={`${styles.accountSection}${initialEmpty ? ` ${styles.accountSectionInitialEmpty}` : ""}`}>
       <h2 id="account-list-title" className="sr-only">Rekening aktif</h2>
       {accounts.length ? (mobileLayout
-        ? <Suspense fallback={null}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode}
+        ? <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan rekening..." />}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode}
             openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} /></Suspense>
-        : <Suspense fallback={null}><DesktopAccountsWorkspace accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode} bootstrap={bootstrap}
+        : <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan rekening..." />}><DesktopAccountsWorkspace accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode} bootstrap={bootstrap}
             onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
             onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} /></Suspense>)
         : <EmptyState className={`${styles.emptyPanel}${initialEmpty ? ` ${styles.emptyPanelInitial}` : ""}`}
@@ -190,7 +190,7 @@ const AccountListSection = ({ mobileLayout, accounts, allAccounts, selectedAccou
 
 const AccountSheets = ({ mobileAccountSheet, setMobileAccountSheet, selectedAccount, ownerMode, navigate, openEditAccount, openAccountLifecycle }) => {
   if (!mobileAccountSheet) return null;
-  return <Suspense fallback={null}><MobileAccountSheets sheet={mobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
+  return <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan detail rekening..." />}><MobileAccountSheets sheet={mobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
     onClose={() => setMobileAccountSheet(null)}
     onViewTransactions={(item) => { if (!item) return; setMobileAccountSheet(null); navigate("/transaksi", { state: { accountId: item.account_id } }); }}
     onEditAccount={(item) => { setMobileAccountSheet(null); openEditAccount(item); }} onArchiveAccount={(item) => { setMobileAccountSheet(null); openAccountLifecycle(item); }} /></Suspense>;
@@ -198,7 +198,7 @@ const AccountSheets = ({ mobileAccountSheet, setMobileAccountSheet, selectedAcco
 
 const AccountEditors = ({ createDialogOpen, editAccount, closeCreateDialog, accountForm, setAccountForm, createAccount, setEditAccount, saveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, existingAccounts, requestMode }) => (
   (createDialogOpen || editAccount) ? (
-    <Suspense fallback={null}><AccountEditorDialogs createDialogOpen={createDialogOpen} onCloseCreate={closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
+    <Suspense fallback={<LoadingScreen variant="panel" label="Menyiapkan form rekening..." />}><AccountEditorDialogs createDialogOpen={createDialogOpen} onCloseCreate={closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
       onCreateAccount={createAccount} editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={saveAccount} dialogState={dialogState}
       activeUsers={activeUsers} currentDatabaseUser={currentDatabaseUser} currentOwnerLabel={currentOwnerLabel} existingAccounts={existingAccounts} requestMode={requestMode} /></Suspense>
   ) : null

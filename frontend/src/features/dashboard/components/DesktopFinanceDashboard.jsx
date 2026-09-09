@@ -29,7 +29,7 @@ import {
 import { scrollIntoViewWithMotionPreference } from "../../../shared/motion.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
-import { dashboardDueLabel, dashboardGoalEmptyAction, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod } from "../dashboardPresentation.js";
+import { dashboardDueLabel, dashboardGoalEmptyAction, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
@@ -81,18 +81,6 @@ const compactDate = (value) => {
       year: "numeric",
       timeZone: "Asia/Jakarta",
     }).format(parsed);
-};
-
-const compactSyncLabel = (value) => {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Sinkronisasi belum tersedia";
-  const time = new Intl.DateTimeFormat("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Jakarta",
-  }).format(parsed);
-  return `Diperbarui ${time}`;
 };
 
 const filterAccountTransactions = ({ transactions, categoryFilter, typeFilter, searchTerm, categoryLookup }) => {
@@ -264,7 +252,7 @@ const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
         </div>
         <div className={dashboardClass("desktop-balance-card__sync")}>
           <FiShield aria-hidden="true" />
-          <span aria-live="polite">{compactSyncLabel(overview.lastSyncedAt)}</span>
+          <span aria-live="polite">{dashboardSyncLabel(overview.lastSyncedAt)}</span>
         </div>
       </div>
 

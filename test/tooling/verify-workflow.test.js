@@ -211,8 +211,11 @@ test("build budget memberi warning headroom dan threshold canonical tidak boleh 
   assert.match(budget, /mainJsGzip:\s*110\s*\*\s*1024/);
   assert.match(budget, /globalCssGzip:\s*20\s*\*\s*1024/);
   assert.match(budget, /routeChunkGzip:\s*8\s*\*\s*1024/);
+  assert.match(budget, /lazyChunkGzip:\s*32\s*\*\s*1024/);
+  assert.match(budget, /lazy interaction/);
   assert.match(budget, /headroom:/);
   assert.match(budget, /Mendekati batas/);
   assert.match(budget, /Budget terlampaui/);
   assert.doesNotMatch(budget, /routeChunkGzip:\s*(?:9|1[0-9])\s*\*\s*1024/, "budget route tidak boleh dinaikkan sebagai shortcut");
+  assert.doesNotMatch(budget, /lazyChunkGzip:\s*(?:3[3-9]|[4-9][0-9])\s*\*\s*1024/, "budget lazy interaction tidak boleh dinaikkan sebagai shortcut");
 });

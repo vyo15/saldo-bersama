@@ -9,4 +9,3 @@ export const dashboardClass = (...values) => values
   .map((name) => styles[name] || name)
   .join(" ");
 
-export const dashboardStyle = (name) => styles[name] || name;

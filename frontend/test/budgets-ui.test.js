@@ -7,7 +7,7 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compatibility redirect", async () => {
   const [app, allocationPage, api, reports, dashboard, navigation] = await Promise.all([
     read("src/app/App.jsx"),
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
@@ -35,7 +35,7 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compa
 });
 test("form Kebutuhan mempertahankan validasi nominal dan kategori aktif tanpa membuat master data baru", async () => {
   const [page, moneyInput] = await Promise.all([
-    Promise.all([read("src/features/allocations/AllocationsPage.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js")]).then((parts) => parts.join("\n")),
     read("src/components/common/MoneyInput.jsx"),
   ]);
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
@@ -56,7 +56,7 @@ test("form Kebutuhan mempertahankan validasi nominal dan kategori aktif tanpa me
 });
 test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat tab duplikat", async () => {
   const [allocations, detail, planning, styles] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
     read("src/features/planning/PlanningPage.jsx"),
     read("src/features/allocations/AllocationDetail.module.css"),
@@ -77,7 +77,7 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
 });
 test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesuaian dana eksplisit", async () => {
   const [page, dialogs, estimate, detail, presentation, backend] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
     read("src/features/allocations/AllocationNeedEstimate.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
@@ -103,13 +103,13 @@ test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesu
 });
 test("detail Alokasi Dana dan dialog Kebutuhan tetap lazy agar route planning memiliki headroom bundle", async () => {
   const [page, detail] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
   ]);
   assert.match(page, /const AllocationPlanningDetail = lazy\(\(\) => import\("\.\/AllocationPlanningDetail\.jsx"\)\)/);
   assert.match(page, /<Suspense fallback=\{<div className="notice notice--info" role="status">Memuat detail Alokasi Dana\.\.\.<\/div>\}>/);
   assert.match(detail, /const BudgetDialogLayer = lazy\(\(\) => import\("\.\.\/budgets\/BudgetDialogLayer\.jsx"\)\)/);
-  assert.match(detail, /<Suspense fallback=\{null\}>[\s\S]*<BudgetDialogLayer/);
+  assert.match(detail, /<Suspense fallback=\{<LazyActionFallback label="Menyiapkan form Kebutuhan\.\.\." \/>\}>[\s\S]*<BudgetDialogLayer/);
 });
 
 
@@ -130,7 +130,7 @@ test("kategori yang sama dapat dipakai pada beberapa Alokasi Dana tanpa mendupli
 
 test("penutupan Alokasi Dana menjaga continuity periode dan Kebutuhan tetap opt-in", async () => {
   const [page, actions, dialogs, detail] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/allocationActionRunners.js"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),

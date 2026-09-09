@@ -89,6 +89,17 @@ Line count bukan Definition of Done.
 - Shared token dibuat jika benar-benar dipakai lintas area; jangan membuat token/primitive spekulatif.
 - Maintainability refactor tidak boleh berubah menjadi redesign visual tersembunyi.
 
+## Source hygiene dan lazy interaction
+
+- Named export langsung harus mempunyai consumer repository yang nyata. Export yang hanya hidup pada deklarasinya sendiri adalah dead surface dan harus dihapus atau dijadikan local helper.
+- Asset visual di runtime directory wajib mempunyai referensi source yang nyata; asset orphan tidak dipertahankan sebagai stok desain tanpa owner.
+- Selector CSS hanya dipertahankan bila memiliki owner runtime atau compatibility contract yang terdokumentasi. Selector mati dibersihkan secara surgical tanpa mengubah cascade komponen aktif.
+- Lazy boundary yang dibuka oleh aksi user wajib memberi fallback aksesibel yang terlihat. `fallback={null}` hanya boleh dipakai untuk layer non-interaktif/informasional yang tidak membuat klik user tampak gagal.
+- Dynamic import yang dijalankan dari effect/handler wajib menangani rejection dan mengembalikan workflow ke state aman; React Error Boundary tidak dianggap cukup untuk rejected Promise async.
+- Formatter/label map presentasional yang identik lintas desktop/mobile atau destructive summary dipusatkan agar copy dan semantic tidak drift.
+
+- Route kompleks yang mendekati budget harus memakai shell tipis + lazy workspace bila itu memberi boundary yang jelas; Alokasi memakai `AllocationsPage` → `AllocationsWorkspace`, lalu overlay/dialog tetap dipisahkan lagi agar jalur normal tidak menarik interaction code.
+
 ## Testing sebelum dan sesudah refactor
 
 Sebelum memindahkan guarded behavior, cari test yang mengunci contract. Tambah characterization test bila behavior penting belum terlindungi.

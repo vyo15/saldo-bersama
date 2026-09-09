@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
+import LazyActionFallback from "../../../components/feedback/LazyActionFallback.jsx";
 import FinancialSuccessOverlay from "../../../components/feedback/FinancialSuccessOverlay.jsx";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { canRepresentAccountTransfer } from "../../../domain/ownership.js";
@@ -89,7 +90,7 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
       </button>
       {!canTransfer ? <span id={unavailableId} className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif yang kompatibel dengan ledger.</span> : null}
 
-      {transferOpen ? <Suspense fallback={null}><TransactionForm
+      {transferOpen ? <Suspense fallback={<LazyActionFallback label="Menyiapkan transfer..." />}><TransactionForm
         open
         onClose={closeTransfer}
         initialType={TRANSACTION_TYPES.TRANSFER}

@@ -151,7 +151,7 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(goals, /<InlineSelectionPicker[\s\S]*label="Rekening tujuan"/);
   assert.match(goals, /<InlineSelectionPicker label=\{label\}/);
   assert.match(recurring, /<InlineSelectionPicker label=\{label\}/);
-  assert.match(investments, /<InlineSelectionPicker[\s\S]*label="Rekening RDN"/);
+  assert.match(investments, /<InlineSelectionPicker[\s\S]*label="Saldo RDN \(opsional\)"/);
   assert.match(reconciliation, /<InlineSelectionPicker[\s\S]*label="Rekening"/);
 });
 

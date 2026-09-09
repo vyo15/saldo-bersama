@@ -249,7 +249,7 @@ test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoin
   const tabletBlock = responsiveCss.match(/@media \(max-width:\s*940px\) \{[\s\S]*?\n\}/)?.[0] || "";
   const mobileBlock = responsiveCss.match(/@media \(max-width:\s*820px\) \{[\s\S]*?\.mobile-navigation \{[\s\S]*?\n\}/)?.[0] || "";
   assert.match(tabletBlock, /\.desktop-user-avatar \{ display:\s*none; \}/);
-  assert.doesNotMatch(tabletBlock, /desktop-logout-button[^}]*display:\s*none/);
+  assert.doesNotMatch(responsiveCss, /desktop-logout-button/, "selector logout desktop lama harus tetap pensiun");
   assert.match(mobileBlock, /\.desktop-app-header \{ display:\s*none; \}/);
   assert.match(mobileBlock, /\.mobile-navigation \{[^}]*display:\s*grid;/);
   assert.match(navigationConfig, /isMobileSecondaryNavigationPath/);

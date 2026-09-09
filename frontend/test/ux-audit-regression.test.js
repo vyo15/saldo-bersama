@@ -22,7 +22,7 @@ test("Dashboard menampilkan ringkasan Investasi dari contract overview yang bena
   assert.match(page, /onRetry=\{investments\.reload\}/);
 });
 
-test("form Investasi memakai inline validation, focus error, dan next-step RDN yang aksesibel", async () => {
+test("form Investasi memakai inline validation, focus error, dan onboarding posisi awal tanpa transfer RDN", async () => {
   const [dialog, setup, field, model, continuation] = await Promise.all([
     read("src/features/investments/InvestmentDialog.jsx"),
     read("src/features/investments/InvestmentSetupDialog.jsx"),
@@ -39,12 +39,12 @@ test("form Investasi memakai inline validation, focus error, dan next-step RDN y
   assert.match(setup, /const SetupFields = \(\{[^}]*mode[^}]*disabled[^}]*\}\) => <fieldset className=\{styles\.intentFieldset\} disabled=\{disabled\}>/);
   assert.match(setup, /<SetupFields[^>]*mode=\{resolvedMode\}[^>]*disabled=\{outcomeUnknown\}/);
   assert.match(setup, /dismissible=\{!busy && !outcomeUnknown\}/);
-  assert.match(setup, /aria-disabled="true">\{label\}<\/span>/);
-  assert.match(setup, /<Link className=\{styles\.setupLink\} to="\/rekening"/);
-  assert.match(setup, /locked=\{disabled\}/);
-  assert.match(setup, /Buka Rekening dan buat RDN/);
-  assert.match(setup, /to="\/rekening"/);
-  assert.match(setup, /investmentRdnAccountSetupState/);
+  assert.match(setup, /Saya sudah punya investasi/);
+  assert.match(setup, /Saya mulai investasi dari sekarang/);
+  assert.match(setup, /Lewati untuk sekarang/);
+  assert.match(setup, /RDN dibuat otomatis dengan saldo Rp0/);
+  assert.match(setup, /auto_create_rdn: automaticRdn/);
+  assert.doesNotMatch(setup, /Buka Rekening dan buat RDN/);
   assert.match(continuation, /accountPrefill: \{ account_type: "investment" \}/);
   assert.match(field, /aria-invalid/);
   assert.match(field, /aria-describedby/);
@@ -87,7 +87,7 @@ test("dialog Target dipisah lazy agar route mempunyai headroom bundle yang sehat
     read("src/features/goals/components/GoalDialogLayer.jsx"),
   ]);
   assert.match(page, /const GoalDialogLayer = lazy\(\(\) => import\("\.\/components\/GoalDialogLayer\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{null\}>/);
+  assert.match(page, /<Suspense fallback=\{<LazyActionFallback label="Menyiapkan aksi target\.\.\." \/>\}>/);
   assert.doesNotMatch(page, /from "\.\/components\/GoalDialogs\.jsx"/);
   assert.doesNotMatch(page, /from "\.\.\/reminders\/ManualReminderModal\.jsx"/);
   assert.match(layer, /GoalConfirmations/);
@@ -98,14 +98,14 @@ test("dialog Investasi dimuat lazy agar route mempunyai headroom build budget", 
   const page = await read("src/features/investments/InvestmentsPage.jsx");
   assert.match(page, /const InvestmentDialog = lazy\(\(\) => import\("\.\/InvestmentDialog\.jsx"\)\)/);
   assert.match(page, /const InvestmentSetupDialog = lazy\(\(\) => import\("\.\/InvestmentSetupDialog\.jsx"\)\)/);
-  assert.match(page, /<Suspense fallback=\{null\}>/);
+  assert.match(page, /<Suspense fallback=\{<LazyActionFallback label="Menyiapkan aksi Investasi\.\.\." \/>\}>/);
   assert.doesNotMatch(page, /import InvestmentDialog from "\.\/InvestmentDialog\.jsx"/);
   assert.doesNotMatch(page, /import InvestmentSetupDialog from "\.\/InvestmentSetupDialog\.jsx"/);
 });
 
 test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk", async () => {
   const [allocations, allocationActions, members, transactions, login] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/allocationActionRunners.js"),
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/transactions/TransactionsPage.jsx"),
@@ -280,7 +280,7 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
 
 test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB global", async () => {
   const [page, overview, detail, styles] = await Promise.all([
-    read("src/features/allocations/AllocationsPage.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
     read("src/features/allocations/AllocationOverview.module.css"),

@@ -60,11 +60,6 @@ export const ewalletBrandImage = (template) => EWALLET_BRAND_IMAGES[String(templ
 export const bankBrandLogo = (template) => BANK_BRAND_LOGOS[String(template || "generic").toLowerCase()] || null;
 export const ewalletBrandLogo = (template) => EWALLET_BRAND_LOGOS[String(template || "generic").toLowerCase()] || null;
 
-export const accountBrandImage = (account = {}, templateOverride = "") => {
-  if (account.account_type === "bank") return bankBrandImage(templateOverride || detectBankTemplate(account));
-  if (account.account_type === "ewallet") return ewalletBrandImage(templateOverride || detectEwalletTemplate(account));
-  return null;
-};
 
 export const accountBrandLogo = (account = {}, templateOverride = "") => {
   if (account.account_type === "bank") return bankBrandLogo(templateOverride || detectBankTemplate(account));

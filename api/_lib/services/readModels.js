@@ -161,18 +161,6 @@ export const firstNegativeBalance = async (db, account, { excludeTransactionId =
   return firstNegativeBalanceFromRows(account, rows, { candidate, fromDate });
 };
 
-export const visibleTransactions = async (db, actor, { startDate = null, endDate = null, includeCancelled = true, limit = null } = {}) => {
-  const access = readableLedgerSql(actor, "t");
-  const conditions = [access.sql];
-  const args = [...access.args];
-  if (startDate) { conditions.push("t.transaction_date >= ?"); args.push(startDate); }
-  if (endDate) { conditions.push("t.transaction_date <= ?"); args.push(endDate); }
-  if (!includeCancelled) conditions.push("t.status = 'active'");
-  const safeLimit = Number.isSafeInteger(Number(limit)) && Number(limit) > 0 ? Number(limit) : null;
-  const rows = await db.all(`SELECT t.* FROM transactions t WHERE ${conditions.join(" AND ")}
-    ORDER BY t.transaction_date DESC, t.created_at DESC${safeLimit ? " LIMIT ?" : ""}`, [...args, ...(safeLimit ? [safeLimit] : [])]);
-  return rows.map((row) => publicRow(row));
-};
 
 export const categoryExpenseTotalsStatement = (actor, startDate, endDate) => {
   const access = readableLedgerSql(actor, "t");
@@ -187,10 +175,6 @@ export const categoryExpenseTotalsStatement = (actor, startDate, endDate) => {
 
 export const mapCategoryExpenseRows = (rows) => rows.map((row) => publicRow(row));
 
-export const categoryExpenseTotals = async (db, actor, startDate, endDate) => {
-  const statement = categoryExpenseTotalsStatement(actor, startDate, endDate);
-  return mapCategoryExpenseRows(await db.all(statement.sql, statement.args));
-};
 
 export const envelopeItemsStatement = (actor, { period = null, includeClosed = true } = {}) => {
   const access = visibleScopeSql(actor, "r");
@@ -231,10 +215,6 @@ export const mapEnvelopeItemRows = (rows) => rows.map((row) => ({
   remaining_amount: Number(row.allocated_amount) - Number(row.reserved_amount) - Number(row.used_amount),
 }));
 
-export const envelopeItems = async (db, actor, options = {}) => {
-  const statement = envelopeItemsStatement(actor, options);
-  return mapEnvelopeItemRows(await db.all(statement.sql, statement.args));
-};
 
 export const goalProgress = async (db, goalId, cutoffDate = todayJakarta()) => {
   const row = await db.one(`SELECT COALESCE(SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END),0) AS total

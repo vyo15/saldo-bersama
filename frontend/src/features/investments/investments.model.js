@@ -92,6 +92,27 @@ export const investmentProjectedAverage = (form = {}, instruments = [], portfoli
 };
 
 
+const safeIntegerProduct = (left, right) => {
+  const product = Number(left) * Number(right);
+  return Number.isSafeInteger(left) && Number.isSafeInteger(right) && Number.isSafeInteger(product) ? product : 0;
+};
+
+export const investmentOpeningPositionPreview = (form = {}, instruments = []) => {
+  const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
+  const mutualFund = isMutualFundInstrument(instrument || {});
+  const quantity = Number(form.opening_quantity || 0);
+  const lotSize = Number(instrument?.lot_size || (mutualFund ? 1 : 100));
+  const shares = mutualFund ? quantity : quantity * lotSize;
+  const averagePrice = Number(form.average_price || 0);
+  const currentPrice = Number(form.reference_price || 0);
+  const costBasis = safeIntegerProduct(shares, averagePrice);
+  const marketValue = safeIntegerProduct(shares, currentPrice);
+  const unrealizedPl = marketValue - costBasis;
+  const returnPercent = costBasis > 0 ? (unrealizedPl / costBasis) * 100 : null;
+  return { instrument, mutualFund, quantity, lotSize, shares, averagePrice, currentPrice, costBasis, marketValue, unrealizedPl, returnPercent };
+};
+
+
 export const investmentOwnershipLabel = (portfolio = {}) => {
   if (portfolio.owner_scope !== "personal") return "Bersama";
   return portfolio.is_owned_by_actor ? "Pribadi" : "Pasangan";
@@ -247,6 +268,15 @@ const validateCorrection = (form, context) => {
   return errors;
 };
 
+const openingPositionOverflowErrors = (form, instruments, { quantityError, averageError, priceError }) => {
+  if (quantityError || (averageError && priceError)) return {};
+  const preview = investmentOpeningPositionPreview(form, instruments);
+  const errors = {};
+  if (!averageError && preview.costBasis <= 0) errors.average_price = "Total modal hasil perhitungan melampaui batas nominal aman.";
+  if (!priceError && preview.marketValue <= 0) errors.reference_price = "Nilai sekarang hasil perhitungan melampaui batas nominal aman.";
+  return errors;
+};
+
 const validateOpeningPosition = (form, context) => {
   const errors = {};
   const instrument = instrumentForMode("opening_position", form, context.instruments, context.portfolio);
@@ -256,13 +286,16 @@ const validateOpeningPosition = (form, context) => {
     instrument || {},
     isMutualFundInstrument(instrument || {}) ? "Jumlah unit" : "Jumlah lot",
   );
-  const costError = positiveIntegerError(form.cost_basis, "Total modal");
-  const priceError = positiveIntegerError(form.reference_price, "Harga referensi");
-  const cashError = nonNegativeIntegerError(form.actual_cash, "Saldo RDN awal");
+  const averageError = positiveIntegerError(form.average_price, "Harga rata-rata beli");
+  const priceError = positiveIntegerError(form.reference_price, "Harga sekarang");
+  const cashError = form.actual_cash === "" || form.actual_cash === undefined || form.actual_cash === null
+    ? ""
+    : nonNegativeIntegerError(form.actual_cash, "Saldo RDN sekarang");
   const dateError = requiredDateError(form.position_date, "Tanggal posisi awal", context.today);
   if (quantityError) errors.opening_quantity = quantityError;
-  if (costError) errors.cost_basis = costError;
+  if (averageError) errors.average_price = averageError;
   if (priceError) errors.reference_price = priceError;
+  Object.assign(errors, openingPositionOverflowErrors(form, context.instruments, { quantityError, averageError, priceError }));
   if (cashError) errors.actual_cash = cashError;
   if (dateError) errors.position_date = dateError;
   if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
@@ -292,7 +325,9 @@ export const validateInvestmentSetup = (kind, form = {}, accounts = []) => {
   const errors = {};
   if (kind === "portfolio") {
     if (String(form.source_label || "").trim().length > 100) errors.source_label = "Sumber catatan maksimal 100 karakter.";
-    if (!accounts.some((item) => item.account_id === form.rdn_account_id)) errors.rdn_account_id = accounts.length ? "Pilih rekening RDN yang tersedia." : "Buat rekening jenis Investasi terlebih dahulu.";
+    if (!new Set(["existing", "new"]).has(String(form.start_mode || ""))) errors.start_mode = "Pilih cara memulai investasi.";
+    const automaticRdn = !form.rdn_account_id || form.rdn_account_id === "__auto_rdn__";
+    if (!automaticRdn && !accounts.some((item) => item.account_id === form.rdn_account_id)) errors.rdn_account_id = "Pilih rekening RDN yang tersedia atau gunakan RDN otomatis.";
     return errors;
   }
 

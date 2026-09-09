@@ -3,6 +3,7 @@ import {
   appError, assertOwner, assertVersion, dateValue, nonNegativeInteger, nowIso, operableAccountSql, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid,
 } from "./core.js";
 import { accountBalanceAsOf, firstNegativeBalance } from "./readModels.js";
+import { createAccountInternal } from "./masterData/accounts.js";
 
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 const INTEGER_PATTERN = /^-?\d+$/;
@@ -238,23 +239,50 @@ export const investmentOverview = async (db, context) => {
   return { portfolios: items, instruments: instruments.map((row) => publicRow(row)), summary: { market_value: totalMarket, cost_basis: totalCost, rdn_cash: totalCash, portfolio_value: totalMarket + totalCash, realized_pl: totalRealized, unrealized_pl: totalUnrealized, holding_count: items.reduce((sum, item) => sum + item.holdings.length, 0) } };
 };
 
+const nextAutomaticRdnName = async (db, sourceLabel) => {
+  const qualifier = sanitizeText(sourceLabel, 70);
+  const base = qualifier ? `RDN ${qualifier}` : "RDN Portofolio";
+  for (let index = 1; index <= 99; index += 1) {
+    const candidate = index === 1 ? base : `${base} ${index}`;
+    const existing = await db.one("SELECT account_id FROM accounts WHERE lower(name)=lower(?) AND status='active'", [candidate]);
+    if (!existing) return candidate;
+  }
+  return `RDN Portofolio ${uuid().slice(0, 8)}`;
+};
+
+const createAutomaticRdn = async (db, context, sourceLabel) => createAccountInternal(db, context, {
+  name: await nextAutomaticRdnName(db, sourceLabel),
+  account_type: "investment",
+  owner_scope: context.actor.role === "owner" ? "shared" : "personal",
+  owner_user_id: context.actor.role === "owner" ? "" : context.actor.user_id,
+  initial_balance: 0,
+  initial_balance_date: context.today || todayJakarta(),
+  allow_negative: false,
+});
+
+const resolvePortfolioRdn = async (db, context, payload) => {
+  if (!payload.rdn_account_id && payload.auto_create_rdn) return { account: await createAutomaticRdn(db, context, payload.source_label || payload.name), autoCreated: true };
+  const access = operableAccountSql(context.actor, "a");
+  const account = await db.one(`SELECT a.* FROM accounts a WHERE a.account_id=? AND a.status='active' AND a.account_type='investment' AND ${access.sql}`, [String(payload.rdn_account_id || ""), ...access.args]);
+  if (!account) throw appError("RDN_ACCOUNT_NOT_FOUND", "Pilih rekening Investasi aktif yang dapat Anda gunakan sebagai RDN, atau buat RDN otomatis.", 404);
+  return { account, autoCreated: false };
+};
+
 export const createInvestmentPortfolio = async (db, context) => {
   const payload = context.payload || {};
   const name = sanitizeText(payload.name || "Catatan investasi", 100);
   if (!name) throw appError("NAME_REQUIRED", "Nama portfolio wajib diisi.", 400);
   const broker = String(payload.broker || "other").toLowerCase();
   if (!new Set(["ajaib", "other"]).has(broker)) throw appError("INVALID_BROKER", "Broker investasi tidak didukung.", 400);
-  const access = operableAccountSql(context.actor, "a");
-  const account = await db.one(`SELECT a.* FROM accounts a WHERE a.account_id=? AND a.status='active' AND a.account_type='investment' AND ${access.sql}`, [String(payload.rdn_account_id || ""), ...access.args]);
-  if (!account) throw appError("RDN_ACCOUNT_NOT_FOUND", "Pilih rekening Investasi aktif yang dapat Anda gunakan sebagai RDN.", 404);
+  const { account, autoCreated } = await resolvePortfolioRdn(db, context, payload);
   if (Number(account.allow_negative)) throw appError("RDN_NEGATIVE_NOT_ALLOWED", "Rekening RDN investasi tidak boleh mengizinkan saldo negatif.", 409);
   const existing = await db.one("SELECT portfolio_id FROM investment_portfolios WHERE rdn_account_id=?", [account.account_id]);
   if (existing) throw appError("RDN_ALREADY_LINKED", "Rekening Investasi ini sudah terhubung ke portfolio.", 409);
   const timestamp = nowIso();
   const record = { portfolio_id: uuid(), name, broker, rdn_account_id: account.account_id, status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp };
   await db.execute(`INSERT INTO investment_portfolios(portfolio_id,name,broker,rdn_account_id,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
-  await appendAudit(db, context, { entityType: "investment_portfolio", entityId: record.portfolio_id, next: record });
-  return publicRow(record);
+  await appendAudit(db, context, { entityType: "investment_portfolio", entityId: record.portfolio_id, next: { ...record, rdn_created_automatically: autoCreated } });
+  return { ...publicRow(record), rdn_created_automatically: autoCreated };
 };
 
 const investmentInstrumentInput = (payload, existing) => {
@@ -494,4 +522,3 @@ export const correctInvestment = async (db, context) => {
 };
 
 export const investmentHoldingStateFromEvents = holdingStateFromEvents;
-export const validateIntegerTextForInvestment = (value) => INTEGER_PATTERN.test(String(value));

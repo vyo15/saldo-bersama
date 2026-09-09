@@ -13,7 +13,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Partner planning shared + own-personal untuk Alokasi/Kebutuhan/Jadwal Rutin dengan guard backend RFC-0016; Target baru tetap shared; destructive lifecycle tetap Administrator-only.
 - Pembagian beban biaya expense shared `equal`/`percentage` melalui schema v11 sebagai MVP RFC-0013; payer/beneficiary/kontribusi aktual tetap deferred.
 - Registry session per perangkat, revoke own/all, PKCE S256, dan session lifecycle server-side (RFC-0018, schema v12).
-- Investment manual schema v16: RDN berbasis rekening canonical, instrument registry, Buy/Sell, weighted cost basis, valuation/P&L, opening position + Cash RDN awal, continuation Transfer, reconciliation no-auto-adjust, explicit correction, Dashboard summary, backup/restore, dan integrity guard tanpa credential broker/live market API.
+- Investment manual schema v16: RDN berbasis rekening canonical (termasuk auto-create Rp0 pada first-time setup), instrument registry, Buy/Sell, weighted cost basis, valuation/P&L, opening position berbasis lot/unit + harga rata-rata + harga sekarang dengan Cash RDN opsional, continuation Transfer, reconciliation no-auto-adjust, explicit correction, Dashboard summary, backup/restore, dan integrity guard tanpa credential broker/live market API.
 - Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
 
 ## Now — verification dan operasi

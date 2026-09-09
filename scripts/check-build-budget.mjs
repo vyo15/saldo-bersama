@@ -10,6 +10,7 @@ const limits = Object.freeze({
   mainJsGzip: 110 * 1024,
   globalCssGzip: 20 * 1024,
   routeChunkGzip: 8 * 1024,
+  lazyChunkGzip: 32 * 1024,
 });
 const warningRatio = 0.9;
 
@@ -41,6 +42,8 @@ measureBudget(mainJs, limits.mainJsGzip, "main JS");
 measureBudget(globalCss, limits.globalCssGzip, "global CSS");
 const routeChunks = measurements.filter((entry) => /Page-.*\.js$/.test(entry.name));
 for (const item of routeChunks) measureBudget(item, limits.routeChunkGzip, "route");
+const lazyChunks = measurements.filter((entry) => entry.name.endsWith(".js") && entry.name !== mainJs.name && !routeChunks.includes(entry));
+for (const item of lazyChunks) measureBudget(item, limits.lazyChunkGzip, "lazy interaction");
 
 console.log(`Build budget: main JS ${mainJs.gzip} B gzip; global CSS ${globalCss.gzip} B gzip; ${measurements.length} asset diperiksa.`);
 if (warnings.length) {

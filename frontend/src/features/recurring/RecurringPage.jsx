@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { Link, useLocation, useNavigate } from "react-router";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
@@ -233,12 +234,12 @@ const RecurringPage = ({ embedded = false }) => {
       {!canManagePlanning ? <CompactNotice tone="warning" title="Belum ada rekening yang dapat digunakan." role="status">Siapkan atau aktifkan rekening terlebih dahulu sebelum membuat Jadwal Rutin. <Link to="/rekening">Lihat Rekening</Link>.</CompactNotice> : null}
       {payments.incomeSuccess ? <div className={styles.incomeSuccess}><CompactNotice tone="success" title="Penerimaan rutin berhasil dicatat." role="status">Dana sudah masuk ke rekening. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti.</CompactNotice><div className={styles.incomeSuccessActions}><Button type="button" onClick={() => payments.setIncomeSuccess(null)}>Nanti</Button><Button type="button" variant="primary" onClick={() => { const success = payments.incomeSuccess; payments.setIncomeSuccess(null); navigate("/perencanaan/kantong", { state: { workflowSource: "recurring-income", workflowAction: "fund", sourceAccountId: success.sourceAccountId, suggestedAmount: success.suggestedAmount } }); }}>Bagi ke Alokasi Dana</Button></div></div> : null}
       {embedded ? <div className={styles.embeddedHeader}><div><h2>Jadwal Rutin</h2><p>Sistem menyiapkan jadwal berulang. Saat waktunya tiba, konfirmasi nominal aktual sebelum saldo berubah.</p></div>{headerActions}</div> : <PageHeader title="Jadwal Rutin" help="Jadwal rutin mengingatkan transaksi berulang. Saldo baru berubah setelah pembayaran atau penerimaan aktual disimpan." actions={headerActions} />}{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal aktual dan rekening. Saldo berubah setelah pembayaran atau penerimaan disimpan.</CompactNotice> : null}
-      <Suspense fallback={null}>
+      <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi jadwal rutin..." />}>
         <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} budgets={budgets} canCreate={canManagePlanning} />
       </Suspense>
       <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
       {recurringDialogOpen({ rules, payments, recovery }) ? (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi jadwal rutin..." />}>
           <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgetSuggestions={budgetSuggestions} members={members} />
         </Suspense>
       ) : null}

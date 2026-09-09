@@ -18,7 +18,6 @@ export const BankTransferIcon = (props) => <IconBase {...props}><path d="M3.5 8.
 export const CashIcon = (props) => <IconBase {...props}><rect x="3.5" y="6.5" width="17" height="11" rx="2" /><circle cx="12" cy="12" r="2.4" /><path d="M6.2 9h.01M17.8 15h.01" /></IconBase>;
 export const DebitCardIcon = (props) => <IconBase {...props}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 9.5h18M7 14h4" /></IconBase>;
 export const EwalletIcon = (props) => <IconBase {...props}><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M9 6h6M9 10h6M10 17.5h4" /><circle cx="12" cy="14" r="1.6" /></IconBase>;
-export const AutoDebitIcon = (props) => <IconBase {...props}><path d="M7 5h10l2 3-2 3" /><path d="M17 19H7l-2-3 2-3" /><path d="M5 8h11M19 16H8" /></IconBase>;
 export const BankIcon = (props) => <IconBase {...props}><path d="M3 9h18L12 4 3 9Z" /><path d="M5 10v7M9 10v7M15 10v7M19 10v7M3 20h18" /></IconBase>;
 export const SavingsIcon = (props) => <IconBase {...props}><path d="M5 12c0-3.5 3-6 7-6 4.7 0 7 2.5 7 6 0 2.6-1.4 4.7-4 5.6V20h-3v-2H9.5L8 20H5.5l.7-3C5.4 15.8 5 14.1 5 12Z" /><path d="M15 9h.01M8 7 6 5" /><path d="M4 12H2" /></IconBase>;
 export const EmergencyFundIcon = (props) => <IconBase {...props}><path d="M12 3 19 6v5c0 4.5-2.6 8-7 10-4.4-2-7-5.5-7-10V6l7-3Z" /><path d="M12 8v6M9 11h6" /></IconBase>;

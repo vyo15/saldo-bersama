@@ -11,7 +11,7 @@ const source = (relativePath) => readFile(path.join(root, relativePath), "utf8")
 test("pengingat manual hanya muncul pada empat lifecycle finansial yang membutuhkan reminder", async () => {
   const [budgets, allocations, recurring, goals, transactions] = await Promise.all([
     source("src/features/allocations/AllocationPlanningDetail.jsx"),
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringPage.jsx"),
     source("src/features/goals/GoalsPage.jsx"),
     source("src/features/transactions/TransactionsPage.jsx"),

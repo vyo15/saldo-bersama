@@ -40,7 +40,7 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.doesNotMatch(reports, /alerts\.slice\(0,\s*8\)/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|Simpan anggaran|Arsipkan anggaran/);
   const budgets = await Promise.all([
-    source("src/features/allocations/AllocationsPage.jsx"),
+    source("src/features/allocations/AllocationsWorkspace.jsx"),
     source("src/features/budgets/useBudgetActions.js"),
     source("src/features/budgets/BudgetDialogLayer.jsx"),
   ]).then((parts) => parts.join("\n"));
@@ -104,8 +104,8 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
       source("src/features/recurring/RecurringDialogs.jsx"),
     ]).then((parts) => parts.join("\n")),
     goalFeatureSource(),
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/allocationActionRunners.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx"), source("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/allocationActionRunners.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
   ]);
   for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));
@@ -164,7 +164,7 @@ test("target menampilkan sisa, kebutuhan setoran bulanan, status proyeksi, dan b
 test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis", async () => {
   const [goals, allocations, recurring, members, dashboard, transactions, reports] = await Promise.all([
     goalFeatureSource(),
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationOverviewLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/AllocationOverviewLayer.jsx")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringSchedule.jsx"),
     source("src/features/settings/MembersSettingsPage.jsx"),
     source("src/features/dashboard/DashboardPage.jsx"),
@@ -192,7 +192,7 @@ test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis",
 
 test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang memakai Alokasi Dana", async () => {
   const [allocations, recurring, navigation] = await Promise.all([
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/AllocationOverviewLayer.jsx"), source("src/features/allocations/allocationPresentation.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx"), source("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/AllocationOverviewLayer.jsx"), source("src/features/allocations/allocationPresentation.js"), source("src/features/allocations/AllocationDialogLayer.jsx"), source("src/features/allocations/AllocationPlanningDetail.jsx"), source("src/features/allocations/AllocationSecondaryLayer.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([
       source("src/features/recurring/RecurringPage.jsx"),
       source("src/features/recurring/RecurringDialogs.jsx"),
@@ -308,8 +308,9 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
 });
 
 test("continuity flow memakai prefill dan action existing tanpa mutation finansial otomatis", async () => {
-  const [allocations, funding, notices, goals, recurring, reconciliation, periods, setup] = await Promise.all([
-    source("src/features/allocations/AllocationsPage.jsx"),
+  const [allocations, overlay, funding, notices, goals, recurring, reconciliation, periods, setup] = await Promise.all([
+    source("src/features/allocations/AllocationsWorkspace.jsx"),
+    source("src/features/allocations/AllocationOverlayLayer.jsx"),
     source("src/features/allocations/AllocationFundingFlow.jsx"),
     source("src/features/allocations/AllocationNoticesLayer.jsx"),
     goalFeatureSource(),
@@ -319,7 +320,8 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
     source("src/features/dashboard/FinancialSetupChecklist.jsx"),
   ]);
 
-  assert.match(allocations, /lazy\(\(\) => import\("\.\/AllocationFundingFlow\.jsx"\)\)/);
+  assert.match(allocations, /lazy\(\(\) => import\("\.\/AllocationOverlayLayer\.jsx"\)\)/);
+  assert.match(overlay, /lazy\(\(\) => import\("\.\/AllocationFundingFlow\.jsx"\)\)/);
   assert.match(allocations, /workflowAction !== "fund"/);
   assert.match(funding, /Bagi dana tersedia/);
   assert.match(funding, /available_balance/);
@@ -353,7 +355,7 @@ test("dashboard empty state tampil sebagai aksi tambah dan membuka workflow cano
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
     source("src/features/dashboard/DashboardPage.jsx"),
-    Promise.all([source("src/features/allocations/AllocationsPage.jsx"), source("src/features/allocations/allocationDashboardWorkflow.js")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/allocationDashboardWorkflow.js")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringPage.jsx"),
     source("src/features/goals/GoalsPage.jsx"),
     source("src/features/dashboard/DashboardPage.module.css"),
