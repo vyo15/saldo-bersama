@@ -6,6 +6,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import { useMobileSwipeDismiss } from "./useMobileSwipeDismiss.js";
 import { ModalSubviewContext } from "./ModalSubviewContext.js";
 import styles from "./Modal.module.css";
+import { getModalHistoryCoordinator } from "./modalHistoryCoordinator.js";
 
 const SIZE_STYLES = Object.freeze({
   sm: styles.small,
@@ -23,49 +24,38 @@ const useModalHistoryDismiss = ({ open, onClose, dismissible }) => {
   useEffect(() => {
     if (!open || typeof window === "undefined" || typeof onCloseRef.current !== "function") return undefined;
     const token = `modal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    let activated = false;
+    const coordinator = getModalHistoryCoordinator();
     tokenRef.current = token;
-    const pushModalHistory = () => {
-      if (tokenRef.current !== token) return;
-      const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
-      window.history.pushState({ ...currentState, __saldoModalId: token }, "", window.location.href);
-      activated = true;
-    };
-    // StrictMode runs effect setup/cleanup twice in development. Deferring the
-    // history entry by one task prevents the disposable setup from polluting Back.
-    const activationTimer = window.setTimeout(pushModalHistory, 0);
-    const restoreModalHistory = () => {
-      if (tokenRef.current !== token) return;
-      const state = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
-      window.history.pushState({ ...state, __saldoModalId: token }, "", window.location.href);
-      activated = true;
-    };
+    coordinator?.reserve(token);
+
     const onPopState = () => {
-      if (window.history.state?.__saldoModalId === token) return;
+      if (coordinator?.owns(token)) return;
       if (!dismissibleRef.current) {
-        restoreModalHistory();
+        coordinator?.restore(token);
         return;
       }
       const accepted = onCloseRef.current?.();
       if (accepted === false) {
-        restoreModalHistory();
+        coordinator?.restore(token);
         return;
       }
       tokenRef.current = "";
+      coordinator?.consume(token);
     };
+
     window.addEventListener("popstate", onPopState);
     return () => {
-      window.clearTimeout(activationTimer);
       window.removeEventListener("popstate", onPopState);
       if (tokenRef.current !== token) return;
       tokenRef.current = "";
-      if (activated && window.history.state?.__saldoModalId === token) window.history.back();
+      coordinator?.release(token);
     };
   }, [open]);
 
   return () => {
     const token = tokenRef.current;
-    if (token && window.history.state?.__saldoModalId === token) {
+    const coordinator = getModalHistoryCoordinator();
+    if (token && coordinator?.owns(token)) {
       window.history.back();
       return;
     }

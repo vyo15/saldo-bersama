@@ -4,7 +4,7 @@ import Modal from "../../components/common/Modal.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
-import SelectionField from "../../components/common/SelectionField.jsx";
+import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import { instrumentOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { investmentAssetByTicker, isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
@@ -65,7 +65,7 @@ const instrumentSelectionOption = (item = {}) => {
 };
 
 const InstrumentField = ({ form, onFieldChange, instruments, error }) => (
-  <SelectionField className={formStyles.field} label="Aset investasi" required error={error} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} placeholder="Pilih saham atau reksa dana" searchable searchPlaceholder="Cari kode atau nama aset…" options={instruments.map(instrumentSelectionOption)} />
+  <InlineSelectionPicker className={formStyles.field} label="Aset investasi" required error={error} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} placeholder="Pilih saham atau reksa dana" placeholderMeta="Cari dan pilih aset dari katalog investasi" placeholderOption={{ mark: "IDX" }} searchable searchPlaceholder="Cari kode atau nama aset…" options={instruments.map(instrumentSelectionOption)} />
 );
 
 const NotesField = ({ id, label = "Catatan (opsional)", value, onChange, error }) => (
@@ -234,7 +234,7 @@ const CorrectionFields = ({ form, onFieldChange, instruments, errors }) => {
   <InvestmentFormField id="investment-correction-date" label="Tanggal koreksi" required error={errors.correction_date}>
     <TemporalInput type="date" max={TODAY()} value={form.correction_date} onChange={(event) => onFieldChange("correction_date", event.target.value)} />
   </InvestmentFormField>
-  <SelectionField className={formStyles.field} label="Aset investasi (kosongkan untuk koreksi cash saja)" error={errors.instrument_id} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} options={[{ value: "", label: "Saldo RDN saja" }, ...instruments.map(instrumentSelectionOption)]} searchable={instruments.length > 8} searchPlaceholder="Cari aset investasi…" />
+  <InlineSelectionPicker className={formStyles.field} label="Aset investasi (kosongkan untuk koreksi cash saja)" error={errors.instrument_id} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} placeholder="Pilih aset atau saldo RDN" placeholderMeta="Pilih aset yang dikoreksi" placeholderOption={{ mark: "RDN" }} options={[{ value: "", label: "Saldo RDN saja", meta: "Koreksi cash RDN tanpa mengubah posisi aset", mark: "RDN" }, ...instruments.map(instrumentSelectionOption)]} searchable={instruments.length > 8} searchPlaceholder="Cari aset investasi…" />
   <div className={formStyles.formRow}>
     <InvestmentFormField id="investment-quantity-delta" label={`Delta ${isMutualFundInstrument(instrument || {}) ? "unit" : "lot"}`} error={errors.quantity_delta}><input step={isMutualFundInstrument(instrument || {}) ? "1" : lotStep(instrument?.lot_size)} type="number" value={form.quantity_delta || 0} onChange={(event) => onFieldChange("quantity_delta", event.target.value)} /></InvestmentFormField>
     <InvestmentFormField id="investment-cost-basis-delta" label="Delta cost basis" error={errors.cost_basis_delta}><input step="1" type="number" value={form.cost_basis_delta || 0} onChange={(event) => onFieldChange("cost_basis_delta", event.target.value)} /></InvestmentFormField>

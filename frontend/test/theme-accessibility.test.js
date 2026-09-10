@@ -295,7 +295,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
     Promise.all([
       readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/transactions/MobileTransactionFields.module.css", import.meta.url), "utf8"),
-      readFile(new URL("../src/features/transactions/MobileTransactionSelectionView.module.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/common/InlineSelectionPicker.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/transactions/MobileTransferFields.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
     readFile(new URL("../src/features/transactions/TransactionsPage.module.css", import.meta.url), "utf8"),
@@ -323,8 +323,8 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(transactionForm, /\.detailRow \{[^}]*min-height:\s*58px;/s);
   assert.match(transactionForm, /\.paymentChoices button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(transactionForm, /\.choiceRow \{[^}]*min-height:\s*66px;/s);
-  assert.match(transactionForm, /\.accountPicker \{[^}]*min-height:\s*4rem;/s);
+  assert.match(transactionForm, /\.selected,\s*\n\.option \{[^}]*min-height:\s*62px;/s);
+  assert.match(transactionForm, /@media \(max-width: 820px\)[\s\S]*scrollbar-width:\s*none/s);
   assert.doesNotMatch(transactionForm, /impactDetails|Lihat dampak lengkap/);
   assert.match(transactions, /\.filterChip\s*\{[^}]*min-height:\s*var\(--control-height-md\);/);
   assert.match(desktopAccounts, /\.ownershipFilter \{[^}]*min-height:\s*2\.75rem;/s);

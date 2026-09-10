@@ -95,9 +95,9 @@ Menampilkan **Saldo rekening** non-investasi sebagai hero operasional, Aman digu
 
 ### `REQ-PROD-10` Kontribusi dan pembagian pasangan — Partial
 
-MVP menyediakan **pembagian beban biaya** untuk expense shared dengan mode `unspecified`, `equal`, atau `percentage`. Snapshot split integer disimpan per transaksi, histori lama tidak diubah menjadi 50:50, dan split tidak mengubah saldo ledger.
+Schema v11 masih mendukung **pembagian beban biaya legacy** untuk expense shared dengan mode `unspecified`, `equal`, atau `percentage` demi compatibility histori, backup/restore, export, dan API lama. UI canonical transaksi baru selalu memakai `unspecified`; snapshot split lama tetap disimpan apa adanya, tidak di-backfill 50:50, dan tidak mengubah saldo ledger.
 
-**Gap:** payer, beneficiary, liable party, settlement, nominal/template split, dan kontribusi aktual belum dimodelkan. Laporan “aktivitas pencatatan” tetap bukan laporan kontribusi. Lihat RFC-0013.
+**Arah produk:** karena Saldo Bersama memakai full transparency keluarga dan pengeluaran diperlakukan sebagai pengeluaran keluarga, payer/beneficiary/settlement serta kontribusi aktual tidak menjadi roadmap aktif. RFC-0013 dipertahankan sebagai catatan kompatibilitas/domain bila positioning produk kelak berubah.
 
 ### `REQ-PROD-11` Pencatatan cepat dan transaksi belum jelas — Partial
 
@@ -111,9 +111,9 @@ Harus memisahkan kontrak kewajiban, pencairan, cicilan, settlement, saldo tersis
 
 ### `REQ-PROD-13` Laporan — Partial
 
-Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan **Saldo utama/non-investasi**, kategori, rekening, nature, Kebutuhan vs aktual, aktivitas pencatatan pengguna, dan breakdown pembagian beban biaya shared yang dipisahkan dari recorder activity. Transfer internal tidak dihitung sebagai arus kas. Presentation boleh menampilkan **Total kekayaan tercatat · saat ini** = Saldo rekening non-investasi + Total investasi, tetapi tidak boleh menambahkan nilai investasi saat ini ke titik historis atau double-count Saldo RDN. Presentation mobile ≤820px memakai mode `Ringkasan` dan `Per kategori`, navigasi periode, chart tren pengeluaran, KPI utama, perbandingan bulan sebelumnya, serta progressive disclosure untuk breakdown; alert operasional tidak dirender di Laporan karena Notification Center/Dashboard adalah surface tindakan. Desktop mempertahankan workspace analitik existing. Seluruh presentation tetap read-only dan memakai contract canonical `reports.monthly`.
+Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan **Saldo utama/non-investasi**, kategori, rekening, nature, Kebutuhan vs aktual, dan aktivitas pencatatan pengguna. Breakdown pembagian beban legacy tidak menjadi panel laporan canonical. Transfer internal tidak dihitung sebagai arus kas. Presentation boleh menampilkan **Total kekayaan tercatat · saat ini** = Saldo rekening non-investasi + Total investasi, tetapi tidak boleh menambahkan nilai investasi saat ini ke titik historis atau double-count Saldo RDN. Presentation mobile ≤820px memakai mode `Ringkasan` dan `Per kategori`, navigasi periode, chart tren pengeluaran, KPI utama, perbandingan bulan sebelumnya, serta progressive disclosure untuk breakdown; alert operasional tidak dirender di Laporan karena Notification Center/Dashboard adalah surface tindakan. Desktop mempertahankan workspace analitik existing. Seluruh presentation tetap read-only dan memakai contract canonical `reports.monthly`.
 
-**Gap:** payer/beneficiary dan kontribusi nyata, debt/receivable, serta target stages menunggu model datanya.
+**Gap:** debt/receivable dan target stages menunggu model datanya. Payer/beneficiary serta kontribusi nyata tidak menjadi roadmap aktif selama positioning full-transparency keluarga tetap berlaku.
 
 ### `REQ-PROD-14` Rekonsiliasi saldo — Implemented
 

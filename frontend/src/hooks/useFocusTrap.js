@@ -1,6 +1,32 @@
 import { useEffect, useRef } from "react";
 
 const SELECTOR = "a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])";
+const bodyClassLocks = new Map();
+
+const lockBodyClass = (className) => {
+  if (!className) return;
+  const count = bodyClassLocks.get(className) || 0;
+  bodyClassLocks.set(className, count + 1);
+  if (count === 0) document.body.classList.add(className);
+};
+
+const unlockBodyClass = (className) => {
+  if (!className) return;
+  const next = Math.max(0, (bodyClassLocks.get(className) || 0) - 1);
+  if (next > 0) {
+    bodyClassLocks.set(className, next);
+    return;
+  }
+  bodyClassLocks.delete(className);
+  document.body.classList.remove(className);
+};
+
+const restorePreviousFocus = (previous) => {
+  requestAnimationFrame(() => {
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    if (previous?.isConnected !== false) previous?.focus?.();
+  });
+};
 
 export const useFocusTrap = ({ open, containerRef, initialFocusRef, onEscape, bodyClassName = "" }) => {
   const onEscapeRef = useRef(onEscape);
@@ -9,7 +35,7 @@ export const useFocusTrap = ({ open, containerRef, initialFocusRef, onEscape, bo
   useEffect(() => {
     if (!open) return undefined;
     const previous = document.activeElement;
-    if (bodyClassName) document.body.classList.add(bodyClassName);
+    lockBodyClass(bodyClassName);
     const frame = requestAnimationFrame(() => (initialFocusRef?.current || containerRef.current)?.focus?.());
     const handleKeyDown = (event) => {
       if (event.key === "Escape") { event.preventDefault(); onEscapeRef.current?.(); return; }
@@ -25,8 +51,8 @@ export const useFocusTrap = ({ open, containerRef, initialFocusRef, onEscape, bo
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener("keydown", handleKeyDown);
-      if (bodyClassName) document.body.classList.remove(bodyClassName);
-      previous?.focus?.();
+      unlockBodyClass(bodyClassName);
+      restorePreviousFocus(previous);
     };
   }, [bodyClassName, containerRef, initialFocusRef, open]);
 };

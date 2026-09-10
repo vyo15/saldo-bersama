@@ -7,7 +7,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Ledger rekening, transaksi, transfer netral, soft cancel, audit, idempotency, dan conflict.
 - Alokasi Dana lintas periode termasuk add/release dana tersedia ke Alokasi Dana existing, Jadwal Rutin, Target, Kebutuhan, rekonsiliasi, dan laporan bulanan.
 - Filter transaksi berdasarkan rekening, kategori, dan pencatat.
-- Tren 3/6/12 bulan, breakdown rekening/nature/pencatat/pembagian beban biaya, target projection, dashboard alerts.
+- Tren 3/6/12 bulan, breakdown rekening/nature/pencatat, target projection, dashboard alerts; pembagian beban schema v11 hanya dipertahankan untuk compatibility histori/API lama.
 - Push actionable untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, Target, dan transaksi belum dialokasikan.
 - Pengingat manual one-shot actor-scoped untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target melalui scheduler/Web Push existing (RFC-0017).
 - Partner planning shared + own-personal untuk Alokasi/Kebutuhan/Jadwal Rutin dengan guard backend RFC-0016; Target baru tetap shared; destructive lifecycle tetap Administrator-only.

@@ -100,9 +100,15 @@ test("ownership identity picker stays compact until expanded inline", async () =
   assert.match(source, /<UserAvatar user=\{visualOption\.user\}/);
   assert.match(source, /role="listbox"/);
   assert.match(source, /role="option"/);
+  assert.match(source, /groups = \[\]/);
+  assert.match(source, /filteredGroups/);
+  assert.match(source, /role="group"/);
   assert.match(css, /grid-template-rows:\s*0fr/);
   assert.match(css, /grid-template-rows:\s*1fr/);
   assert.match(css, /max-height:\s*min\(19rem, 44vh\)/);
+  assert.match(css, /@media \(max-width: 820px\)/);
+  assert.match(css, /scrollbar-width:\s*none/);
+  assert.match(css, /\.options::-webkit-scrollbar/);
   assert.match(css, /@media \(max-width: 520px\)/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(allocation, /<InlineOwnershipPicker[\s\S]*legend="Digunakan oleh"/);
@@ -112,7 +118,7 @@ test("ownership identity picker stays compact until expanded inline", async () =
 });
 
 test("inline account picker stays compact, searchable, and expands in the same form", async () => {
-  const [source, css, allocations, funding, accounts, goals, recurring, investments, reconciliation] = await Promise.all([
+  const [source, css, allocations, funding, accounts, goals, recurring, investments, reconciliation, transaction, transfer, budgets] = await Promise.all([
     read("components/common/InlineSelectionPicker.jsx"),
     read("components/common/InlineSelectionPicker.module.css"),
     read("features/allocations/AllocationDialogLayer.jsx"),
@@ -122,6 +128,9 @@ test("inline account picker stays compact, searchable, and expands in the same f
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/investments/InvestmentSetupDialog.jsx"),
     read("features/reconciliations/components/ReconciliationForm.jsx"),
+    read("features/transactions/MobileTransactionFields.jsx"),
+    read("features/transactions/MobileTransferFields.jsx"),
+    read("features/budgets/BudgetDialogLayer.jsx"),
   ]);
 
   assert.match(source, /role="combobox"/);
@@ -140,6 +149,9 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(css, /grid-template-rows:\s*0fr/);
   assert.match(css, /grid-template-rows:\s*1fr/);
   assert.match(css, /max-height:\s*min\(19rem, 44vh\)/);
+  assert.match(css, /@media \(max-width: 820px\)/);
+  assert.match(css, /scrollbar-width:\s*none/);
+  assert.match(css, /\.options::-webkit-scrollbar/);
   assert.match(css, /@media \(max-width: 520px\)/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(allocations, /<InlineSelectionPicker[\s\S]*label="Ambil dana dari"/);
@@ -153,6 +165,14 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(recurring, /<InlineSelectionPicker label=\{label\}/);
   assert.match(investments, /<InlineSelectionPicker[\s\S]*label="Rekening RDN"/);
   assert.match(reconciliation, /<InlineSelectionPicker[\s\S]*label="Rekening"/);
+  assert.match(transaction, /<InlineSelectionPicker[\s\S]*label=\{label\}/);
+  assert.match(transaction, /<MobileTransactionCategoryField/);
+  assert.match(transfer, /<InlineSelectionPicker/);
+  assert.match(allocations, /label="Dari alokasi"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
+  assert.match(funding, /label="Ke Alokasi Dana"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
+  assert.match(recurring, /const CategoryField[\s\S]*<InlineSelectionPicker/);
+  assert.match(recurring, /const PaymentEnvelopeField[\s\S]*<InlineSelectionPicker/);
+  assert.match(budgets, /<InlineSelectionPicker label="Kategori"/);
 });
 
 test("SelectionField keeps app-owned selection accessible without native browser dropdowns", async () => {
@@ -189,6 +209,8 @@ test("SelectionField keeps app-owned selection accessible without native browser
   assert.match(css, /\.brandLogoVisual \{/);
   assert.match(css, /\.markVisual \{/);
   assert.match(css, /\.search \{[^}]*position:\s*sticky;/s);
+  assert.match(css, /@media \(max-width: 820px\)[\s\S]*scrollbar-width:\s*none/s);
+  assert.match(css, /\.panel::-webkit-scrollbar/);
 });
 
 test("dynamic finance selectors expose canonical visual identity helpers", async () => {
@@ -212,4 +234,5 @@ test("dynamic finance selectors expose canonical visual identity helpers", async
   assert.match(reconciliation, /accountOptionVisual/);
   assert.match(reconciliation, /searchable=\{accounts\.length > 8\}/);
   assert.match(investments, /instrumentOptionVisual/);
+  assert.match(investments, /<InlineSelectionPicker[\s\S]*label="Aset investasi"/);
 });

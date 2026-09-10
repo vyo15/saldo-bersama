@@ -40,7 +40,7 @@ test("form Kebutuhan mempertahankan validasi nominal dan kategori aktif tanpa me
   ]);
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
   assert.match(page, /item\.status === "active" && item\.transaction_type === "expense"/);
-  assert.match(page, /SelectionField label="Kategori" required/);
+  assert.match(page, /InlineSelectionPicker label="Kategori" required/);
   assert.match(page, /label="Nominal kebutuhan"/);
   assert.match(page, /Saya punya jadwal pembayaran/);
   assert.match(page, /label="Frekuensi"/);

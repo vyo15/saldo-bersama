@@ -22,44 +22,6 @@
   line-height: 1.3;
 }
 
-.accountPicker {
-  width: 100%;
-  min-width: 0;
-  min-height: 4rem;
-  padding: .58rem .72rem;
-  border: 1px solid var(--border);
-  border-radius: .9rem;
-  display: grid;
-  grid-template-columns: 2.35rem minmax(0, 1fr) 1.1rem;
-  align-items: center;
-  gap: .62rem;
-  background: color-mix(in srgb, var(--surface-soft) 80%, var(--surface));
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--motion-fast) var(--motion-easing),
-    background-color var(--motion-fast) var(--motion-easing);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .accountPicker:hover:not(:disabled) {
-    border-color: var(--border-strong);
-    background: color-mix(in srgb, var(--surface-strong) 36%, var(--surface));
-  }
-}
-
-.accountPicker:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.accountPicker:disabled {
-  cursor: not-allowed;
-  opacity: .55;
-}
-
-.accountIcon,
 .dateIcon {
   display: grid;
   place-items: center;
@@ -67,23 +29,14 @@
   color: var(--primary);
 }
 
-.accountIcon {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: .7rem;
-}
-
-.accountIcon svg,
 .dateIcon svg { width: 1.05rem; height: 1.05rem; }
 
-.accountCopy,
 .dateCopy {
   min-width: 0;
   display: grid;
   gap: .13rem;
 }
 
-.accountCopy strong,
 .dateCopy strong {
   overflow: hidden;
   color: var(--text);
@@ -94,7 +47,6 @@
   white-space: nowrap;
 }
 
-.accountCopy small,
 .dateCopy small {
   overflow: hidden;
   color: var(--text-muted);
@@ -334,7 +286,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .accountPicker,
   .note,
   .submitButton { transition: none; }
 }

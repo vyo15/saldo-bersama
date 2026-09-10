@@ -1,9 +1,22 @@
+## 10 September 2026 - Entity picker mobile konsisten dan scrollbar bersih
+
+- Menyatukan pemilihan rekening pada composer Transaksi dan Transfer dengan `InlineSelectionPicker` yang sudah canonical di Buat Alokasi: logo/icon rekening, nama lengkap, metadata `Tersedia`/`Saldo`, selected row, search hanya saat daftar panjang, dan pilihan berkembang langsung di form tanpa subview `Pilih rekening` terpisah. `MobileTransactionSelectionView.jsx/.module.css` lama dihapus karena tidak lagi memiliki consumer.
+- Menyatukan picker entity terkait yang masih drift: Kategori pada Kebutuhan/Jadwal Rutin, target Alokasi pada Bagi Dana/Pindahkan Dana/pembayaran Jadwal Rutin, serta kategori transaksi mobile. Fixed enum/filter tetap memakai `SelectionField` agar density tidak membengkak.
+- Menambahkan grouped-option support pada `InlineSelectionPicker` untuk `Sering dipakai`/`Semua kategori`, mempertahankan smart account/allocation semantics existing, dan menyembunyikan scrollbar visual `InlineSelectionPicker` + `SelectionField` pada mobile ≤820px tanpa mematikan swipe/scroll. Schema, API, ledger, saldo, authorization, dan mutation contract tidak berubah.
+
+## 10 September 2026 - Modal reopen dan history handoff hardening
+
+- Memperbaiki race condition lifecycle overlay yang dapat membuat aksi seperti **Kelola investasi → Kondisi awal → tutup → buka lagi** tidak merespons sampai halaman direfresh. `Modal` canonical sekarang memakai coordinator history bersama: modal pengganti mengambil alih marker aktif, sehingga cleanup modal lama tidak dapat menjalankan `history.back()` terlambat terhadap overlay baru.
+- Memperkeras focus/body lock lintas transisi modal: class `modal-open` memakai reference count dan focus sebelumnya hanya dipulihkan ketika tidak ada dialog aktif lain. Back, Escape, backdrop, swipe, discard guard, serta state non-dismissible tetap mengikuti kontrak existing.
+- Menambah regression untuk handoff modal dan guard arsitektur agar feature tidak membuat lifecycle `pushState`/`popstate` sendiri. `UI_DESIGN_SYSTEM`, `TEST_PLAN`, `QA_CHECKLIST`, dan `PROJECT_STATUS` diselaraskan dengan kewajiban reopen realtime tanpa refresh manual. Tidak ada perubahan schema, API contract, saldo, transfer, authorization, atau ledger.
+
 ## 10 September 2026 - Full transparency keluarga
 
 - Menetapkan full transparency sebagai policy produk canonical: rekening `personal` berarti pemegang/capability operasi, bukan rekening privat. Copy Rekening memakai istilah **Pemegang rekening** dan menegaskan seluruh data keluarga tetap terlihat oleh pasangan.
 - Menghapus surface pembagian beban 50:50/persentase dari transaksi manual, pembayaran Jadwal Rutin, dan Laporan. Schema/API cost-share v11 tetap dipertahankan untuk compatibility histori, audit, integrity, backup/restore, export, dan client lama; transaksi baru dari UI canonical memakai `unspecified`.
 - Menambahkan nama pencatat pada Aktivitas Terbaru Beranda mobile dan tabel transaksi Beranda desktop agar perubahan pasangan mudah dipahami tanpa membuat push notification per transaksi.
 - Menolak RFC-0015 granular personal privacy dan menyelaraskan Product Requirements, Glossary, Roadmap, Implementation Matrix, Authorization Matrix, Data Dictionary, API Contract, Test Plan, serta Project Status dengan mental model satu keuangan keluarga.
+- Merapikan sisa terminology roadmap/matrix yang masih menyebut `privacy boundary` dan panel pembagian beban sebagai fitur aktif; keduanya sekarang eksplisit hanya compatibility legacy selama positioning full-transparency keluarga tetap berlaku.
 
 ## 10 September 2026 - Explicit cancel tanpa konfirmasi ganda
 

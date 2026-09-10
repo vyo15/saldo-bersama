@@ -1,11 +1,16 @@
 import { FiAlertTriangle, FiCalendar, FiChevronRight, FiGrid, FiLayers } from "react-icons/fi";
 import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
-import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
+import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
+import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import { userRoleLabel } from "../../shared/presentation/user.js";
 import MobileTransactionCategoryField from "./MobileTransactionCategoryField.jsx";
+import { orderedEnvelopeOptions, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, paymentMethodLabel, quickAmountLabel } from "./transactionFormPresentation.js";
 import TransactionImpactPreview from "./components/TransactionImpactPreview.jsx";
 import styles from "./MobileTransactionFields.module.css";
@@ -87,22 +92,6 @@ const DateRow = ({ form, update, errors }) => (
   </label>
 );
 
-const SelectionRow = ({ id, icon: Icon, label, value, meta, error, errorId, onClick, disabled = false }) => (
-  <button
-    id={id}
-    className={styles.detailRow}
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    aria-invalid={Boolean(error)}
-    aria-describedby={error ? errorId : undefined}
-  >
-    <span className={styles.detailIcon} aria-hidden="true"><Icon /></span>
-    <DetailCopy label={label} value={value} meta={meta} error={error} errorId={errorId} />
-    <FiChevronRight className={styles.chevron} aria-hidden="true" />
-  </button>
-);
-
 const compactAllocationHint = ({ form, candidates }) => {
   if (!form.source_account_id) return "Pilih rekening terlebih dahulu";
   if (!form.category_id) return "Pilih kategori terlebih dahulu";
@@ -111,75 +100,116 @@ const compactAllocationHint = ({ form, candidates }) => {
   return "Opsional";
 };
 
-const selectedDestinationAccount = (p) => (
-  p.compatibleDestinationAccounts.find((item) => item.account_id === p.form.destination_account_id)
-  || p.accounts.find((item) => item.account_id === p.form.destination_account_id)
-  || null
-);
-
-const accountDetail = ({ isIncome, selectedAccount }) => {
-  if (!selectedAccount) {
-    return isIncome
-      ? { value: "Pilih rekening tujuan", meta: "Pilih rekening yang menerima dana" }
-      : { value: "Pilih rekening sumber", meta: "Hanya rekening yang dapat dipakai ditampilkan" };
+const sourceAccountOptionMeta = (item, transactionType) => {
+  if ([TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.EXPENSE].includes(transactionType)) {
+    return `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`;
   }
-  const value = selectedAccount.account_name || selectedAccount.name;
-  if (isIncome) return { value, meta: `Saldo ${formatRupiah(selectedAccount.balance || 0)}` };
-  return {
-    value,
-    meta: `Dana tersedia ${formatRupiah(selectedAccount.available_balance ?? selectedAccount.balance ?? 0)}`,
-  };
+  return `Saldo ${formatRupiah(item.balance || 0)}`;
 };
 
-const DetailGroup = (p) => {
-  const selectedSource = p.accounts.find((item) => item.account_id === p.form.source_account_id) || null;
-  const selectedDestination = selectedDestinationAccount(p);
-  const selectedEnvelope = p.compatibleEnvelopes.find((item) => item.envelope_period_id === p.form.envelope_period_id) || null;
-  const envelopeDisabled = !p.form.source_account_id || !p.form.category_id;
-  const envelopeHint = compactAllocationHint({ form: p.form, candidates: p.allocationCandidates });
-  const accountLabel = p.isIncome ? "Rekening tujuan" : "Rekening sumber";
-  const selectedAccount = p.isIncome ? selectedDestination : selectedSource;
-  const { value: accountValue, meta: accountMeta } = accountDetail({ isIncome: p.isIncome, selectedAccount });
+const TransactionAccountField = (p) => {
+  const destinationMode = p.isIncome;
+  const pickerAccounts = destinationMode
+    ? p.compatibleDestinationAccounts
+    : sourceAccountPicker({
+      accounts: p.accounts,
+      transactionType: p.form.transaction_type,
+      selectedAccountId: p.form.source_account_id,
+      recentTransactions: p.recentTransactions,
+    });
+  const value = destinationMode ? p.form.destination_account_id : p.form.source_account_id;
+  const label = destinationMode ? "Rekening tujuan" : "Rekening sumber";
+  const placeholderMeta = destinationMode
+    ? "Pilih rekening yang menerima dana"
+    : "Hanya rekening yang dapat dipakai ditampilkan";
+  const error = destinationMode ? p.errors.destination_account_id : p.errors.source_account_id;
+  const options = pickerAccounts.map((item) => ({
+    value: item.account_id,
+    label: accountDisplayLabel(item),
+    meta: destinationMode ? `Saldo ${formatRupiah(item.balance || 0)}` : sourceAccountOptionMeta(item, p.form.transaction_type),
+    ...accountOptionVisual(item),
+  }));
 
   return (
-    <section className={styles.section}>
-      <span className={styles.sectionLabel}>Detail transaksi</span>
-      <div className={styles.detailGroup}>
-        <DateRow form={p.form} update={p.update} errors={p.errors} />
-        <SelectionRow
-          id={p.isIncome ? "destination-account" : "source-account"}
-          icon={AccountIcon}
-          label={accountLabel}
-          value={accountValue}
-          meta={accountMeta}
-          error={p.isIncome ? p.errors.destination_account_id : p.errors.source_account_id}
-          errorId={p.isIncome ? "destination-account-error" : "source-account-error"}
-          onClick={() => p.openMobileSelection(p.isIncome ? "destination-account" : "source-account")}
-        />
-        <MobileTransactionCategoryField
-          key={`${p.form.transaction_type}:${p.form.source_account_id}`}
-          form={p.form}
-          update={p.update}
-          visibleCategories={p.visibleCategories}
-          recentTransactions={p.recentTransactions}
-          errors={p.errors}
-          outcomeUnknown={p.outcomeUnknown}
-        />
-        {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? (
-          <SelectionRow
-            id="envelope"
-            icon={FiLayers}
-            label="Alokasi Dana · opsional"
-            value={selectedEnvelope?.name || (envelopeDisabled ? "Belum tersedia" : "Belum dialokasikan")}
-            meta={selectedEnvelope ? `Sisa ${formatRupiah(selectedEnvelope.remaining_amount || 0)}` : envelopeHint}
-            onClick={() => p.openMobileSelection("envelope")}
-            disabled={envelopeDisabled}
-          />
-        ) : null}
-      </div>
-    </section>
+    <InlineSelectionPicker
+      label={label}
+      required
+      value={value}
+      onChange={destinationMode ? (accountId) => p.update("destination_account_id", accountId) : p.onSourceAccountChange}
+      options={options}
+      placeholder="Pilih rekening"
+      placeholderMeta={placeholderMeta}
+      placeholderOption={{ icon: AccountIcon }}
+      searchable={options.length > 8}
+      searchPlaceholder="Cari rekening…"
+      emptyText={destinationMode ? "Belum ada rekening tujuan yang dapat digunakan." : "Belum ada rekening sumber yang dapat digunakan."}
+      error={error}
+      disabled={p.outcomeUnknown}
+    />
   );
 };
+
+const envelopeOptionMeta = (item) => {
+  const assignee = item.assignee_user_id
+    ? `${item.assignee_name || "Pengguna"} · ${userRoleLabel(item.assignee_role)}`
+    : "Bersama";
+  return `${assignee} · sisa ${formatRupiah(item.remaining_amount || 0)}`;
+};
+
+const EnvelopeField = (p) => {
+  const disabled = !p.form.source_account_id || !p.form.category_id;
+  const hint = compactAllocationHint({ form: p.form, candidates: p.allocationCandidates });
+  const options = disabled ? [] : [
+    {
+      value: "",
+      label: "Belum dialokasikan",
+      meta: "Gunakan dana rekening tanpa mengikat ke Alokasi Dana",
+      icon: FiLayers,
+    },
+    ...orderedEnvelopeOptions(p.compatibleEnvelopes, p.allocationCandidates).map((item) => ({
+      value: item.envelope_period_id,
+      label: item.name,
+      meta: envelopeOptionMeta(item),
+      icon: FiLayers,
+    })),
+  ];
+
+  return (
+    <InlineSelectionPicker
+      label="Alokasi Dana · opsional"
+      value={p.form.envelope_period_id}
+      onChange={p.onEnvelopeChange}
+      options={options}
+      placeholder={disabled ? "Belum tersedia" : "Pilih Alokasi Dana"}
+      placeholderMeta={hint}
+      placeholderOption={{ icon: FiLayers }}
+      searchable={options.length > 8}
+      searchPlaceholder="Cari Alokasi Dana…"
+      emptyText="Belum ada Alokasi Dana yang cocok."
+      disabled={disabled || p.outcomeUnknown}
+    />
+  );
+};
+
+const DetailGroup = (p) => (
+  <section className={styles.section}>
+    <span className={styles.sectionLabel}>Detail transaksi</span>
+    <div className={styles.detailStack}>
+      <DateRow form={p.form} update={p.update} errors={p.errors} />
+      <TransactionAccountField {...p} />
+      <MobileTransactionCategoryField
+        key={`${p.form.transaction_type}:${p.form.source_account_id}`}
+        form={p.form}
+        update={p.update}
+        visibleCategories={p.visibleCategories}
+        recentTransactions={p.recentTransactions}
+        errors={p.errors}
+        outcomeUnknown={p.outcomeUnknown}
+      />
+      {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField {...p} /> : null}
+    </div>
+  </section>
+);
 
 const PaymentMethods = ({ form, update }) => {
   const directOptions = PAYMENT_METHOD_OPTIONS.filter((item) => item.value);

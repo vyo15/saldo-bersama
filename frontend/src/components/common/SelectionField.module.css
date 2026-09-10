@@ -374,6 +374,16 @@
     border-radius: 0;
     box-shadow: none;
     background: color-mix(in srgb, var(--surface-soft) 92%, var(--surface));
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .panel::-webkit-scrollbar,
+  .embedded .panel::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .option {

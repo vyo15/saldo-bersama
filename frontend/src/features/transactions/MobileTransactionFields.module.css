@@ -184,11 +184,10 @@
   color: var(--primary-strong);
 }
 
-.detailGroup {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: color-mix(in srgb, var(--surface-soft) 92%, transparent);
+.detailStack {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
 }
 
 .detailRow {
@@ -196,26 +195,18 @@
   width: 100%;
   min-height: 58px;
   padding: 8px 10px;
-  border: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr) 18px;
   align-items: center;
   gap: 9px;
   color: inherit;
   text-align: left;
-  background: transparent;
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
   cursor: pointer;
-  transition: background-color var(--motion-fast) var(--motion-easing);
-}
-
-.detailRow + .detailRow::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 46px;
-  right: 10px;
-  height: 1px;
-  background: color-mix(in srgb, var(--border) 82%, transparent);
+  transition: background-color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
 }
 
 .detailRow:focus-visible:not(:disabled) { background: color-mix(in srgb, var(--surface-strong) 34%, transparent); }
@@ -425,62 +416,6 @@
   .typeSelector label > span,
   .detailRow,
   .notes {
-    transition: none;
-  }
-}
-
-.categoryRow {
-  position: relative;
-  min-width: 0;
-  min-height: 58px;
-  padding: 8px 10px;
-  display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  align-items: start;
-  gap: 9px;
-}
-
-.categoryRow::before,
-.categoryRow + .detailRow::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 46px;
-  right: 10px;
-  height: 1px;
-  background: color-mix(in srgb, var(--border) 82%, transparent);
-}
-
-.categoryRow > .detailIcon {
-  margin-top: 9px;
-}
-
-.categoryCopy {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.categoryControl {
-  min-width: 0;
-}
-
-.categoryControl > [id^="selection-"] {
-  width: calc(100% + 35px);
-  max-height: 15.5rem;
-  margin-left: -35px;
-}
-
-.categoryControl :global(button[aria-expanded]) {
-  color: var(--text);
-}
-
-.categoryControl :global(button[aria-expanded="true"]) {
-  color: var(--primary-strong);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .categoryControl :global(button[aria-expanded]) {
     transition: none;
   }
 }

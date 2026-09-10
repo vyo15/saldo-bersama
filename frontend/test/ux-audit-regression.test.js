@@ -193,21 +193,26 @@ test("permukaan swipe mobile tidak menampilkan scrollbar browser", async () => {
   assert.match(dashboard, /\.shared-account-carousel \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
 });
 
-test("picker rekening mobile memakai hierarchy logo-first dan selected state yang terlihat", async () => {
-  const [source, css] = await Promise.all([
-    read("src/features/transactions/MobileTransactionSelectionView.jsx"),
-    read("src/features/transactions/MobileTransactionSelectionView.module.css"),
+test("picker entity mobile memakai hierarchy logo-first, metadata, dan selected state inline", async () => {
+  const [transaction, transfer, picker, css] = await Promise.all([
+    read("src/features/transactions/MobileTransactionFields.jsx"),
+    read("src/features/transactions/MobileTransferFields.jsx"),
+    read("src/components/common/InlineSelectionPicker.jsx"),
+    read("src/components/common/InlineSelectionPicker.module.css"),
   ]);
-  assert.match(source, /accountDisplayLabel\(item, \{ includeOwner: false \}\)/);
-  assert.match(source, /meta=\{accountOwnershipLabel\(item\)\}/);
-  assert.match(source, /detail=\{sourceMode/);
-  assert.match(source, /Pilih rekening yang menerima dana\./);
-  assert.match(source, /<p className=\{styles\.selectionHint\}>/);
-  assert.doesNotMatch(source, /<span className=\{styles\.groupLabel\}>Rekening tujuan<\/span>/, "judul modal tidak boleh diulang sebagai group label");
-  assert.match(css, /\.choiceRow \{[^}]*min-height:\s*66px;/s);
-  assert.match(css, /\.choiceVisual \{[^}]*width:\s*40px;[^}]*height:\s*40px;/s);
-  assert.match(css, /\.selected \{[^}]*border-color:[^}]*background:[^}]*box-shadow:/s);
-  assert.match(css, /\.choiceCheck \{[^}]*border-radius:\s*50%;/s);
+  assert.match(transaction, /accountDisplayLabel\(item\)/);
+  assert.match(transaction, /accountOptionVisual\(item\)/);
+  assert.match(transaction, /Tersedia \${formatRupiah/);
+  assert.match(transaction, /placeholderMeta=\{placeholderMeta\}/);
+  assert.match(transfer, /sourceAccountPicker/);
+  assert.match(transfer, /<InlineSelectionPicker/);
+  assert.match(picker, /PickerVisual/);
+  assert.match(picker, /<PickerVisual option=\{selectedOption\}/);
+  assert.match(picker, /<span className=\{styles\.radio\}/);
+  assert.match(css, /\.selected,\s*\n\.option \{[^}]*min-height:\s*62px;/s);
+  assert.match(css, /\.visualWrap,\s*\n\.visualPlaceholder \{[^}]*width:\s*42px;[^}]*height:\s*42px;/s);
+  assert.match(css, /\.shell\.expanded \{[^}]*border-color:[^}]*box-shadow:/s);
+  assert.match(css, /\.radio \{[^}]*border-radius:\s*50%;/s);
 });
 
 test("PWA install prompt mobile dapat ditunda dan tidak menjadi banner permanen lintas route", async () => {
@@ -225,17 +230,17 @@ test("PWA install prompt mobile dapat ditunda dan tidak menjadi banner permanen 
 });
 
 test("mobile task surfaces memakai pressed state dan hover capability-aware", async () => {
-  const [button, dashboard, transactionSelection, settings] = await Promise.all([
+  const [button, dashboard, inlineSelection, settings] = await Promise.all([
     read("src/components/common/Button.module.css"),
     read("src/features/dashboard/DashboardPage.module.css"),
-    read("src/features/transactions/MobileTransactionSelectionView.module.css"),
+    read("src/components/common/InlineSelectionPicker.module.css"),
     read("src/features/settings/Settings.module.css"),
   ]);
-  for (const source of [button, dashboard, transactionSelection, settings]) {
+  for (const source of [button, dashboard, inlineSelection, settings]) {
     assert.match(source, /@media \(hover: hover\) and \(pointer: fine\)/);
   }
   assert.match(dashboard, /\.mobile-quick-action:active/);
-  assert.match(transactionSelection, /\.choiceRow:active:not\(:disabled\)/);
+  assert.match(inlineSelection, /\.option:active/);
   assert.match(settings, /\.settingsListRow:active/);
 });
 

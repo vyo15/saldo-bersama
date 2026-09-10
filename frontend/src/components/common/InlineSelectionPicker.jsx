@@ -16,6 +16,14 @@ const optionMatches = (option, query) => {
     .some((candidate) => normalize(candidate).includes(normalizedQuery));
 };
 
+const normalizeGroups = (groups = []) => groups
+  .map((group, index) => ({
+    key: String(group?.key || group?.label || index),
+    label: String(group?.label || ""),
+    options: Array.isArray(group?.options) ? group.options : [],
+  }))
+  .filter((group) => group.options.length);
+
 const PickerCopy = ({ option, placeholder, placeholderMeta }) => (
   <span className={styles.copy}>
     <span className={styles.titleRow}>
@@ -34,21 +42,32 @@ const PickerVisual = ({ option, placeholderOption }) => {
   </span>;
 };
 
-const usePickerOptions = ({ options, value, query }) => {
+const usePickerOptions = ({ options, groups, value, query }) => {
   const safeOptions = useMemo(() => options || [], [options]);
+  const safeGroups = useMemo(() => normalizeGroups(groups), [groups]);
+  const allOptions = useMemo(
+    () => safeGroups.length ? safeGroups.flatMap((group) => group.options) : safeOptions,
+    [safeGroups, safeOptions],
+  );
   const selectedOption = useMemo(
-    () => safeOptions.find((option) => sameValue(option?.value, value)) || null,
-    [safeOptions, value],
+    () => allOptions.find((option) => sameValue(option?.value, value)) || null,
+    [allOptions, value],
   );
   const alternatives = useMemo(
-    () => safeOptions.filter((option) => !selectedOption || !sameValue(option?.value, selectedOption.value)),
-    [safeOptions, selectedOption],
+    () => allOptions.filter((option) => !selectedOption || !sameValue(option?.value, selectedOption.value)),
+    [allOptions, selectedOption],
   );
   const filteredOptions = useMemo(
-    () => alternatives.filter((option) => optionMatches(option, query)),
-    [alternatives, query],
+    () => safeGroups.length ? [] : alternatives.filter((option) => optionMatches(option, query)),
+    [alternatives, query, safeGroups.length],
   );
-  return { selectedOption, alternatives, filteredOptions };
+  const filteredGroups = useMemo(() => safeGroups.map((group) => ({
+    ...group,
+    options: group.options.filter((option) => (
+      (!selectedOption || !sameValue(option?.value, selectedOption.value)) && optionMatches(option, query)
+    )),
+  })).filter((group) => group.options.length), [query, safeGroups, selectedOption]);
+  return { selectedOption, alternatives, filteredOptions, filteredGroups, grouped: safeGroups.length > 0 };
 };
 
 const usePickerDisclosure = ({ value, disabled, locked, searchable }) => {
@@ -135,9 +154,8 @@ const PickerTrigger = ({
   </button>;
 };
 
-const PickerOption = ({ option, index, expanded, placeholder, onChoose }) => (
+const PickerOption = ({ option, expanded, placeholder, onChoose }) => (
   <button
-    key={optionKey(option, index)}
     type="button"
     className={styles.option}
     role="option"
@@ -170,6 +188,19 @@ const PickerSearch = ({ searchRef, query, setQuery, searchPlaceholder, expanded,
   </label>
 );
 
+const PickerOptions = ({ options, expanded, placeholder, onChoose }) => options.map((option, index) => (
+  <PickerOption key={optionKey(option, index)} option={option} expanded={expanded} placeholder={placeholder} onChoose={onChoose} />
+));
+
+const PickerGroups = ({ groups, expanded, placeholder, onChoose }) => groups.map((group) => (
+  <section key={group.key} className={styles.optionGroup} role="group" aria-label={group.label || undefined}>
+    {group.label ? <span className={styles.groupLabel}>{group.label}</span> : null}
+    <div className={styles.groupOptions}>
+      <PickerOptions options={group.options} expanded={expanded} placeholder={placeholder} onChoose={onChoose} />
+    </div>
+  </section>
+));
+
 const PickerList = ({
   expanded,
   searchable,
@@ -180,32 +211,37 @@ const PickerList = ({
   listId,
   label,
   filteredOptions,
+  filteredGroups,
+  grouped,
   placeholder,
   emptyText,
   onChoose,
-}) => (
-  <div className={`${styles.list}${expanded ? ` ${styles.listOpen}` : ""}`} aria-hidden={!expanded}>
+}) => {
+  const hasOptions = grouped ? filteredGroups.length > 0 : filteredOptions.length > 0;
+  return <div className={`${styles.list}${expanded ? ` ${styles.listOpen}` : ""}`} aria-hidden={!expanded}>
     <div className={styles.listInner}>
       {searchable ? <PickerSearch searchRef={searchRef} query={query} setQuery={setQuery} searchPlaceholder={searchPlaceholder} expanded={expanded} listId={listId} /> : null}
       <div id={listId} className={styles.options} role="listbox" aria-label={`Pilihan ${label}`}>
-        {filteredOptions.length
-          ? filteredOptions.map((option, index) => <PickerOption key={optionKey(option, index)} option={option} index={index} expanded={expanded} placeholder={placeholder} onChoose={onChoose} />)
+        {hasOptions
+          ? grouped
+            ? <PickerGroups groups={filteredGroups} expanded={expanded} placeholder={placeholder} onChoose={onChoose} />
+            : <PickerOptions options={filteredOptions} expanded={expanded} placeholder={placeholder} onChoose={onChoose} />
           : <p className={styles.empty}>{emptyText}</p>}
       </div>
     </div>
-  </div>
-);
+  </div>;
+};
 
 const groupClassName = (className) => `${styles.group}${className ? ` ${className}` : ""}`;
 const shellClassName = ({ expanded, locked, error }) => `${styles.shell}${expanded ? ` ${styles.expanded}` : ""}${locked ? ` ${styles.locked}` : ""}${error ? ` ${styles.invalid}` : ""}`;
 const describedByIds = ({ helper, helperId, error, errorId }) => [helper ? helperId : "", error ? errorId : ""].filter(Boolean).join(" ") || undefined;
 
-const usePickerController = ({ value, onChange, options, helper, error, disabled, locked, searchable }) => {
+const usePickerController = ({ value, onChange, options, groups, helper, error, disabled, locked, searchable }) => {
   const listId = useId();
   const helperId = useId();
   const errorId = useId();
   const disclosure = usePickerDisclosure({ value, disabled, locked, searchable });
-  const optionState = usePickerOptions({ options, value, query: disclosure.query });
+  const optionState = usePickerOptions({ options, groups, value, query: disclosure.query });
   const enabledAlternative = optionState.alternatives.some((option) => !option.disabled);
   const canExpand = !disabled && !locked && enabledAlternative;
   const describedBy = describedByIds({ helper, helperId, error, errorId });
@@ -260,7 +296,7 @@ const PickerField = ({
     <legend>{label}{required ? <span aria-hidden="true"> *</span> : null}</legend>
     <div className={shellClassName({ expanded: disclosure.expanded, locked, error })}>
       <PickerTrigger canExpand={controller.canExpand} triggerRef={disclosure.triggerRef} expanded={disclosure.expanded} listId={controller.listId} required={required} error={error} describedBy={controller.describedBy} disabled={disabled} locked={locked} selectedOption={optionState.selectedOption} placeholderOption={placeholderOption} placeholder={placeholder} placeholderMeta={placeholderMeta} onToggle={controller.toggle} />
-      <PickerList expanded={disclosure.expanded} searchable={searchable} searchRef={disclosure.searchRef} query={disclosure.query} setQuery={disclosure.setQuery} searchPlaceholder={searchPlaceholder} listId={controller.listId} label={label} filteredOptions={optionState.filteredOptions} placeholder={placeholder} emptyText={emptyText} onChoose={controller.choose} />
+      <PickerList expanded={disclosure.expanded} searchable={searchable} searchRef={disclosure.searchRef} query={disclosure.query} setQuery={disclosure.setQuery} searchPlaceholder={searchPlaceholder} listId={controller.listId} label={label} filteredOptions={optionState.filteredOptions} filteredGroups={optionState.filteredGroups} grouped={optionState.grouped} placeholder={placeholder} emptyText={emptyText} onChoose={controller.choose} />
     </div>
     <PickerMessages helper={helper} helperId={controller.helperId} error={error} errorId={controller.errorId} />
   </fieldset>;
@@ -271,6 +307,7 @@ const InlineSelectionPicker = ({
   value,
   onChange,
   options = [],
+  groups = [],
   placeholder = "Pilih",
   placeholderMeta = "",
   placeholderOption = null,
@@ -284,7 +321,7 @@ const InlineSelectionPicker = ({
   emptyText = "Tidak ada pilihan yang cocok.",
   className = "",
 }) => {
-  const controller = usePickerController({ value, onChange, options, helper, error, disabled, locked, searchable });
+  const controller = usePickerController({ value, onChange, options, groups, helper, error, disabled, locked, searchable });
   return <PickerField label={label} placeholder={placeholder} placeholderMeta={placeholderMeta} placeholderOption={placeholderOption} helper={helper} error={error} disabled={disabled} locked={locked} required={required} searchable={searchable} searchPlaceholder={searchPlaceholder} emptyText={emptyText} className={className} controller={controller} />;
 };
 

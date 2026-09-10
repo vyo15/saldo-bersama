@@ -444,7 +444,7 @@ test("editor jadwal rutin memakai master rule, bukan snapshot occurrence, dan me
   assert.match(page, /due_day: Number\(item\.rule_due_day \|\| 1\)/);
   assert.doesNotMatch(page, /due_day: Number\(String\(item\.due_date/);
   assert.match(page, /label="Nominal perkiraan"[\s\S]*required/);
-  assert.match(page, /SelectionField label="Kategori" required/);
+  assert.match(page, /InlineSelectionPicker label="Kategori" required/);
   assert.match(page, /InlineSelectionPicker label=\{label\} required/);
   assert.match(page, /Tanggal jatuh tempo\/masuk \*/);
   assert.match(page, /Tanggal mulai \*/);

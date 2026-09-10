@@ -62,7 +62,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 - [ ] Slow chunk/network: route >120ms memberi progress/skeleton tanpa mengganti shell; warm/prefetched route tidak mem-flash loader.
 - [ ] Reconnect dan resume stale melakukan read refresh tanpa mutation aktif; offline/session gate tetap jujur dan tidak membuka offline financial write/cache.
 - [ ] PWA update tidak restart selama modal/composer/mutation aktif; shortcut Tambah transaksi membuka composer; App Badge failure tidak memengaruhi Notification Center.
-- [ ] Browser Back menutup modal lebih dulu dan modal non-dismissible tidak dapat dilewati saat proses submit. Keyboard mobile tidak menutupi input/CTA dan reduced-motion meniadakan shimmer/travel non-esensial.
+- [ ] Browser Back menutup modal lebih dulu dan modal non-dismissible tidak dapat dilewati saat proses submit. Uji juga **buka → tutup/batal → buka lagi** serta **modal A → modal B → tutup → buka lagi** tanpa refresh manual; tidak boleh ada overlay/history stale, route jump, body scroll-lock bocor, atau focus tersangkut di modal lama. Keyboard mobile tidak menutupi input/CTA dan reduced-motion meniadakan shimmer/travel non-esensial.
 
 ## 5. Dokumentasi
 

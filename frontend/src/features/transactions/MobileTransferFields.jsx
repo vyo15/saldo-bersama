@@ -1,48 +1,50 @@
 import { FiAlertTriangle, FiArrowRight, FiCalendar, FiChevronRight } from "react-icons/fi";
 import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
-import { accountProviderLabel } from "../../shared/presentation/account.js";
+import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import { sourceAccountPicker } from "./transactionFormSmartDefaults.js";
 import styles from "./MobileTransferFields.module.css";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
-const accountBalance = (accountBalances, accountId) => accountBalances.find((item) => item.account_id === accountId) || null;
+const transferAccountOptions = ({ accounts, mode }) => accounts.map((account) => ({
+  value: account.account_id,
+  label: accountDisplayLabel(account),
+  meta: mode === "available"
+    ? `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`
+    : `Saldo ${formatRupiah(account.balance || 0)}`,
+  ...accountOptionVisual(account),
+}));
 
-const accountBalanceLabel = (accountBalances, accountId, mode) => {
-  const balance = accountBalance(accountBalances, accountId);
-  if (!balance) return "Saldo belum tersedia";
-  if (mode === "available") return `Tersedia ${formatRupiah(balance.available_balance ?? balance.balance ?? 0)}`;
-  return `Saldo ${formatRupiah(balance.balance || 0)}`;
-};
-
-const AccountIdentity = ({ account, accountBalances, balanceMode }) => (
-  <span className={styles.accountCopy}>
-    <strong>{String(account.account_name || account.name || "Rekening")}</strong>
-    <small>{accountProviderLabel(account)} · {accountBalanceLabel(accountBalances, account.account_id, balanceMode)}</small>
-  </span>
-);
-
-const AccountPickerRow = ({ id, label, account, accountBalances, balanceMode, placeholder, helper, onClick, error, disabled }) => (
-  <section className={styles.section}>
-    <span className={styles.sectionLabel}>{label}</span>
-    <button
-      id={id}
-      className={styles.accountPicker}
-      type="button"
-      onClick={onClick}
-      aria-invalid={Boolean(error)}
-      aria-describedby={error ? `${id}-error` : undefined}
-      disabled={disabled}
-    >
-      <span className={styles.accountIcon} aria-hidden="true"><AccountIcon /></span>
-      {account
-        ? <AccountIdentity account={account} accountBalances={accountBalances} balanceMode={balanceMode} />
-        : <span className={styles.accountCopy}><strong>{placeholder}</strong><small>{helper}</small></span>}
-      <FiChevronRight className={styles.chevron} aria-hidden="true" />
-    </button>
-    {error ? <small id={`${id}-error`} className={styles.error}>{error}</small> : null}
-  </section>
+const TransferAccountPicker = ({
+  label,
+  value,
+  onChange,
+  accounts,
+  balanceMode,
+  placeholderMeta,
+  error,
+  disabled,
+  emptyText,
+}) => (
+  <InlineSelectionPicker
+    label={label}
+    required
+    value={value}
+    onChange={onChange}
+    options={transferAccountOptions({ accounts, mode: balanceMode })}
+    placeholder="Pilih rekening"
+    placeholderMeta={placeholderMeta}
+    placeholderOption={{ icon: AccountIcon }}
+    searchable={accounts.length > 8}
+    searchPlaceholder="Cari rekening…"
+    emptyText={emptyText}
+    error={error}
+    disabled={disabled}
+  />
 );
 
 const TransferNote = ({ form, update, intentLocked }) => (
@@ -170,43 +172,45 @@ const MobileTransferFields = ({
   errors,
   amountRef,
   accounts,
-  accountBalances,
   compatibleDestinationAccounts,
-  openMobileSelection,
+  recentTransactions,
+  onSourceAccountChange,
   impact,
   confirmation,
   submitState,
   submitting,
   outcomeUnknown,
 }) => {
-  const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
-  const destination = compatibleDestinationAccounts.find((item) => item.account_id === form.destination_account_id) || null;
+  const sourceAccounts = sourceAccountPicker({
+    accounts,
+    transactionType: form.transaction_type,
+    selectedAccountId: form.source_account_id,
+    recentTransactions,
+  });
 
   return (
     <div className={styles.composer}>
-      <AccountPickerRow
-        id="source-account"
+      <TransferAccountPicker
         label="Dari rekening"
-        account={source}
-        accountBalances={accountBalances}
+        value={form.source_account_id}
+        onChange={onSourceAccountChange}
+        accounts={sourceAccounts}
         balanceMode="available"
-        placeholder="Pilih rekening sumber"
-        helper="Hanya rekening dengan dana tersedia yang dapat dipakai"
-        onClick={() => openMobileSelection("source-account")}
+        placeholderMeta="Hanya rekening dengan dana tersedia yang dapat dipakai"
         error={errors.source_account_id}
         disabled={outcomeUnknown}
+        emptyText="Belum ada rekening sumber dengan dana yang dapat digunakan."
       />
-      <AccountPickerRow
-        id="destination-account"
+      <TransferAccountPicker
         label="Ke rekening"
-        account={destination}
-        accountBalances={accountBalances}
+        value={form.destination_account_id}
+        onChange={(accountId) => update("destination_account_id", accountId)}
+        accounts={compatibleDestinationAccounts}
         balanceMode="balance"
-        placeholder="Pilih rekening tujuan"
-        helper={compatibleDestinationAccounts.length ? "Pilih rekening penerima" : "Tidak ada rekening tujuan yang kompatibel"}
-        onClick={() => openMobileSelection("destination-account")}
+        placeholderMeta={compatibleDestinationAccounts.length ? "Pilih rekening penerima" : "Tidak ada rekening tujuan yang kompatibel"}
         error={errors.destination_account_id}
         disabled={outcomeUnknown || compatibleDestinationAccounts.length === 0}
+        emptyText="Belum ada rekening tujuan yang kompatibel."
       />
       <TransferNote form={form} update={update} intentLocked={outcomeUnknown} />
       <TransferAmount form={form} update={update} errors={errors} amountRef={amountRef} submitting={submitting} confirmation={confirmation} intentLocked={outcomeUnknown} />
