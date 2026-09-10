@@ -2,7 +2,7 @@
 
 ## Tujuan
 
-Saldo Bersama adalah sistem pengendali uang privat untuk dua akun Google. Sistem harus menjawab: uang berasal dari mana, berada di rekening mana, sudah dialokasikan untuk apa, siapa yang membayar/menerima manfaat/menanggung kewajiban, tersisa berapa, dan apakah kewajiban serta target bersama masih aman.
+Saldo Bersama adalah sistem pengendali keuangan keluarga privat untuk dua akun Google dalam satu rumah tangga. Sistem harus menjawab: uang keluarga berasal dari mana, berada di rekening mana, sudah dialokasikan untuk apa, siapa yang mencatat perubahan, tersisa berapa, dan apakah kewajiban, target, serta investasi keluarga masih aman. Kedua pengguna terotorisasi melihat data keuangan keluarga yang sama secara penuh; kepemilikan rekening hanya menentukan pemegang/capability operasi, bukan privasi baca.
 
 ## Pengguna dan istilah role
 
@@ -20,7 +20,7 @@ Saldo Bersama adalah sistem pengendali uang privat untuk dua akun Google. Sistem
 - `REQ-FIN-005` Write penting memakai idempotency dan audit append-only.
 - `REQ-FIN-006` Edit record yang versionable menolak stale `row_version`.
 - `REQ-SEC-001` Firebase identity diverifikasi server dan authorization default deny.
-- `REQ-SEC-002` Data personal hanya dapat diakses menurut role, scope, dan ownership backend.
+- `REQ-SEC-002` Kedua pengguna keluarga terotorisasi dapat membaca seluruh rekening/ledger keluarga. Role, scope, dan ownership backend membatasi write/operasi berisiko, bukan menyembunyikan data dari pasangan.
 - `REQ-DATA-001` Turso adalah source of truth; Sheets hanya mirror satu arah.
 - `REQ-DATA-002` Import/restore memakai preview, safety backup, apply guarded, dan integrity verification.
 - `REQ-OFFLINE-001` Write finansial offline ditolak; browser tidak membuat queue write.
@@ -42,7 +42,7 @@ Mendukung bank, tunai, e-wallet, tabungan, dana darurat, sinking fund, investasi
 
 Mendukung income, expense, transfer, refund, adjustment; tanggal, nominal, rekening, kategori, pencatat, merchant, metode, catatan, status aktif/cancelled/archived, idempotency, conflict, dan audit. Mobile history memakai periode + trend read-only, filter progresif, grouped-by-date list, dan detail capability-driven tanpa mengubah ledger contract.
 
-**Gap yang memerlukan RFC/schema:** participant role eksplisit (`payer`, `beneficiary`, `liable_party`), bukti/struk privat, draft/rencana/belum dibayar, utang, dan piutang. Field generik `used_by` tidak menjadi contract canonical. Lihat RFC-0011 dan RFC-0012.
+**Gap yang memerlukan RFC/schema:** relasi refund ke transaksi asal, bukti/struk privat, draft/rencana/belum dibayar, utang, dan piutang. Participant `payer`/`beneficiary`/`liable_party` tidak menjadi kebutuhan canonical Saldo Bersama selama model produk tetap keuangan keluarga penuh; field generik `used_by` juga tidak menjadi contract canonical. Lihat RFC-0011, RFC-0012, dan catatan compatibility RFC-0013.
 
 ### `REQ-PROD-02A` Alokasi per penerima — Implemented
 
@@ -75,7 +75,7 @@ Alokasi Dana mendukung periodisasi harian sampai custom. Kebutuhan kategori dike
 
 Target menyimpan nominal, tanggal, rekening, prioritas, saldo terkumpul, sisa, proyeksi pace, dan kebutuhan setoran bulanan. Kontribusi/penarikan menghasilkan transfer ledger.
 
-**Gap:** kontribusi aktual per orang dan tahap renovasi menunggu model payer/beneficiary lanjutan RFC-0013 serta RFC-0014. Pembagian beban transaksi shared sudah tersedia, tetapi bukan bukti kontribusi Target.
+**Gap:** tahap/milestone target menunggu RFC-0014. Kontribusi aktual per orang tidak menjadi metrik canonical selama uang dan target diperlakukan sebagai keuangan keluarga bersama; `created_by` tetap audit aktivitas pencatatan, bukan pembagian kepemilikan hasil.
 
 ### `REQ-PROD-07` Tagihan dan kewajiban rutin — Partial
 
@@ -119,11 +119,11 @@ Tersedia cash flow bulanan, saldo awal/akhir, tren 3/6/12 bulan **Saldo utama/no
 
 Menyimpan saldo sistem, saldo aktual, selisih, status, catatan, dan actor untuk rekening non-Investasi. Dashboard dan Notification Center memberi pengingat rekonsiliasi lebih dari 30 hari. Hasil rekonsiliasi eksplisit—termasuk mismatch—menjadi checkpoint sehingga selisih tetap berada di histori tanpa terus menghasilkan notifikasi aktif; contextual entry membawa rekening yang sudah diketahui, sedangkan entry manual tetap memakai picker. Jika hasil pencocokan masih berbeda, UI menawarkan pemeriksaan transaksi rekening terkait tanpa membuat adjustment otomatis. Rekening Investasi/RDN memakai `investments.reconciliations.create` karena Saldo RDN dan holding harus diverifikasi bersama.
 
-### `REQ-PROD-15` Hak akses dan privasi — Partial
+### `REQ-PROD-15` Hak akses dan transparansi keluarga — Implemented
 
-Administrator/Member, shared/personal, ownership query, dan backend authorization tersedia.
+Administrator/Member, shared/personal, ownership query, dan backend authorization tersedia. Kedua akun keluarga terotorisasi membaca seluruh rekening, transaksi, laporan, rekonsiliasi, dan data finansial keluarga yang relevan. `personal` berarti rekening dipegang/dioperasikan salah satu anggota, bukan rekening tersembunyi dari pasangan. Write tetap capability-driven dan diverifikasi backend.
 
-**Gap:** mode full detail, balance-only, contribution-only, dan private penuh per rekening memerlukan projection backend serta RFC-0015.
+**Keputusan produk:** mode balance-only, contribution-only, private account, hidden transaction, atau privacy projection per pasangan tidak akan dikembangkan selama positioning Saldo Bersama tetap full transparency. RFC-0015 ditolak sebagai arah produk.
 
 ### `REQ-PROD-20` Investasi manual berbasis RDN — Implemented
 
@@ -131,7 +131,7 @@ Sistem mencatat aset investasi aktual secara manual tanpa menyimpan credential a
 
 Backend memvalidasi ownership/capability, instrumen, lot/share, nominal integer Rupiah, fee compatibility, tanggal, saldo RDN, idempotency, dan `row_version`. UI transaksi saham memakai lot-only dan mengirim fee `0` untuk fase saat ini; field fee tidak ditampilkan sampai flow penjualan memang memerlukannya. Pada prototype, UI Administrator menambah saham hanya dari katalog lokal LQ45 yang disediakan (tanpa form master manual); batas katalog ini presentation-only dan tidak mengubah authority registry instrumen backend. Buy hanya boleh untuk instrumen aktif; holding instrumen yang kemudian inactive tetap dapat dijual. Cost basis memakai weighted average. Valuasi manual membuat snapshot baru; bila belum ada valuasi manual, harga trade terakhir menjadi fallback read-model. Realized P/L hanya terbentuk pada sell dan unrealized P/L berasal dari market value dikurangi remaining cost basis; keduanya tidak diklasifikasikan sebagai cashflow income/expense.
 
-Rekonsiliasi membandingkan kondisi aktual yang dimasukkan user dari aplikasi investasinya dengan state canonical **as-of tanggal rekonsiliasi** dan tidak pernah auto-adjust. Trade baru pada/sebelum checkpoint rekonsiliasi terakhir ditolak; selisih historis diselesaikan lewat correction explicit agar snapshot reconciliation tetap bermakna. Mismatch memerlukan correction eksplisit Administrator yang audited dan tetap menjaga trade history. Semua event investasi wajib tidak lebih awal dari `initial_balance_date` RDN. Onboarding first-time menawarkan **Saya sudah punya investasi** atau **Saya mulai investasi dari sekarang**. User boleh memulai tanpa transfer/saldo RDN: bila RDN tidak dipilih, backend membuat RDN canonical Rp0 secara atomik; RDN otomatis Administrator berscope shared sedangkan RDN otomatis Member berscope personal milik actor. Satu portfolio tetap terikat tepat satu RDN eksplisit di database dan pembelian baru tetap wajib memiliki Saldo RDN cukup. Existing investment dicatat sebagai semantic opening position append-only memakai jumlah lot/unit + **harga rata-rata beli** + **harga sekarang**; cost basis, nilai sekarang, dan unrealized P/L diturunkan deterministik, sedangkan Saldo RDN sekarang opsional dan bila kosong mempertahankan saldo canonical (Rp0 pada RDN otomatis). Opening position bukan fake Buy. Multi-RDN tetap memiliki label pembeda di UI. Kekurangan Saldo RDN pada draft pembelian harus mempertahankan seluruh input, membuka Transfer Bank→RDN dengan nominal kekurangan ter-prefill, lalu kembali ke draft tersebut; setelah Sell, state selesai adalah Saldo RDN bertambah dan Tarik ke rekening hanya opsi. Backup schema v16 membawa histori investasi authoritative + field opening-position/trade notes, restore lama v3-v15 tetap additive-compatible, dan definitive restore tetap menunggu foreign-key + business-integrity verification.
+Rekonsiliasi membandingkan kondisi aktual yang dimasukkan user dari aplikasi investasinya dengan state canonical **as-of tanggal rekonsiliasi** dan tidak pernah auto-adjust. Trade baru pada/sebelum checkpoint rekonsiliasi terakhir ditolak; selisih historis diselesaikan lewat correction explicit agar snapshot reconciliation tetap bermakna. Mismatch memerlukan correction eksplisit Administrator yang audited dan tetap menjaga trade history. Semua event investasi wajib tidak lebih awal dari `initial_balance_date` RDN. Onboarding first-time menawarkan **Saya sudah punya investasi** atau **Saya mulai investasi dari sekarang**. User boleh memulai tanpa transfer/saldo RDN: bila RDN tidak dipilih, backend membuat RDN canonical Rp0 secara atomik; RDN otomatis Administrator berscope shared sedangkan RDN otomatis Member berscope personal milik actor. Satu portfolio tetap terikat tepat satu RDN eksplisit di database dan pembelian baru tetap wajib memiliki Saldo RDN cukup. Existing investment dicatat sebagai semantic opening position append-only memakai jumlah lot/unit + **harga rata-rata beli** + **harga sekarang**; cost basis, nilai sekarang, dan unrealized P/L diturunkan deterministik. Saldo RDN dapat ikut dicatat sebagai baseline atau berdiri sendiri tanpa instrument/share/cost palsu; cash-only baseline wajib benar-benar mengubah saldo tercatat. Opening position bukan fake Buy atau Transfer. Intent **Saya mulai investasi dari sekarang** selesai pada portfolio + RDN Rp0 tanpa otomatis membuka Buy; top up setelah setup tetap memakai Transfer Bank→RDN. Multi-RDN tetap memiliki label pembeda di UI. Kekurangan Saldo RDN pada draft pembelian harus mempertahankan seluruh input, membuka Transfer Bank→RDN dengan nominal kekurangan ter-prefill, lalu kembali ke draft tersebut; setelah Sell, state selesai adalah Saldo RDN bertambah dan Tarik ke rekening hanya opsi. Backup schema v16 membawa histori investasi authoritative + field opening-position/trade notes, restore lama v3-v15 tetap additive-compatible, dan definitive restore tetap menunggu foreign-key + business-integrity verification.
 
 **Acceptance:** tidak ada double-count Bank↔RDN/portfolio; Saldo rekening/Aman digunakan/Batas aman per hari/dana belum dialokasikan tidak memasukkan Saldo RDN; ordinary transaction selain Transfer, Alokasi Dana, dan Jadwal Rutin baru menolak RDN; legacy planning RDN tetap readable tetapi non-operasional; insufficient RDN dan over-sell ditolak backend; stale edit ditolak; retry intent mempertahankan idempotency key; personal portfolio tidak dapat dimutasi actor lain; reconciliation tidak menjadi backdoor adjustment; backup→restore mempertahankan RDN, quantity, cost basis, realized/unrealized P/L, dan histori authoritative.
 
@@ -139,7 +139,7 @@ Rekonsiliasi membandingkan kondisi aktual yang dimasukkan user dari aplikasi inv
 
 Queue idempotent dan Web Push mendukung recurring due, Kebutuhan threshold, Alokasi Dana threshold, target tertinggal, transaksi belum dialokasikan, **peringatan dana recurring expense kurang pada H-2**, dan konfirmasi occurrence recurring yang berhasil dicatat. In-app Notification Center juga menghasilkan funding-gap ketika total Kebutuhan pada suatu Alokasi melebihi dana yang sudah dipisahkan; rekonsiliasi Investasi tidak menjadi reminder otomatis. Saldo untuk shortage dihitung dari ledger Turso melalui read-model canonical. Queue normal dibuat server dari objek yang sudah lolos guard, tetapi transport Web Push memakai privacy-safe lock-screen payload: hanya tipe/id/target yang dikirim dan Service Worker menampilkan copy generik tanpa nominal, rekening, merchant, atau nama objek finansial. Setiap user dapat mengaktifkan/mematikan tujuh tipe alert otomatis canonical secara account-level. Pengingat manual one-shot tambahan tersedia pada occurrence Jadwal Rutin, Kebutuhan periode aktif, Alokasi Dana aktif, dan Target aktif, disimpan per user dengan row version, audit, serta dedupe scheduler. Push hanya aktif bila VAPID lengkap.
 
-**Gap:** transaksi besar configurable, saldo rendah umum configurable, perubahan pasangan, cadence rekonsiliasi configurable, dan verifikasi real Android/iOS masih belum tersedia.
+**Gap:** transaksi besar configurable, saldo rendah umum configurable, cadence rekonsiliasi configurable, dan verifikasi real Android/iOS masih belum tersedia. Perubahan pasangan diprioritaskan sebagai aktivitas in-app/audit yang transparan, bukan push per transaksi.
 
 ### `REQ-PROD-17` Keamanan dan anti-kesalahan — Implemented
 

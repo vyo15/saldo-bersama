@@ -1,4 +1,5 @@
 import Button from "../../../components/common/Button.jsx";
+import useUnsavedChangesGuard from "../../../hooks/useUnsavedChangesGuard.js";
 import Modal from "../../../components/common/Modal.jsx";
 import InlineOwnershipPicker from "../../../components/common/InlineOwnershipPicker.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
@@ -54,17 +55,17 @@ const selectedInvestmentDuplicate = (accountForm, existingAccounts, defaultOwner
 const AccountOwnershipField = ({ entity, activeUsers, defaultOwnerUserId, currentOwnerLabel, onChange }) => {
   const users = activeUsers.length ? activeUsers : defaultOwnerUserId ? [{ user_id: defaultOwnerUserId, name: currentOwnerLabel, role: "owner", is_current: true }] : [];
   const options = [
-    { value: "shared", label: "Bersama", icon: SharedIcon, description: "Rekening dapat digunakan bersama" },
+    { value: "shared", label: "Bersama", icon: SharedIcon, description: "Rekening keluarga yang dapat dioperasikan bersama" },
     ...users.map((member) => ({
       value: `user:${member.user_id}`,
       label: String(member.name || member.email || "Pengguna").trim(),
       user: member,
       badge: `${userRoleLabel(member.role)}${member.is_current ? " · saya" : ""}`,
       badgeTone: member.role === "owner" ? "primary" : "neutral",
-      description: member.is_current ? "Milik saya" : "Milik anggota ini",
+      description: member.is_current ? "Dipegang oleh saya" : "Dipegang oleh anggota ini",
     })),
   ];
-  return <InlineOwnershipPicker className="form-grid__full" legend="Kepemilikan" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} required />;
+  return <InlineOwnershipPicker className="form-grid__full" legend="Pemegang rekening" value={ownershipSelectValue(entity, defaultOwnerUserId)} onChange={(value) => onChange(ownershipUpdates(value, defaultOwnerUserId))} options={options} required />;
 };
 
 const BankNumberField = ({ value, onChange, showHelper = true }) => (
@@ -97,13 +98,13 @@ const CreateIdentityFields = ({ accountForm, updateAccountForm, setAccountForm }
       }));
     }} options={ACCOUNT_TYPE_OPTIONS} columns={4} mobileColumns={2} compact wrapLabels />
     {accountTypeUsesAutomaticName(accountForm.account_type) ? <div className={`${styles.autoNameGroup} form-grid__full`}>
-      <p className={styles.autoNameNote}>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Rekening Investasi dipakai sebagai RDN. Tambahkan nama pembeda bila Anda memiliki lebih dari satu RDN dengan kepemilikan yang sama." : "Nama rekening dibuat otomatis dari jenis atau provider. Kepemilikan tetap menentukan apakah rekening Bersama atau Pribadi."}</p>
+      <p className={styles.autoNameNote}>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Rekening Investasi dipakai sebagai RDN. Tambahkan nama pembeda bila Anda memiliki lebih dari satu RDN dengan kepemilikan yang sama." : "Nama rekening dibuat otomatis dari jenis atau provider. Pemegang rekening menentukan siapa yang dapat mengoperasikan rekening; seluruh anggota tetap dapat melihatnya."}</p>
       <details className={styles.qualifierDisclosure} open={accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? true : undefined}>
         <summary>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Nama pembeda RDN" : "Butuh lebih dari satu? Tambah nama pembeda"}</summary>
         <label className="field">
           <span>Nama pembeda (opsional)</span>
           <input maxLength="60" placeholder={accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Contoh: BCA ••••1234" : "Contoh: Rumah"} value={accountForm.name} onChange={(event) => updateAccountForm({ name: event.target.value })} />
-          <small>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Contoh label: BCA ••••1234 · Pribadi. Nama canonical rekening tetap dibuat otomatis sebagai Investasi." : "Biarkan kosong bila satu rekening jenis ini sudah cukup."}</small>
+          <small>{accountForm.account_type === ACCOUNT_TYPES.INVESTMENT ? "Contoh label: BCA ••••1234 · nama pemegang. Nama canonical rekening tetap dibuat otomatis sebagai Investasi." : "Biarkan kosong bila satu rekening jenis ini sudah cukup."}</small>
         </label>
       </details>
     </div> : <label className="field form-grid__full">
@@ -150,13 +151,14 @@ const CreateAccountForm = (props) => {
 
 const CreateAccountModal = ({ open, onClose, submitting, formProps, requestMode }) => {
   const duplicateInvestment = selectedInvestmentDuplicate(formProps.accountForm, formProps.existingAccounts, formProps.defaultOwnerUserId);
-  return (
-    <Modal open={open} onClose={onClose} dismissible={!submitting} title={requestMode ? "Ajukan rekening" : "Tambah rekening"} description={requestMode ? "Rekening menjadi aktif setelah Administrator menyetujui pengajuan." : "Pilih jenis rekening."} size="md" footer={<><Button onClick={onClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting} disabled={submitting || Boolean(duplicateInvestment)}>{requestMode ? "Kirim pengajuan" : "Simpan rekening"}</Button></>}>
+  const guard = useUnsavedChangesGuard({ open, value: formProps.accountForm, onClose, blocked: submitting });
+  return <>
+    <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="form rekening" dismissible={!submitting} title={requestMode ? "Ajukan rekening" : "Tambah rekening"} description={requestMode ? "Rekening menjadi aktif setelah Administrator menyetujui pengajuan." : "Pilih jenis rekening."} size="md" footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting} disabled={submitting || Boolean(duplicateInvestment)}>{requestMode ? "Kirim pengajuan" : "Simpan rekening"}</Button></>}>
       <div className={styles.createAccountLayout}>
         <CreateAccountForm {...formProps} />
       </div>
     </Modal>
-  );
+  </>;
 };
 
 const EditBankFields = ({ editAccount, updateEditAccount }) => {
@@ -188,14 +190,18 @@ const EditAccountFields = ({ editAccount, updateEditAccount, activeUsers, defaul
   </>
 );
 
-const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitting, dialogState, fieldProps }) => (
-  <Modal open={Boolean(editAccount)} onClose={() => setEditAccount(null)} dismissible={!submitting} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={() => setEditAccount(null)} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={submitting}>{submitting ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
-    <form id="edit-account-form" className="form-grid" onSubmit={onSaveAccount}>
-      <EditAccountFields {...fieldProps} />
-      {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
-    </form>
-  </Modal>
-);
+const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitting, dialogState, fieldProps }) => {
+  const close = () => setEditAccount(null);
+  const guard = useUnsavedChangesGuard({ open: Boolean(editAccount), value: editAccount, onClose: close, blocked: submitting });
+  return <>
+    <Modal open={Boolean(editAccount)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan rekening" dismissible={!submitting} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={submitting}>{submitting ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
+      <form id="edit-account-form" className="form-grid" onSubmit={onSaveAccount}>
+        <EditAccountFields {...fieldProps} />
+        {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
+      </form>
+    </Modal>
+  </>;
+};
 
 const AccountEditorDialogs = ({ createDialogOpen, onCloseCreate, accountForm, setAccountForm, onCreateAccount, editAccount, setEditAccount, onSaveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, existingAccounts = [], requestMode = false }) => {
   const submitting = dialogState.status === "submitting";

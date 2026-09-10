@@ -1,3 +1,30 @@
+## 10 September 2026 - Full transparency keluarga
+
+- Menetapkan full transparency sebagai policy produk canonical: rekening `personal` berarti pemegang/capability operasi, bukan rekening privat. Copy Rekening memakai istilah **Pemegang rekening** dan menegaskan seluruh data keluarga tetap terlihat oleh pasangan.
+- Menghapus surface pembagian beban 50:50/persentase dari transaksi manual, pembayaran Jadwal Rutin, dan Laporan. Schema/API cost-share v11 tetap dipertahankan untuk compatibility histori, audit, integrity, backup/restore, export, dan client lama; transaksi baru dari UI canonical memakai `unspecified`.
+- Menambahkan nama pencatat pada Aktivitas Terbaru Beranda mobile dan tabel transaksi Beranda desktop agar perubahan pasangan mudah dipahami tanpa membuat push notification per transaksi.
+- Menolak RFC-0015 granular personal privacy dan menyelaraskan Product Requirements, Glossary, Roadmap, Implementation Matrix, Authorization Matrix, Data Dictionary, API Contract, Test Plan, serta Project Status dengan mental model satu keuangan keluarga.
+
+## 10 September 2026 - Explicit cancel tanpa konfirmasi ganda
+
+- Menjadikan tombol **Batal** pada form guarded sebagai intent eksplisit untuk membuang draft lokal dan menutup form langsung tanpa discard-confirmation kedua. Ini mencakup Rekening, Kategori, Target, Jadwal Rutin, Kebutuhan, Anggota, Alokasi Dana, serta Investasi/setup agar cancel lalu buka/edit lagi selalu mulai dari state fresh.
+- Proteksi draft tetap aktif untuk dismiss yang lebih mudah terjadi tidak sengaja melalui X, backdrop, Escape, browser Back, dan `beforeunload`; mutation yang sedang berjalan atau `OUTCOME_UNKNOWN` tetap non-dismissible sehingga perubahan finansial/idempotency tidak dapat diputus di tengah jalan.
+- Menambah regression contract untuk membedakan intent `cancel` vs `dismiss`, sekaligus menyelaraskan `UI_DESIGN_SYSTEM`, `TEST_PLAN`, dan `PROJECT_STATUS`. Tidak ada perubahan schema, API contract, saldo, transfer, authorization, atau ledger.
+
+## 10 September 2026 - Google bridge clock recovery hardening
+
+- Memperkeras `integrations.status` terhadap liveness timestamp yang stale/cached: setiap probe GET memakai cache-buster unik dan directive no-cache/no-store, sementara `MESSAGE_EXPIRED` selalu boleh memicu tepat satu pengukuran ulang clock walaupun request pertama sudah memakai offset dari liveness awal.
+- Retry bridge tetap fail-closed dan tidak memperlebar window HMAC/replay; request kedua selalu membuat timestamp, nonce, dan signature baru. Status health yang pulih memakai liveness hasil recovery agar diagnosis clock tidak mempertahankan skew stale.
+- Menambah regression end-to-end untuk skenario liveness awal stale -> signed health expired -> fresh liveness -> signed health berhasil. Tidak ada perubahan schema, resource ID, shared secret, Apps Script deployment, atau kontrak finansial.
+
+## 10 September 2026 - Final native-feel polish dan continuity hardening
+
+- Mengubah skeleton generic menjadi preset geometri per-domain untuk Dashboard, Rekening, Transaksi, Planning, Target, Investasi, Laporan, Rekonsiliasi, Notifications/Categories/Members/Approvals, serta Settings agar initial loading mempertahankan bentuk halaman final dan mengurangi perceptual layout morph.
+- Memperluas dirty-state protection ke form utama Rekening, Kategori, Target, Jadwal Rutin, Kebutuhan, Anggota, Alokasi Dana, serta Investasi/setup melalui guard app-owned reusable; discard memakai confirmation canonical dan tidak mengubah mutation authority, idempotency, row-version, authorization, atau business rule.
+- Menambah network state `degraded` dari transport failure ketika perangkat masih dianggap online, recovery otomatis setelah server reachable, engagement-aware install prompt, dan idle warm-up route shell penting dengan guard Save-Data/2G tanpa menyimpan API/financial snapshot ke cache.
+- Menambah micro-continuity yang restrained: nilai uang berubah langsung dengan soft update cue tanpa count-up, native `<progress>` menginterpolasi fill memakai motion token, dan row/card utama menggunakan enter motion ringan. Semua motion baru memiliki reduced-motion fallback.
+- Menambah regression contract native-feel dan menyelaraskan `PROJECT_STATUS`, `UI_DESIGN_SYSTEM`, serta `TEST_PLAN`; memusatkan discard-confirmation di `Modal` canonical yang sama agar Back/Escape/X tidak membuat nested focus trap atau history entry tambahan.
+
 ## 9 September 2026 - Native-feel loading, motion, dan PWA continuity
 
 - Mengganti initial loading feature utama dari spinner-first menjadi `NativePageSkeleton` yang mempertahankan geometri halaman, memakai shimmer semantic `--motion-loading`, reduced-motion static, serta route progress tipis setelah delayed loader agar navigasi cepat tidak berkedip. Full-screen `LoadingScreen` dipertahankan untuk auth/session gate yang memang belum boleh menampilkan data finansial.
@@ -10,9 +37,9 @@
 
 - Menyederhanakan first-time Investasi menjadi dua intent: **Saya sudah punya investasi** atau **Saya mulai investasi dari sekarang**. User tidak perlu membuat/transfer RDN lebih dulu; bila RDN belum dipilih, `investments.portfolios.create` membuat rekening `account_type=investment` canonical dengan saldo Rp0 secara atomik.
 - RDN otomatis milik Administrator dibuat `shared`, sedangkan RDN otomatis yang dibuat Member menjadi `personal` milik actor agar Member tidak membuat ledger shared baru tanpa persetujuan Administrator. RDN tetap `allow_negative=0`, satu portfolio tetap terikat tepat satu RDN, dan pembelian baru tetap wajib memiliki Saldo RDN yang cukup.
-- Mengubah form **Posisi awal** agar mengikuti data yang lazim tersedia di broker: jumlah lot/unit, **harga rata-rata beli**, **harga sekarang**, tanggal posisi, serta Saldo RDN sekarang yang opsional. Frontend menghitung total modal/cost basis, nilai sekarang, dan unrealized P/L secara deterministik sebelum disimpan; backend tetap menyimpan cost basis canonical dan opening position append-only, bukan fake Buy.
+- Mengubah **Kondisi awal** agar memisahkan baseline dari aktivitas setelah onboarding: jumlah lot/unit, **harga rata-rata beli**, **harga sekarang**, tanggal, dan Saldo RDN dapat dicatat tanpa Transfer atau fake Buy. Saldo RDN awal juga dapat dicatat sendiri tanpa memaksa aset palsu; setelah setup selesai, top up berikutnya kembali memakai Transfer Bank → RDN canonical.
 - Menghapus dead-end onboarding yang sebelumnya memaksa pindah ke menu Rekening saat RDN belum ada, sambil mempertahankan kemampuan memilih RDN existing/manual. Flow Tambah dana/Tarik dana sesudah onboarding tetap memakai Transfer canonical.
-- Menambah regression untuk auto-RDN Administrator/Member, opening position tanpa input cash, kalkulasi average/current price, serta sinkronisasi API contract, test plan, project status, product requirement, implementation matrix, dan design system.
+- Menambah regression untuk auto-RDN Administrator/Member, opening position tanpa input cash, baseline Saldo RDN tanpa aset, onboarding mulai-Rp0 tanpa auto-Buy/Transfer, kalkulasi average/current price, serta sinkronisasi dokumentasi dan design system.
 
 ## 9 September 2026 - Source hygiene dan lazy interaction hardening
 

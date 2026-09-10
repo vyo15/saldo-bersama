@@ -66,7 +66,7 @@ const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, o
 };
 
 const GoalCard = ({ goal, actions }) => (
-  <Card className={goalClass("goal-card")}>
+  <Card className={goalClass("goal-card")} data-native-enter>
     <div className={goalClass("goal-card__icon")}>{goal.goal_type === "emergency_fund" ? <FiShield /> : <FiTarget />}</div>
     <div><p className="eyebrow">{goalTypeLabel(goal.goal_type)}</p><h2>{goal.name}</h2></div>
     <Money value={goal.current_amount} />

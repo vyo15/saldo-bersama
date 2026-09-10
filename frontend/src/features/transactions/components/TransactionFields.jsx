@@ -9,7 +9,6 @@ import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { formatRupiah } from "../../../domain/money.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { userRoleLabel } from "../../../shared/presentation/user.js";
-import CostShareField from "../CostShareField.jsx";
 import { allocationSelectionHint, frequentCategories, orderedEnvelopeOptions, sourceAccountPicker } from "../transactionFormSmartDefaults.js";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, quickAmountLabel } from "../transactionFormPresentation.js";
 import styles from "../TransactionForm.module.css";
@@ -77,17 +76,12 @@ const EnvelopeField = ({ form, envelopes, candidates, onEnvelopeChange }) => {
   </div>;
 };
 
-const AccountCategoryFields = (p) => {
-  const source = p.accounts.find((item) => item.account_id === p.form.source_account_id) || null;
-  const showCostShare = p.form.transaction_type === TRANSACTION_TYPES.EXPENSE && source?.owner_scope === "shared";
-  return <>
+const AccountCategoryFields = (p) => <>
     {!p.isIncome ? <SourceAccountField form={p.form} accounts={p.accounts} recentTransactions={p.recentTransactions} onSourceAccountChange={p.onSourceAccountChange} errors={p.errors} /> : null}
     {p.isIncome || p.isTransfer ? <DestinationAccountField form={p.form} accounts={p.compatibleDestinationAccounts} update={p.update} errors={p.errors} /> : null}
     {!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} recentTransactions={p.recentTransactions} update={p.update} errors={p.errors} /> : null}
     {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField form={p.form} envelopes={p.compatibleEnvelopes} candidates={p.allocationCandidates} onEnvelopeChange={p.onEnvelopeChange} /> : null}
-    <CostShareField visible={showCostShare} form={p.form} members={p.members} setForm={p.setForm} onChange={p.onCostShareChange} errors={p.errors} />
   </>;
-};
 
 const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`}><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><SelectionControl id="payment-method" embedded value={form.payment_method} onChange={(value) => update("payment_method", value)} ariaLabel="Metode pembayaran" options={[...(form.payment_method === "autodebit" ? [{ value: "autodebit", label: "Auto-debit (data lama)", disabled: true }] : []), ...PAYMENT_METHOD_OPTIONS.map((item) => ({ value: item.value, label: item.label, icon: item.icon }))]} /></FieldControl></label><label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined} />{errors.description ? <small id="description-error" className="field__error">{errors.description}</small> : null}</label></>;
 

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
@@ -33,13 +34,13 @@ const StartModeFields = ({ value, onChange }) => (
     <StartChoice
       active={value === "existing"}
       title="Saya sudah punya investasi"
-      description="Catat posisi yang sudah ada memakai jumlah lot, harga rata-rata beli, dan harga sekarang. Saldo RDN boleh Rp0."
+      description="Catat aset lama dan Saldo RDN saat ini sebagai kondisi awal. Tahap ini tidak membuat Transfer atau pembelian historis."
       onClick={() => onChange("existing")}
     />
     <StartChoice
       active={value === "new"}
       title="Saya mulai investasi dari sekarang"
-      description="Siapkan catatan portofolio sekarang. Saldo RDN tetap harus cukup sebelum pembelian baru dicatat."
+      description="Buat portofolio + RDN Rp0 tanpa transaksi awal. Setelah setup selesai, top up baru memakai Transfer Bank → RDN."
       onClick={() => onChange("new")}
     />
   </div>
@@ -48,8 +49,8 @@ const StartModeFields = ({ value, onChange }) => (
 const rdnOptions = (accounts) => [
   {
     value: AUTO_RDN_VALUE,
-    label: "Lewati untuk sekarang",
-    meta: "RDN dibuat otomatis dengan saldo Rp0 dan bisa diisi nanti",
+    label: "Buat RDN Rp0 otomatis",
+    meta: "Tidak ada transfer saat setup; top up dilakukan setelah portofolio siap",
     icon: AccountIcon,
   },
   ...accounts.map((item) => ({
@@ -71,8 +72,8 @@ const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, disa
   </InvestmentFormField>
   <InlineSelectionPicker
     className={styles.field}
-    label="Saldo RDN (opsional)"
-    hint="Anda dapat mulai mencatat posisi investasi tanpa transfer ke RDN. Jika dilewati, sistem membuat RDN canonical dengan saldo Rp0 agar transaksi berikutnya tetap punya ledger yang benar."
+    label="Rekening RDN"
+    hint="Pilih RDN yang sudah ada atau biarkan sistem membuat RDN Rp0. Setup tidak memindahkan uang; top up berikutnya tetap melalui Transfer."
     error={fieldErrors.rdn_account_id}
     value={form.rdn_account_id || AUTO_RDN_VALUE}
     onChange={(accountId) => onFieldChange("rdn_account_id", accountId)}
@@ -117,7 +118,7 @@ const persistSetup = (mode, payload) => mode === "portfolio" ? createInvestmentP
 
 const dialogCopy = (mode) => mode === "instrument"
   ? { title: "Tambah aset investasi", description: "Pilih aset untuk dicatat; tindakan ini tidak membeli aset." }
-  : { title: "Tambah investasi", description: "Mulai dari posisi yang sudah Anda miliki atau siapkan pencatatan transaksi baru. RDN dapat dibuat otomatis dengan saldo Rp0." };
+  : { title: "Tambah investasi", description: "Pilih kondisi Anda saat ini. Setup menetapkan titik mulai pencatatan tanpa Transfer atau pembelian otomatis." };
 
 const setupCanSubmit = (mode, form) => mode === "instrument" ? Boolean(form.ticker) : Boolean(form.start_mode);
 const setupSubmitLabel = (mode, form, outcomeUnknown) => {
@@ -142,6 +143,7 @@ const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "port
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
   const canSubmit = setupCanSubmit(resolvedMode, form);
   const copy = dialogCopy(resolvedMode);
+  const guard = useUnsavedChangesGuard({ open: true, value: form, onClose, blocked: busy || outcomeUnknown });
 
   const onFieldChange = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -205,14 +207,19 @@ const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "port
     }
   };
 
-  return (
+  return <>
     <Modal
       open
       title={copy.title}
       description={copy.description}
-      onClose={busy || outcomeUnknown ? undefined : onClose}
+      onClose={busy || outcomeUnknown ? undefined : guard.requestClose}
+      discardGuard={guard}
+      discardSubject="setup investasi"
       dismissible={!busy && !outcomeUnknown}
-      footer={<Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!canSubmit}>{setupSubmitLabel(resolvedMode, form, outcomeUnknown)}</Button>}
+      footer={<>
+        <Button type="button" onClick={guard.discardAndClose} disabled={busy || outcomeUnknown}>Batal</Button>
+        <Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!canSubmit}>{setupSubmitLabel(resolvedMode, form, outcomeUnknown)}</Button>
+      </>}
     >
       <form ref={formRef} id="investment-setup-form" className={styles.form} onSubmit={submit} noValidate>
         {error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{error}</div> : null}
@@ -220,7 +227,7 @@ const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "port
         <SetupFields mode={resolvedMode} form={form} accounts={accounts} existingInstruments={instruments} fieldErrors={fieldErrors} onFieldChange={onFieldChange} onAssetSelect={onAssetSelect} onAssetKindChange={onAssetKindChange} disabled={outcomeUnknown} />
       </form>
     </Modal>
-  );
+  </>;
 };
 
 export default InvestmentSetupDialog;

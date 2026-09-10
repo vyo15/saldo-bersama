@@ -26,6 +26,7 @@ const buildLookups = (overview, bootstrap) => {
     accountLookup: Object.fromEntries(accountBalances.map((item) => [item.account_id, item.name])),
     categoryLookup: Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])),
     envelopeLookup: Object.fromEntries((overview.envelopes || []).map((item) => [item.envelope_period_id, item.name])),
+    creatorLookup: Object.fromEntries((bootstrap?.members || []).map((item) => [item.user_id, item.name || "Anggota keluarga"])),
   };
 };
 
@@ -55,6 +56,8 @@ const buildDashboardMetrics = (overview, accountBalances) => {
   const accountBars = accountBalances.slice(0, 6); const expenseBars = expenseByCategory.slice(0, 7);
   return { expenseByCategory, allocationSummary, accountBars, maxAccountBalance: Math.max(1, ...accountBars.map((item) => absoluteAmount(item.balance))), expenseBars, maxCategoryExpense: Math.max(1, ...expenseBars.map((item) => absoluteAmount(item.amount))) };
 };
+
+const transactionCreatorLabelFactory = (creatorLookup) => (item) => creatorLookup[item?.created_by] || "Anggota keluarga";
 
 const transactionAccountLabelFactory = (accountLookup) => (item) => {
   if (!item) return "Rekening tidak tersedia";
@@ -86,7 +89,7 @@ const createDashboardViewModel = ({ overview, bootstrap, filters }) => {
   const selected = selectedTransactionPresentation({ selectedTransaction, categoryLookup: lookups.categoryLookup, envelopeLookup: lookups.envelopeLookup });
   const mobileSelected = selectedTransactionPresentation({ selectedTransaction: mobileSelectedTransaction, categoryLookup: lookups.categoryLookup, envelopeLookup: lookups.envelopeLookup });
   const activeFilterCount = [filters.accountFilter, filters.categoryFilter, filters.typeFilter].filter((value) => value !== "all").length + (filters.searchTerm.trim() ? 1 : 0);
-  return { ...lookups, recentTransactions, filteredTransactions, selectedTransaction, mobileSelectedTransaction, ...metrics, activeFilterCount, transactionAccountLabel: transactionAccountLabelFactory(lookups.accountLookup), ...selected, mobileSelectedTitle: mobileSelected.selectedTitle, mobileSelectedCategory: mobileSelected.selectedCategory, mobileSelectedEnvelope: mobileSelected.selectedEnvelope, mobileSelectedEnvelopeNote: mobileSelected.selectedEnvelopeNote, lastSyncedAt: syncLabel(overview.lastSyncedAt) };
+  return { ...lookups, recentTransactions, filteredTransactions, selectedTransaction, mobileSelectedTransaction, ...metrics, activeFilterCount, transactionAccountLabel: transactionAccountLabelFactory(lookups.accountLookup), transactionCreatorLabel: transactionCreatorLabelFactory(lookups.creatorLookup), ...selected, mobileSelectedTitle: mobileSelected.selectedTitle, mobileSelectedCategory: mobileSelected.selectedCategory, mobileSelectedEnvelope: mobileSelected.selectedEnvelope, mobileSelectedEnvelopeNote: mobileSelected.selectedEnvelopeNote, lastSyncedAt: syncLabel(overview.lastSyncedAt) };
 };
 
 const useDesktopAccountSelection = (overview) => {

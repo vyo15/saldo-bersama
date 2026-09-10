@@ -19,7 +19,7 @@ export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/perencanaan", label: "Perencanaan", description: "Kelola Alokasi Dana, kebutuhan, dan Jadwal Rutin dalam satu tempat.", icon: FiPieChart },
   { to: "/target", label: "Target", description: "Kumpulkan dana ke rekening tujuan dan pantau progres sampai nominal target.", icon: FiTarget },
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
-  { to: "/rekening", label: "Rekening", description: "Kelola rekening bersama dan pribadi.", icon: AccountIcon },
+  { to: "/rekening", label: "Rekening", description: "Kelola seluruh rekening keluarga berdasarkan pemegang.", icon: AccountIcon },
   { to: "/investasi", label: "Investasi", description: "Kelola Saldo RDN, posisi saham per lot, reksa dana, dan hasil investasi yang dicatat manual.", icon: InvestmentIcon },
   { to: "/kategori", label: "Kategori", description: "Atur kategori transaksi yang digunakan.", icon: FiTag },
   { to: "/anggota", label: "Anggota", description: "Kelola anggota yang dapat mengakses Saldo Bersama.", icon: FiUsers, ownerOnly: true },

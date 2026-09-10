@@ -57,7 +57,7 @@ test("presentasi detail holding membedakan ownership, sumber harga, hasil, dan a
   assert.equal(investmentActivityLabel({ activity_type: "trade", trade_type: "buy", ticker: "BBCA" }), "Pembelian dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "trade", trade_type: "sell", ticker: "BBCA" }), "Penjualan dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "valuation", ticker: "BBCA" }), "Harga manual diperbarui · BBCA");
-  assert.equal(investmentActivityLabel({ activity_type: "opening_position", ticker: "BBCA" }), "Posisi awal dicatat · BBCA");
+  assert.equal(investmentActivityLabel({ activity_type: "opening_position", instrument_id: "active", ticker: "BBCA" }), "Posisi awal dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "correction", instrument_id: "active", ticker: "BBCA" }), "Koreksi dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "correction" }), "Koreksi dicatat · Saldo RDN");
 
@@ -133,7 +133,7 @@ test("validasi harga, rekonsiliasi, dan opening position menutup field finansial
   const openingErrors = validateInvestmentOperation("opening_position", {
     instrument_id: "active", opening_quantity: 0, average_price: 0, reference_price: 0, actual_cash: -1, position_date: "2026-09-03", notes: "x".repeat(501),
   }, options);
-  assert.equal(openingErrors.instrument_id, "Pilih saham untuk posisi awal.");
+  assert.equal(openingErrors.instrument_id, "Pilih aset untuk kondisi awal.");
   assert.match(openingErrors.opening_quantity, /lebih dari 0/);
   assert.match(openingErrors.average_price, /lebih dari 0/);
   assert.match(openingErrors.reference_price, /lebih dari 0/);

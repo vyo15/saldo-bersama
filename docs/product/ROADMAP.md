@@ -11,10 +11,11 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Push actionable untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, Target, dan transaksi belum dialokasikan.
 - Pengingat manual one-shot actor-scoped untuk Jadwal Rutin, Kebutuhan, Alokasi Dana, dan Target melalui scheduler/Web Push existing (RFC-0017).
 - Partner planning shared + own-personal untuk Alokasi/Kebutuhan/Jadwal Rutin dengan guard backend RFC-0016; Target baru tetap shared; destructive lifecycle tetap Administrator-only.
-- Pembagian beban biaya expense shared `equal`/`percentage` melalui schema v11 sebagai MVP RFC-0013; payer/beneficiary/kontribusi aktual tetap deferred.
+- Compatibility pembagian beban biaya schema v11 tetap dipertahankan untuk histori/backup/API lama, tetapi UI canonical transaksi baru tidak lagi menawarkan split karena pengeluaran diperlakukan sebagai pengeluaran keluarga.
 - Registry session per perangkat, revoke own/all, PKCE S256, dan session lifecycle server-side (RFC-0018, schema v12).
-- Investment manual schema v16: RDN berbasis rekening canonical (termasuk auto-create Rp0 pada first-time setup), instrument registry, Buy/Sell, weighted cost basis, valuation/P&L, opening position berbasis lot/unit + harga rata-rata + harga sekarang dengan Cash RDN opsional, continuation Transfer, reconciliation no-auto-adjust, explicit correction, Dashboard summary, backup/restore, dan integrity guard tanpa credential broker/live market API.
+- Investment manual schema v16: RDN berbasis rekening canonical (termasuk auto-create Rp0 pada first-time setup), instrument registry, Buy/Sell, weighted cost basis, valuation/P&L, opening position berbasis lot/unit + harga rata-rata + harga sekarang dengan Cash RDN opsional atau cash-only baseline RDN, onboarding mulai-baru tanpa auto-Buy/Transfer, continuation Transfer setelah setup, reconciliation no-auto-adjust, explicit correction, Dashboard summary, backup/restore, dan integrity guard tanpa credential broker/live market API.
 - Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
+- Full transparency keluarga menjadi policy produk canonical; RFC-0015 granular personal privacy berstatus Rejected dan tidak masuk roadmap runtime.
 
 ## Now — verification dan operasi
 
@@ -30,9 +31,8 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - RFC-0011: lifecycle transaksi, participant role eksplisit (`payer`/`beneficiary`/`liable_party`), draft/rencana, dan receipt privat.
 - RFC-0012: utang/piutang sebagai obligation + settlement ledger.
 - RFC-0014: kategori bertingkat dan tahapan target.
-- RFC-0015: privasi rekening granular dengan backend projection.
 - RFC-0019: satu cash movement dengan beberapa line item kategori/Kebutuhan tanpa double-count saldo/report.
-- Follow-up RFC-0013: payer/beneficiary/actual contribution serta relasi refund ke expense asli sebelum refund boleh mengembalikan Alokasi Dana/Kebutuhan/cost split.
+- Follow-up RFC-0013 dipersempit ke relasi refund → expense asli dan compatibility histori cost-share. Payer/beneficiary/actual contribution tidak diprioritaskan selama model produk tetap satu keuangan keluarga.
 
 ## Later — maturity
 

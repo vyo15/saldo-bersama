@@ -41,8 +41,8 @@ test("form Investasi memakai inline validation, focus error, dan onboarding posi
   assert.match(setup, /dismissible=\{!busy && !outcomeUnknown\}/);
   assert.match(setup, /Saya sudah punya investasi/);
   assert.match(setup, /Saya mulai investasi dari sekarang/);
-  assert.match(setup, /Lewati untuk sekarang/);
-  assert.match(setup, /RDN dibuat otomatis dengan saldo Rp0/);
+  assert.match(setup, /Buat RDN Rp0 otomatis/);
+  assert.match(setup, /Tidak ada transfer saat setup/);
   assert.match(setup, /auto_create_rdn: automaticRdn/);
   assert.doesNotMatch(setup, /Buka Rekening dan buat RDN/);
   assert.match(continuation, /accountPrefill: \{ account_type: "investment" \}/);

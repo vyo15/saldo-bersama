@@ -7,7 +7,6 @@ import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
-import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
@@ -176,11 +175,23 @@ const InvestmentsPageContent = ({ page }) => {
       onWithdraw={() => { const continuation = tradeContinuation; setTradeContinuation(null); openRdnTransfer("withdraw", continuation?.portfolio, continuation?.amount); }}
       onBuyAgain={() => { const continuation = tradeContinuation; setTradeContinuation(null); openAction("buy", continuation?.portfolio); }}
     />
-    {data.portfolios.length === 0 ? <EmptyState
-      title="Belum ada investasi"
-      description="Mulai dari posisi yang sudah Anda punya atau mulai mencatat transaksi baru. Anda tidak perlu mengisi RDN lebih dulu; bila belum ada, RDN dibuat otomatis dengan saldo Rp0."
-      action={emptyAction}
-    /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}><InvestmentOverview
+    {data.portfolios.length === 0 ? <section className={styles.firstInvestment} aria-labelledby="investment-first-title">
+      <div className={styles.firstInvestmentIntro}>
+        <div className={styles.firstInvestmentVisual} aria-hidden="true"><span /><span /><span /></div>
+        <div><h2 id="investment-first-title">Mulai catat investasi dengan rapi</h2><p>Catat kondisi dan aktivitas investasi Anda tanpa menghubungkan broker atau membuat transaksi otomatis.</p></div>
+      </div>
+      <div className={styles.firstInvestmentChips} aria-label="Yang dapat dicatat"><span>Saldo RDN</span><span>Saham & reksa dana</span><span>Riwayat terpisah</span></div>
+      <div className={styles.firstInvestmentSetup}>
+        <span className={styles.firstInvestmentEyebrow}>Langkah pertama</span>
+        <h3>Pilih cara mulai mencatat</h3>
+        <p>Tidak perlu memindahkan uang saat setup. Tentukan kondisi awal; top up berikutnya baru memakai Transfer Bank → RDN.</p>
+        <div className={styles.firstInvestmentPaths}>
+          <div><strong>Sudah punya investasi</strong><small>Catat aset lama dan Saldo RDN sebagai kondisi awal.</small></div>
+          <div><strong>Mulai dari sekarang</strong><small>Buat portofolio + RDN Rp0 tanpa transaksi awal.</small></div>
+        </div>
+        {emptyAction}
+      </div>
+    </section> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}><InvestmentOverview
       data={data}
       owner={user?.role === "owner"}
       onAction={openAction}
@@ -234,35 +245,17 @@ const createNavigationActions = ({ openTransactionComposer, ui }) => {
   return { openSetup, openRdnTransfer };
 };
 
-const openInstrumentBackedAction = ({ mode, portfolio, sourceData, owner, notify, ui, openSetup }) => {
-  if (activeInvestmentInstruments(sourceData).length) {
-    ui.setSetupContinuation(null);
-    ui.setDialog({ mode, portfolio });
-    return;
-  }
-  if (!owner) {
-    notify({ message: "Belum ada aset investasi aktif. Daftar aset baru dikelola Administrator.", tone: "warning", dedupeKey: `investments:${mode}:no-instrument` });
-    return;
-  }
-  ui.setPendingInstrumentAction({ portfolioId: portfolio.portfolio_id, mode });
-  openSetup("instrument");
-};
-
-const createOpeningPositionAction = ({ data, user, notify, ui, openSetup }) => (portfolio, sourceData = data, owner = user?.role === "owner") => {
+const createOpeningPositionAction = ({ notify, ui }) => (portfolio) => {
   if (!portfolio) return;
   if (portfolio.opening_position_available === false) {
-    notify({ message: "Fase posisi awal sudah ditutup karena portfolio memiliki aktivitas reguler. Gunakan Koreksi bila ada selisih yang sudah diverifikasi.", tone: "warning", dedupeKey: "investments:opening-closed" });
+    notify({ message: "Fase kondisi awal sudah ditutup karena portofolio memiliki aktivitas reguler. Gunakan Koreksi bila ada selisih yang sudah diverifikasi.", tone: "warning", dedupeKey: "investments:opening-closed" });
     return;
   }
-  openInstrumentBackedAction({ mode: "opening_position", portfolio, sourceData, owner, notify, ui, openSetup });
+  ui.setSetupContinuation(null);
+  ui.setDialog({ mode: "opening_position", portfolio });
 };
 
-const createStartNewInvestmentAction = ({ data, user, notify, ui, openSetup }) => (portfolio, sourceData = data, owner = user?.role === "owner") => {
-  if (!portfolio) return;
-  openInstrumentBackedAction({ mode: "buy", portfolio, sourceData, owner, notify, ui, openSetup });
-};
-
-const createWorkflowActions = ({ data, user, notify, overview, accountsResource, ui, openSetup, openRdnTransfer }) => {
+const createWorkflowActions = ({ data, notify, overview, accountsResource, ui, openRdnTransfer }) => {
   const fundRdnForPortfolio = (portfolio, shortage = 0, draft = null) => {
     const rdnAccountId = investmentRdnAccountId(portfolio);
     ui.setDialog(null);
@@ -274,8 +267,7 @@ const createWorkflowActions = ({ data, user, notify, overview, accountsResource,
       draft?.trade_date || "",
     );
   };
-  const startOpeningPosition = createOpeningPositionAction({ data, user, notify, ui, openSetup });
-  const startNewInvestment = createStartNewInvestmentAction({ data, user, notify, ui, openSetup });
+  const startOpeningPosition = createOpeningPositionAction({ notify, ui });
   const onSetupSuccess = (mode, form, saved) => {
     notify({ message: mode === "portfolio" ? "Catatan portofolio investasi berhasil disimpan." : "Saham berhasil ditambahkan ke daftar pencatatan.", tone: "success", dedupeKey: `investments:setup:${mode}` });
     if (mode === "portfolio") {
@@ -283,8 +275,7 @@ const createWorkflowActions = ({ data, user, notify, overview, accountsResource,
       Promise.all([overview.reload(), accountsResource.reload()]).then(([fresh]) => {
         const portfolio = portfolioForId(fresh?.portfolios || [], portfolioId);
         if (!portfolio) return;
-        if (form.start_mode === "existing") startOpeningPosition(portfolio, fresh, user?.role === "owner");
-        else startNewInvestment(portfolio, fresh, user?.role === "owner");
+        if (form.start_mode === "existing") startOpeningPosition(portfolio);
       }).catch(() => {});
       return;
     }
@@ -313,7 +304,7 @@ const createWorkflowActions = ({ data, user, notify, overview, accountsResource,
     else notify({ message: "Periksa Aktivitas saham terbaru dan riwayat transfer RDN sebelum mencatat koreksi.", tone: "info", dedupeKey: "investments:review-history" });
   };
   const openAction = (mode, portfolio, options = {}) => ui.setDialog({ mode, portfolio, ...options });
-  return { fundRdnForPortfolio, startOpeningPosition, startNewInvestment, onSetupSuccess, onInvestmentSuccess, onReviewHistory, openAction };
+  return { fundRdnForPortfolio, startOpeningPosition, onSetupSuccess, onInvestmentSuccess, onReviewHistory, openAction };
 };
 
 const InvestmentsPage = () => {
@@ -330,7 +321,7 @@ const InvestmentsPage = () => {
   const portfolios = useMemo(() => overview.data?.portfolios || [], [overview.data?.portfolios]);
   const data = overview.data || { summary: {}, portfolios: [], instruments: [] };
   const navigation = createNavigationActions({ openTransactionComposer, ui });
-  const workflow = createWorkflowActions({ data, user, notify, overview, accountsResource, ui, openSetup: navigation.openSetup, openRdnTransfer: navigation.openRdnTransfer });
+  const workflow = createWorkflowActions({ data, notify, overview, accountsResource, ui, openRdnTransfer: navigation.openRdnTransfer });
 
   useInvestmentRouteContinuation({ location, navigate, overview, accountsResource, portfolios, setSetupMode: ui.setSetupMode, setSetupRdnAccountId: ui.setSetupRdnAccountId, setSetupOpen: ui.setSetupOpen, setDialog: ui.setDialog, setHoldingDetail: ui.setHoldingDetail });
   useInvestmentAttentionReconciliation({ attention, consumeAttention, overview, accountsResource, portfolios, setDialog: ui.setDialog, notify });

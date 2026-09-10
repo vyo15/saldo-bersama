@@ -233,8 +233,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, mobileLayout, outc
     const focusId = { "source-account": "source-account", "destination-account": "destination-account", envelope: "envelope" }[previousSelection];
     if (focusId) window.requestAnimationFrame(() => document.getElementById(focusId)?.focus?.({ preventScroll: true }));
   };
-  const onCostShareChange = () => { markDirty(); state.setErrors((current) => clearTransactionFieldErrors(current, "cost_share_mode")); };
-  return { update, setDirtyForm, onSourceAccountChange, onEnvelopeChange, openMobileSelection, closeMobileSelection, onCostShareChange };
+  return { update, onSourceAccountChange, onEnvelopeChange, openMobileSelection, closeMobileSelection };
 };
 
 
@@ -291,7 +290,6 @@ const transactionModalCloseHandler = ({ mobileSelection, closeMobileSelection, r
 
 const transactionFields = ({ state, derived, actions, lockType, submitting }) => ({
   form: state.form,
-  setForm: actions.setDirtyForm,
   update: actions.update,
   errors: state.errors,
   amountRef: state.amountRef,
@@ -300,7 +298,6 @@ const transactionFields = ({ state, derived, actions, lockType, submitting }) =>
   envelopes: derived.data.envelopes,
   recentTransactions: derived.data.recentTransactions,
   visibleCategories: derived.data.visibleCategories,
-  members: derived.data.members,
   isIncome: derived.isIncome,
   isTransfer: derived.isTransfer,
   compatibleDestinationAccounts: derived.compatibleDestinationAccounts,
@@ -315,7 +312,6 @@ const transactionFields = ({ state, derived, actions, lockType, submitting }) =>
   submitState: state.submitState,
   lockType,
   onSourceAccountChange: actions.onSourceAccountChange,
-  onCostShareChange: actions.onCostShareChange,
   openMobileSelection: actions.openMobileSelection,
   submitting,
   outcomeUnknown: derived.outcomeUnknown,

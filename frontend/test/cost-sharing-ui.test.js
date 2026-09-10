@@ -4,21 +4,34 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../src/${path}`, import.meta.url), "utf8");
 
-test("pembagian beban shared dipakai ulang oleh transaksi manual dan pembayaran rutin", async () => {
-  const [field, transactionForm, recurringDialogs, recurringActions, recurringPage] = await Promise.all([
-    read("features/transactions/CostShareField.jsx"),
-    Promise.all([read("features/transactions/TransactionForm.jsx"), read("features/transactions/components/TransactionFields.jsx")]).then((parts) => parts.join("\n")),
+test("UI canonical memakai model satu pengeluaran keluarga tanpa cost-sharing baru", async () => {
+  const [transactionFields, mobileTransactionFields, recurringDialogs, recurringActions, reports] = await Promise.all([
+    read("features/transactions/components/TransactionFields.jsx"),
+    read("features/transactions/MobileTransactionFields.jsx"),
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/recurring/useRecurringActions.js"),
-    read("features/recurring/RecurringPage.jsx"),
+    read("features/reports/ReportsPage.jsx"),
   ]);
-  assert.match(field, /Pembagian beban biaya/);
-  assert.match(field, /50 : 50/);
-  assert.match(field, /Total \{total\}%/);
-  assert.match(transactionForm, /CostShareField/);
-  assert.match(transactionForm, /source\?\.owner_scope === "shared"/);
-  assert.match(recurringDialogs, /CostShareField visible=\{showEnvelope && payment\.item\?\.scope === "shared"\}/);
-  assert.match(recurringActions, /cost_share_mode/);
-  assert.match(recurringActions, /cost_share_percentages/);
-  assert.match(recurringPage, /bootstrap\?\.members/);
+  assert.doesNotMatch(transactionFields, /CostShareField|Pembagian beban biaya/);
+  assert.doesNotMatch(mobileTransactionFields, /CostShareField|Pembagian beban biaya/);
+  assert.doesNotMatch(recurringDialogs, /CostShareField|Pembagian beban biaya/);
+  assert.match(recurringActions, /cost_share_mode:\s*"unspecified"/);
+  assert.match(recurringActions, /cost_share_percentages:\s*\[\]/);
+  assert.doesNotMatch(reports, /<h[23]>Pembagian beban biaya<\/h[23]>/);
+});
+
+test("rekening dan beranda menjelaskan transparansi keluarga serta pencatat", async () => {
+  const [accountDialogs, accountCard, dashboard, mobileDashboard, desktopDashboard] = await Promise.all([
+    read("features/accounts/components/AccountEditorDialogs.jsx"),
+    read("features/accounts/components/AccountFinancialCard.jsx"),
+    read("features/dashboard/DashboardPage.jsx"),
+    read("features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("features/dashboard/components/DesktopFinanceDashboard.jsx"),
+  ]);
+  assert.match(accountDialogs, /Pemegang rekening/);
+  assert.match(accountDialogs, /seluruh anggota tetap dapat melihatnya/);
+  assert.match(accountCard, /Semua rekening transparan untuk keluarga/);
+  assert.match(dashboard, /transactionCreatorLabel/);
+  assert.match(mobileDashboard, /dicatat \{transactionCreatorLabel\(item\)\}/);
+  assert.match(desktopDashboard, /dicatat \{transactionCreatorLabel\(item\)\}/);
 });

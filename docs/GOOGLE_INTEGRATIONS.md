@@ -43,7 +43,7 @@ Kriteria readiness:
 
 Health check bersifat read-only terhadap resource Google. Jika health check gagal, UI harus menampilkan belum siap/gangguan dan tidak menjalankan sinkronisasi. Secret, resource ID, endpoint internal, dan payload finansial tetap tidak dikembalikan ke browser.
 
-Backend melakukan liveness GET terhadap deployment `/exec` untuk membaca identitas bridge, versi deployment, dan waktu Apps Script sebelum/bersamaan dengan signed health. Bila signed request ditolak dengan `MESSAGE_EXPIRED`, backend hanya melakukan satu recovery aman: membaca timestamp liveness dari deployment Google yang tervalidasi, menghitung clock offset, lalu mengirim ulang request dengan nonce baru dan HMAC baru. Replay guard Apps Script tetap aktif. Mekanisme ini menangani jam komputer development yang melenceng tanpa memperlebar window verifikasi HMAC. Jika retry masih gagal, provider tetap fail-closed.
+Backend melakukan liveness GET terhadap deployment `/exec` untuk membaca identitas bridge, versi deployment, dan waktu Apps Script sebelum/bersamaan dengan signed health. Request liveness memakai cache-buster unik plus directive `no-cache/no-store` agar timestamp yang dipakai untuk koreksi clock tidak bergantung pada respons GET lama. Bila signed request ditolak dengan `MESSAGE_EXPIRED`, backend hanya melakukan satu recovery aman: liveness diukur ulang walaupun request pertama sudah memakai clock offset hasil probe sebelumnya, kemudian request ditandatangani ulang dengan timestamp, nonce, dan HMAC baru. Replay guard Apps Script tetap aktif dan window verifikasi HMAC tidak diperlebar. Jika retry masih gagal, provider tetap fail-closed.
 
 UI menampilkan kode diagnosis aman ketika bridge tidak sehat. Kode yang perlu diperhatikan antara lain `MESSAGE_EXPIRED`, `INVALID_SIGNATURE`, `UNKNOWN_ACTION`, `GOOGLE_BRIDGE_DEPLOYMENT_STALE`, `GOOGLE_BRIDGE_TIMEOUT`, dan `GOOGLE_BRIDGE_UNAVAILABLE`. Kode tersebut tidak memuat URL, secret, resource ID, atau payload finansial.
 
@@ -55,7 +55,7 @@ Queue tetap dibedakan menjadi `pending`, `processing`, `failed`, `dead_letter`, 
 
 Gunakan `npm run diagnose` pada komputer tepercaya setelah `.env.local` canonical tersedia. Diagnostic tidak mencetak nilai secret. Output Google membedakan liveness deployment dan signed `integration.health`.
 
-- `MESSAGE_EXPIRED`: biasanya clock runtime development berbeda lebih dari dua menit. Runtime sekarang mencoba koreksi otomatis menggunakan timestamp liveness Apps Script. Tetap sinkronkan jam Windows/NTP agar seluruh tooling konsisten.
+- `MESSAGE_EXPIRED`: biasanya clock runtime development berbeda lebih dari dua menit atau timestamp liveness pertama sudah tidak segar. Runtime mengukur ulang liveness tepat satu kali dengan cache-buster, lalu membuat timestamp/nonce/HMAC baru sebelum retry. Tetap sinkronkan jam Windows/NTP agar seluruh tooling konsisten.
 - `INVALID_SIGNATURE`: `GOOGLE_BRIDGE_SHARED_SECRET` Vercel/Development tidak sama dengan Apps Script Properties.
 - `UNKNOWN_ACTION` atau `GOOGLE_BRIDGE_DEPLOYMENT_STALE`: source Apps Script mungkin sudah di-push tetapi deployment `/exec` masih versi lama. Buat **New version** pada deployment existing.
 - `GOOGLE_BRIDGE_TIMEOUT`: Apps Script tidak merespons dalam batas health check. Coba ulang sekali; jika berulang, cek execution log dan deployment.

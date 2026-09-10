@@ -227,10 +227,10 @@ ${accountEditors}`;
   assert.match(accountPageSource, /<span>No rekening \*<\/span>/);
   assert.match(accountPageSource, /useApiResource\("users\.list"/);
   assert.match(accountPageSource, /owner_user_id/);
-  assert.match(accountPageSource, /<InlineOwnershipPicker[\s\S]*legend="Kepemilikan"/);
+  assert.match(accountPageSource, /<InlineOwnershipPicker[\s\S]*legend="Pemegang rekening"/);
   assert.match(accountPageSource, /options=\{options\}[\s\S]*required/);
   assert.match(accountPageSource, /user: member/);
-  assert.match(accountPageSource, /member\.is_current \? "Milik saya"/);
+  assert.match(accountPageSource, /member\.is_current \? "Dipegang oleh saya"/);
   assert.match(accountPageSource, /userRoleLabel\(member\.role\)/);
   assert.doesNotMatch(accountPageSource, /name="account-ownership"/);
   assert.doesNotMatch(accountPageSource, /<span>Pemilik rekening \*<\/span>/);
@@ -540,17 +540,17 @@ test("label rekening memprioritaskan provider dan tetap membedakan pemilik perso
 test("label kepemilikan kartu tetap ringkas dan nama pemilik tersedia terpisah", () => {
   assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
   assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Vio Yusup" }), "Vio Yusup");
-  assert.equal(accountOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal" }), "Anggota keluarga");
   assert.equal(accountCardOwnershipLabel({ owner_scope: "shared" }), "Bersama");
   assert.equal(accountCardOwnershipLabel({ owner_scope: "personal", owner_name: "Fuji Astuti Dwiyanti" }), "Fuji");
-  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal" }), "Pribadi");
+  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal" }), "Anggota");
 });
 
 test("rekening Investasi memakai nama internal otomatis dan kartu cukup membedakan Pribadi Pasangan atau Bersama", () => {
   assert.equal(investmentAccountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
-  assert.equal(investmentAccountOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: true }), "Pribadi");
+  assert.equal(investmentAccountOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: true }), "Saya");
   assert.equal(investmentAccountOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: false }), "Pasangan");
-  assert.equal(accountDisplayLabel({ account_type: "investment", name: "Investasi", owner_scope: "personal", is_owned_by_actor: true }), "Investasi · Pribadi");
+  assert.equal(accountDisplayLabel({ account_type: "investment", name: "Investasi", owner_scope: "personal", is_owned_by_actor: true }), "Investasi · Saya");
   assert.equal(accountDisplayLabel({ account_type: "investment", name: "Investasi", owner_scope: "personal", is_owned_by_actor: false }), "Investasi · Pasangan");
   assert.equal(accountDisplayLabel({ account_type: "investment", name: "Investasi", owner_scope: "shared" }), "Investasi · Bersama");
 });

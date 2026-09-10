@@ -197,7 +197,7 @@ export const MobileTransactionRow = ({ item, categoryLookup, accountLabel, creat
   const sign = transactionSign(item.transaction_type);
   const metadata = transactionListMetadata({ item, category, account: accountLabel(item), creator: creatorLabel(item) }).join(" · ");
   const flag = mobileFlag(item);
-  return <button type="button" className={`${styles.row}${item.status === "cancelled" ? ` ${styles.rowCancelled}` : ""}`} onClick={() => onOpenDetail(item)} aria-label={`Buka detail ${title}`}>
+  return <button type="button" data-native-enter className={`${styles.row}${item.status === "cancelled" ? ` ${styles.rowCancelled}` : ""}`} onClick={() => onOpenDetail(item)} aria-label={`Buka detail ${title}`}>
     <span className={`${styles.rowIcon} ${styles[`rowIcon_${item.transaction_type || "default"}`] || ""}`}><Icon aria-hidden="true" /></span>
     <span className={styles.rowCopy}><strong>{title}</strong>{metadata ? <small>{metadata}</small> : null}{flag ? <em className={`${styles.flag} ${styles[`flag_${flag.tone}`]}`}>{flag.label}</em> : null}</span>
     <span className={styles.rowMoney}><span className={`${styles.rowAmount} money--${tone}`}>{sign}<span className="money">{formatCompactRupiah(item.amount)}</span></span><small>{TRANSACTION_LABELS[item.transaction_type] || "Transaksi"}</small></span>

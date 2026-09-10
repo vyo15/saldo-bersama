@@ -1,10 +1,17 @@
 # RFC-0015 Granular Personal Account Privacy and Backend Projection
 
-**Status:** Proposed, design hardened
+**Status:** Rejected — bertentangan dengan prinsip full transparency Saldo Bersama
 **Owner:** Security/privacy owner
 **Reviewers:** Backend, frontend, product, QA
 **Date:** 2026-08-02
-**Last reviewed:** 2026-08-25 against schema v14
+**Last reviewed:** 2026-09-10 against product full-transparency decision
+
+
+## Keputusan 2026-09-10
+
+RFC ini ditolak sebagai arah produk. Saldo Bersama ditujukan untuk satu keluarga/pasangan dengan full transparency: dua pengguna terotorisasi membaca rekening, saldo, transaksi, laporan, dan rekonsiliasi keluarga yang sama. `personal` tetap dipertahankan sebagai konsep pemegang/capability operasi rekening, bukan sebagai privacy boundary.
+
+Konsekuensinya, mode `balance_only`, `contribution_only`, `private`, hidden transaction, dan projection yang menyembunyikan data dari pasangan tidak boleh ditambahkan tanpa keputusan produk baru yang secara eksplisit mengubah positioning Saldo Bersama. Isi desain di bawah dipertahankan hanya sebagai catatan historis mengapa pendekatan tersebut tidak dipakai.
 
 ## Problem
 
@@ -34,7 +41,7 @@ Ini **bukan broken access control terhadap baseline saat ini**. Baseline full-tr
 
 Pada runtime v14, policy read yang diwarisi dari v12 tetap membuat dua user terotorisasi dapat membaca shared maupun personal account/ledger dengan owner label. Hak create/update/cancel/reconcile tetap dibatasi backend capability/ownership. Sheets mirror tetap shared-only.
 
-Baseline ini tetap berlaku sampai granular privacy migration dan projection framework benar-benar diterapkan end-to-end.
+Baseline ini menjadi policy produk canonical selama positioning Saldo Bersama tetap full transparency; granular privacy migration/projection tidak direncanakan.
 
 ## Visibility modes
 
@@ -206,9 +213,9 @@ Rollback UI tidak boleh mengabaikan stored restrictive policy. Jika runtime baru
 
 ## Decision
 
-Design baseline memilih backend projection canonical dengan mode `full`, `balance_only`, dan `private`. `contribution_only` tetap blocked sampai actual contribution RFC-0013 implemented.
+Keputusan produk memilih existing two-user full transparency sebagai policy canonical. Desain projection `balance_only`, `contribution_only`, dan `private` di RFC ini tidak diteruskan ke schema/runtime selama positioning produk tidak berubah.
 
-Existing two-user full transparency tetap policy runtime saat ini. RFC tetap Proposed. Belum ada approval schema, privacy toggle, projection implementation, atau authorization-matrix change.
+RFC berstatus Rejected. Tidak ada migration, privacy toggle, projection implementation, atau authorization-matrix change yang perlu dilakukan untuk RFC ini.
 
 ## Links
 

@@ -243,3 +243,9 @@
   .backdrop { transition: none; }
   .swipeEnabled { transition: none; }
 }
+
+.discardMessage {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.6;
+}

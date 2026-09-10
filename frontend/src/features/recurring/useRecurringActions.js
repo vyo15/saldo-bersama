@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
-import { validateCostShareInput } from "../../domain/validation.js";
 import {
   archiveRecurringRule,
   cancelRecurringOccurrence,
@@ -18,7 +17,7 @@ import {
 const recurringRefreshKeys = Object.freeze(["recurring.list", "reports.monthly", "app.initialState"]);
 const recurringLedgerRefreshKeys = Object.freeze(["recurring.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState"]);
 const initialRuleForm = () => ({ name: "", kind: "expense", expected_amount: "", due_day: 20, category_id: "", default_account_id: "", payment_method: "transfer", frequency: "monthly", start_date: todayInJakarta() });
-const initialPayment = () => ({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "", cost_share_mode: "unspecified", cost_share_percentages: [] });
+const initialPayment = () => ({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "" });
 const refreshRecurring = async ({ invalidate, resource, refreshOverview, keys = recurringRefreshKeys }) => { invalidate(keys); await Promise.allSettled([resource.reload(), refreshOverview()]); };
 
 export const useRecurringRuleActions = (shared) => {
@@ -50,12 +49,6 @@ export const useRecurringPaymentActions = (shared) => {
   const completeOccurrence = (event) => {
     event.preventDefault();
     if (!payment.item) return;
-    const splitValidation = validateCostShareInput(payment);
-    if (!splitValidation.ok) {
-      const message = Object.values(splitValidation.errors)[0] || "Pembagian beban biaya tidak valid.";
-      setPaymentState({ status: "error", error: new Error(message), fieldErrors: splitValidation.errors });
-      return;
-    }
     setPaymentState({ status: "submitting", error: null, fieldErrors: {} });
     return paymentMutation.run(async () => {
       const received = payment.item.kind === "income";
@@ -69,8 +62,8 @@ export const useRecurringPaymentActions = (shared) => {
         transaction_date: payment.transaction_date,
         envelope_period_id: payment.item.kind === "expense" ? payment.envelope_period_id : "",
         overspend_reason: payment.item.kind === "expense" ? payment.overspend_reason : "",
-        cost_share_mode: payment.item.kind === "expense" ? splitValidation.value.mode : "unspecified",
-        cost_share_percentages: payment.item.kind === "expense" ? splitValidation.value.percentages : [],
+        cost_share_mode: "unspecified",
+        cost_share_percentages: [],
       }, { rowVersion: payment.item.row_version });
       const allocated = Boolean(payment.item.kind === "expense" && payment.envelope_period_id);
       setPayment(initialPayment());

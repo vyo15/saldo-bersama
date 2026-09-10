@@ -102,6 +102,32 @@ test("opening position mencatat kondisi awal tanpa membuat fake buy dan tetap me
   } finally { db.close(); }
 });
 
+test("kondisi awal dapat mencatat Saldo RDN tanpa aset dan bukan transfer", async () => {
+  const db = await seed({ initialBalance: 0 });
+  try {
+    const portfolio = await createInvestmentPortfolio(db, context(owner, "investments.portfolios.create", { name: "Ajaib", broker: "other", rdn_account_id: "rdn" }, { key: "portfolio:cash-baseline:12345678" }));
+    const opened = await createOpeningPosition(db, context(owner, "investments.openingPositions.create", {
+      portfolio_id: portfolio.portfolio_id, actual_cash: 2_000_000, position_date: TODAY, notes: "Saldo RDN saat mulai mencatat",
+    }, { rowVersion: portfolio.row_version, key: "opening:cash-only:12345678" }));
+    assert.equal(opened.instrument_id, "");
+    assert.equal(opened.share_delta, 0);
+    assert.equal(opened.cost_basis_delta, 0);
+    assert.equal(opened.cash_delta, 2_000_000);
+    assert.equal(opened.actual_cash, 2_000_000);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM transactions").then((row) => Number(row.count)), 0);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM investment_trades").then((row) => Number(row.count)), 0);
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    assert.equal(overview.portfolios[0].rdn_cash, 2_000_000);
+    assert.equal(overview.portfolios[0].holdings.length, 0);
+    assert.equal(overview.portfolios[0].activity[0].activity_type, "opening_position");
+    assert.equal(overview.portfolios[0].activity[0].instrument_id, "");
+    assert.deepEqual(await integrityIssues(db), []);
+    await assert.rejects(() => createOpeningPosition(db, context(owner, "investments.openingPositions.create", {
+      portfolio_id: portfolio.portfolio_id, actual_cash: 2_000_000, position_date: TODAY,
+    }, { rowVersion: opened.row_version, key: "opening:cash-no-change:12345678" })), (error) => error.code === "OPENING_POSITION_NO_CHANGE");
+  } finally { db.close(); }
+});
+
 test("opening position ditutup setelah aktivitas investasi reguler dimulai", async () => {
   const db = await seed({ initialBalance: 20_000_000 });
   try {

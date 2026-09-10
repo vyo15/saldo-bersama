@@ -26,15 +26,22 @@
 .progress::-webkit-progress-value {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: inline-size var(--motion-standard) var(--ease-standard);
 }
 
 .progress::-moz-progress-bar {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: inline-size var(--motion-standard) var(--ease-standard);
 }
 
 .value {
   min-width: 2.5rem;
   text-align: end;
   font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress::-webkit-progress-value,
+  .progress::-moz-progress-bar { transition: none; }
 }

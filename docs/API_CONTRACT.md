@@ -302,7 +302,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - `goals.move` memakai aturan representability yang sama. Untuk Target shared, sumber setoran boleh rekening shared atau rekening personal actor yang operable; rekening Target tetap harus menjadi destination pada deposit dan source pada withdrawal. Target personal hanya dapat dipasangkan dengan shared atau rekening personal pemilik Target yang sama. Read model `goals.list` hanya memberi `can_withdraw=true` bila ada rekening tujuan lain yang valid untuk actor; bila progress ada tetapi destination tidak tersedia, response membawa alasan presentasi aman dan UI tidak boleh menawarkan penarikan dead-end.
 - Transfer dan mutasi Target tetap neutral terhadap income/expense; tidak boleh dihitung sebagai pemasukan/pengeluaran laporan.
 
-### Pembagian beban biaya transaksi shared
+### Pembagian beban biaya transaksi shared (compatibility)
 
 - `transactions.create` dan `transactions.update` menerima `cost_share_mode=unspecified|equal|percentage` hanya untuk `expense` dengan `scope=shared`. Transaksi lain dinormalisasi ke `unspecified`.
 - `recurring.payOccurrence` menerima kontrak cost sharing yang sama ketika occurrence aktual adalah `expense` shared. Rule jadwal tidak menyimpan split sebagai asumsi permanen; pembagian dipilih saat transaksi aktual dicatat.
@@ -349,7 +349,7 @@ Payload:
 - `trend.items`: income, expense, refund, net, dan totalBalance per bulan;
 - `accountExpenses`: expense menurut rekening sumber;
 - `creatorExpenses`: expense menurut actor pencatat, **bukan** kontribusi/penanggung biaya;
-- `costShareExpenses`: pembagian beban analitis pada expense shared yang memiliki snapshot `equal` atau `percentage`; jumlah ini bukan bukti siapa yang benar-benar membayar;
+- `costShareExpenses`: response compatibility untuk expense shared historis yang memiliki snapshot `equal` atau `percentage`; UI canonical baru tidak lagi menawarkan split atau menampilkan panel ini sebagai analitik utama;
 - `natureExpenses`: expense menurut `categories.nature`;
 - `overview.alerts`: peringatan actionable dari Kebutuhan, Alokasi Dana, Jadwal Rutin, Target, transaksi belum dialokasikan, dan rekonsiliasi.
 

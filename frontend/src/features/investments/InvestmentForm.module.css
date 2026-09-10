@@ -328,3 +328,41 @@ transition: none;
     transition: none;
   }
 }
+
+.openingScope {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.openingScope button {
+  min-height: var(--mobile-control-height);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: calc(var(--radius-md) - var(--space-1));
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.openingScope button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.openingScope .openingScopeActive {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 420px) {
+  .openingScope { grid-template-columns: 1fr; }
+}

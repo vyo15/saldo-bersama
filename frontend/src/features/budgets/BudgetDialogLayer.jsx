@@ -1,5 +1,6 @@
 import { FiBell, FiCalendar, FiEdit3, FiMoreHorizontal, FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { SharedIcon } from "../../components/common/FinanceChoiceIcons.jsx";
@@ -82,8 +83,11 @@ const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, 
   const title = existingBudget ? "Edit kebutuhan" : "Tambah kebutuhan";
   const linksLegacyBudget = Boolean(lockedEnvelope && existingBudget && !existingBudget.envelope_rule_id);
   const showSchedule = !existingBudget && form.recording_mode === "scheduled";
+  const submitting = saveState.status === "submitting";
+  const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: submitting });
 
-  return <Modal open={open} onClose={close} dismissible={saveState.status !== "submitting"} title={title} footer={<BudgetModalFooter saveState={saveState} close={close} pendingSchedule={pendingSchedule} existingBudget={existingBudget} />}>
+  return <>
+  <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Kebutuhan" dismissible={!submitting} title={title} footer={<BudgetModalFooter saveState={saveState} close={guard.discardAndClose} pendingSchedule={pendingSchedule} existingBudget={existingBudget} />}>
     <form id="budget-form" className="form-grid" onSubmit={saveBudget}>
       <BudgetModalNotices pendingSchedule={pendingSchedule} lockedEnvelope={lockedEnvelope} linksLegacyBudget={linksLegacyBudget} />
       <SelectionField label="Kategori" required value={form.category_id} onChange={selectCategory} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />
@@ -95,7 +99,8 @@ const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, 
       <ExistingBudgetActions existingBudget={existingBudget} canLifecycle={canLifecycle} onReminder={onReminder} onLifecycle={onLifecycle} />
       {saveState.status === "error" ? <div className="notice notice--danger form-grid__full" role="alert">{saveState.error?.message || "Kebutuhan belum dapat disimpan."}</div> : null}
     </form>
-  </Modal>;
+  </Modal>
+  </>;
 };
 
 const BudgetLifecycleModal = ({ archiveTarget, archiveState, setArchiveTarget, applyBudgetLifecycle }) => <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus kebutuhan yang belum dipakai?" : "Arsipkan kebutuhan?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.budget.name || archiveTarget.budget.category_id} belum menjadi histori perencanaan dan dapat dihapus permanen.` : `${archiveTarget.budget.name || archiveTarget.budget.category_id} sudah terkait transaksi atau histori periode. Kebutuhan hanya dapat diarsipkan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan kebutuhan"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyBudgetLifecycle}>{archiveTarget ? <div className="notice notice--info">Transaksi periode {archiveTarget.preview.dependencies.transactions} · penutupan periode {archiveTarget.preview.dependencies.period_closures}.</div> : null}</ConfirmationModal>;

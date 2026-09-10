@@ -217,7 +217,7 @@ const DashboardHeader = ({ overview, displayName, balanceVisible, onToggleBalanc
           Beranda merangkum saldo, transaksi terbaru, alokasi, dan perhatian penting. Informasi di sini mengikuti data terbaru yang sudah diterima aplikasi.
         </PageInfoButton>
       </div>
-      <p>Ringkasan keuangan · <strong>{formatPeriod(overview.periodKey)}</strong></p>
+      <p>Keuangan keluarga · <strong>{formatPeriod(overview.periodKey)}</strong></p>
     </div>
     <div className={dashboardClass("shared-dashboard__actions")}>
       <button
@@ -451,7 +451,7 @@ const TransactionTools = ({
   </div>
 );
 
-const TransactionRow = ({ row, categoryLookup, selectedTransaction, setSelectedTransactionId, balanceVisible }) => {
+const TransactionRow = ({ row, categoryLookup, transactionCreatorLabel, selectedTransaction, setSelectedTransactionId, balanceVisible }) => {
   const { item, delta, balanceAfter } = row;
   const category = categoryLookup[item.category_id];
   const Icon = transactionCategoryIcon(category, item.transaction_type);
@@ -468,7 +468,7 @@ const TransactionRow = ({ row, categoryLookup, selectedTransaction, setSelectedT
           aria-pressed={active}
         >
           <span className={dashboardClass(`shared-transaction-icon shared-transaction-icon--${item.transaction_type || "default"}`)}><Icon aria-hidden="true" /></span>
-          <span><strong>{title}</strong><small>{item.merchant || TRANSACTION_LABELS[item.transaction_type] || "Transaksi"}</small></span>
+          <span><strong>{title}</strong><small>{item.merchant || TRANSACTION_LABELS[item.transaction_type] || "Transaksi"} · dicatat {transactionCreatorLabel(item)}</small></span>
         </button>
       </td>
       <td><span className={dashboardClass(`shared-category-chip shared-category-chip--${transactionTone(item.transaction_type)}`)}>{category?.name || TRANSACTION_LABELS[item.transaction_type] || "Lainnya"}</span></td>
@@ -518,6 +518,7 @@ const AccountTransactions = ({
                 key={row.item.transaction_id}
                 row={row}
                 categoryLookup={model.categoryLookup}
+                transactionCreatorLabel={model.transactionCreatorLabel}
                 selectedTransaction={model.selectedTransaction}
                 setSelectedTransactionId={setSelectedTransactionId}
                 balanceVisible={balanceVisible}

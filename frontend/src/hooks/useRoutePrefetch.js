@@ -1,5 +1,21 @@
 import { useEffect } from "react";
-import { preloadRoute } from "../app/routeModules.js";
+import { preloadOfflineWarmRoutes, preloadRoute } from "../app/routeModules.js";
+
+const connectionAllowsWarmup = () => {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (!connection) return true;
+  if (connection.saveData) return false;
+  return !["slow-2g", "2g"].includes(String(connection.effectiveType || "").toLowerCase());
+};
+
+const scheduleWarmup = (callback) => {
+  if (typeof window.requestIdleCallback === "function") {
+    const handle = window.requestIdleCallback(callback, { timeout: 4_000 });
+    return () => window.cancelIdleCallback?.(handle);
+  }
+  const handle = window.setTimeout(callback, 2_000);
+  return () => window.clearTimeout(handle);
+};
 
 const internalAnchorForEvent = (event) => {
   const anchor = event.target?.closest?.("a[href]");
@@ -28,6 +44,11 @@ const useRoutePrefetch = () => {
       document.removeEventListener("pointerdown", prefetchFromIntent);
       document.removeEventListener("focusin", prefetchFromIntent);
     };
+  }, []);
+
+  useEffect(() => {
+    if (!connectionAllowsWarmup() || navigator.onLine === false) return undefined;
+    return scheduleWarmup(() => { void preloadOfflineWarmRoutes(window.location.pathname); });
   }, []);
 };
 

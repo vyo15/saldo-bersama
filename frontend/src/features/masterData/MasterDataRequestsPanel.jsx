@@ -15,7 +15,7 @@ const requestTitle = (request) => {
 const requestMeta = (request) => {
   const payload = request.payload || {};
   if (request.request_type === "account") {
-    const owner = payload.owner_scope === "shared" ? "Bersama" : "Pribadi";
+    const owner = payload.owner_scope === "shared" ? "Bersama" : "Dipegang anggota";
     return <>Rekening · {owner} · saldo awal <Money value={Number(payload.initial_balance || 0)} /></>;
   }
   return <>Kategori · {payload.transaction_type === "expense" ? "Pengeluaran" : payload.transaction_type === "income" ? "Pemasukan" : "Pengembalian dana"}</>;

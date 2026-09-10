@@ -220,7 +220,6 @@ const RecurringPage = ({ embedded = false }) => {
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
   const { allItems, filteredItems, accounts, categories, editCategories, paymentAccounts, paymentEnvelopes, budgets } = view;
-  const members = bootstrap?.members?.filter((item) => item.status === "active") || [];
   const { memberMode, canManagePlanning, ruleAccounts, budgetSuggestions } = recurringRulePlanningData({ accounts, budgets, user });
   const openReminder = (item) => setReminderTarget({ entityType: "recurring_occurrence", entityId: item.occurrence_id, name: item.name, suggestedDate: item.due_date });
   const actions = { openPayment: payments.openPayment, openReverse: payments.openReverse, openSkip: recovery.openSkip, openRestore: recovery.openRestore, openRuleEditor: rules.openRuleEditor, openArchive: rules.openArchive, openReminder, openCreate: rules.openCreate };
@@ -230,7 +229,7 @@ const RecurringPage = ({ embedded = false }) => {
   return (
     <div className="page-stack">
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-      {memberMode ? <CompactNotice tone="info" role="status">Anda dapat membuat dan mengubah jadwal rutin Bersama atau jadwal dari rekening pribadi Anda. Jadwal pribadi anggota lain dan tindakan arsip tetap dikelola Administrator.</CompactNotice> : null}
+      {memberMode ? <CompactNotice tone="info" role="status">Anda dapat membuat dan mengubah jadwal rutin Bersama atau jadwal dari rekening yang Anda pegang. Jadwal dari rekening yang dipegang anggota lain dan tindakan arsip tetap dikelola Administrator.</CompactNotice> : null}
       {!canManagePlanning ? <CompactNotice tone="warning" title="Belum ada rekening yang dapat digunakan." role="status">Siapkan atau aktifkan rekening terlebih dahulu sebelum membuat Jadwal Rutin. <Link to="/rekening">Lihat Rekening</Link>.</CompactNotice> : null}
       {payments.incomeSuccess ? <div className={styles.incomeSuccess}><CompactNotice tone="success" title="Penerimaan rutin berhasil dicatat." role="status">Dana sudah masuk ke rekening. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti.</CompactNotice><div className={styles.incomeSuccessActions}><Button type="button" onClick={() => payments.setIncomeSuccess(null)}>Nanti</Button><Button type="button" variant="primary" onClick={() => { const success = payments.incomeSuccess; payments.setIncomeSuccess(null); navigate("/perencanaan/kantong", { state: { workflowSource: "recurring-income", workflowAction: "fund", sourceAccountId: success.sourceAccountId, suggestedAmount: success.suggestedAmount } }); }}>Bagi ke Alokasi Dana</Button></div></div> : null}
       {embedded ? <div className={styles.embeddedHeader}><div><h2>Jadwal Rutin</h2><p>Sistem menyiapkan jadwal berulang. Saat waktunya tiba, konfirmasi nominal aktual sebelum saldo berubah.</p></div>{headerActions}</div> : <PageHeader title="Jadwal Rutin" help="Jadwal rutin mengingatkan transaksi berulang. Saldo baru berubah setelah pembayaran atau penerimaan aktual disimpan." actions={headerActions} />}{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal aktual dan rekening. Saldo berubah setelah pembayaran atau penerimaan disimpan.</CompactNotice> : null}
@@ -240,7 +239,7 @@ const RecurringPage = ({ embedded = false }) => {
       <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
       {recurringDialogOpen({ rules, payments, recovery }) ? (
         <Suspense fallback={<LazyActionFallback surface="modal" title="Jadwal rutin" label="Menyiapkan aksi jadwal rutin..." />}>
-          <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgetSuggestions={budgetSuggestions} members={members} />
+          <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgetSuggestions={budgetSuggestions} />
         </Suspense>
       ) : null}
     </div>

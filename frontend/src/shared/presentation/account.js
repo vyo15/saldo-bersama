@@ -99,17 +99,19 @@ export const defaultAccountName = ({ account_type: type, ewallet_template: ewall
 
 export const accountOwnerName = (account = {}) => String(account.owner_name || "").trim();
 
-export const accountOwnershipLabel = (account = {}) => account.owner_scope === "personal" ? accountOwnerName(account) || "Pribadi" : "Bersama";
+export const accountOwnershipLabel = (account = {}) => account.owner_scope === "personal" ? accountOwnerName(account) || "Anggota keluarga" : "Bersama";
 
 export const accountCardOwnershipLabel = (account = {}) => {
   if (account.owner_scope !== "personal") return "Bersama";
   const [firstName = ""] = accountOwnerName(account).split(/\s+/).filter(Boolean);
-  return firstName || "Pribadi";
+  return firstName || "Anggota";
 };
 
 export const investmentAccountOwnershipLabel = (account = {}) => {
   if (account.owner_scope !== "personal") return "Bersama";
-  return account.is_owned_by_actor === false ? "Pasangan" : "Pribadi";
+  const [firstName = ""] = accountOwnerName(account).split(/\s+/).filter(Boolean);
+  if (firstName) return firstName;
+  return account.is_owned_by_actor === false ? "Pasangan" : "Saya";
 };
 
 export const investmentAccountQualifier = (account = {}) => {
@@ -168,7 +170,7 @@ export const accountDisplayLabel = (account = {}, { includeOwner = true } = {}) 
     : [name];
 
   if (includeOwner && account.owner_scope === "personal") {
-    parts.push(accountOwnerName(account) || "Pribadi");
+    parts.push(accountOwnerName(account) || "Anggota keluarga");
   }
 
   return parts.filter(Boolean).join(" · ");

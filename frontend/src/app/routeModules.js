@@ -117,4 +117,16 @@ export const preloadRoute = async (pathname) => {
     return false;
   }
 };
+const OFFLINE_WARM_PATHS = Object.freeze(["/", "/transaksi", "/rekening", "/perencanaan/kantong", "/notifikasi"]);
+
+export const preloadOfflineWarmRoutes = async (currentPath = "") => {
+  const outcomes = [];
+  const current = normalizeRoutePath(currentPath);
+  for (const path of OFFLINE_WARM_PATHS) {
+    if (path === current) continue;
+    try { outcomes.push({ path, loaded: await preloadRoute(path) }); }
+    catch { outcomes.push({ path, loaded: false }); }
+  }
+  return outcomes;
+};
 

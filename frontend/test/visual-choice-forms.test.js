@@ -145,13 +145,13 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(allocations, /<InlineSelectionPicker[\s\S]*label="Ambil dana dari"/);
   assert.match(allocations, /placeholderMeta="Pilih rekening sumber dana"/);
   assert.match(funding, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
-  assert.match(accounts, /<InlineOwnershipPicker[\s\S]*legend="Kepemilikan"/);
+  assert.match(accounts, /<InlineOwnershipPicker[\s\S]*legend="Pemegang rekening"/);
   assert.match(accounts, /badge: `\$\{userRoleLabel\(member\.role\)\}/);
   assert.doesNotMatch(accounts, /name="account-ownership"/);
   assert.match(goals, /<InlineSelectionPicker[\s\S]*label="Rekening tujuan"/);
   assert.match(goals, /<InlineSelectionPicker label=\{label\}/);
   assert.match(recurring, /<InlineSelectionPicker label=\{label\}/);
-  assert.match(investments, /<InlineSelectionPicker[\s\S]*label="Saldo RDN \(opsional\)"/);
+  assert.match(investments, /<InlineSelectionPicker[\s\S]*label="Rekening RDN"/);
   assert.match(reconciliation, /<InlineSelectionPicker[\s\S]*label="Rekening"/);
 });
 

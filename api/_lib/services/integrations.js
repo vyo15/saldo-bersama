@@ -89,8 +89,15 @@ const bridgeLiveness = async (fetchImpl = globalThis.fetch, timeoutMs = BRIDGE_L
   let url;
   try {
     ({ url } = googleBridgeConfiguration());
+    const livenessUrl = new URL(url);
+    livenessUrl.searchParams.set("_sb_liveness", crypto.randomUUID());
     const startedAt = Date.now();
-    const response = await fetchWithTimeout(fetchImpl, url, { method: "GET", redirect: "follow", cache: "no-store" }, timeoutMs);
+    const response = await fetchWithTimeout(fetchImpl, livenessUrl.toString(), {
+      method: "GET",
+      headers: { "Cache-Control": "no-cache, no-store, max-age=0", Pragma: "no-cache" },
+      redirect: "follow",
+      cache: "no-store",
+    }, timeoutMs);
     const completedAt = Date.now();
     const { body } = await parseJsonResponse(response);
     if (!response.ok || !body || body.ok === false) {
@@ -140,15 +147,20 @@ export const callGoogleBridge = async (action, payload, {
   timeoutMs = 15_000,
   clockOffsetMs = 0,
   allowClockRecovery = true,
+  onClockRecovery = null,
 } = {}) => {
   const config = googleBridgeConfiguration();
   try {
     return await signedBridgePost({ ...config, action, payload, fetchImpl, timeoutMs, clockOffsetMs });
   } catch (error) {
     const normalized = normalizeBridgeCallError(error);
-    if (normalized.code !== "MESSAGE_EXPIRED" || !allowClockRecovery || clockOffsetMs) throw normalized;
+    if (normalized.code !== "MESSAGE_EXPIRED" || !allowClockRecovery) throw normalized;
+
+    // Offset yang baru saja diukur tetap dapat stale bila respons liveness berasal dari cache perantara.
+    // Ukur ulang tepat sekali, lalu tandatangani request baru tanpa memperlebar window anti-replay.
     const liveness = await bridgeLiveness(fetchImpl);
     if (!liveness.reachable) throw normalized;
+    if (typeof onClockRecovery === "function") onClockRecovery(liveness);
     try {
       return await signedBridgePost({
         ...config,
@@ -187,12 +199,14 @@ const bridgeReadiness = (bridgeConfigured, bridge) => {
 
 const probeGoogleBridgeHealth = async (fetchImpl) => {
   const liveness = await bridgeLiveness(fetchImpl);
+  let effectiveLiveness = liveness;
   try {
     const health = normalizeBridgeHealth(await callGoogleBridge("integration.health", {}, {
       fetchImpl,
       timeoutMs: BRIDGE_HEALTH_TIMEOUT_MS,
       clockOffsetMs: liveness.reachable ? liveness.clockOffsetMs : 0,
-      allowClockRecovery: !liveness.reachable,
+      allowClockRecovery: true,
+      onClockRecovery: (freshLiveness) => { effectiveLiveness = freshLiveness; },
     }));
     return {
       checked: true,
@@ -200,10 +214,10 @@ const probeGoogleBridgeHealth = async (fetchImpl) => {
       errorCode: null,
       health,
       liveness: {
-        reachable: liveness.reachable,
-        errorCode: liveness.errorCode,
-        version: liveness.version,
-        clockSkewSeconds: liveness.reachable ? Math.round(liveness.clockOffsetMs / 1_000) : null,
+        reachable: effectiveLiveness.reachable,
+        errorCode: effectiveLiveness.errorCode,
+        version: effectiveLiveness.version,
+        clockSkewSeconds: effectiveLiveness.reachable ? Math.round(effectiveLiveness.clockOffsetMs / 1_000) : null,
       },
     };
   } catch (error) {

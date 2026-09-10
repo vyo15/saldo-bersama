@@ -46,7 +46,7 @@ const NotificationRow = ({ alert, read, onOpen }) => {
   const entity = financialNotificationEntity(alert);
   const fact = financialNotificationFact(alert);
   return (
-    <button type="button" className={styles.row} data-read={read ? "true" : "false"} data-tone={tone} onClick={() => onOpen(alert)}>
+    <button type="button" data-native-enter className={styles.row} data-read={read ? "true" : "false"} data-tone={tone} onClick={() => onOpen(alert)}>
       <span className={styles.icon}><Icon aria-hidden="true" /></span>
       <span className={styles.copy}>
         <strong>{financialNotificationTitle(alert)}</strong>

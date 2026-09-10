@@ -40,7 +40,7 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
           <UserAvatar user={user} className={dashboardClass("mobile-finance-user__avatar")} />
           <div className={dashboardClass("mobile-finance-user__copy")}>
             <strong>Hai, {displayName}</strong>
-            <span>{formatPeriod(overview.periodKey)}</span>
+            <span>Keuangan keluarga · {formatPeriod(overview.periodKey)}</span>
           </div>
         </div>
         <div className={dashboardClass("mobile-finance-hero__actions")}>
@@ -191,7 +191,7 @@ const MobileNextAction = ({ alerts }) => {
   </section>;
 };
 
-const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, balanceVisible, onOpenTransactionDetail }) => {
+const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, transactionCreatorLabel, balanceVisible, onOpenTransactionDetail }) => {
   const category = categoryLookup[item.category_id];
   const Icon = transactionCategoryIcon(category, item.transaction_type);
   const title = item.description || item.merchant || category?.name || "Transaksi";
@@ -199,15 +199,15 @@ const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, 
   const contextLabel = category?.name || transactionAccountLabel(item);
   return <button type="button" className={dashboardClass("mobile-transaction-item")} onClick={() => onOpenTransactionDetail(item.transaction_id)} aria-label={`Buka detail ${title}`}>
     <span className={dashboardClass(`mobile-transaction-icon mobile-transaction-icon--${item.transaction_type || "default"}`)}><Icon aria-hidden="true" /></span>
-    <span className={dashboardClass("mobile-transaction-copy")}><strong>{title}</strong><small>{formatTransactionDate(item.transaction_date)} · {contextLabel}</small></span>
+    <span className={dashboardClass("mobile-transaction-copy")}><strong>{title}</strong><small>{formatTransactionDate(item.transaction_date)} · {contextLabel} · dicatat {transactionCreatorLabel(item)}</small></span>
     <span className={dashboardClass(`mobile-transaction-amount money--${transactionTone(item.transaction_type)}`)}>{sign}{sign ? " " : ""}<SensitiveMoney visible={balanceVisible} value={item.amount} tone={transactionTone(item.transaction_type)} /></span>
   </button>;
 };
 
-const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAccountLabel, balanceVisible, onOpenTransactionDetail, onOpenTransaction }) => (
+const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel, balanceVisible, onOpenTransactionDetail, onOpenTransaction }) => (
   <section className={dashboardClass("mobile-finance-section")} aria-labelledby="recent-transactions-title">
     <div className={dashboardClass("mobile-section-heading")}><h2 id="recent-transactions-title">Aktivitas Terbaru</h2>{recentTransactions.length ? <Link to="/transaksi">Lihat semua</Link> : null}</div>
-    {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <MobileEmptyAction action={{ label: "Catat transaksi", description: "Tambah aktivitas pertama" }} onClick={onOpenTransaction} />}
+    {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <MobileEmptyAction action={{ label: "Catat transaksi", description: "Tambah aktivitas pertama" }} onClick={onOpenTransaction} />}
   </section>
 );
 
@@ -237,7 +237,7 @@ const MobileInvestment = ({ summary, balanceVisible }) => {
 };
 
 const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, displayName, balanceVisible, onToggleBalance, onOpenTransactionDetail, onOpenTransaction, setupContent }) => {
-  const { recentTransactions, categoryLookup, transactionAccountLabel } = viewModel;
+  const { recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel } = viewModel;
   const notificationState = useFinancialNotificationReadState({ alerts: overview.alerts || [], scope: user?.uid || user?.email || "anonymous" });
   return <section className={dashboardClass("mobile-finance-dashboard")} aria-label="Ringkasan keuangan mobile">
     <h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1>
@@ -250,7 +250,7 @@ const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, 
       <MobileFinancialInsight overview={overview} balanceVisible={balanceVisible} />
       <MobileBudgetPlan overview={overview} balanceVisible={balanceVisible} />
       <MobileUpcomingSchedule overview={overview} balanceVisible={balanceVisible} />
-      <MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} onOpenTransaction={onOpenTransaction} />
+      <MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} onOpenTransaction={onOpenTransaction} />
     </div>
   </section>;
 };

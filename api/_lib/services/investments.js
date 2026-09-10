@@ -465,6 +465,27 @@ const assertOpeningPositionAvailable = async (db, portfolioId) => {
   if (!(await openingPositionAvailable(db, portfolioId))) throw appError("OPENING_POSITION_CLOSED", "Posisi awal hanya dapat ditambahkan sebelum transaksi, harga manual, rekonsiliasi, atau koreksi reguler dicatat.", 409);
 };
 
+const openingPositionInstrument = async (db, portfolio, payload) => {
+  if (!String(payload.instrument_id || "").trim()) return null;
+  const instrument = await instrumentRow(db, payload.instrument_id);
+  const duplicate = await db.one(
+    "SELECT correction_id FROM investment_corrections WHERE portfolio_id=? AND instrument_id=? AND correction_type='opening_position' LIMIT 1",
+    [portfolio.portfolio_id, instrument.instrument_id],
+  );
+  if (duplicate) throw appError("OPENING_POSITION_DUPLICATE", "Posisi awal aset ini sudah dicatat. Gunakan Koreksi bila jumlah atau modal perlu diperbaiki.", 409);
+  return instrument;
+};
+
+const openingPositionAmounts = (payload, instrument, state) => {
+  const shares = instrument ? positiveInteger(payload.shares, "Jumlah lembar") : 0;
+  const costBasis = instrument ? positiveInteger(payload.cost_basis, "Total modal") : 0;
+  const referencePrice = instrument ? positiveInteger(payload.reference_price, "Harga referensi") : 0;
+  const actualCash = payload.actual_cash === undefined || payload.actual_cash === null || payload.actual_cash === ""
+    ? state.rdn_cash
+    : nonNegativeInteger(payload.actual_cash, "Cash RDN awal");
+  return { shares, costBasis, referencePrice, actualCash, cashDelta: actualCash - state.rdn_cash };
+};
+
 export const createOpeningPosition = async (db, context) => {
   const payload = context.payload || {};
   const portfolio = await portfolioRow(db, payload.portfolio_id);
@@ -475,22 +496,15 @@ export const createOpeningPosition = async (db, context) => {
   if (positionDate > (context.today || todayJakarta())) throw appError("FUTURE_DATE", "Posisi awal tidak boleh bertanggal di masa depan.", 400);
   assertPortfolioHistoryDate(portfolio, positionDate, "Tanggal posisi awal");
   await assertChronology(db, portfolio.portfolio_id, positionDate);
-  const instrument = await instrumentRow(db, payload.instrument_id);
-  const duplicate = await db.one("SELECT correction_id FROM investment_corrections WHERE portfolio_id=? AND instrument_id=? AND correction_type='opening_position' LIMIT 1", [portfolio.portfolio_id, instrument.instrument_id]);
-  if (duplicate) throw appError("OPENING_POSITION_DUPLICATE", "Posisi awal saham ini sudah dicatat. Gunakan Koreksi bila jumlah atau modal perlu diperbaiki.", 409);
-  const shares = positiveInteger(payload.shares, "Jumlah lembar");
-  const costBasis = positiveInteger(payload.cost_basis, "Total modal");
-  const referencePrice = positiveInteger(payload.reference_price, "Harga referensi");
+  const instrument = await openingPositionInstrument(db, portfolio, payload);
   const state = await portfolioState(db, portfolio);
-  const actualCash = payload.actual_cash === undefined || payload.actual_cash === null || payload.actual_cash === ""
-    ? state.rdn_cash
-    : nonNegativeInteger(payload.actual_cash, "Cash RDN awal");
-  const cashDelta = actualCash - state.rdn_cash;
-  assertCorrectionHolding(state, instrument, shares, costBasis);
+  const { shares, costBasis, referencePrice, actualCash, cashDelta } = openingPositionAmounts(payload, instrument, state);
+  if (!instrument && cashDelta === 0) throw appError("OPENING_POSITION_NO_CHANGE", "Saldo RDN awal sudah sama dengan saldo tercatat. Tidak ada kondisi awal baru untuk disimpan.", 400);
+  if (instrument) assertCorrectionHolding(state, instrument, shares, costBasis);
   await assertCorrectionCash(db, portfolio, positionDate, cashDelta);
   const record = {
-    correction_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, correction_date: positionDate,
-    share_delta: shares, cost_basis_delta: costBasis, cash_delta: cashDelta, reason: "Posisi awal", correction_type: "opening_position",
+    correction_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument?.instrument_id || null, correction_date: positionDate,
+    share_delta: shares, cost_basis_delta: costBasis, cash_delta: cashDelta, reason: instrument ? "Posisi awal" : "Saldo awal RDN", correction_type: "opening_position",
     reference_price: referencePrice, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso(),
   };
   await db.execute(`INSERT INTO investment_corrections(correction_id,portfolio_id,instrument_id,correction_date,share_delta,cost_basis_delta,cash_delta,reason,correction_type,reference_price,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
@@ -167,21 +168,29 @@ const OpeningPositionFields = ({ form, onFieldChange, instruments, portfolio, er
   const preview = investmentOpeningPositionPreview(form, instruments);
   const instrument = preview.instrument;
   const mutualFund = preview.mutualFund;
+  const cashOnly = Boolean(form.opening_cash_only);
+  const positionDateField = <InvestmentFormField id="investment-opening-date" label="Tanggal kondisi awal" required error={errors.position_date}>
+    <TemporalInput type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />
+  </InvestmentFormField>;
   return <>
-    <InstrumentField form={form} onFieldChange={onFieldChange} instruments={instruments} error={errors.instrument_id} />
-    <div className={formStyles.formRow}>
-      <InvestmentFormField id="investment-opening-quantity" label={mutualFund ? "Jumlah unit" : "Jumlah lot"} required error={errors.opening_quantity}>
-        <input min={mutualFund ? "1" : lotStep(instrument?.lot_size)} step={mutualFund ? "1" : lotStep(instrument?.lot_size)} type="number" value={form.opening_quantity || ""} onChange={(event) => onFieldChange("opening_quantity", event.target.value)} />
-      </InvestmentFormField>
-      <InvestmentFormField id="investment-opening-date" label="Tanggal posisi awal" required error={errors.position_date}>
-        <TemporalInput type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />
-      </InvestmentFormField>
+    <div className={formStyles.openingScope} role="group" aria-label="Pilih kondisi awal yang dicatat">
+      <button type="button" className={!cashOnly ? formStyles.openingScopeActive : ""} aria-pressed={!cashOnly} onClick={() => onFieldChange("opening_cash_only", false)}>Aset + Saldo RDN</button>
+      <button type="button" className={cashOnly ? formStyles.openingScopeActive : ""} aria-pressed={cashOnly} onClick={() => onFieldChange("opening_cash_only", true)}>Saldo RDN saja</button>
     </div>
-    <MoneyInput id="investment-opening-average" label={mutualFund ? "Harga rata-rata per unit" : "Harga rata-rata beli"} required value={form.average_price || ""} error={errors.average_price} onChange={(value) => onFieldChange("average_price", value)} />
-    <MoneyInput id="investment-opening-price" label={mutualFund ? "Nilai sekarang per unit" : "Harga sekarang"} required value={form.reference_price || ""} error={errors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
-    <OpeningPositionSummary preview={preview} />
-    <MoneyInput id="investment-opening-cash" label="Saldo RDN sekarang (opsional)" value={form.actual_cash} error={errors.actual_cash} onChange={(value) => onFieldChange("actual_cash", value)} />
-    <small className={formStyles.formHint}>Kosongkan bila belum ingin menyamakan saldo RDN. Posisi aset tetap dapat dicatat; RDN canonical tetap tersedia dan saldo saat ini dipertahankan (RDN otomatis dimulai dari Rp0). Saldo RDN tercatat sekarang <Money value={portfolio.rdn_cash} />.</small>
+    {!cashOnly ? <>
+      <InstrumentField form={form} onFieldChange={onFieldChange} instruments={instruments} error={errors.instrument_id} />
+      <div className={formStyles.formRow}>
+        <InvestmentFormField id="investment-opening-quantity" label={mutualFund ? "Jumlah unit" : "Jumlah lot"} required error={errors.opening_quantity}>
+          <input min={mutualFund ? "1" : lotStep(instrument?.lot_size)} step={mutualFund ? "1" : lotStep(instrument?.lot_size)} type="number" value={form.opening_quantity || ""} onChange={(event) => onFieldChange("opening_quantity", event.target.value)} />
+        </InvestmentFormField>
+        {positionDateField}
+      </div>
+      <MoneyInput id="investment-opening-average" label={mutualFund ? "Harga rata-rata per unit" : "Harga rata-rata beli"} required value={form.average_price || ""} error={errors.average_price} onChange={(value) => onFieldChange("average_price", value)} />
+      <MoneyInput id="investment-opening-price" label={mutualFund ? "Nilai sekarang per unit" : "Harga sekarang"} required value={form.reference_price || ""} error={errors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
+      <OpeningPositionSummary preview={preview} />
+    </> : positionDateField}
+    <MoneyInput id="investment-opening-cash" label={cashOnly ? "Saldo RDN awal" : "Saldo RDN saat ini (opsional)"} required={cashOnly} value={form.actual_cash} error={errors.actual_cash} onChange={(value) => onFieldChange("actual_cash", value)} />
+    <small className={formStyles.formHint}>{cashOnly ? <>Saldo ini menjadi baseline RDN dan bukan Transfer masuk. Jika saldo tercatat sudah sama, tidak perlu menyimpan baseline baru.</> : <>Kosongkan bila saldo RDN belum ingin disamakan. Saldo yang diisi menjadi kondisi awal, bukan Transfer. Saldo RDN tercatat sekarang <Money value={portfolio.rdn_cash} />.</>}</small>
     <NotesField id="investment-opening-notes" value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
   </>;
 };
@@ -241,7 +250,7 @@ const dialogTitle = (mode) => ({
   price: "Perbarui nilai/harga manual",
   reconcile: "Cocokkan catatan investasi",
   correction: "Koreksi pencatatan investasi",
-  opening_position: "Tambah posisi awal",
+  opening_position: "Catat kondisi awal",
 })[mode];
 
 const dialogDescription = (mode) => ({
@@ -250,7 +259,7 @@ const dialogDescription = (mode) => ({
   price: "Masukkan nilai atau harga referensi terakhir dari sumber pilihan Anda. Nilai tidak diperbarui otomatis.",
   reconcile: "Bandingkan kondisi aktual dengan catatan Saldo Bersama. Pencocokan tidak menyesuaikan portfolio secara otomatis.",
   correction: "Perbaiki selisih pencatatan secara eksplisit tanpa menulis ulang histori transaksi lama.",
-  opening_position: "Catat posisi yang sudah dimiliki memakai jumlah, harga rata-rata beli, dan harga sekarang. Saldo RDN boleh disamakan nanti.",
+  opening_position: "Catat aset yang sudah dimiliki dan/atau Saldo RDN sebagai kondisi awal. Baseline ini bukan Transfer atau pembelian historis.",
 })[mode];
 
 const buildHoldingsPayload = (form, portfolio, instruments) => {
@@ -276,12 +285,13 @@ const runInvestmentAction = ({ mode, form, portfolio, portfolioInstruments }) =>
     correction: { ...base, instrument_id: form.instrument_id || undefined, share_delta: selectedInstrument ? sharesFromQuantity(form.quantity_delta || 0, selectedInstrument) : 0, cost_basis_delta: Number(form.cost_basis_delta || 0), cash_delta: Number(form.cash_delta || 0), correction_date: form.correction_date, reason: form.reason || "" },
     opening_position: (() => {
       const preview = investmentOpeningPositionPreview(form, portfolioInstruments);
+      const cashOnly = Boolean(form.opening_cash_only);
       return {
         ...base,
-        instrument_id: form.instrument_id,
-        shares: selectedInstrument ? sharesFromQuantity(form.opening_quantity, selectedInstrument) : Number(form.opening_quantity),
-        cost_basis: preview.costBasis,
-        reference_price: Number(form.reference_price),
+        instrument_id: cashOnly ? undefined : form.instrument_id,
+        shares: cashOnly ? 0 : (selectedInstrument ? sharesFromQuantity(form.opening_quantity, selectedInstrument) : Number(form.opening_quantity)),
+        cost_basis: cashOnly ? 0 : preview.costBasis,
+        reference_price: cashOnly ? 0 : Number(form.reference_price),
         actual_cash: form.actual_cash === "" || form.actual_cash === undefined || form.actual_cash === null ? undefined : Number(form.actual_cash),
         position_date: form.position_date,
         notes: form.notes || "",
@@ -301,15 +311,19 @@ const InvestmentFields = ({ mode, form, onFieldChange, activeInstruments, sellIn
   opening_position: <OpeningPositionFields form={form} onFieldChange={onFieldChange} instruments={openingInstruments} portfolio={portfolio} errors={errors} />,
 })[mode];
 
-const InvestmentDialogFooter = ({ reviewing, busy, outcomeUnknown, mode, isTrade, onEdit }) => {
+const InvestmentDialogFooter = ({ reviewing, busy, outcomeUnknown, mode, isTrade, onEdit, onCancel }) => {
   const retryLabel = outcomeUnknown ? "Coba lagi data yang sama" : "";
   if (reviewing) return <>
+    <Button disabled={busy || outcomeUnknown} onClick={onCancel}>Batal</Button>
     <Button disabled={busy || outcomeUnknown} onClick={onEdit}>Ubah</Button>
     <Button variant="primary" type="submit" form="investment-dialog-form" loading={busy}>{retryLabel || (mode === "buy" ? "Simpan catatan beli" : "Simpan catatan jual")}</Button>
   </>;
-  const labels = { opening_position: "Simpan posisi awal", price: "Simpan nilai/harga", reconcile: "Cocokkan", correction: "Simpan koreksi" };
+  const labels = { opening_position: "Simpan kondisi awal", price: "Simpan nilai/harga", reconcile: "Cocokkan", correction: "Simpan koreksi" };
   const defaultLabel = isTrade ? (mode === "buy" ? "Tinjau catatan beli" : "Tinjau catatan jual") : labels[mode] || "Simpan catatan";
-  return <Button variant="primary" type="submit" form="investment-dialog-form" loading={busy}>{retryLabel || defaultLabel}</Button>;
+  return <>
+    <Button disabled={busy || outcomeUnknown} onClick={onCancel}>Batal</Button>
+    <Button variant="primary" type="submit" form="investment-dialog-form" loading={busy}>{retryLabel || defaultLabel}</Button>
+  </>;
 };
 
 const ReconciliationNotice = ({ matched }) => <div className={`notice ${matched ? "notice--success" : "notice--warning"}`} role="status">
@@ -377,10 +391,10 @@ const initialInvestmentForm = ({ mode, portfolio, initialInstrumentId, initialDr
   const base = {
     trade_date: TODAY(), valuation_date: TODAY(), reconciliation_date: TODAY(), correction_date: TODAY(), position_date: TODAY(),
     lots: 1, actual_cash: mode === "opening_position" ? "" : portfolio?.rdn_cash ?? 0, instrument_id: initialInstrumentId || "", notes: "",
-    opening_quantity: "", average_price: "", reference_price: "", quantity_delta: 0, cost_basis_delta: 0, cash_delta: 0, reason: "",
+    opening_quantity: "", average_price: "", reference_price: "", opening_cash_only: false, quantity_delta: 0, cost_basis_delta: 0, cash_delta: 0, reason: "",
   };
   const source = initialDraft && typeof initialDraft === "object" ? initialDraft : {};
-  const allowed = ["instrument_id", "lots", "price_per_share", "trade_date", "notes", "opening_quantity", "average_price", "reference_price", "actual_cash", "position_date"];
+  const allowed = ["instrument_id", "lots", "price_per_share", "trade_date", "notes", "opening_quantity", "average_price", "reference_price", "actual_cash", "position_date", "opening_cash_only"];
   for (const key of allowed) if (Object.hasOwn(source, key)) base[key] = source[key];
   return base;
 };
@@ -447,6 +461,12 @@ const useInvestmentDialogState = ({ mode, portfolio, instruments, userRole, init
 const InvestmentDialog = ({ mode, portfolio, instruments, userRole, initialInstrumentId = "", initialDraft = null, onClose, onSuccess, onOpenCorrection, onReviewHistory, onFundRdn }) => {
   const safePortfolio = portfolio || { holdings: [], rdn_cash: 0 };
   const state = useInvestmentDialogState({ mode, portfolio: safePortfolio, instruments, userRole, initialInstrumentId, initialDraft, onClose, onSuccess, onFundRdn });
+  const guard = useUnsavedChangesGuard({
+    open: Boolean(mode && portfolio && !state.reconciliationResult),
+    value: state.form,
+    onClose,
+    blocked: state.busy || state.outcomeUnknown,
+  });
   if (!mode || !portfolio) return null;
   if (state.reconciliationResult) {
     return <Modal open title={dialogTitle(mode)} description={dialogDescription(mode)} onClose={onClose} footer={null}>
@@ -456,9 +476,9 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, initialInstr
   const reviewInstruments = mode === "buy" ? state.activeInstruments : state.sellInstruments;
   const { busy, outcomeUnknown } = state;
   const body = <InvestmentFields mode={mode} form={state.form} onFieldChange={state.onFieldChange} activeInstruments={state.activeInstruments} sellInstruments={state.sellInstruments} priceInstruments={state.priceInstruments} openingInstruments={state.openingInstruments} portfolioInstruments={state.portfolioInstruments} portfolio={portfolio} instruments={instruments} errors={state.fieldErrors} />;
-  const footer = <InvestmentDialogFooter reviewing={state.reviewing} busy={state.busy} outcomeUnknown={outcomeUnknown} mode={mode} isTrade={state.isTrade} onEdit={() => { state.setReviewing(false); }} />;
-  return (
-    <Modal open title={dialogTitle(mode)} description={dialogDescription(mode)} onClose={busy || outcomeUnknown ? undefined : onClose} dismissible={!busy && !outcomeUnknown} footer={footer}>
+  const footer = <InvestmentDialogFooter reviewing={state.reviewing} busy={state.busy} outcomeUnknown={outcomeUnknown} mode={mode} isTrade={state.isTrade} onEdit={() => { state.setReviewing(false); }} onCancel={guard.discardAndClose} />;
+  return <>
+    <Modal open title={dialogTitle(mode)} description={dialogDescription(mode)} onClose={busy || outcomeUnknown ? undefined : guard.requestClose} discardGuard={guard} discardSubject="catatan investasi" dismissible={!busy && !outcomeUnknown} footer={footer}>
       <form ref={state.formRef} id="investment-dialog-form" className={formStyles.form} onSubmit={state.submit} noValidate>
         {state.fieldErrors._form ? <div className="notice notice--danger" role="alert">{state.fieldErrors._form}</div> : null}
         {state.error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{state.error}</div> : null}
@@ -467,7 +487,7 @@ const InvestmentDialog = ({ mode, portfolio, instruments, userRole, initialInstr
         {state.reviewing ? <TradeReview mode={mode} form={state.form} instruments={reviewInstruments} portfolio={portfolio} /> : <fieldset className={formStyles.intentFieldset} disabled={outcomeUnknown}>{body}</fieldset>}
       </form>
     </Modal>
-  );
+  </>;
 };
 
 export default InvestmentDialog;

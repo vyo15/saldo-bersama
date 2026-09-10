@@ -66,6 +66,7 @@ const MobileMoreMenu = ({ open, user, initialFocusRef, onClose, onLogout }) => (
           </section>
         ))}
       <div className="mobile-menu-footer">
+        <ThemeToggle showLabel className="mobile-menu-theme" />
         <Button className="mobile-menu-logout" icon={FiLogOut} type="button" onClick={onLogout}>Keluar</Button>
       </div>
     </div>
@@ -141,13 +142,13 @@ const AppContentNotices = ({ dashboardRoute, installPrompt, logoutError, refresh
   </>
 );
 
-const PwaStatusStack = ({ offline, recovering, serviceWorkerUpdate }) => {
-  const showNetworkStatus = offline || recovering;
+const PwaStatusStack = ({ offline, degraded, recovering, serviceWorkerUpdate }) => {
+  const showNetworkStatus = offline || degraded || recovering;
   const showUpdate = serviceWorkerUpdate.updateAvailable;
   if (!showNetworkStatus && !showUpdate) return null;
   return (
     <div className="pwa-status-stack">
-      {showNetworkStatus ? <OfflineBanner recovering={recovering && !offline} /> : null}
+      {showNetworkStatus ? <OfflineBanner degraded={degraded && !offline} recovering={recovering && !offline && !degraded} /> : null}
       {showUpdate ? <UpdateAvailableNotice onUpdate={serviceWorkerUpdate.applyUpdate} blocked={serviceWorkerUpdate.updateBlocked} /> : null}
     </div>
   );
@@ -192,7 +193,7 @@ const AppShell = () => {
   const wideContentRoute = dashboardRoute || ["/laporan", "/investasi", "/notifikasi"].includes(location.pathname);
   const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
   const { installPrompt, network, notificationState, serviceWorkerUpdate } = useAppShellRuntime({ overview, user, composerOpen, refreshAll });
-  const { offline, recovering } = network;
+  const { offline, degraded, recovering } = network;
   useMobileTabScrollRestoration(location, navigationType);
   useRoutePrefetch();
   useActionPrefetch();
@@ -224,7 +225,7 @@ const AppShell = () => {
         </div>
       </div>
 
-      <PwaStatusStack offline={offline} recovering={recovering} serviceWorkerUpdate={serviceWorkerUpdate} />
+      <PwaStatusStack offline={offline} degraded={degraded} recovering={recovering} serviceWorkerUpdate={serviceWorkerUpdate} />
 
       <DesktopFloatingTransactionAdd visible={desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute} offline={offline} onClick={openTransactionComposer} />
       <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />

@@ -54,6 +54,10 @@
 .money { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold); }
 .money--positive { color: var(--positive); }
 .money--negative { color: var(--negative); }
+.money--updated-a { animation: money-value-update-a var(--motion-feedback) var(--ease-standard); }
+.money--updated-b { animation: money-value-update-b var(--motion-feedback) var(--ease-standard); }
+@keyframes money-value-update-a { 0% { background: var(--primary-soft); box-shadow: 0 0 0 .22rem var(--primary-soft); } 100% { background: transparent; box-shadow: 0 0 0 0 transparent; } }
+@keyframes money-value-update-b { 0% { background: var(--primary-soft); box-shadow: 0 0 0 .22rem var(--primary-soft); } 100% { background: transparent; box-shadow: 0 0 0 0 transparent; } }
 .status-badge { width: fit-content; padding: 5px 9px; border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: capitalize; }
 .status-badge--active { background: var(--positive-soft); color: var(--positive); }
 .status-badge--info { background: var(--info-soft); color: var(--info); }
@@ -183,7 +187,9 @@ input[type="file"] {
 .mobile-menu-link.active { background: var(--primary-soft); color: var(--primary-strong); }
 .mobile-menu-link:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
 .mobile-menu-link svg { width: 20px; height: 20px; color: var(--primary); }
-.mobile-menu-footer { padding: var(--space-3) 0 max(var(--space-2), env(safe-area-inset-bottom)); border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent); }
+.mobile-menu-footer { padding: var(--space-3) 0 max(var(--space-2), env(safe-area-inset-bottom)); border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent); display: grid; gap: var(--space-2); }
+.mobile-menu-theme { width: 100%; min-height: 50px; border-radius: .8rem; box-shadow: none; }
+.mobile-menu-theme svg { color: var(--primary); }
 .mobile-menu-logout { width: 100%; border-radius: .8rem; }
 
 .money-entry { display: grid; gap: 8px; align-content: start; }
@@ -364,7 +370,13 @@ input[type="file"] {
 }
 .pwa-banner--recovering { border-color: color-mix(in srgb, var(--positive) 42%, var(--border)); background: color-mix(in srgb, var(--positive) 10%, var(--surface)); }
 .pwa-banner--recovering > svg { color: var(--positive); }
+.pwa-banner--degraded { border-color: color-mix(in srgb, var(--warning) 44%, var(--border)); background: color-mix(in srgb, var(--warning) 10%, var(--surface)); }
+.pwa-banner--degraded > svg { color: var(--warning); }
 @keyframes pwa-status-enter { from { opacity: 0; transform: translateY(.5rem); } to { opacity: 1; transform: none; } }
 @media (min-width: 821px) { .pwa-status-stack { bottom: 1.25rem; } }
 @media (prefers-reduced-motion: reduce) { .pwa-status-stack .pwa-banner--floating { animation: none; } }
 
+
+[data-native-enter] { animation: native-item-enter var(--motion-feedback) var(--ease-enter) both; }
+@keyframes native-item-enter { from { opacity: 0; transform: translateY(.25rem); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { [data-native-enter] { animation: none; } }

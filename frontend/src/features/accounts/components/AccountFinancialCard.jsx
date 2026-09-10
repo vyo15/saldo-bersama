@@ -203,7 +203,7 @@ const MobileDetailData = ({ account, model, copied, onCopy }) => (
   <dl className={styles.mobileDetailCard}>
     <MobileDetailRow icon={FiList} label="Bank / jenis"><span>{model.bankLabel}</span></MobileDetailRow>
         <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
-    <MobileDetailRow icon={FiUsers} label="Kepemilikan"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
+    <MobileDetailRow icon={FiUsers} label="Pemegang rekening"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
     <MobileDetailRow icon={BalanceIcon} label={account.account_type === "investment" ? "Saldo RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
     {account.account_type === "investment" ? <MobileDetailRow icon={InvestmentIcon} label="Tujuan dana"><span>Investasi</span></MobileDetailRow> : <>
       <MobileDetailRow icon={BalanceIcon} label="Dana tersedia"><span className={styles.mobileFinancialValue}><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></span></MobileDetailRow>
@@ -236,7 +236,7 @@ const MobileDetailCard = ({ account, model, embedded, copied, onCopy, onEdit, on
   <section className={styles.mobileDetail} aria-labelledby={`mobile-account-${account.account_id}`} aria-label={`Detail rekening ${account.name}`}>
     <MobileDetailHeading account={account} displayLabel={model.displayLabel} embedded={embedded} readOnly={model.readOnly} />
     <MobileDetailData account={account} model={model} copied={copied} onCopy={onCopy} />
-    {model.readOnly ? <p className={styles.readOnlyNotice}>Rekening ini transparan untuk pasangan, tetapi tindakan finansial tetap mengikuti capability dari server.</p> : null}
+    {model.readOnly ? <p className={styles.readOnlyNotice}>Semua rekening transparan untuk keluarga. Rekening ini hanya dapat dioperasikan sesuai pemegang dan capability yang diberikan server.</p> : null}
     <MobileDetailActions account={account} canManage={model.canManage} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} onViewInvestment={onViewInvestment} />
   </section>
 );

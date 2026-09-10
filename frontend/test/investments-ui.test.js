@@ -63,10 +63,10 @@ test("first-time setup Investasi dapat membuat RDN Rp0 otomatis tanpa menghapus 
     read("src/shared/presentation/account.js"),
   ]);
   assert.match(setup, /AUTO_RDN_VALUE/);
-  assert.match(setup, /Lewati untuk sekarang/);
-  assert.match(setup, /RDN dibuat otomatis dengan saldo Rp0/);
+  assert.match(setup, /Buat RDN Rp0 otomatis/);
+  assert.match(setup, /Buat RDN Rp0 otomatis/);
   assert.match(setup, /auto_create_rdn: automaticRdn/);
-  assert.match(page, /Anda tidak perlu mengisi RDN lebih dulu/);
+  assert.match(page, /Tidak perlu memindahkan uang saat setup/);
   assert.match(page, />Tambah investasi<\/Button>/);
   assert.doesNotMatch(page, /Buat rekening RDN<\/Button>/);
   assert.match(continuation, /accountPrefill: \{ account_type: "investment" \}/);
@@ -192,7 +192,7 @@ test("Bank ↔ RDN memakai Transfer composer, prefill arah/nominal, lalu kembali
   assert.match(page, /amount: suggestedAmount > 0 \? String\(suggestedAmount\) : ""/);
   assert.match(page, /transaction_date: suggestedDate/);
   assert.match(page, /draft\?\.trade_date/);
-  assert.match(overview, /Isi RDN/);
+  assert.match(overview, /Top up RDN/);
   assert.match(overview, />Tarik<\/Button>/);
   assert.match(composer, /continuation/);
   assert.match(postSave, /Kembali ke pembelian/);
@@ -244,8 +244,11 @@ test("onboarding existing investment memakai lot + harga rata-rata + harga sekar
   assert.match(dialog, /Total modal/);
   assert.match(dialog, /Nilai sekarang/);
   assert.match(dialog, /Untung\/rugi belum terealisasi/);
-  assert.match(dialog, /Saldo RDN sekarang \(opsional\)/);
-  assert.match(dialog, /RDN otomatis dimulai dari Rp0/);
+  assert.match(dialog, /Saldo RDN saat ini \(opsional\)/);
+  assert.match(dialog, /Saldo RDN saja/);
+  assert.match(dialog, /baseline RDN dan bukan Transfer masuk/);
+  assert.doesNotMatch(page, /startNewInvestment/);
+  assert.match(dialog, /baseline RDN dan bukan Transfer masuk/);
   assert.match(page, /opening_position/);
   assert.match(api, /investments\.openingPositions\.create/);
   assert.match(model, /investmentOpeningPositionPreview/);

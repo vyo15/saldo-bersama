@@ -1,6 +1,7 @@
 /** Transport only: credentials, request ids, and outcome-sensitive network semantics. */
 import { createSecureRandomId } from "../../domain/security.js";
 import { ApiError, isAbortError, outcomeUnknownError, parseResponse } from "./errors.js";
+import { publishNetworkHealth } from "../networkHealth.js";
 
 // For outcome-sensitive writes, a network break or malformed success response is not
 // proof of failure. Surface an explicit unknown outcome so callers do not create a retry.
@@ -8,8 +9,10 @@ const fetchJson = async (url, options, { outcomeSensitive = false } = {}) => {
   let response;
   try {
     response = await fetch(url, options);
+    publishNetworkHealth("online");
   } catch (error) {
     if (isAbortError(error)) throw error;
+    publishNetworkHealth(typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "degraded");
     if (outcomeSensitive) throw outcomeUnknownError(error);
     throw new ApiError("Tidak dapat terhubung ke server.", { code: "NETWORK_ERROR", status: 0, cause: error });
   }
@@ -40,8 +43,14 @@ export const gatewayFetch = async (action, payload, options, signal) => fetchJso
 }, { outcomeSensitive: Boolean(options.outcomeSensitive) });
 
 export const readSession = async () => {
-  const response = await fetch("/api/session", { credentials: "include" });
-  return response.status === 401 ? null : parseResponse(response);
+  try {
+    const response = await fetch("/api/session", { credentials: "include" });
+    publishNetworkHealth("online");
+    return response.status === 401 ? null : parseResponse(response);
+  } catch (error) {
+    if (!isAbortError(error)) publishNetworkHealth(typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "degraded");
+    throw error;
+  }
 };
 
 export const createServerSession = async (firebaseIdToken) => fetchJson("/api/session", {
@@ -67,12 +76,19 @@ export const downloadExcel = async () => {
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     throw new ApiError("Export membutuhkan koneksi internet.", { code: "OFFLINE", status: 503 });
   }
-  const response = await fetch("/api/export", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json", "X-Request-ID": createSecureRandomId() },
-    body: "{}",
-  });
+  let response;
+  try {
+    response = await fetch("/api/export", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-Request-ID": createSecureRandomId() },
+      body: "{}",
+    });
+    publishNetworkHealth("online");
+  } catch (error) {
+    publishNetworkHealth(typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "degraded");
+    throw new ApiError("Export membutuhkan koneksi internet yang stabil.", { code: "NETWORK_ERROR", status: 0, cause: error });
+  }
   if (!response.ok) return parseResponse(response);
   const blob = await response.blob();
   const fileName = fileNameFromDisposition(response.headers.get("content-disposition"), "saldo-bersama.xlsx");

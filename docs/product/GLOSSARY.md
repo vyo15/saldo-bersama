@@ -2,7 +2,9 @@
 
 | Istilah | Definisi canonical |
 |---|---|
-| Rekening | Wadah saldo dengan saldo awal dan transaksi; dapat `shared` atau `personal`. |
+| Rekening | Wadah saldo dengan saldo awal dan transaksi; dapat `shared` atau `personal`. Kedua jenis tetap terlihat penuh oleh dua anggota keluarga terotorisasi. |
+| Rekening personal | Rekening yang secara operasional dipegang satu anggota keluarga. Istilah `personal` tidak berarti privat/tersembunyi; pasangan tetap dapat membaca saldo dan histori sesuai prinsip full transparency. |
+| Rekening bersama | Rekening keluarga tanpa satu pemegang personal. Capability operasi tetap ditentukan backend sesuai role. |
 | Saldo rekening | Jumlah saldo cash rekening readable non-investasi. Ini angka utama Beranda dan berbeda dari Saldo RDN/Total investasi. |
 | Saldo RDN | Saldo cash pada rekening canonical `account_type=investment`. Saldo RDN adalah dana investasi, tidak masuk Aman digunakan atau dana belum dialokasikan, dan ordinary ledger hanya memindahkannya melalui Transfer. |
 | Nilai aset | Nilai tercatat holding investasi pada harga terakhir yang diketahui dari read-model Investasi. |

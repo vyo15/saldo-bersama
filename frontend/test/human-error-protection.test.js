@@ -257,19 +257,24 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
   assert.match(transactionForm, /dismissible=\{draftGuard\.discardPrompt \|\| \(!submitting && !outcomeUnknown\)\}/);
   assert.doesNotMatch(transactionForm, /onClose=\{submitting \? \(\) => \{\} : onClose\}/);
 
-  assert.match(budgets, /dismissible=\{saveState\.status !== "submitting"\}/);
+  assert.match(budgets, /const submitting = saveState\.status === "submitting"/);
+  assert.match(budgets, /dismissible=\{!submitting\}/);
+  assert.match(budgets, /onClose=\{guard\.requestClose\}/);
   assert.match(allocations, /dismissible=\{!createMutation\.busy\}/);
   assert.match(allocations, /dismissible=\{!moveMutation\.busy\}/);
 
   assert.match(goals, /dismissible=\{!createMutation\.busy\}/);
-  assert.match(goals, /dismissible=\{editState\.status !== "submitting"\}/);
-  assert.match(goals, /dismissible=\{movementState\.status !== "submitting"\}/);
+  assert.match(goals, /const submitting = editState\.status === "submitting"/);
+  assert.match(goals, /dismissible=\{!submitting\}/);
+  assert.match(goals, /const submitting = movementState\.status === "submitting"/);
 
   assert.match(recurring, /dismissible=\{!createMutation\.busy\}/);
-  assert.match(recurring, /dismissible=\{paymentState\.status !== "submitting"\}/);
-  assert.match(recurring, /dismissible=\{editState\.status !== "submitting"\}/);
+  assert.match(recurring, /const submitting = paymentState\.status === "submitting"/);
+  assert.match(recurring, /const submitting = editState\.status === "submitting"/);
+  assert.ok((recurring.match(/dismissible=\{!submitting\}/g) || []).length >= 2);
 
-  assert.match(categories, /dismissible=\{dialogState\.status !== "submitting"\}/g);
+  assert.ok((categories.match(/const submitting = dialogState\.status === "submitting"/g) || []).length >= 2);
+  assert.ok((categories.match(/dismissible=\{!submitting\}/g) || []).length >= 2);
   assert.match(accountDialogs, /dismissible=\{!submitting\}/g);
   assert.match(members, /dismissible=\{!saving\}/);
 });

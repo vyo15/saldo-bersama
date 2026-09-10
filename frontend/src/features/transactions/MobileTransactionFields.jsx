@@ -5,7 +5,6 @@ import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
-import CostShareField from "./CostShareField.jsx";
 import MobileTransactionCategoryField from "./MobileTransactionCategoryField.jsx";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, paymentMethodLabel, quickAmountLabel } from "./transactionFormPresentation.js";
 import TransactionImpactPreview from "./components/TransactionImpactPreview.jsx";
@@ -262,24 +261,12 @@ const SubmitFeedback = ({ confirmation, submitState }) => (
   </>
 );
 
-const MobileTransactionFields = (p) => {
-  const source = p.accounts.find((item) => item.account_id === p.form.source_account_id) || null;
-  const showCostShare = p.form.transaction_type === TRANSACTION_TYPES.EXPENSE && source?.owner_scope === "shared";
-
-  return (
+const MobileTransactionFields = (p) => (
     <div className={styles.composer}>
       <ValidationSummary errors={p.errors} />
       <TypeSelector form={p.form} update={p.update} lockType={p.lockType} />
       <AmountField form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} />
       <DetailGroup {...p} />
-      <CostShareField
-        visible={showCostShare}
-        form={p.form}
-        members={p.members}
-        setForm={p.setForm}
-        onChange={p.onCostShareChange}
-        errors={p.errors}
-      />
       <PaymentMethods form={p.form} update={p.update} />
       <NotesField form={p.form} update={p.update} errors={p.errors} />
       <FundsWarning warning={p.fundsWarning} />
@@ -287,6 +274,5 @@ const MobileTransactionFields = (p) => {
       <SubmitFeedback confirmation={p.confirmation} submitState={p.submitState} />
     </div>
   );
-};
 
 export default MobileTransactionFields;

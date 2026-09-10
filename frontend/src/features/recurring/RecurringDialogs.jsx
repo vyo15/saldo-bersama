@@ -1,5 +1,6 @@
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { AccountIcon, BankTransferIcon, CashIcon, EwalletIcon, MoneyInIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
@@ -12,7 +13,6 @@ import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } fro
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
-import CostShareField from "../transactions/CostShareField.jsx";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 const FrequencyField = ({ value, onChange }) => <SelectionField label="Frekuensi" value={value} onChange={onChange} options={[{ value: "daily", label: "Harian" }, { value: "weekly", label: "Mingguan" }, { value: "biweekly", label: "Dua mingguan" }, { value: "monthly", label: "Bulanan" }, { value: "bimonthly", label: "Dua bulanan" }, { value: "quarterly", label: "Tiga bulanan" }, { value: "semiannual", label: "Semester" }, { value: "annual", label: "Tahunan" }]} />;
@@ -24,8 +24,10 @@ const AccountField = ({ label = "Rekening default", value, accounts, onChange })
 };
 const CategoryField = ({ value, categories, onChange }) => <SelectionField label="Kategori" required value={value} onChange={onChange} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />;
 
-export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgetSuggestions = {} }) => (
-  <Modal open={open} onClose={close} dismissible={!createMutation.busy} title="Tambah jadwal rutin" footer={<><Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Tambah jadwal</Button></>}>
+export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgetSuggestions = {} }) => {
+  const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: createMutation.busy });
+  return <>
+  <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="jadwal rutin baru" dismissible={!createMutation.busy} title="Tambah jadwal rutin" footer={<><Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Tambah jadwal</Button></>}>
     <form id="create-recurring-form" className="form-grid" onSubmit={createRule}>
       <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Jenis" name="recurring-kind" value={form.kind} onChange={(kind) => setForm((current) => ({ ...current, kind, category_id: "" }))} options={[{ value: "expense", label: "Pengeluaran tetap", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar rutin" }, { value: "income", label: "Pemasukan tetap", icon: MoneyInIcon, tone: "income", description: "Uang masuk rutin" }]} columns={2} descriptive wrapLabels />
@@ -40,7 +42,8 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
   </Modal>
-);
+  </>;
+};
 
 const paymentEnvelopeHint = (status, envelopes) => {
   if (status === "loading") return "Memuat Alokasi Dana aktif...";
@@ -73,7 +76,7 @@ const PaymentOverspendFields = ({ payment, setPayment, envelopeState }) => <>
   {envelopeState.allowsOverspend ? <CompactNotice tone="info" title="Melebihi dana alokasi" className="form-grid__full" role="status">Kebijakan alokasi ini mengizinkan overspend.</CompactNotice> : null}
 </>;
 
-const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, paymentEnvelopes, envelopeStatus, envelopeState, members, completeOccurrence }) => {
+const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, paymentEnvelopes, envelopeStatus, envelopeState, completeOccurrence }) => {
   const accountLabel = payment.item?.kind === "income" ? "Rekening penerima" : "Rekening pembayaran";
   const showEnvelope = payment.item?.kind === "expense";
   return <form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}>
@@ -81,21 +84,24 @@ const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, payme
     <AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }))} />
     <label className="field"><span>Tanggal aktual *</span><TemporalInput required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }))} /></label>
     {showEnvelope ? <PaymentEnvelopeField payment={payment} setPayment={setPayment} paymentEnvelopes={paymentEnvelopes} envelopeHint={paymentEnvelopeHint(envelopeStatus, paymentEnvelopes)} /> : null}
-    <CostShareField visible={showEnvelope && payment.item?.scope === "shared"} form={payment} members={members} setForm={setPayment} errors={paymentState.fieldErrors || {}} />
     <PaymentOverspendFields payment={payment} setPayment={setPayment} envelopeState={envelopeState} />
     {paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}
   </form>;
 };
 
-export const PaymentModal = ({ payment, setPayment, paymentState, paymentMutation, paymentAccounts, paymentEnvelopes, envelopeStatus, members, completeOccurrence }) => {
-  const close = () => paymentState.status !== "submitting" && setPayment((current) => ({ ...current, item: null }));
+export const PaymentModal = ({ payment, setPayment, paymentState, paymentMutation, paymentAccounts, paymentEnvelopes, envelopeStatus, completeOccurrence }) => {
+  const submitting = paymentState.status === "submitting";
+  const close = () => !submitting && setPayment((current) => ({ ...current, item: null }));
+  const guard = useUnsavedChangesGuard({ open: Boolean(payment.item), value: payment, onClose: close, blocked: submitting });
   const envelopeState = paymentEnvelopeState(payment, paymentEnvelopes);
   const title = payment.item?.kind === "income" ? "Catat pemasukan aktual" : "Catat pembayaran aktual";
   const description = payment.item ? `${payment.item.name} · rencana ${payment.item.due_date}` : "";
-  const footer = <><Button type="button" disabled={paymentState.status === "submitting"} onClick={close}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={paymentState.status === "submitting" || envelopeState.blockedByEnvelope}>Simpan aktual</Button></>;
-  return <Modal open={Boolean(payment.item)} onClose={close} dismissible={paymentState.status !== "submitting"} title={title} description={description} footer={footer}>
-    <PaymentForm payment={payment} setPayment={setPayment} paymentState={paymentState} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeStatus} envelopeState={envelopeState} members={members} completeOccurrence={completeOccurrence} />
-  </Modal>;
+  const footer = <><Button type="button" disabled={submitting} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="recurring-payment-form" variant="primary" loading={paymentMutation.busy} disabled={submitting || envelopeState.blockedByEnvelope}>Simpan aktual</Button></>;
+  return <>
+    <Modal open={Boolean(payment.item)} onClose={guard.requestClose} discardGuard={guard} discardSubject="pembayaran rutin" dismissible={!submitting} title={title} description={description} footer={footer}>
+      <PaymentForm payment={payment} setPayment={setPayment} paymentState={paymentState} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeStatus} envelopeState={envelopeState} completeOccurrence={completeOccurrence} />
+    </Modal>
+  </>;
 };
 
 const EditRuleIdentityFields = ({ editRule, setEditRule }) => <>
@@ -135,7 +141,14 @@ const EditRuleFields = (props) => <>
   <EditRuleDateFields editRule={props.editRule} setEditRule={props.setEditRule} />
 </>;
 
-export const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategories, accounts, budgetSuggestions = {} }) => <Modal open={Boolean(editRule)} onClose={() => setEditRule(null)} dismissible={editState.status !== "submitting"} title="Edit jadwal rutin" description={editRule ? `${editRule.name} · berlaku untuk jadwal berikutnya.` : ""} footer={<><Button onClick={() => setEditRule(null)} disabled={editState.status === "submitting"}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" loading={editState.status === "submitting"}>Simpan perubahan</Button></>}><form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}><EditRuleFields editRule={editRule} setEditRule={setEditRule} editCategories={editCategories} accounts={accounts} budgetSuggestions={budgetSuggestions} />{editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}</form></Modal>;
+export const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategories, accounts, budgetSuggestions = {} }) => {
+  const submitting = editState.status === "submitting";
+  const close = () => setEditRule(null);
+  const guard = useUnsavedChangesGuard({ open: Boolean(editRule), value: editRule, onClose: close, blocked: submitting });
+  return <>
+    <Modal open={Boolean(editRule)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan jadwal rutin" dismissible={!submitting} title="Edit jadwal rutin" description={editRule ? `${editRule.name} · berlaku untuk jadwal berikutnya.` : ""} footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" loading={submitting}>Simpan perubahan</Button></>}><form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}><EditRuleFields editRule={editRule} setEditRule={setEditRule} editCategories={editCategories} accounts={accounts} budgetSuggestions={budgetSuggestions} />{editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}</form></Modal>
+  </>;
+};
 
 export const RecurringConfirmations = (p) => <><ConfirmationModal open={Boolean(p.archiveRuleTarget)} title={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus aturan rutin yang belum dipakai?" : "Arsipkan aturan rutin?"} description={p.archiveRuleTarget ? (p.archiveRuleTarget.preview.canDeleteUnused ? `${p.archiveRuleTarget.item.name} hanya memiliki jadwal masa depan yang dibuat otomatis dan belum pernah dibayar, dilewati, atau terhubung transaksi.` : `${p.archiveRuleTarget.item.name} sudah memiliki riwayat. Aturan tidak dihapus permanen dan riwayat pembayaran tetap tersimpan.`) : ""} confirmLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan aturan"} reasonLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={p.archiveRuleTarget?.preview.canDeleteUnused ? "Saya memahami hanya jadwal masa depan yang belum terealisasi yang akan dibersihkan bersama aturan ini." : ""} busy={p.editState.status === "submitting"} error={p.editState.error} onCancel={() => p.editState.status !== "submitting" && p.setArchiveRuleTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveRuleTarget ? <div className="notice notice--info">Jadwal total {p.archiveRuleTarget.preview.dependencies.occurrences} · jadwal masa depan yang aman dibuat ulang {p.archiveRuleTarget.preview.dependencies.reproducible_future_occurrences} · riwayat masa lalu {p.archiveRuleTarget.preview.dependencies.past_occurrences} · dilewati/dibatalkan {p.archiveRuleTarget.preview.dependencies.cancelled_occurrences} · terhubung transaksi {p.archiveRuleTarget.preview.dependencies.transactions}.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.skipTarget)} title="Lewati periode ini?" description={p.skipTarget ? `${p.skipTarget.name} untuk ${p.skipTarget.due_date} ditandai dilewati. Tidak ada transaksi dibuat dan saldo tidak berubah. Periode berikutnya tetap aktif.` : ""} confirmLabel="Lewati periode" reasonLabel="Alasan melewati periode" requireReason busy={p.skipMutation.busy} error={p.skipError} onCancel={() => !p.skipMutation.busy && p.setSkipTarget(null)} onConfirm={p.skipOccurrence} /><ConfirmationModal open={Boolean(p.restoreOccurrenceTarget)} title="Pulihkan periode yang dilewati?" description={p.restoreOccurrenceTarget ? `${p.restoreOccurrenceTarget.name} untuk ${p.restoreOccurrenceTarget.due_date} akan kembali menjadi jadwal aktif tanpa membuat transaksi.` : ""} confirmLabel="Pulihkan periode" reasonLabel="Alasan pemulihan" requireReason busy={p.restoreOccurrenceMutation.busy} error={p.restoreOccurrenceError} onCancel={() => !p.restoreOccurrenceMutation.busy && p.setRestoreOccurrenceTarget(null)} onConfirm={p.restoreSkippedOccurrence} /><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan aktual terakhir?" description={p.reverseTarget ? `${p.reverseTarget.name} · transaksi terkait akan dibatalkan dan status jadwal dihitung ulang.` : ""} confirmLabel="Batalkan aktual" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reversePayment} /></>;
 

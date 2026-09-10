@@ -391,6 +391,88 @@ test("bridge memulihkan MESSAGE_EXPIRED sekali memakai clock offset liveness dep
   }
 });
 
+test("status integrasi mengukur ulang liveness stale lalu memulihkan MESSAGE_EXPIRED dengan request fresh", async () => {
+  const { integrationStatus } = await import("../../api/_lib/services/integrations.js");
+  const previous = {
+    url: process.env.GOOGLE_BRIDGE_WEB_APP_URL,
+    secret: process.env.GOOGLE_BRIDGE_SHARED_SECRET,
+  };
+  process.env.GOOGLE_BRIDGE_WEB_APP_URL = "https://script.google.com/macros/s/example/exec";
+  process.env.GOOGLE_BRIDGE_SHARED_SECRET = "e".repeat(64);
+  let getCount = 0;
+  let postCount = 0;
+  const livenessUrls = [];
+  const livenessHeaders = [];
+  const signedMessages = [];
+  const signatures = [];
+  const fetchImpl = async (requestUrl, options = {}) => {
+    if (options.method === "GET") {
+      getCount += 1;
+      livenessUrls.push(String(requestUrl));
+      livenessHeaders.push(options.headers || {});
+      const staleOffsetMs = getCount === 1 ? -5 * 60_000 : 0;
+      return {
+        ok: true,
+        text: async () => JSON.stringify({
+          ok: true,
+          service: "saldo-bersama-google-bridge",
+          version: 3,
+          timestamp: new Date(Date.now() + staleOffsetMs).toISOString(),
+        }),
+      };
+    }
+
+    postCount += 1;
+    const request = JSON.parse(options.body);
+    const message = JSON.parse(request.message);
+    signedMessages.push(message);
+    signatures.push(request.signature);
+    const expired = Math.abs(Date.now() - Number(message.timestamp || 0)) > 120_000;
+    return {
+      ok: true,
+      text: async () => JSON.stringify(expired
+        ? { ok: false, error: { code: "MESSAGE_EXPIRED", message: "Pesan bridge kedaluwarsa.", status: 401 } }
+        : {
+            ok: true,
+            data: {
+              mirrorConfigured: true,
+              calendarConfigured: true,
+              backupConfigured: true,
+              jobsConfigured: true,
+              triggerReady: true,
+              timestamp: new Date().toISOString(),
+            },
+          }),
+    };
+  };
+
+  try {
+    const status = await integrationStatus(
+      { batch: async () => [{ rows: [] }, { rows: [] }] },
+      { action: "integrations.status", fetchImpl },
+    );
+    assert.equal(status.bridge.reachable, true);
+    assert.equal(status.bridge.errorCode, null);
+    assert.deepEqual(status.configured, { sheets: true, calendar: true, drive: true });
+    assert.equal(getCount, 2);
+    assert.equal(postCount, 2);
+    assert.equal(new URL(livenessUrls[0]).searchParams.has("_sb_liveness"), true);
+    assert.equal(new URL(livenessUrls[1]).searchParams.has("_sb_liveness"), true);
+    assert.notEqual(livenessUrls[0], livenessUrls[1]);
+    assert.match(String(livenessHeaders[0]["Cache-Control"] || ""), /no-cache/);
+    assert.match(String(livenessHeaders[0]["Cache-Control"] || ""), /no-store/);
+    assert.equal(livenessHeaders[0].Pragma, "no-cache");
+    assert.notEqual(signedMessages[0].nonce, signedMessages[1].nonce);
+    assert.notEqual(signatures[0], signatures[1]);
+    assert.ok(Math.abs(status.bridge.liveness.clockSkewSeconds) <= 1);
+  } finally {
+    if (previous.url === undefined) delete process.env.GOOGLE_BRIDGE_WEB_APP_URL;
+    else process.env.GOOGLE_BRIDGE_WEB_APP_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.GOOGLE_BRIDGE_SHARED_SECRET;
+    else process.env.GOOGLE_BRIDGE_SHARED_SECRET = previous.secret;
+  }
+});
+
 test("health status membawa diagnosis deployment tanpa membocorkan URL atau secret", async () => {
   const { integrationStatus } = await import("../../api/_lib/services/integrations.js");
   const previous = {

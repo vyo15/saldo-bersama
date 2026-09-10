@@ -165,7 +165,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories,
   const actual = Number(item.actual_amount || 0);
   const guidance = attentionGuidance(item);
   return (
-    <Card as="article" className={styles.scheduleCard} interactive>
+    <Card as="article" className={styles.scheduleCard} interactive data-native-enter>
       <div className={styles.cardHeading}>
         <div className={styles.dateBadge} aria-label={`Jadwal ${formatDateLongIndonesia(item.due_date) || item.due_date}`}>
           <FiCalendar aria-hidden="true" />

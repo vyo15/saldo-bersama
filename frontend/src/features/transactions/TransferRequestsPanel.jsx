@@ -13,7 +13,7 @@ const displayAccount = (lookup, accountId, fallback) => lookup[accountId] ? acco
 const TransferRequestCard = ({ request, lookup, ownerMode, busyId, locked, onDecision }) => {
   const payload = request.payload || {};
   const fromLabel = displayAccount(lookup, payload.source_account_id, "Rekening Bersama");
-  const toLabel = displayAccount(lookup, payload.destination_account_id, "Rekening pribadi");
+  const toLabel = displayAccount(lookup, payload.destination_account_id, "Rekening anggota");
   const showActions = ownerMode && request.status === "pending";
   return <article className={styles.item}>
     <div className={styles.top}>
@@ -35,7 +35,7 @@ const TransferDecisionModal = ({ target, lookup, busyId, onApprove, onReject, on
   const payload = request?.payload || {};
   const approving = target?.decision === "approve";
   const sourceLabel = displayAccount(lookup, payload.source_account_id, "Rekening Bersama");
-  const destinationLabel = displayAccount(lookup, payload.destination_account_id, "Rekening pribadi");
+  const destinationLabel = displayAccount(lookup, payload.destination_account_id, "Rekening anggota");
   const confirm = async (reason) => {
     if (!request) return;
     const outcome = approving ? await onApprove(request, reason) : await onReject(request, reason);

@@ -433,11 +433,11 @@ test("every canonical product requirement is tracked in the implementation matri
   });
 });
 
-test("planned participant and transaction-line terminology follows hardened RFC vocabulary", () => {
+test("family-transparency and transaction-line terminology follows product decisions", () => {
   const requirements = read("docs/product/PRODUCT_REQUIREMENTS.md");
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
   const dictionary = read("docs/DATA_DICTIONARY.md");
-  assert.match(requirements, /payer.*beneficiary.*liable_party/s);
+  assert.match(requirements, /full transparency/i);
   assert.match(requirements, /REQ-PROD-19/);
   assert.match(requirements, /REQ-PROD-18/);
   assert.match(matrix, /REQ-PROD-19/);
@@ -454,7 +454,6 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
     "0011-transaction-lifecycle-receipts-and-usage.md",
     "0012-debt-receivable-ledger.md",
     "0014-category-hierarchy-and-goal-stages.md",
-    "0015-granular-personal-privacy.md",
     "0019-transaction-line-items.md",
   ];
 
@@ -466,6 +465,13 @@ test("schema-changing roadmap gaps have RFC status that matches implementation s
     assert.match(rfcSource, new RegExp(`^# ${escapeRegExp(rfcId)}\\b`, "m"));
     assert.match(rfcSource, /Status:\*{0,2}\s*Proposed/i);
   });
+
+
+  const rejectedPrivacyRfc = read("docs/rfc/0015-granular-personal-privacy.md");
+  assert.match(rfcIndex, /0015-granular-personal-privacy\.md/);
+  assert.match(roadmap, /RFC-0015/);
+  assert.match(rejectedPrivacyRfc, /Status:\*{0,2}\s*Rejected/i);
+  assert.match(rejectedPrivacyRfc, /full transparency/i);
 
   const acceptedRfcFiles = [
     "0013-contribution-and-cost-sharing.md",

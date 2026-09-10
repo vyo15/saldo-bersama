@@ -410,7 +410,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
       <header className={styles.mobileStackHeader}>
         <div className={styles.mobileStackHeaderCopy}>
           <strong id="mobile-account-stack-title" className={styles.mobileStackHeaderTitle}>Rekening</strong>
-          <PageInfoButton title="Tentang Rekening" label="Tentang Rekening" className={styles.mobileStackHeaderInfoButton}>Kelola rekening pribadi, pasangan, dan bersama. {ACCOUNT_BALANCE_GUIDANCE}</PageInfoButton>
+          <PageInfoButton title="Tentang Rekening" label="Tentang Rekening" className={styles.mobileStackHeaderInfoButton}>Kelola seluruh rekening keluarga—yang dipegang Anda, pasangan, maupun bersama. {ACCOUNT_BALANCE_GUIDANCE}</PageInfoButton>
         </div>
         <div className={styles.mobileStackHeaderActions}>
           {ownerMode ? <button type="button" className={`${styles.mobileStackHeaderButton} ${styles.mobileStackHeaderButtonPrimary}`} data-preload-action="accountEditor" onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /><span>Tambah</span></button> : null}

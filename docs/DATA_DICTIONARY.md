@@ -74,7 +74,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `investment_trades`: `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, `cash_amount` semuanya integer; `notes` adalah catatan opsional maks. 500 karakter; service/integrity memastikan lembar = lot × lot size, gross = lembar × harga, buy cash = gross + fee, sell cash = gross - fee.
 - `investment_valuations.price_per_share`: integer positif; snapshot harga tidak mengubah cash/ledger. Harga read-model paling baru dapat berasal dari valuation atau trade terakhir.
 - `investment_reconciliations.recorded_*` adalah snapshot state system **as-of `reconciliation_date`** dan `actual_*` adalah input broker user. `difference_json` hanya diagnosis; tidak mengubah data finansial.
-- `investment_corrections.share_delta`, `cost_basis_delta`, `cash_delta`: delta eksplisit append-only. `correction_type` membedakan `correction` vs `opening_position`; opening position juga dapat menyimpan `reference_price` dan `notes`. Correction reguler hanya Administrator, sedangkan opening position mengikuti operability portfolio dan hanya tersedia sebelum aktivitas reguler.
+- `investment_corrections.share_delta`, `cost_basis_delta`, `cash_delta`: delta eksplisit append-only. `correction_type` membedakan `correction` vs `opening_position`; opening position juga dapat menyimpan `reference_price` dan `notes`. Untuk baseline Saldo RDN tanpa aset, `instrument_id` boleh `NULL`, share/cost delta tetap nol, dan `cash_delta` wajib nonzero. Correction reguler hanya Administrator, sedangkan opening position mengikuti operability portfolio dan hanya tersedia sebelum aktivitas reguler.
 - `transactions.cost_share_mode`: `unspecified`, `equal`, atau `percentage`. Hanya expense shared yang boleh memiliki mode selain `unspecified`.
 - `transactions.cost_share_json`: JSON snapshot server-side berisi `{user_id,basis_points,share_amount}`. Total `basis_points` wajib 10.000 dan total `share_amount` wajib sama dengan `transactions.amount`; field tidak dipercaya dari client.
 - Transfer wajib source dan destination berbeda.
@@ -103,11 +103,10 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
-- transaction lifecycle, participant role eksplisit (`payer`, `beneficiary`, `liable_party`), receipt reference, draft/planned: RFC-0011;
+- transaction lifecycle, receipt reference, draft/planned: RFC-0011; participant payer/beneficiary/liable_party hanya dapat dihidupkan kembali bila positioning produk berubah;
 - obligation/debt/receivable/settlement: RFC-0012;
-- payer, beneficiary, actual contribution, settlement, dan template split lanjutan: follow-up RFC-0013;
+- relasi refund ke expense asli dan compatibility split historis: follow-up RFC-0013;
 - category parent dan goal stage: RFC-0014;
-- account visibility policy/backend projection: RFC-0015;
 - transaction line item multi-kategori/multi-Kebutuhan dengan satu cash movement: RFC-0019.
 
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.

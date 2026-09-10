@@ -1,11 +1,19 @@
 # RFC-0013 Contribution and Cost Sharing
 
-**Status:** Accepted, MVP implemented; follow-up design hardened but not implemented
+**Status:** Accepted for schema compatibility; product split UI superseded by full-family model
 **Owner:** Product owner
 **Reviewers:** Backend, privacy/security, frontend, QA
 **Date:** 2026-08-02
 **Decision date:** 2026-08-19
-**Follow-up review:** 2026-08-21 against schema v11
+**Follow-up review:** 2026-09-10 against full-transparency family model
+
+## Product amendment 2026-09-10
+
+Saldo Bersama menetapkan pengeluaran sebagai pengeluaran keluarga, bukan saldo hutang internal suami/istri. Karena itu UI canonical transaksi dan pembayaran Jadwal Rutin baru tidak lagi menawarkan `equal`/`percentage`, dan Laporan tidak lagi menampilkan panel pembagian beban sebagai analitik utama.
+
+Kolom `cost_share_mode`/`cost_share_json`, validation backend, integrity, backup/restore, export, dan response `costShareExpenses` tetap dipertahankan agar histori schema v11 dan client lama tidak rusak. Transaksi existing dengan snapshot split tidak diubah atau di-backfill. Transaksi baru dari UI canonical menggunakan `unspecified`.
+
+Payer/beneficiary/actual contribution/settlement internal tidak menjadi roadmap canonical selama positioning produk tetap satu keuangan keluarga. Relasi refund ke expense asli tetap gap valid karena dibutuhkan untuk koreksi finansial deterministik.
 
 ## Problem
 

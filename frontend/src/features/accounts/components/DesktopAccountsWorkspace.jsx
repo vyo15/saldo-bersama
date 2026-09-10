@@ -195,7 +195,7 @@ const SelectedAccountHeroFacts = ({ account, investment }) => (
       <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></dd></div>
     </>}
     <div><dt>No. rekening</dt><dd>{account.account_number ? formatAccountNumber(account.account_number, { placeholder: false }) : "Belum diisi"}</dd></div>
-    <div><dt>Kepemilikan</dt><dd>{accountOwnershipLabel(account)}</dd></div>
+    <div><dt>Pemegang rekening</dt><dd>{accountOwnershipLabel(account)}</dd></div>
   </dl>
 );
 

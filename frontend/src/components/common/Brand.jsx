@@ -3,7 +3,7 @@ const Brand = ({ compact = false }) => (
     <img className="brand-mark" src="/brand/saldo-bersama-mark.png" width="320" height="320" alt="" aria-hidden="true" decoding="async" />
     <span className="brand-copy">
       <strong className="brand-wordmark"><span>Saldo</span> <span>Bersama</span></strong>
-      <small>Keuangan pribadi dan bersama</small>
+      <small>Keuangan keluarga, transparan bersama</small>
     </span>
   </div>
 );

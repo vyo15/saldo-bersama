@@ -316,7 +316,7 @@ test("selector responsive tidak boleh menggantung sebelum selector berikutnya", 
 });
 
 
-test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan memakai swipe canonical", async () => {
+test("menu mobile menyediakan kontrol tema canonical, aman saat route berubah, dan memakai swipe canonical", async () => {
   const [shell, components, modal, modalStyles] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
     read("src/styles/components.css"),
@@ -324,7 +324,7 @@ test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan 
     read("src/components/common/Modal.module.css"),
   ]);
   assert.match(shell, /item\.ownerOnly \|\| user\?\.role === "owner"/);
-  assert.doesNotMatch(shell, /ThemeToggle showLabel/);
+  assert.match(shell, /<ThemeToggle showLabel className="mobile-menu-theme" \/>/);
   assert.doesNotMatch(shell, /mobile-menu-quick-add/);
   assert.match(shell, /!dashboardRoute && !transactionsRoute/);
   assert.match(shell, /mobileMenuRoute === location\.pathname/);
@@ -337,7 +337,7 @@ test("menu mobile tidak menduplikasi kontrol tema, aman saat route berubah, dan 
   assert.match(shell, /mobile-menu-logout/);
   assert.match(components, /\.mobile-menu-link \{[^}]*border:\s*0;/);
   assert.match(components, /\.mobile-menu-footer \{[^}]*safe-area-inset-bottom/);
-  assert.doesNotMatch(components, /mobile-menu-theme/);
+  assert.match(components, /\.mobile-menu-theme \{[^}]*width:\s*100%;[^}]*min-height:\s*50px;/s);
   assert.match(modal, /mobileSwipeToClose = true/);
   assert.match(modal, /data-mobile-swipe-to-close/);
   assert.match(modal, /onPointerDown|swipeHandlers/);

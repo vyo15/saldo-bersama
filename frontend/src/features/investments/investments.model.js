@@ -140,7 +140,7 @@ export const investmentActivityLabel = (activity = {}) => {
   const ticker = activity.ticker || "saham";
   if (activity.activity_type === "trade") return `${activity.trade_type === "buy" ? "Pembelian dicatat" : "Penjualan dicatat"} · ${ticker}`;
   if (activity.activity_type === "valuation") return `${activity.asset_type === "mutual_fund" ? "Nilai manual diperbarui" : "Harga manual diperbarui"} · ${ticker}`;
-  if (activity.activity_type === "opening_position") return `Posisi awal dicatat · ${ticker}`;
+  if (activity.activity_type === "opening_position") return activity.instrument_id ? `Posisi awal dicatat · ${ticker}` : "Saldo awal RDN dicatat";
   return `Koreksi dicatat · ${activity.instrument_id ? ticker : "Saldo RDN"}`;
 };
 
@@ -277,10 +277,23 @@ const openingPositionOverflowErrors = (form, instruments, { quantityError, avera
   return errors;
 };
 
-const validateOpeningPosition = (form, context) => {
+const openingPositionCashError = (form, portfolio, cashOnly) => {
+  const cashMissing = form.actual_cash === "" || form.actual_cash === undefined || form.actual_cash === null;
+  if (cashMissing) return cashOnly ? "Saldo RDN awal wajib diisi." : "";
+
+  const cashError = nonNegativeIntegerError(form.actual_cash, "Saldo RDN awal");
+  if (cashError) return cashError;
+  if (cashOnly && Number(form.actual_cash) === Number(portfolio?.rdn_cash || 0)) {
+    return "Saldo RDN awal sudah sama dengan saldo tercatat; tidak ada baseline baru untuk disimpan.";
+  }
+  return "";
+};
+
+const openingPositionAssetErrors = (form, context) => {
   const errors = {};
   const instrument = instrumentForMode("opening_position", form, context.instruments, context.portfolio);
-  if (!instrument) errors.instrument_id = "Pilih saham untuk posisi awal.";
+  if (!instrument) errors.instrument_id = "Pilih aset untuk kondisi awal.";
+
   const quantityError = investmentQuantityError(
     form.opening_quantity,
     instrument || {},
@@ -288,16 +301,21 @@ const validateOpeningPosition = (form, context) => {
   );
   const averageError = positiveIntegerError(form.average_price, "Harga rata-rata beli");
   const priceError = positiveIntegerError(form.reference_price, "Harga sekarang");
-  const cashError = form.actual_cash === "" || form.actual_cash === undefined || form.actual_cash === null
-    ? ""
-    : nonNegativeIntegerError(form.actual_cash, "Saldo RDN sekarang");
-  const dateError = requiredDateError(form.position_date, "Tanggal posisi awal", context.today);
   if (quantityError) errors.opening_quantity = quantityError;
   if (averageError) errors.average_price = averageError;
   if (priceError) errors.reference_price = priceError;
-  Object.assign(errors, openingPositionOverflowErrors(form, context.instruments, { quantityError, averageError, priceError }));
-  if (cashError) errors.actual_cash = cashError;
+  return Object.assign(errors, openingPositionOverflowErrors(form, context.instruments, { quantityError, averageError, priceError }));
+};
+
+const validateOpeningPosition = (form, context) => {
+  const errors = {};
+  const cashOnly = Boolean(form.opening_cash_only);
+  const dateError = requiredDateError(form.position_date, "Tanggal kondisi awal", context.today);
   if (dateError) errors.position_date = dateError;
+
+  const cashError = openingPositionCashError(form, context.portfolio, cashOnly);
+  if (cashError) errors.actual_cash = cashError;
+  if (!cashOnly) Object.assign(errors, openingPositionAssetErrors(form, context));
   if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
   return errors;
 };

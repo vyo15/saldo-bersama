@@ -111,7 +111,7 @@ const portfolioActionState = ({ portfolio, instruments, owner }) => {
   const hasPriceInstrument = instruments.some((item) => heldIds.has(item.instrument_id));
   let guidance = "";
   if (!hasBuyInstrument) guidance = missingBuyInstrumentGuidance({ hasPriceInstrument, owner });
-  else if (!hasRdnBalance) guidance = "Isi Saldo RDN terlebih dahulu sebelum mencatat pembelian investasi.";
+  else if (!hasRdnBalance) guidance = "Top up Saldo RDN terlebih dahulu sebelum mencatat pembelian investasi.";
   else if (!hasHolding) guidance = "Catat penjualan dan Perbarui harga tersedia setelah portofolio memiliki holding saham.";
   else if (!hasSellableHolding) guidance = unsellableHoldingGuidance(owner);
   else if (!hasPriceInstrument) guidance = "Belum ada aset yang dapat diberi nilai manual.";
@@ -153,7 +153,7 @@ const PortfolioActions = ({ portfolio, instruments, owner, onAction, onSetup }) 
       <div className={portfolioStyles.sheetActionList}>
         <SheetAction icon={FiEdit3} title="Perbarui nilai" description="Perbarui nilai referensi manual" disabled={!state.hasPriceInstrument} onClick={() => runMoreAction(() => onAction("price", portfolio))} />
         <SheetAction icon={FiRefreshCw} title="Cocokkan" description="Verifikasi Saldo RDN dan holding aktual" onClick={() => runMoreAction(() => onAction("reconcile", portfolio))} />
-        {portfolio.opening_position_available ? <SheetAction icon={FiPlus} title="Posisi awal" description="Catat aset yang sudah dimiliki" disabled={!state.hasBuyInstrument} onClick={() => runMoreAction(() => onAction("opening_position", portfolio))} /> : null}
+        {portfolio.opening_position_available ? <SheetAction icon={FiPlus} title="Kondisi awal" description="Catat aset lama atau Saldo RDN awal" onClick={() => runMoreAction(() => onAction("opening_position", portfolio))} /> : null}
         {owner ? <SheetAction icon={FiEdit3} title="Koreksi catatan" description="Perbaiki selisih yang sudah diverifikasi" onClick={() => runMoreAction(() => onAction("correction", portfolio))} /> : null}
       </div>
     </Modal>
@@ -165,7 +165,7 @@ const RdnPanel = ({ portfolio, onTransfer }) => {
   return <section className={portfolioStyles.rdnPanel} aria-label={`Saldo RDN ${portfolio.name}`}>
     <div className={portfolioStyles.rdnPanelBalance}><span>Saldo RDN</span><strong><Money value={cash} /></strong><small>{rdnLabel(portfolio)}</small></div>
     {portfolio.can_operate ? <div className={portfolioStyles.rdnPanelActions}>
-      <Button icon={FiArrowDownLeft} onClick={() => onTransfer("fund", portfolio)}>Isi RDN</Button>
+      <Button icon={FiArrowDownLeft} onClick={() => onTransfer("fund", portfolio)}>Top up RDN</Button>
       <Button icon={FiArrowUpRight} disabled={cash <= 0} onClick={() => onTransfer("withdraw", portfolio)}>Tarik</Button>
     </div> : null}
   </section>;
@@ -184,7 +184,7 @@ const HoldingCard = ({ holding, onOpenDetail }) => {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenDetail(); }
   };
   return (
-    <article className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`} role="button" tabIndex="0" onClick={onOpenDetail} onKeyDown={openOnKeyboard} aria-label={`Buka rincian ${holding.ticker || "aset"}`}>
+    <article data-native-enter className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`} role="button" tabIndex="0" onClick={onOpenDetail} onKeyDown={openOnKeyboard} aria-label={`Buka rincian ${holding.ticker || "aset"}`}>
       <div className={holdingStyles.holdingIdentity}>
         <InvestmentAssetLogo ticker={holding.ticker} className={holdingStyles.stockLogo} />
         <div>
@@ -218,14 +218,14 @@ const ActivityValue = ({ activity }) => {
     : `${(Number(shares || 0) / lotSize).toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
   if (activity.activity_type === "trade") return <><span>{activity.trade_type === "buy" ? "Saldo RDN keluar" : "Saldo RDN masuk"}</span><Money value={cash} /></>;
   if (activity.activity_type === "valuation") return <><span>Harga referensi</span><Money value={activity.price_per_share} /></>;
-  if (activity.activity_type === "opening_position") return <><span>Posisi awal</span><strong>{quantity(activity.share_delta)}</strong></>;
+  if (activity.activity_type === "opening_position") return activity.instrument_id ? <><span>Posisi awal</span><strong>{quantity(activity.share_delta)}</strong></> : <><span>Saldo awal RDN</span><Money value={activity.cash_amount} /></>;
   if (cash !== 0) return <><span>Delta Saldo RDN</span><Money value={cash} /></>;
   if (Number(activity.share_delta || 0) !== 0) return <><span>Delta holding</span><strong>{Number(activity.share_delta || 0) > 0 ? "+" : ""}{quantity(activity.share_delta)}</strong></>;
   return <span>Koreksi tercatat</span>;
 };
 
 const ActivityItem = ({ activity, portfolioName = "" }) => (
-  <li className={activityStyles.activityItem}>
+  <li className={activityStyles.activityItem} data-native-enter>
     <span className={activityStyles.activityIcon} aria-hidden="true"><FiActivity /></span>
     <div className={activityStyles.activityCopy}>
       <strong>{investmentActivityLabel(activity)}</strong>
@@ -245,7 +245,7 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
   const visibleMutualFunds = showAllHoldings ? mutualFundHoldings : mutualFundHoldings.slice(0, 4);
   const canToggleHoldings = stockHoldings.length > 4 || mutualFundHoldings.length > 4;
   return (
-    <Card as="article" className={portfolioStyles.portfolioCard}>
+    <Card as="article" className={portfolioStyles.portfolioCard} data-native-enter>
       <header className={portfolioStyles.portfolioHeader}>
         <div className={portfolioStyles.portfolioTitleBlock}>
           <span className="sr-only">Sumber catatan</span>
@@ -275,7 +275,7 @@ const PortfolioCard = ({ portfolio, instruments, owner, onAction, onSetup, onTra
           <div className={sharedStyles.sectionHeading}><div><h3>Reksa Dana</h3></div><span>{mutualFundHoldings.length.toLocaleString("id-ID")} produk</span></div>
           <div className={holdingStyles.holdings}>{visibleMutualFunds.map((holding) => <HoldingCard key={holding.instrument_id} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} />)}</div>
         </> : null}
-        {!portfolio.holdings.length ? <p className={sharedStyles.inlineEmpty}>Belum ada aset. Catat posisi awal yang sudah dimiliki atau pembelian yang sudah benar-benar terjadi di aplikasi investasi.</p> : null}
+        {!portfolio.holdings.length ? <p className={sharedStyles.inlineEmpty}>Belum ada aset. Catat kondisi awal bila Anda sudah punya investasi, atau Top up RDN lalu catat pembelian baru setelah setup selesai.</p> : null}
       </section>
 
     </Card>
