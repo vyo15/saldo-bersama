@@ -467,6 +467,7 @@ Full reset harus diuji pada database terisolasi: preview mencakup accounts/categ
 - Carousel Rekening mobile untuk e-wallet wajib merender asset canonical tanpa overlay gelap tambahan; clipping memakai satu `stackClip` rounded root, image e-wallet boleh overscan di dalam root, dan regression tidak boleh mengunci `clip-path` legacy.
 
 - Katalog aset prototype: dialog **Tambah aset** wajib menyediakan switch `Saham LQ45 / Reksa Dana`, pencarian, target sentuh >=44px, dan tidak merender form master manual. Saham tetap dibatasi ke BBCA/BBRI/BMRI/TLKM/ASII/ICBP/ANTM dengan logo transparan dan kuantitas user-facing **lot-only**; reksa dana dibatasi ke IHAJJ/Reksa Dana Haji Syariah dan CAPFIX/Capital Fixed Income Fund dengan logo transparan, `exchange=REKSADANA`, `lot_size=1`, kuantitas `unit`, dan nilai per unit. Aset yang sudah ada di instrument registry tidak ditawarkan ulang. Selector buy/sell/price/opening position memakai logo yang sama ketika ticker dikenali dan fallback mark ketika tidak. Tidak ada market discovery, NAV live, atau tambah manual.
+- Daftar Aset Investasi mobile menampilkan `price_per_share` sebagai **Rp… / saham** atau **Rp… / unit** di bawah identitas aset, tetap mempertahankan nilai total + return di sisi kanan, dan memakai fallback “Harga belum dicatat” bila belum ada harga. Label tipe aset chip tidak boleh mengambil ruang yang sama karena filter Semua/Saham/Reksa Dana sudah menyediakan konteks. Desktop tetap boleh memakai metric harga lengkap agar informasi tidak diduplikasi berlebihan.
 - Dashboard mobile quality contract: regression target sentuh Alokasi menguji `.mobile-quick-action` canonical (min-height 64px) dan metadata aktivitas menguji `.mobile-transaction-copy small` dengan `--font-size-xs`; selector `.mobile-allocation-card__footer` dan `.mobile-transaction-item > div small` adalah contract lama dan tidak boleh diwajibkan kembali.
 
 ## Regression audit 9 September 2026 — financial flow findings
@@ -484,6 +485,8 @@ Full reset harus diuji pada database terisolasi: preview mencakup accounts/categ
 ## Native-feel regression contract
 
 Quality gate source/browser harus menjaga hal berikut:
+
+- rendered browser smoke harus portable di Windows dan GitHub Actions Linux: browser memakai remote-debugging port ephemeral (`--remote-debugging-port=0`) + `DevToolsActivePort`, bukan port acak hard-coded; startup memantau exit browser dan menyertakan tail stderr aman saat gagal agar CI tidak berhenti dengan pesan endpoint generik tanpa diagnosis;
 
 - preset skeleton feature utama tetap berbeda secara geometri dan tidak mengisi placeholder dengan angka finansial palsu; full-screen `LoadingScreen` tidak kembali menjadi default feature loader;
 - user-triggered lazy boundary tidak menggunakan `fallback={null}` dan modal/sheet mempunyai feedback shell-first;

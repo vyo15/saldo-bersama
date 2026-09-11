@@ -22,6 +22,9 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.match(overview, />Semua<\/button>/);
   assert.match(overview, />Saham<\/button>/);
   assert.match(overview, />Reksa Dana<\/button>/);
+  assert.match(overview, /<Money value=\{holding\.price_per_share\} \/> \/ \{mutualFund \? "unit" : "saham"\}/);
+  assert.match(overview, /Harga belum dicatat/);
+  assert.doesNotMatch(overview, /className=\{holdingStyles\.assetType\}/);
   assert.doesNotMatch(`${page}\n${overview}`, /Top up RDN|Tarik RDN|Sumber catatan|Ajaib|Bibit|Indodax|Market Movers|Top Gainers|Top Losers/i);
 });
 
@@ -40,16 +43,21 @@ test("aksi Investasi berada pada detail aset dan tetap capability-driven", async
 });
 
 test("styling Investasi memakai token tema dan kontrak responsive mobile canonical", async () => {
-  const styles = await Promise.all([
+  const styleNames = [
     "InvestmentsPage.module.css",
     "InvestmentForm.module.css",
     "InvestmentHero.module.css",
     "HoldingCard.module.css",
     "InvestmentActivity.module.css",
     "InvestmentShared.module.css",
-  ].map((name) => read(`src/features/investments/${name}`))).then((parts) => parts.join("\n"));
+  ];
+  const styleParts = await Promise.all(styleNames.map((name) => read(`src/features/investments/${name}`)));
+  const styles = styleParts.join("\n");
+  const holdingStyles = styleParts[styleNames.indexOf("HoldingCard.module.css")];
   assert.match(styles, /@media \(max-width: 900px\)/);
   assert.match(styles, /\.holdingMetrics \{[\s\S]*?display:\s*none;/);
+  assert.match(holdingStyles, /\.unitPrice \{\s*display:\s*none;[\s\S]*?@media \(max-width: 620px\) \{[\s\S]*?\.unitPrice \{\s*display:\s*block;/);
+  assert.doesNotMatch(styles, /\.assetType\s*\{/);
   assert.match(styles, /\.segment \{[\s\S]*?display:\s*flex;/);
   assert.match(styles, /\.assetFilters/);
   assert.match(styles, /font-size:\s*var\(--mobile-native-control-font-size\);/);

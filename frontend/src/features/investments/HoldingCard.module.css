@@ -220,6 +220,7 @@
 
   .holdingNameRow > span,
   .holdingIdentity p,
+  .unitPrice,
   .holdingValueBlock span,
   .holdingValueBlock small {
     font-size: .75rem;
@@ -304,16 +305,18 @@
   outline-offset: 2px;
 }
 
-.assetType {
-  display: inline-flex;
-  width: fit-content;
-  margin-top: .25rem;
-  padding: .12rem .4rem;
-  border-radius: var(--radius-pill);
-  background: var(--surface-soft);
+.unitPrice {
+  display: none;
+  margin-top: .2rem;
   color: var(--text-muted);
   font-size: .75rem;
   font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
+}
+
+.unitPrice :global(.money) {
+  color: inherit;
+  font: inherit;
 }
 
 @media (max-width: 900px) {
@@ -327,6 +330,10 @@
 @media (max-width: 620px) {
   .assetListCard {
     padding: var(--space-3);
+  }
+
+  .unitPrice {
+    display: block;
   }
 
   .assetFilters {

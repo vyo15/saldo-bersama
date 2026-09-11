@@ -8,6 +8,11 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(root, "frontend", "dist");
+const DEVTOOLS_ACTIVE_PORT_FILE = "DevToolsActivePort";
+const BROWSER_START_ATTEMPTS = 200;
+const CDP_TARGET_ATTEMPTS = 120;
+const POLL_INTERVAL_MS = 100;
+const STDERR_TAIL_LIMIT = 16 * 1024;
 const CONTENT_TYPES = new Map([
   [".html", "text/html; charset=utf-8"], [".js", "text/javascript; charset=utf-8"], [".css", "text/css; charset=utf-8"],
   [".json", "application/json; charset=utf-8"], [".svg", "image/svg+xml"], [".png", "image/png"], [".webp", "image/webp"],
@@ -80,18 +85,57 @@ class Cdp {
   }
 }
 
-const connectCdp = async (port) => {
+const browserDiagnostic = (child, stderrTail) => {
+  const exit = child.exitCode !== null ? `exit=${child.exitCode}` : child.signalCode ? `signal=${child.signalCode}` : "process masih hidup";
+  const detail = String(stderrTail || "").trim().split(/\r?\n/).filter(Boolean).slice(-8).join(" | ");
+  return `${exit}${detail ? `; stderr: ${detail}` : ""}`;
+};
+
+const waitForDebugPort = async ({ profile, child, getStderrTail, getSpawnError }) => {
+  const activePortPath = path.join(profile, DEVTOOLS_ACTIVE_PORT_FILE);
+  for (let attempt = 0; attempt < BROWSER_START_ATTEMPTS; attempt += 1) {
+    const spawnError = getSpawnError();
+    if (spawnError) throw new Error(`Browser tidak dapat dijalankan (${spawnError.message}).`);
+    if (child.exitCode !== null || child.signalCode) {
+      throw new Error(`Browser berhenti sebelum DevTools siap (${browserDiagnostic(child, getStderrTail())}).`);
+    }
+    try {
+      const source = readFileSync(activePortPath, "utf8");
+      const port = Number.parseInt(String(source).split(/\r?\n/, 1)[0], 10);
+      if (Number.isInteger(port) && port > 0 && port <= 65535) return port;
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        // Chrome dapat menulis file secara bertahap; retry sampai startup timeout.
+      }
+    }
+    await sleep(POLL_INTERVAL_MS);
+  }
+  throw new Error(`Chrome DevTools endpoint tidak siap (${browserDiagnostic(child, getStderrTail())}).`);
+};
+
+const connectCdp = async ({ port, child, getStderrTail }) => {
   let target;
-  for (let attempt = 0; attempt < 80; attempt += 1) {
+  let lastError;
+  for (let attempt = 0; attempt < CDP_TARGET_ATTEMPTS; attempt += 1) {
+    if (child.exitCode !== null || child.signalCode) {
+      throw new Error(`Browser berhenti saat menunggu target DevTools (${browserDiagnostic(child, getStderrTail())}).`);
+    }
     try {
       const response = await fetch(`http://127.0.0.1:${port}/json/list`);
-      const targets = await response.json();
-      target = targets.find((item) => item.type === "page");
-      if (target?.webSocketDebuggerUrl) break;
-    } catch { /* browser not ready */ }
-    await sleep(100);
+      if (response.ok) {
+        const targets = await response.json();
+        target = targets.find((item) => item.type === "page");
+        if (target?.webSocketDebuggerUrl) break;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+    await sleep(POLL_INTERVAL_MS);
   }
-  assert(target?.webSocketDebuggerUrl, "Chrome DevTools endpoint tidak siap.");
+  if (!target?.webSocketDebuggerUrl) {
+    const networkDetail = lastError?.message ? `; probe=${lastError.message}` : "";
+    throw new Error(`Target Chrome DevTools tidak siap (${browserDiagnostic(child, getStderrTail())}${networkDetail}).`);
+  }
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
@@ -100,13 +144,24 @@ const connectCdp = async (port) => {
   return { cdp: new Cdp(socket), socket };
 };
 
+const navigate = async (cdp, url) => {
+  const result = await cdp.send("Page.navigate", { url });
+  if (result?.errorText) throw new Error(`Browser gagal membuka smoke server (${result.errorText}).`);
+};
+
 const waitReady = async (cdp) => {
+  let state = null;
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const ready = await cdp.evaluate(`document.readyState === "complete" && Boolean(document.querySelector("button, a, input, [tabindex]"))`);
-    if (ready) return;
+    state = await cdp.evaluate(`(() => ({
+      ready: document.readyState === "complete",
+      controls: document.querySelectorAll("button, a, input, [tabindex]").length,
+      url: location.href,
+      title: document.title
+    }))()`);
+    if (state?.ready && state.controls > 0) return;
     await sleep(100);
   }
-  throw new Error("Login UI tidak selesai dirender untuk browser smoke.");
+  throw new Error(`Login UI tidak selesai dirender untuk browser smoke (url=${state?.url || "unknown"}, ready=${state?.ready ?? "unknown"}, controls=${state?.controls ?? "unknown"}, title=${state?.title || "-"}).`);
 };
 
 const viewportMatrix = [
@@ -121,24 +176,32 @@ const main = async () => {
   const server = staticServer();
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const serverPort = server.address().port;
-  const debugPort = 19000 + Math.floor(Math.random() * 1000);
   const profile = mkdtempSync(path.join(tmpdir(), "saldo-bersama-browser-"));
   const child = spawn(browser, [
-    "--headless=new", `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`,
+    "--headless=new", "--remote-debugging-port=0", "--remote-debugging-address=127.0.0.1", `--user-data-dir=${profile}`,
     "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--no-proxy-server", "--proxy-bypass-list=<-loopback>",
-    `http://127.0.0.1:${serverPort}/`,
-  ], { stdio: "ignore", windowsHide: true });
+    "about:blank",
+  ], { stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
+  let stderrTail = "";
+  child.stderr?.on("data", (chunk) => {
+    stderrTail = `${stderrTail}${String(chunk)}`.slice(-STDERR_TAIL_LIMIT);
+  });
+  let spawnError = null;
+  child.once("error", (error) => { spawnError = error; });
+  const getStderrTail = () => stderrTail;
+  const getSpawnError = () => spawnError;
 
   let socket;
   try {
-    const connected = await connectCdp(debugPort);
+    const debugPort = await waitForDebugPort({ profile, child, getStderrTail, getSpawnError });
+    const connected = await connectCdp({ port: debugPort, child, getStderrTail });
     const cdp = connected.cdp; socket = connected.socket;
     await cdp.send("Page.enable");
     await cdp.send("Runtime.enable");
 
     for (const [width, height] of viewportMatrix) {
       await cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width <= 820 });
-      await cdp.send("Page.navigate", { url: `http://127.0.0.1:${serverPort}/` });
+      await navigate(cdp, `http://127.0.0.1:${serverPort}/`);
       await waitReady(cdp);
       const geometry = await cdp.evaluate(`(() => {
         const root = document.documentElement;
@@ -156,7 +219,7 @@ const main = async () => {
     }
 
     await cdp.send("Emulation.setDeviceMetricsOverride", { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
-    await cdp.send("Page.navigate", { url: `http://127.0.0.1:${serverPort}/` });
+    await navigate(cdp, `http://127.0.0.1:${serverPort}/`);
     await waitReady(cdp);
     const focus = await cdp.evaluate(`(() => {
       const candidate = [...document.querySelectorAll('button,a,input,select,textarea,[tabindex]')].find((el) => {
@@ -183,11 +246,13 @@ const main = async () => {
     console.log(`Browser smoke PASS: ${viewportMatrix.length} viewport, focus, text-spacing, reduced-motion.`);
   } finally {
     try { socket?.close(); } catch {}
-    child.kill("SIGTERM");
-    await Promise.race([
-      new Promise((resolve) => child.once("exit", resolve)),
-      sleep(1500),
-    ]);
+    if (child.exitCode === null && !child.signalCode) {
+      child.kill("SIGTERM");
+      await Promise.race([
+        new Promise((resolve) => child.once("exit", resolve)),
+        sleep(1500),
+      ]);
+    }
     await new Promise((resolve) => server.close(resolve));
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try { rmSync(profile, { recursive: true, force: true }); break; }

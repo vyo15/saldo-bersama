@@ -1,3 +1,9 @@
+## 11 September 2026 - GitHub Quality smoke + harga aset compact
+
+- Memperkeras rendered browser smoke agar portable pada Windows dan GitHub Actions Linux: Chrome/Chromium memakai remote-debugging port ephemeral melalui `DevToolsActivePort`, startup memantau process exit, dan kegagalan menyertakan tail stderr yang dibatasi agar error CI tidak lagi berhenti pada “Chrome DevTools endpoint tidak siap” tanpa diagnosis. Quality gate tetap fail-closed dan tidak di-skip.
+- Memperkeras `npm run prod`/Production preflight dengan anonymous `/api/session`: `401 UNAUTHENTICATED` dianggap sehat, sedangkan `5xx` menjadi blocker walaupun `/api/health` hanya menunjukkan warning operasional. Ini menutup false-positive runtime/schema mismatch setelah deploy.
+- Menampilkan harga catatan terakhir pada daftar Investasi mobile sebagai `Rp… / saham` atau `Rp… / unit`, menggantikan badge tipe aset yang redundan; desktop tetap memakai metric harga lengkap. Tidak ada perubahan schema/API/saldo/ledger.
+
 ## 11 September 2026 - Investasi asset-centric schema v17
 
 - Mengubah `/investasi` dari hierarchy broker/RDN/portfolio menjadi pencatatan **aset langsung**: saham dan reksa dana tampil pada tab **Aset / Aktivitas**, dengan filter jenis, detail nilai/modal/quantity/P&L, serta flow Tambah investasi tanpa setup Ajaib/Bibit/Indodax/RDN. Dashboard desktop/mobile memakai `summary.market_value` sebagai total investasi user-facing.

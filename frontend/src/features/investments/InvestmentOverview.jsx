@@ -83,7 +83,11 @@ const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
         <div>
           <div className={holdingStyles.holdingNameRow}><h4>{mutualFund ? holding.name || holding.ticker : holding.ticker || "Aset"}</h4><span>{holdingQuantity(holding)}</span></div>
           <p>{mutualFund ? holding.ticker : holding.name || "Instrumen investasi"}</p>
-          <small className={holdingStyles.assetType}>{mutualFund ? "Reksa Dana" : "Saham"}</small>
+          <small className={holdingStyles.unitPrice}>
+            {Number(holding.price_per_share || 0) > 0
+              ? <><Money value={holding.price_per_share} /> / {mutualFund ? "unit" : "saham"}</>
+              : "Harga belum dicatat"}
+          </small>
         </div>
       </div>
       <div className={holdingStyles.holdingValueBlock}>

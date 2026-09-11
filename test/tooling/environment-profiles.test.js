@@ -229,16 +229,29 @@ test("npm run prod meminta setup satu kali bila Production profile baru dibuat",
   );
 });
 
-test("production runtime check memverifikasi health backend dan frontend shell aktual", async () => {
+test("production runtime check memverifikasi health, anonymous session, dan frontend shell aktual", async () => {
   const requests = [];
   const fetchImpl = async (url) => {
     requests.push(String(url));
     if (String(url).endsWith("/api/health")) return response({ body: { ok: true, data: { status: "ok" } } });
+    if (String(url).endsWith("/api/session")) return response({ status: 401, body: { ok: false, error: { code: "UNAUTHENTICATED" } } });
     return response({ body: null, contentType: "text/html; charset=utf-8" });
   };
   const result = await checkProductionRuntime({ fetchImpl });
   assert.equal(result.origin, PRODUCTION_ORIGIN);
-  assert.deepEqual(requests, [`${PRODUCTION_ORIGIN}/api/health`, PRODUCTION_ORIGIN]);
+  assert.deepEqual(requests, [`${PRODUCTION_ORIGIN}/api/health`, `${PRODUCTION_ORIGIN}/api/session`, PRODUCTION_ORIGIN]);
+});
+
+test("production runtime check memblokir deployment yang health-nya siap tetapi endpoint session 5xx", async () => {
+  const fetchImpl = async (url) => {
+    if (String(url).endsWith("/api/health")) return response({ body: { ok: true, data: { status: "ok" } } });
+    if (String(url).endsWith("/api/session")) return response({ status: 503, body: { ok: false, error: { code: "DATABASE_SCHEMA_MISMATCH" } } });
+    return response({ body: null, contentType: "text/html; charset=utf-8" });
+  };
+  await assert.rejects(
+    checkProductionRuntime({ fetchImpl }),
+    (error) => error?.code === "PRODUCTION_SESSION_DEGRADED" && error?.status === 503 && error?.sessionCode === "DATABASE_SCHEMA_MISMATCH",
+  );
 });
 
 test("production runtime check fail closed bila Vercel Production degraded", async () => {
@@ -343,7 +356,7 @@ test("Production core tetap usable saat hanya scheduler/integrasi optional degra
 });
 
 test("npm run prod membuka core Production sehat walau aggregate health scheduler masih degraded", async () => {
-  let frontendChecked = 0;
+  let applicationChecked = 0;
   const before = console.warn;
   const beforeLog = console.log;
   console.warn = () => {};
@@ -361,11 +374,11 @@ test("npm run prod membuka core Production sehat walau aggregate health schedule
         scheduler: { status: "degraded", errorCode: "INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED" },
         operations: { status: "ok", codes: [] },
       }),
-      frontendCheck: async () => { frontendChecked += 1; },
+      applicationCheck: async () => { applicationChecked += 1; },
     });
     assert.equal(result.coreReady, true);
     assert.equal(result.serviceStatus, "degraded");
-    assert.equal(frontendChecked, 1);
+    assert.equal(applicationChecked, 1);
   } finally {
     console.warn = before;
     console.log = beforeLog;
