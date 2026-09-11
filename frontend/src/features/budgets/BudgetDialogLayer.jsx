@@ -6,7 +6,6 @@ import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import { SharedIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import InlineOwnershipPicker from "../../components/common/InlineOwnershipPicker.jsx";
-import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import { categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
@@ -91,7 +90,7 @@ const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, 
   <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Kebutuhan" dismissible={!submitting} title={title} footer={<BudgetModalFooter saveState={saveState} close={guard.discardAndClose} pendingSchedule={pendingSchedule} existingBudget={existingBudget} />}>
     <form id="budget-form" className="form-grid" onSubmit={saveBudget}>
       <BudgetModalNotices pendingSchedule={pendingSchedule} lockedEnvelope={lockedEnvelope} linksLegacyBudget={linksLegacyBudget} />
-      <InlineSelectionPicker label="Kategori" required value={form.category_id} onChange={selectCategory} placeholder="Pilih kategori" placeholderMeta="Pilih kategori kebutuhan" placeholderOption={categoryOptionVisual()} searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />
+      <SelectionField label="Kategori" required value={form.category_id} onChange={selectCategory} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />
       {!lockedEnvelope ? <InlineOwnershipPicker className="form-grid__full" legend="Berlaku untuk" required value={budgetOwnershipValue(form)} onChange={selectOwnership} options={ownershipOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : ""} /> : null}
       <MoneyInput id="budget-amount" label="Nominal kebutuhan" value={form.amount} onChange={(value) => setForm((current) => ({ ...current, amount: value }))} required />
       {!existingBudget ? <VisualChoiceGroup className="form-grid__full" legend="Cara mencatat kebutuhan" name="budget-recording-mode" value={form.recording_mode || "flexible"} onChange={(recording_mode) => setForm((current) => ({ ...current, recording_mode }))} options={RECORDING_MODE_OPTIONS} columns={2} mobileColumns={2} descriptive wrapLabels helperPanel helper="Pilihan ini hanya menentukan langkah berikutnya. Nominal Kebutuhan dan saldo tidak berubah saat Kebutuhan disimpan." /> : null}

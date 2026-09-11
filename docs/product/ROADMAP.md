@@ -13,7 +13,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 - Partner planning shared + own-personal untuk Alokasi/Kebutuhan/Jadwal Rutin dengan guard backend RFC-0016; Target baru tetap shared; destructive lifecycle tetap Administrator-only.
 - Compatibility pembagian beban biaya schema v11 tetap dipertahankan untuk histori/backup/API lama, tetapi UI canonical transaksi baru tidak lagi menawarkan split karena pengeluaran diperlakukan sebagai pengeluaran keluarga.
 - Registry session per perangkat, revoke own/all, PKCE S256, dan session lifecycle server-side (RFC-0018, schema v12).
-- Investment manual schema v16: RDN berbasis rekening canonical (termasuk auto-create Rp0 pada first-time setup), instrument registry, Buy/Sell, weighted cost basis, valuation/P&L, opening position berbasis lot/unit + harga rata-rata + harga sekarang dengan Cash RDN opsional atau cash-only baseline RDN, onboarding mulai-baru tanpa auto-Buy/Transfer, continuation Transfer setelah setup, reconciliation no-auto-adjust, explicit correction, Dashboard summary, backup/restore, dan integrity guard tanpa credential broker/live market API.
+- Investment manual schema v17 **asset-centric**: saham/reksa dana ditampilkan langsung tanpa hierarchy broker/RDN/portfolio; posisi baru dibuat lewat `investments.assets.create`; compatibility portfolio/rekening internal tetap dipertahankan untuk FK/histori lama tetapi rekening baru disembunyikan dari surface rekening. Direct opening position dan Buy/Sell v17 memakai `cash_effect_enabled=0`, sehingga pencatatan aset tidak mensyaratkan atau mengubah saldo RDN. Weighted cost basis, valuation/P&L, reconciliation/correction legacy, Dashboard `market_value`, backup/restore, dan integrity guard tetap authoritative tanpa credential broker/live market API.
 - Governance, handoff, build/archive guard, Turso, PWA, dan Google bridge.
 - Full transparency keluarga menjadi policy produk canonical; RFC-0015 granular personal privacy berstatus Rejected dan tidak masuk roadmap runtime.
 
@@ -21,7 +21,7 @@ Roadmap menunjukkan urutan, bukan janji tanggal. Status detail berada di `../IMP
 
 - Jalankan full `npm run verify` pada runtime Node yang didukung setelah patch. Perubahan UI tetap memerlukan pemeriksaan manual pada viewport/perangkat relevan.
 - Verifikasi operasional rotasi `SESSION_SECRET` dan `TURSO_AUTH_TOKEN` yang pernah ikut ZIP manual mengikuti `SECRET_ROTATION_RUNBOOK.md`; source tidak dapat membuktikan credential lama sudah direvoke.
-- Migration parity Turso v16 dan real-resource backup/restore drill, termasuk scenario RDN → multi-buy → partial sell → valuation → reconciliation → restore parity.
+- Migration parity Turso v17 dan real-resource backup/restore drill, termasuk direct asset → multi-buy → partial sell → valuation → restore parity serta verifikasi histori v15/v16 tetap mempertahankan cash effect.
 - Aktifkan branch protection/ruleset GitHub dan jadikan workflow **Quality** sebagai required check; source workflow/CONTRIBUTING sudah disiapkan, enforcement tetap setting GitHub. Direct push ke `main` yang masih diterima berarti langkah ini belum selesai.
 - Pisahkan database/token/session secret Development dan Production sesuai exit plan ADR-0007 sebelum data finansial nyata menjadi dependency operasional.
 - Verifikasi Google bridge, Calendar, Web Push, dan notification cadence pada resource nyata.

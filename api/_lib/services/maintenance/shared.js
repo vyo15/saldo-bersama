@@ -5,7 +5,7 @@ import { BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConst
 import { appendAudit } from "../audit.js";
 import { appError, canonicalJson, nowIso, parseJson } from "../core.js";
 
-const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, DATABASE_SCHEMA_VERSION]);
+const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set(Array.from({ length: DATABASE_SCHEMA_VERSION - 2 }, (_, index) => index + 3));
 const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
 const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 

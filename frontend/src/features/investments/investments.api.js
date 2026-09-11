@@ -3,6 +3,7 @@ import { apiClient } from "../../services/api/client.js";
 const mutate = (action, payload, rowVersion, options = {}) => apiClient.request(action, payload, { ...options, rowVersion });
 
 export const createInvestmentPortfolio = (payload, options) => apiClient.request("investments.portfolios.create", payload, options);
+export const createInvestmentAssetPosition = (payload, options) => apiClient.request("investments.assets.create", payload, options);
 export const upsertInvestmentInstrument = (payload, rowVersion, options) => mutate("investments.instruments.upsert", payload, rowVersion, options);
 export const buyInvestment = (payload, rowVersion, options) => mutate("investments.trades.buy", payload, rowVersion, options);
 export const sellInvestment = (payload, rowVersion, options) => mutate("investments.trades.sell", payload, rowVersion, options);

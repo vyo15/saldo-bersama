@@ -1,6 +1,6 @@
 # Deployment
 
-## Cutover schema v16 + Investment/RDN opening position
+## Cutover schema v17 + Investasi asset-centric
 
 1. Buat/konfirmasi database Turso Development dan Production yang berbeda sebelum memindahkan data nyata.
 2. Ambil backup teknis terverifikasi masing-masing database. Development memakai `npm run db:migrate` + `npm run db:bind-environment -- development`; Production memakai `.env.production.local` dan target eksplisit `npm run db:migrate -- production` + `npm run db:bind-environment -- production`. Rebind silang ditolak; jangan mengubah binding database Production menjadi Development atau sebaliknya.
@@ -26,7 +26,7 @@ Mode operator dibedakan tegas: `npm run dev` = localhost + Vercel Development + 
 
 ## 2. Database Turso: isolation fail-closed
 
-Source v16 tetap tidak mengizinkan Development/Production memakai database yang sama secara normal. `DATABASE_ENVIRONMENT` harus cocok dengan `VERCEL_ENV` dan binding `system_config.database_environment`. Database baru dimulai `unbound` dan harus di-bind eksplisit. Rebind silang ditolak. Live cutover baru dianggap selesai setelah Vercel/Turso membuktikan database/token Development dan Production berbeda.
+Source v17 tetap tidak mengizinkan Development/Production memakai database yang sama secara normal. `DATABASE_ENVIRONMENT` harus cocok dengan `VERCEL_ENV` dan binding `system_config.database_environment`. Database baru dimulai `unbound` dan harus di-bind eksplisit. Rebind silang ditolak. Live cutover baru dianggap selesai setelah Vercel/Turso membuktikan database/token Development dan Production berbeda.
 
 Development (`.env.local`):
 
@@ -98,7 +98,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    npm run env:status
    ```
 
-5. Pastikan database Production sudah memakai schema v16, binding `production`, dan integrity check lulus. Migration hanya dijalankan bila memang ada migration pending dan backup telah terverifikasi:
+5. Pastikan database Production sudah memakai schema v17, binding `production`, dan integrity check lulus. Migration hanya dijalankan bila memang ada migration pending dan backup telah terverifikasi:
 
    ```bash
    npm run db:migrate -- production
@@ -116,15 +116,15 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    Setelah itu commit/push source yang sudah lolos quality gate dan tunggu deployment Git-connected Vercel untuk commit tersebut berstatus `Ready`. Jangan menjalankan `npx vercel --prod` dari working tree yang masih memiliki perubahan lokal karena file yang belum dikomit dapat ikut terdeploy. Environment baru juga tidak berlaku pada deployment lama sebelum redeploy.
 7. Seed Web Push **Development** secara terpisah. Jika Vercel Development sudah memiliki VAPID yang valid, jangan generate ulang; jalankan `npm run env:pull:development`, `npm run env:status`, dan `npm run diagnose`. Jika initial provisioning/rotasi Development memang diperlukan, buat pair Development terpisah lalu sinkronkan dengan `npm run env:push:development -- --settings-only`. Laptop/PC lain kemudian cukup menjalankan `npm run dev`; bootstrap menarik Development terbaru secara otomatis.
 8. Pada Apps Script Properties, pastikan `JOBS_ENDPOINT_URL=https://saldo-bersama.vercel.app/api/jobs` dan `JOBS_SHARED_SECRET` sama dengan Vercel. Jalankan `installScheduledTrigger()` sekali dan pastikan hasilnya melaporkan `ready: true` serta `count: 1`.
-9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v16. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
+9. Buka `/pengaturan` melalui HTTPS. Status backend harus `Siap` dan schema harus v17. Buka `/pengaturan/notifikasi`, ketuk tile Notifikasi perangkat, izinkan browser, lalu pastikan verifikasi otomatis berhasil pada setiap perangkat.
 10. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 11. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
-## 6. Migration schema v16
+## 6. Migration schema v17
 
-Migration terbaru adalah `database/migrations/014_investment_opening_position.sql`. Migration v16 bersifat additive di atas tracking Investment v15: menambah `investment_trades.notes`, semantic `investment_corrections.correction_type=correction|opening_position`, `reference_price`, `notes`, index activity type/date, lalu menaikkan schema ke v16. `opening_position` tetap append-only dan tidak membuat fake Buy; Cash RDN awal direpresentasikan sebagai delta canonical pada event Investment existing. Migration v15 `013_investment_tracking.sql` tetap menjadi dasar enam tabel Investment authoritative + view `investment_account_events`; transaksi existing tetap tidak diubah menjadi trade dan Buy/Sell tetap bukan income/expense.
+Migration terbaru adalah `database/migrations/015_investment_asset_centric.sql`. Migration v17 bersifat additive di atas v16: menambah `accounts.is_system_hidden`, `investment_trades.cash_effect_enabled`, dan `investment_corrections.cash_effect_enabled`, lalu membangun ulang view `investment_account_events` agar hanya row dengan `cash_effect_enabled=1` yang memengaruhi saldo rekening. Existing row mendapat default kompatibel (`is_system_hidden=0`, `cash_effect_enabled=1`), sehingga histori v16 tidak ditulis ulang. Runtime v17 menulis direct asset opening-position dan Buy/Sell baru dengan `cash_effect_enabled=0`; compatibility account baru ditandai hidden dan tidak masuk picker user-facing.
 
-Sebelum migration Production, buat backup teknis **verified pada schema v15** dan pastikan `.env.production.local` lolos pemeriksaan. Jalankan target Production secara eksplisit sebelum runtime v16 menerima traffic:
+Sebelum migration Production, buat backup teknis **verified pada schema v16** dan pastikan `.env.production.local` lolos pemeriksaan. Jalankan target Production secara eksplisit sebelum runtime v17 menerima traffic:
 
 ```bash
 npm run env:check:production
@@ -133,9 +133,9 @@ npm run db:bind-environment -- production
 npm run db:integrity -- production
 ```
 
-Migration v11 `009_transaction_cost_sharing.sql` tetap menjadi dasar cost sharing, migration v10 `008_manual_reminders.sql` menjadi dasar pengingat manual, migration v9 `007_envelope_assignee.sql` menjadi dasar penerima jatah, dan migration v8 `006_account_ewallet_template.sql` menjadi dasar provider E-wallet canonical.
+Migration v16 `014_investment_opening_position.sql` tetap menjadi dasar semantic opening position/trade notes; v15 `013_investment_tracking.sql` tetap menjadi dasar enam tabel Investment authoritative. Migration v11 cost-sharing, v10 manual reminder, v9 envelope assignee, dan v8 provider E-wallet tetap historis additive.
 
-Backup schema v16 menyertakan data aplikasi canonical termasuk enam tabel Investment authoritative dan field additive opening-position/trade notes, `photo_url`, `master_data_requests`, dan `transfer_requests`, tetapi mengecualikan `user_sessions`, `rate_limit_buckets`, binding environment, maintenance flag, dan scheduler heartbeat. Runtime v16 tetap dapat membaca backup v3-v15 melalui normalisasi additive; backup lama tidak diberi histori Investment sintetis. Setelah restore v16, verifikasi ulang RDN, holding, cost basis, P/L, chronology, foreign key, dan ledger parity sebelum success dianggap definitive. Rollback aman dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment. Jangan menghapus tabel/kolom langsung pada database aktif.
+Backup schema v17 menyertakan enam tabel Investment authoritative beserta `is_system_hidden` dan `cash_effect_enabled`, tetapi tetap mengecualikan `user_sessions`, `rate_limit_buckets`, binding environment, maintenance flag, dan scheduler heartbeat. Runtime v17 dapat membaca backup v3-v17, termasuk backup **v16**. Setelah restore, verifikasi hidden-account visibility, holding, cost basis, P/L, chronology, flag cash effect, foreign key, dan ledger parity sebelum success dianggap definitive. Rollback aman dilakukan melalui restore backup schema v16 pra-migration ke database terpisah, integrity check, lalu repoint environment; jangan menghapus tabel/kolom langsung pada database aktif.
 
 ## 7. Release gate
 
@@ -148,4 +148,4 @@ npm run db:integrity -- production
 npm run prod:check
 ```
 
-`npm run env:push:production` hanya dijalankan ketika perubahan environment memang menjadi bagian release yang sudah direview; jangan menjadikannya efek samping setiap release. Lanjutkan smoke test login Administrator/Member, create/update/cancel transaksi, transfer, conflict, Excel, status/register/test/unregister Web Push, retry dua perangkat, mirror, Calendar, backup, restore drill, dan PWA iOS/Android. Untuk schema v16, tambahkan smoke read-only `investments.overview` serta verifikasi `opening_position_available` pada portfolio baru; mutation Investment pada Production hanya dilakukan dengan data/test intent yang memang disetujui. Verifikasi Bank↔RDN tetap Transfer netral, Buy/Sell tidak muncul sebagai income/expense, dan reconciliation tidak auto-adjust.
+`npm run env:push:production` hanya dijalankan ketika perubahan environment memang menjadi bagian release yang sudah direview; jangan menjadikannya efek samping setiap release. Lanjutkan smoke test login Administrator/Member, create/update/cancel transaksi, transfer, conflict, Excel, status/register/test/unregister Web Push, retry dua perangkat, mirror, Calendar, backup, restore drill, dan PWA iOS/Android. Untuk schema v17, tambahkan smoke read-only `investments.overview`, pastikan `investments.assets.create` membuat posisi asset-centric tanpa mengekspos compatibility account, dan verifikasi Buy/Sell baru tidak mengubah saldo rekening. Mutation Investment pada Production hanya dilakukan dengan data/test intent yang memang disetujui. Histori v16 tetap harus mempertahankan cash effect, dan Buy/Sell tetap tidak boleh muncul sebagai income/expense.

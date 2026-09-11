@@ -54,7 +54,7 @@ export const visibleAccountsStatement = (actor, { includeArchived = false, cutof
       ),0) END AS allocated_remaining
       FROM accounts a
       LEFT JOIN users u ON u.user_id=a.owner_user_id
-      WHERE ${access.sql} ${includeArchived ? "" : "AND a.status = 'active'"}
+      WHERE ${access.sql} AND a.is_system_hidden=0 ${includeArchived ? "" : "AND a.status = 'active'"}
       ORDER BY a.status, a.name COLLATE NOCASE`,
     args: [cutoffDate, cutoffDate, cutoffDate, cutoffDate, cutoffDate, ...access.args],
   };

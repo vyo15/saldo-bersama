@@ -195,14 +195,12 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
 };
 
 
-const useTransactionDraftGuard = ({ open, postSave, onClose, onDirtyChange }) => {
+const useTransactionDraftLifecycle = ({ open, postSave, onClose, onDirtyChange }) => {
   const [draftDirty, setDraftDirty] = useState(false);
-  const [discardPrompt, setDiscardPrompt] = useState(false);
 
   useEffect(() => {
     if (!open || postSave) {
       setDraftDirty(false);
-      setDiscardPrompt(false);
       onDirtyChange?.(false);
     }
   }, [onDirtyChange, open, postSave]);
@@ -212,29 +210,15 @@ const useTransactionDraftGuard = ({ open, postSave, onClose, onDirtyChange }) =>
     onDirtyChange?.(true);
   };
   const requestClose = () => {
-    if (discardPrompt) {
-      setDiscardPrompt(false);
-      return false;
-    }
     if (draftDirty) {
-      setDiscardPrompt(true);
-      return false;
+      setDraftDirty(false);
+      onDirtyChange?.(false);
     }
     onClose?.();
     return true;
   };
-  const cancelDiscard = () => {
-    setDiscardPrompt(false);
-    return false;
-  };
-  const confirmDiscard = () => {
-    setDiscardPrompt(false);
-    setDraftDirty(false);
-    onDirtyChange?.(false);
-    onClose?.();
-  };
 
-  return { discardPrompt, markDirty, requestClose, cancelDiscard, confirmDiscard };
+  return { markDirty, requestClose };
 };
 
 
@@ -268,45 +252,32 @@ const transactionFields = ({ state, derived, actions, lockType, submitting }) =>
 });
 
 const TransactionEditorModal = ({
-  open, modal, draftGuard, submitting, outcomeUnknown, handleSubmit, mobileLayout,
+  open, modal, draftLifecycle, submitting, outcomeUnknown, handleSubmit, mobileLayout,
   mobileTransferMode, fields, requestModalClose,
-}) => {
-  const discardFooter = draftGuard.discardPrompt ? (
-    <>
-      <Button type="button" onClick={draftGuard.cancelDiscard}>Lanjut mengisi</Button>
-      <Button type="button" variant="danger" onClick={draftGuard.confirmDiscard}>Buang perubahan</Button>
-    </>
-  ) : modal.modalFooter;
-
-  return (
-    <Modal
-      open={open}
-      onClose={requestModalClose}
-      dismissible={draftGuard.discardPrompt || (!submitting && !outcomeUnknown)}
-      title={draftGuard.discardPrompt ? "Buang perubahan transaksi?" : modal.modalTitle}
-      description={draftGuard.discardPrompt ? "Perubahan yang belum disimpan akan hilang dari form ini." : modal.modalDescription}
-      size="lg"
-      initialFocusRef={draftGuard.discardPrompt ? undefined : modal.initialFocusRef}
-      className={modal.modalClassName}
-      footer={discardFooter}
-      closeIcon={draftGuard.discardPrompt ? FiChevronLeft : modal.closeIcon}
-      closeLabel={draftGuard.discardPrompt ? "Kembali ke form" : modal.closeLabel}
-      mobileSwipeToClose={draftGuard.discardPrompt ? false : modal.mobileSwipeToClose}
-    >
-      {draftGuard.discardPrompt ? (
-        <div className="notice notice--warning" role="status">Data transaksi belum dikirim. Pilih Lanjut mengisi untuk mempertahankan perubahan atau Buang perubahan untuk menutup form.</div>
-      ) : (
-        <form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} onChangeCapture={draftGuard.markDirty} noValidate>
-          <TransactionFormBody
-            mobileLayout={mobileLayout}
-            mobileTransferMode={mobileTransferMode}
-            fields={fields}
-          />
-        </form>
-      )}
-    </Modal>
-  );
-};
+}) => (
+  <Modal
+    open={open}
+    onClose={requestModalClose}
+    dismissible={!submitting && !outcomeUnknown}
+    title={modal.modalTitle}
+    description={modal.modalDescription}
+    size="lg"
+    initialFocusRef={modal.initialFocusRef}
+    className={modal.modalClassName}
+    footer={modal.modalFooter}
+    closeIcon={modal.closeIcon}
+    closeLabel={modal.closeLabel}
+    mobileSwipeToClose={modal.mobileSwipeToClose}
+  >
+    <form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} onChangeCapture={draftLifecycle.markDirty} noValidate>
+      <TransactionFormBody
+        mobileLayout={mobileLayout}
+        mobileTransferMode={mobileTransferMode}
+        fields={fields}
+      />
+    </form>
+  </Modal>
+);
 
 const TransactionForm = ({
   open,
@@ -332,8 +303,8 @@ const TransactionForm = ({
   const mobileLayout = useMediaQuery(APP_MEDIA.mobile);
   const state = useTransactionFormState({ open, transaction, initialType, initialSourceAccountId, initialDraft });
   const derived = useTransactionDerived({ bootstrap, overview, form: state.form, transaction, presentation, mobileLayout, submitState: state.submitState });
-  const draftGuard = useTransactionDraftGuard({ open, postSave: state.postSave, onClose, onDirtyChange });
-  const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, outcomeUnknown: derived.outcomeUnknown, transaction, markDirty: draftGuard.markDirty });
+  const draftLifecycle = useTransactionDraftLifecycle({ open, postSave: state.postSave, onClose, onDirtyChange });
+  const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, outcomeUnknown: derived.outcomeUnknown, transaction, markDirty: draftLifecycle.markDirty });
   const setters = { setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote };
   const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, approvalRequired: derived.approvalRequired, envelopes: derived.data.envelopes, forceOverspendNote: state.forceOverspendNote, unallocatedConfirmed: state.unallocatedConfirmed, setUnallocatedConfirmed: state.setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
   const submitting = state.submitState.status === "submitting";
@@ -343,7 +314,7 @@ const TransactionForm = ({
   useMobileTransferDestination({ open, enabled: derived.mobileTransferMode, destinationAccountId: state.form.destination_account_id, compatibleDestinationAccounts: derived.compatibleDestinationAccounts, setForm: state.setForm, setErrors: state.setErrors });
 
   const fields = transactionFields({ state, derived, actions, lockType, submitting });
-  const requestModalClose = draftGuard.requestClose;
+  const requestModalClose = draftLifecycle.requestClose;
   const modal = resolveTransactionPresentation({ mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout });
   const addAnother = () => resetForAnotherTransaction({ postSave: state.postSave, accounts: derived.data.accounts, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote, setAllocationMode: state.setAllocationMode, setUnallocatedConfirmed: state.setUnallocatedConfirmed, setPostSave: state.setPostSave, idempotencyKeyRef: state.idempotencyKeyRef, amountRef: state.amountRef });
 
@@ -355,7 +326,7 @@ const TransactionForm = ({
     <TransactionEditorModal
       open={open}
       modal={modal}
-      draftGuard={draftGuard}
+      draftLifecycle={draftLifecycle}
       submitting={submitting}
       outcomeUnknown={outcomeUnknown}
       handleSubmit={handleSubmit}

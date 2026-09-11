@@ -39,6 +39,7 @@
 | `dashboard.overview` | Ya | Ya |
 | `investments.overview` | Ya | Ya |
 | `investments.instruments.list` | Ya | Ya |
+| `investments.assets.create` | Ya | Ya |
 | `investments.portfolios.create` | Ya | Ya |
 | `investments.instruments.upsert` | Ya | Tidak |
 | `investments.openingPositions.create` | Ya | Ya |

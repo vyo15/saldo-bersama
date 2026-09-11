@@ -18,6 +18,7 @@ const distributedRateLimitsMigrationUrl = new URL("011_distributed_rate_limits.s
 const memberCollaborationMigrationUrl = new URL("012_member_collaboration.sql", migrationDirectory);
 const investmentTrackingMigrationUrl = new URL("013_investment_tracking.sql", migrationDirectory);
 const investmentOpeningPositionMigrationUrl = new URL("014_investment_opening_position.sql", migrationDirectory);
+const investmentAssetCentricMigrationUrl = new URL("015_investment_asset_centric.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -107,9 +108,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v16 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v17 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "16");
+  assert.equal(result.schema_version, "17");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -393,6 +394,18 @@ test("migration v16 menambah semantic opening position dan catatan trade secara 
   assert.match(sql, /opening_position/);
   assert.match(sql, /ADD COLUMN reference_price/);
   assert.match(sql, /value='16'/);
+  assert.doesNotMatch(sql, /ALTER TABLE transactions/);
+  assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN/i);
+});
+
+test("migration v17 memisahkan pencatatan aset dari cash RDN secara additive dan kompatibel", async () => {
+  const sql = await readFile(investmentAssetCentricMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE accounts[\s\S]*ADD COLUMN is_system_hidden/);
+  assert.match(sql, /ALTER TABLE investment_trades[\s\S]*ADD COLUMN cash_effect_enabled/);
+  assert.match(sql, /ALTER TABLE investment_corrections[\s\S]*ADD COLUMN cash_effect_enabled/);
+  assert.match(sql, /DROP VIEW IF EXISTS investment_account_events/);
+  assert.match(sql, /cash_effect_enabled=1/);
+  assert.match(sql, /value='17'/);
   assert.doesNotMatch(sql, /ALTER TABLE transactions/);
   assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN/i);
 });

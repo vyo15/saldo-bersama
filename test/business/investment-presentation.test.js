@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { investmentActivityForInstrument, investmentActivityLabel, investmentOpeningPositionPreview, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation, validateInvestmentSetup } from "../../frontend/src/features/investments/investments.model.js";
+import { investmentActivityForInstrument, investmentActivityLabel, investmentOpeningPositionPreview, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentAssetPosition, validateInvestmentOperation } from "../../frontend/src/features/investments/investments.model.js";
 
 const active = { instrument_id: "active", ticker: "BBCA", status: "active" };
 const inactiveHeld = { instrument_id: "inactive-held", ticker: "OLD", status: "inactive" };
@@ -72,7 +72,7 @@ test("validasi presentasi Investasi memberi inline error tanpa mengambil alih ot
   const portfolio = { holdings: [{ instrument_id: "active", shares: 200, lot_size: 100 }] };
   const options = { instruments: [{ ...active, name: "Bank Central Asia", lot_size: 100 }], portfolio, today: "2026-09-02" };
   const missing = validateInvestmentOperation("buy", { lots: 0, price_per_share: 0, fee_amount: -1, trade_date: "2026-09-03" }, options);
-  assert.equal(missing.instrument_id, "Pilih saham yang tersedia.");
+  assert.equal(missing.instrument_id, "Pilih aset yang tersedia.");
   assert.match(missing.lots, /lebih dari 0/);
   assert.match(missing.price_per_share, /lebih dari 0/);
   assert.equal(missing.fee_amount, undefined);
@@ -155,15 +155,18 @@ test("validasi koreksi menjaga input konsisten sebelum server melakukan validasi
   assert.match(member._form, /Administrator/);
 });
 
-test("validasi setup Investasi mengizinkan RDN otomatis tetapi tetap menjaga pilihan setup dan instrumen", () => {
-  assert.deepEqual(validateInvestmentSetup("portfolio", { start_mode: "existing", rdn_account_id: "__auto_rdn__" }, []), {});
-  const invalidMode = validateInvestmentSetup("portfolio", { start_mode: "", rdn_account_id: "__auto_rdn__" }, []);
-  assert.match(invalidMode.start_mode, /Pilih cara memulai/);
-  const invalidRdn = validateInvestmentSetup("portfolio", { start_mode: "new", rdn_account_id: "missing" }, []);
-  assert.match(invalidRdn.rdn_account_id, /RDN otomatis/);
-  const instrument = validateInvestmentSetup("instrument", { ticker: "bb ca", exchange: "I", instrument_name: "", lot_size: 0 }, []);
-  assert.ok(instrument.ticker);
-  assert.ok(instrument.exchange);
-  assert.ok(instrument.instrument_name);
-  assert.ok(instrument.lot_size);
+test("validasi posisi aset langsung menjaga jumlah, harga, tanggal, dan batas catatan", () => {
+  const instrument = { ...active, name: "Bank Central Asia", lot_size: 100, instrument_type: "stock" };
+  assert.deepEqual(validateInvestmentAssetPosition({
+    ticker: "BBCA", opening_quantity: 16, average_price: 7114, reference_price: 6425, position_date: "2026-09-02", notes: "",
+  }, instrument, { today: "2026-09-02" }), {});
+
+  const errors = validateInvestmentAssetPosition({
+    ticker: "", opening_quantity: 0, average_price: 0, reference_price: 0, position_date: "2026-09-03", notes: "x".repeat(501),
+  }, instrument, { today: "2026-09-02" });
+  assert.match(errors.opening_quantity, /lebih dari 0/);
+  assert.match(errors.average_price, /lebih dari 0/);
+  assert.match(errors.reference_price, /lebih dari 0/);
+  assert.match(errors.position_date, /masa depan/);
+  assert.equal(errors.notes, "Catatan maksimal 500 karakter.");
 });

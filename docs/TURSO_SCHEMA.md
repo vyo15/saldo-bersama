@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, `database/migrations/009_transaction_cost_sharing.sql`, `database/migrations/010_environment_sessions.sql`, `database/migrations/011_distributed_rate_limits.sql`, `database/migrations/012_member_collaboration.sql`, dan `database/migrations/013_investment_tracking.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, `database/migrations/009_transaction_cost_sharing.sql`, `database/migrations/010_environment_sessions.sql`, `database/migrations/011_distributed_rate_limits.sql`, `database/migrations/012_member_collaboration.sql`, `database/migrations/013_investment_tracking.sql`, `database/migrations/014_investment_opening_position.sql`, dan `database/migrations/015_investment_asset_centric.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -26,12 +26,12 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `reconciliations`
 - `period_closures`
 - `transfer_requests` — pengajuan transfer shared → personal Member yang memerlukan approval Administrator; approval menautkan tepat satu `approved_transaction_id`.
-- `investment_portfolios` — portfolio manual yang mengikat tepat satu rekening RDN canonical `account_type=investment`.
+- `investment_portfolios` — compatibility container untuk histori investasi; UI v17 tidak menampilkan broker/portfolio sebagai hierarchy utama.
 - `investment_instruments` — registry ticker/exchange/lot size global yang dikelola Administrator.
-- `investment_trades` — histori buy/sell append-only; tidak direpresentasikan sebagai income/expense.
+- `investment_trades` — histori buy/sell append-only; v17 menambah `cash_effect_enabled` agar record baru accounting-only tanpa mutasi rekening, sementara histori lama tetap kompatibel.
 - `investment_valuations` — snapshot harga manual append-only.
 - `investment_reconciliations` — snapshot perbandingan broker vs recorded state; tidak auto-adjust.
-- `investment_corrections` — koreksi eksplisit Administrator-only untuk holding/cost basis/cash tanpa rewrite trade history.
+- `investment_corrections` — event correction/opening-position append-only; v17 menambah `cash_effect_enabled` untuk membedakan histori cash legacy dari posisi aset accounting-only.
 
 ### Guard dan operasional
 
@@ -69,11 +69,13 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `accounts.account_number` kosong untuk data legacy/non-bank atau berisi 6–34 digit; service mewajibkannya untuk rekening bank baru dan menolak karakter selain angka, spasi, atau tanda hubung sebelum normalisasi.
 - `accounts.bank_template` menyimpan template visual kartu bank secara terpisah dari nama rekening. Nilai rekening bank dibatasi ke `generic`, `bca`, `bni`, `btn`, `mandiri`, atau `permata`; rekening non-bank wajib `generic`.
 - `accounts.ewallet_template` menyimpan provider visual E-wallet secara terpisah dari nama rekening. Nilai rekening E-wallet dibatasi ke `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, atau `linkaja`; rekening non-E-wallet wajib `generic`.
-- Portfolio investasi wajib menunjuk rekening aktif bertipe `investment`, satu RDN hanya boleh dipakai satu portfolio, dan runtime mewajibkan `allow_negative=0`. First-time setup boleh tidak mengirim `rdn_account_id`; backend membuat RDN canonical Rp0 secara atomik lalu tetap menyimpan FK `rdn_account_id` non-null.
+- `accounts.is_system_hidden` default `0`. Nilai `1` hanya untuk rekening compatibility yang dibuat backend bagi flow Investasi asset-centric; rekening tersebut tidak dikembalikan oleh `accounts.list` dan tidak boleh menjadi pilihan user-facing. Data rekening existing otomatis tetap `0`.
+- `investment_portfolios` tetap memiliki FK `rdn_account_id` untuk compatibility v15/v16. Flow v17 dapat memakai portfolio legacy yang operable atau membuat compatibility portfolio baru di atas rekening hidden Rp0; broker selalu metadata legacy, bukan hierarchy produk.
 - Trade investasi menyimpan `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, dan `cash_amount` sebagai INTEGER. Service + integrity checker memastikan `share_quantity = lots × lot_size`, gross = lembar × harga, buy cash = gross + fee, dan sell cash = gross - fee.
-- Cash effect buy/sell/correction tidak masuk `transactions`; view `investment_account_events` memproyeksikan event cash canonical ke read-model saldo RDN. Deposit/withdraw RDN tetap transaksi `transfer`.
-- Event holding/cash investasi tidak boleh mendahului `accounts.initial_balance_date` RDN. Trade/koreksi tidak boleh future dan holding-changing activity dijaga kronologis.
-- Reconciliation bersifat snapshot as-of tanggal yang diminta dan tidak mengubah holding/cash. Correction append-only Administrator-only; hasil holding/cost basis negatif atau tidak konsisten ditolak.
+- `investment_trades.cash_effect_enabled` dan `investment_corrections.cash_effect_enabled` default `1` agar histori pra-v17 mempertahankan dampak cash. Record Buy/Sell dan direct opening-position yang dibuat runtime v17 memakai `0`; nominal cash/cost tetap tersimpan untuk cost basis/P&L tetapi tidak memutasikan rekening.
+- View `investment_account_events` hanya memproyeksikan row dengan `cash_effect_enabled=1`. Karena itu cash RDN legacy tetap dapat direplay tanpa membuat trade v17 baru memengaruhi saldo rekening.
+- Event compatibility tidak boleh mendahului `accounts.initial_balance_date` portfolio. Trade tidak boleh future, perubahan holding mengikuti chronology/checkpoint yang sudah ada, dan direct asset position tidak boleh menulis ke periode yang sudah direkonsiliasi.
+- Reconciliation legacy bersifat snapshot as-of tanggal yang diminta dan tidak mengubah holding/cash. Correction reguler append-only Administrator-only; hasil holding/cost basis negatif atau tidak konsisten ditolak.
 - Harga read-model adalah event harga terakhir yang diketahui antara trade dan valuation manual. Karena itu holding baru memiliki valuation fallback dari harga trade tanpa membuat valuation row sintetis.
 - Data finansial menggunakan `ON DELETE RESTRICT`.
 - Audit dicegah dari update/delete melalui trigger append-only.
@@ -104,9 +106,17 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `16`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+Versi aktif: `17`. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
 
-### Migration v16 dan rollback
+### Migration v17 dan rollback
+
+- `015_investment_asset_centric.sql` bersifat additive: menambah `accounts.is_system_hidden`, `investment_trades.cash_effect_enabled`, dan `investment_corrections.cash_effect_enabled`, lalu membangun ulang view `investment_account_events` agar hanya event dengan cash effect aktif yang memengaruhi saldo. `schema_version` dinaikkan ke 17.
+- Existing account/trade/correction mendapat default `is_system_hidden=0` / `cash_effect_enabled=1`, sehingga data dan saldo historis v16 tidak ditulis ulang. Runtime v17 menulis direct asset opening-position dan Buy/Sell baru dengan `cash_effect_enabled=0`; compatibility account baru ditandai `is_system_hidden=1`.
+- Logical backup schema v17 memuat kolom additive tersebut. Runtime v17 menerima backup schema v3-v17, termasuk **v16**; row backup lama yang tidak membawa kolom baru memperoleh default migration saat restore.
+- Sebelum migration Production, backup teknis **verified pada schema v16** wajib tersedia. Jalankan `npm run db:migrate -- production`, `npm run db:integrity -- production`, lalu smoke read `investments.overview` dan direct asset flow sebelum runtime v17 menerima traffic.
+- Rollback tidak dilakukan dengan DROP column/table. Gunakan forward-fix atau restore backup schema v16 pra-migration ke database terisolasi, jalankan integrity/parity verification, lalu repoint environment setelah approval.
+
+### Migration v16 dan rollback (historis)
 
 - `014_investment_opening_position.sql` bersifat additive: menambah `investment_trades.notes`, `investment_corrections.correction_type`, `reference_price`, `notes`, index type/date, lalu menaikkan `schema_version` ke 16. Existing trade/correction tidak ditulis ulang selain default additive.
 - `correction_type` hanya `correction|opening_position`. Opening position tetap append-only, dapat memberi reference-price fallback, dan cash delta tetap masuk view `investment_account_events`; event ini bukan fake Buy dan tidak menjadi income/expense.
@@ -136,7 +146,7 @@ Versi aktif: `16`. API menolak operasi ketika schema belum dimigrasikan atau ver
 
 - `011_distributed_rate_limits.sql` bersifat additive: menambah `rate_limit_buckets` STRICT + expiry index lalu menaikkan `schema_version` ke 13. Ledger, saldo, transaksi, session registry, dan binding environment tidak diubah.
 - Gateway, export, login Firebase, serta Google OAuth valid memakai process-local limiter sebagai lapisan murah dan bucket Turso sebagai counter lintas instance. Invalid OAuth callback tetap ditolak dari signed state sebelum external token exchange.
-- `rate_limit_buckets` adalah state ephemeral security, tidak masuk `BACKUP_TABLES`, dibersihkan ketika expired, dan dihapus pada controlled restore. Runtime v16 tetap menerima logical backup v3-v15.
+- `rate_limit_buckets` adalah state ephemeral security, tidak masuk `BACKUP_TABLES`, dibersihkan ketika expired, dan dihapus pada controlled restore. Runtime v17 tetap menerima logical backup v3-v16.
 - Migration Production tetap memerlukan backup terverifikasi, `npm run db:migrate -- production`, `npm run db:integrity -- production`, dan parity evidence. Pemisahan live Development/Production tetap mengikuti ADR-0007 dan **belum dianggap selesai hanya karena schema v16**.
 - Rollback schema tidak dilakukan dengan `DROP TABLE`; prioritaskan forward-fix. Jika rollback data diperlukan, restore backup pra-migration ke database terisolasi lalu repoint setelah integrity verification dan approval.
 
@@ -145,14 +155,14 @@ Versi aktif: `16`. API menolak operasi ketika schema belum dimigrasikan atau ver
 - `010_environment_sessions.sql` bersifat additive: menambah `user_sessions`, `database_environment`, dan scheduler heartbeat di `system_config`, lalu menaikkan `schema_version` ke 12. Ledger, transaksi, saldo, kategori, rekening, dan cost-sharing tidak diubah.
 - `database_environment` dimulai `unbound` dan harus di-bind eksplisit dengan `npm run db:bind-environment -- development|production`. Runtime fail-closed bila `VERCEL_ENV`, `DATABASE_ENVIRONMENT`, dan binding database tidak konsisten; Preview tidak boleh memakai database aktif.
 - Session v2 memakai `session_id` + secret acak pada cookie signed/HttpOnly dan hanya SHA-256 verifier hash di `user_sessions`. Legacy cookie v1 tidak diterima sehingga cutover memerlukan login ulang.
-- Backup logical v12 tidak membawa `user_sessions`, `database_environment`, maintenance flag, atau scheduler heartbeat. Runtime v16 tetap menerima backup v12; restore sukses menghapus session registry agar credential lama tidak hidup kembali.
+- Backup logical v12 tidak membawa `user_sessions`, `database_environment`, maintenance flag, atau scheduler heartbeat. Runtime v17 tetap menerima backup v12; restore sukses menghapus session registry agar credential lama tidak hidup kembali.
 - Sebelum migration Production wajib ada backup teknis terverifikasi. Setelah migration jalankan binding environment dan integrity check. Rollback ke runtime yang menerima legacy cookie dilarang; gunakan forward-fix atau restore pra-migration ke database terpisah lalu repoint setelah approval.
 
 ### Migration v11 dan rollback
 
 - `009_transaction_cost_sharing.sql` bersifat additive. Migration menambah `transactions.cost_share_mode` dengan default `unspecified`, menambah `transactions.cost_share_json` dengan default `[]`, lalu menaikkan `schema_version` ke 11. Tidak ada backfill 50:50 dan tidak ada perubahan nilai saldo/ledger historis.
-- Runtime v16 tetap menerima backup schema v3-v15 melalui normalisasi additive. Backup v10 dan lebih lama mendapat `cost_share_mode=unspecified` dan `cost_share_json=[]` saat restore; backup v11 menyimpan snapshot split canonical. Field v12/v13 yang bersifat runtime/security tidak diambil dari backup lama.
-- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila perilaku cost-sharing dari migration v11 bermasalah pada runtime v16, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
+- Runtime v17 tetap menerima backup schema v3-v16 melalui normalisasi additive. Backup v10 dan lebih lama mendapat `cost_share_mode=unspecified` dan `cost_share_json=[]` saat restore; backup v11 menyimpan snapshot split canonical. Field v12/v13 yang bersifat runtime/security tidak diambil dari backup lama.
+- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila perilaku cost-sharing dari migration v11 bermasalah pada runtime v17, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
 
 ### Migration v10 dan rollback
 

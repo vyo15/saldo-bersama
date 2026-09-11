@@ -230,7 +230,7 @@ const MobileInvestment = ({ summary, balanceVisible }) => {
     <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-investment-title">Investasi</h2><Link to="/investasi">Buka catatan</Link></div>
     <Link className={dashboardClass("mobile-investment-card")} to="/investasi">
       <span className={dashboardClass("mobile-investment-card__icon")}><InvestmentIcon aria-hidden="true" /></span>
-      <span className={dashboardClass("mobile-investment-card__copy")}><small>Total investasi tercatat</small><strong><SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} /></strong><em data-tone={tone}>{hasInvestedAssets ? <>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</> : <>Nilai aset <SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /> · Saldo RDN <SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></>}</em></span>
+      <span className={dashboardClass("mobile-investment-card__copy")}><small>Total investasi tercatat</small><strong><SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /></strong><em data-tone={tone}>{hasInvestedAssets ? <>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</> : <>Belum ada aset investasi tercatat</>}</em></span>
       <FiChevronRight className={dashboardClass("mobile-investment-card__chevron")} aria-hidden="true" />
     </Link>
   </section>;

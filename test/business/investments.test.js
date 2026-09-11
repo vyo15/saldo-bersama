@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 import {
-  buyInvestment, correctInvestment, createInvestmentPortfolio, createOpeningPosition, investmentHoldingStateFromEvents, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentHoldingStateFromEvents, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../../api/_lib/services/investments.js";
 import { snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
@@ -67,6 +67,34 @@ test("portfolio manual tanpa input broker memakai metadata generik dan tetap ter
     assert.equal(portfolio.name, "Catatan investasi");
     assert.equal(portfolio.broker, "other");
     assert.equal(portfolio.rdn_account_id, "rdn");
+  } finally { db.close(); }
+});
+
+test("posisi aset langsung membuat compatibility portfolio tersembunyi tanpa mengubah saldo rekening", async () => {
+  const db = await seed();
+  try {
+    const instrument = await upsertInvestmentInstrument(db, context(owner, "investments.instruments.upsert", { ticker: "BBCA", name: "Bank Central Asia", exchange: "IDX", lot_size: 100 }, { key: "instrument:asset-centric:12345678" }));
+    const position = await createInvestmentAssetPosition(db, context(owner, "investments.assets.create", {
+      instrument_id: instrument.instrument_id, shares: 1_600, cost_basis: 11_382_400, reference_price: 6_425, position_date: TODAY, notes: "Posisi awal",
+    }, { key: "asset-position:12345678" }));
+
+    const bridge = await db.one(`SELECT a.account_id,a.initial_balance,a.initial_balance_date,a.is_system_hidden,a.owner_scope,c.cash_effect_enabled
+      FROM investment_portfolios p JOIN accounts a ON a.account_id=p.rdn_account_id
+      JOIN investment_corrections c ON c.portfolio_id=p.portfolio_id
+      WHERE p.portfolio_id=?`, [position.portfolio_id]);
+    assert.equal(Number(bridge.initial_balance), 0);
+    assert.equal(bridge.initial_balance_date, TODAY);
+    assert.equal(Number(bridge.is_system_hidden), 1);
+    assert.equal(bridge.owner_scope, "shared");
+    assert.equal(Number(bridge.cash_effect_enabled), 0);
+    assert.equal((await visibleAccounts(db, owner)).some((item) => item.account_id === bridge.account_id), false);
+
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    assert.equal(overview.summary.rdn_cash, 0);
+    assert.equal(overview.summary.market_value, 10_280_000);
+    assert.equal(overview.summary.cost_basis, 11_382_400);
+    assert.equal(overview.summary.portfolio_value, 10_280_000);
+    assert.equal(overview.portfolios[0].holdings[0].shares, 1_600);
   } finally { db.close(); }
 });
 
@@ -141,7 +169,7 @@ test("opening position ditutup setelah aktivitas investasi reguler dimulai", asy
   } finally { db.close(); }
 });
 
-test("investment buy memakai cash RDN tanpa membuat income/expense dan valuation membentuk unrealized P/L", async () => {
+test("investment buy mencatat posisi tanpa mengubah cash RDN dan valuation membentuk unrealized P/L", async () => {
   const db = await seed();
   try {
     const { portfolio, instrument } = await setupPortfolio(db);
@@ -149,7 +177,7 @@ test("investment buy memakai cash RDN tanpa membuat income/expense dan valuation
     assert.equal(trade.cash_amount, 8_010_000);
     assert.equal(await db.one("SELECT COUNT(*) AS count FROM transactions" ).then((row) => Number(row.count)), 0);
     const account = (await visibleAccounts(db, owner)).find((item) => item.account_id === "rdn");
-    assert.equal(account.balance, 1_990_000);
+    assert.equal(account.balance, 10_000_000);
     const valuation = await updateInvestmentValuation(db, context(owner, "investments.valuations.update", {
       portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, valuation_date: TODAY, price_per_share: 9_000,
     }, { rowVersion: trade.row_version, key: "valuation:12345678" }));
@@ -208,13 +236,13 @@ test("weighted-average cost basis tetap konsisten pada multi-buy dan partial sel
   } finally { db.close(); }
 });
 
-test("backend menolak buy bila RDN tidak cukup, sell melebihi holding, fee invalid, dan stale row_version", async () => {
+test("backend tidak mensyaratkan cash RDN untuk buy tetapi tetap menolak oversell, fee invalid, dan stale row_version", async () => {
   const db = await seed({ initialBalance: 1_000_000 });
   try {
     const { portfolio, instrument } = await setupPortfolio(db);
-    await assert.rejects(() => buy(db, owner, portfolio, instrument), (error) => error.code === "INSUFFICIENT_RDN");
-    await db.execute("UPDATE accounts SET initial_balance=20000000 WHERE account_id='rdn'");
-    const bought = await buy(db, owner, portfolio, instrument, { key: "buy:enough:12345678" });
+    const bought = await buy(db, owner, portfolio, instrument, { key: "buy:without-rdn-funding:12345678" });
+    const account = (await visibleAccounts(db, owner)).find((item) => item.account_id === "rdn");
+    assert.equal(account.balance, 1_000_000);
     await assert.rejects(() => sellInvestment(db, context(owner, "investments.trades.sell", {
       portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, lots: 11, price_per_share: 9_000, fee_amount: 0,
     }, { rowVersion: bought.row_version, key: "sell:too-many:12345678" })), (error) => error.code === "INSUFFICIENT_HOLDING");
@@ -407,10 +435,10 @@ test("reconciliation bertanggal lampau membandingkan state portfolio pada tangga
       portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, lots: 1, price_per_share: 9_000, fee_amount: 0, trade_date: TODAY,
     }, { rowVersion: first.row_version, key: "buy:historical:second:12345678" }));
     const result = await reconcileInvestment(db, context(owner, "investments.reconciliations.create", {
-      portfolio_id: portfolio.portfolio_id, reconciliation_date: "2026-08-15", actual_cash: 9_200_000, holdings: [{ instrument_id: instrument.instrument_id, shares: 100 }],
+      portfolio_id: portfolio.portfolio_id, reconciliation_date: "2026-08-15", actual_cash: 10_000_000, holdings: [{ instrument_id: instrument.instrument_id, shares: 100 }],
     }, { rowVersion: second.row_version, key: "reconcile:historical:12345678" }));
     assert.equal(result.status, "matched");
-    assert.equal(result.recorded_cash, 9_200_000);
+    assert.equal(result.recorded_cash, 10_000_000);
     assert.deepEqual(result.holding_differences, []);
     await assert.rejects(() => reconcileInvestment(db, context(owner, "investments.reconciliations.create", {
       portfolio_id: portfolio.portfolio_id, reconciliation_date: "2026-09-03", actual_cash: 0, holdings: [],
@@ -424,7 +452,7 @@ test("trade backdated tidak boleh menulis ulang periode yang sudah direkonsilias
     const { portfolio, instrument } = await setupPortfolio(db);
     const bought = await buy(db, owner, portfolio, instrument, { lots: 1, fee_amount: 0, trade_date: "2026-08-01", key: "buy:reconcile-lock:first:12345678" });
     const reconciled = await reconcileInvestment(db, context(owner, "investments.reconciliations.create", {
-      portfolio_id: portfolio.portfolio_id, reconciliation_date: "2026-08-31", actual_cash: 19_200_000, holdings: [{ instrument_id: instrument.instrument_id, shares: 100 }],
+      portfolio_id: portfolio.portfolio_id, reconciliation_date: "2026-08-31", actual_cash: 20_000_000, holdings: [{ instrument_id: instrument.instrument_id, shares: 100 }],
     }, { rowVersion: bought.row_version, key: "reconcile:lock:12345678" }));
     assert.equal(reconciled.status, "matched");
     await assert.rejects(() => buyInvestment(db, context(owner, "investments.trades.buy", {
@@ -455,7 +483,7 @@ test("backup canonical mencakup authoritative investment history dan integrity c
     const { portfolio, instrument } = await setupPortfolio(db);
     await buy(db, owner, portfolio, instrument);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 16);
+    assert.equal(snapshot.manifest.schemaVersion, 17);
     for (const table of ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
       assert.ok(Array.isArray(snapshot.tables[table]));
     }

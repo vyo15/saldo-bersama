@@ -9,7 +9,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     reconciliation,
     investmentsPage,
     investmentOverview,
-    portfolioStyles,
+    investmentHoldingDetail,
     allocationDetail,
     mobileAccounts,
     accountStyles,
@@ -20,7 +20,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/investments/InvestmentOverview.jsx"),
-    read("src/features/investments/PortfolioCard.module.css"),
+    read("src/features/investments/InvestmentHoldingDetail.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
     read("src/features/accounts/components/MobileAccountsExperience.jsx"),
     read("src/features/accounts/components/MobileAccountsExperience.module.css"),
@@ -31,13 +31,15 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
 
   assert.match(reconciliation, /account\.account_type !== "investment"/);
 
-  assert.match(investmentOverview, /aria-label=\{`Kelola investasi \$\{portfolio\.name\}`\}/);
-  assert.match(investmentOverview, /title="Kelola investasi"/);
-  assert.doesNotMatch(investmentOverview, /desktopMaintenanceAction|>Lainnya<\/span>/);
-  assert.match(portfolioStyles, /\.quickActions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+  assert.match(investmentOverview, /aria-label=\{`Buka rincian \$\{holding\.ticker \|\| "aset"\}`\}/);
+  assert.match(investmentOverview, /role="button"/);
+  assert.doesNotMatch(investmentOverview, /desktopMaintenanceAction|>Lainnya<\/span>|Kelola investasi/);
+  assert.match(investmentHoldingDetail, />Perbarui nilai<\/Button>/);
+  assert.match(investmentHoldingDetail, />Beli<\/Button>/);
+  assert.match(investmentHoldingDetail, />Jual<\/Button>/);
 
-  assert.match(investmentsPage, /const canShowInstrumentSetupAction =/);
-  assert.match(investmentsPage, /aria-label="Tambah aset">Tambah aset<\/Button>/);
+  assert.match(investmentsPage, /assetCount === 0 \? <EmptyInvestmentState/);
+  assert.match(investmentsPage, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
 
   assert.match(allocationDetail, /onAdjustAllocation\(item, summary\.gap\)/);
   assert.match(allocationDetail, /showStandardAdjustAction\(canAdjustAllocation, item, linkedBudgets\)/);

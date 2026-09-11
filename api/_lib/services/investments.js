@@ -74,10 +74,10 @@ const assertChronology = async (db, portfolioId, date) => {
   if (latest && date < latest) throw appError("INVESTMENT_CHRONOLOGY_CONFLICT", `Aktivitas investasi harus dicatat berurutan. Tanggal terakhir yang sudah tersimpan adalah ${latest}.`, 409, { latestDate: latest });
 };
 
-const assertTradeAfterReconciliation = async (db, portfolioId, tradeDate) => {
+const assertActivityAfterReconciliation = async (db, portfolioId, activityDate) => {
   const row = await db.one("SELECT MAX(reconciliation_date) AS reconciliation_date FROM investment_reconciliations WHERE portfolio_id=?", [portfolioId]);
   const latest = String(row?.reconciliation_date || "");
-  if (latest && tradeDate <= latest) {
+  if (latest && activityDate <= latest) {
     throw appError("INVESTMENT_RECONCILED_PERIOD_LOCKED", `Periode sampai ${latest} sudah direkonsiliasi. Gunakan Koreksi untuk selisih historis agar checkpoint rekonsiliasi tidak ditulis ulang.`, 409, { reconciliationDate: latest });
   }
 };
@@ -250,13 +250,13 @@ const nextAutomaticRdnName = async (db, sourceLabel) => {
   return `RDN Portofolio ${uuid().slice(0, 8)}`;
 };
 
-const createAutomaticRdn = async (db, context, sourceLabel) => createAccountInternal(db, context, {
+const createAutomaticRdn = async (db, context, sourceLabel, initialBalanceDate = context.today || todayJakarta()) => createAccountInternal(db, context, {
   name: await nextAutomaticRdnName(db, sourceLabel),
   account_type: "investment",
   owner_scope: context.actor.role === "owner" ? "shared" : "personal",
   owner_user_id: context.actor.role === "owner" ? "" : context.actor.user_id,
   initial_balance: 0,
-  initial_balance_date: context.today || todayJakarta(),
+  initial_balance_date: initialBalanceDate,
   allow_negative: false,
 });
 
@@ -325,6 +325,80 @@ export const upsertInvestmentInstrument = async (db, context) => {
     : createInvestmentInstrumentRecord(db, context, input, timestamp);
 };
 
+const defaultPortfolioForActor = async (db, context) => {
+  const access = context.actor.role === "owner"
+    ? { sql: "a.owner_scope='shared'", args: [] }
+    : { sql: "(a.owner_scope='shared' OR (a.owner_scope='personal' AND a.owner_user_id=?))", args: [context.actor.user_id] };
+  return db.one(`SELECT p.*,a.account_id,a.name AS rdn_account_name,a.account_type,a.owner_scope,a.owner_user_id,a.allow_negative,a.initial_balance,a.initial_balance_date,a.status AS rdn_status
+    FROM investment_portfolios p JOIN accounts a ON a.account_id=p.rdn_account_id
+    WHERE p.status='active' AND a.status='active' AND ${access.sql}
+    ORDER BY CASE WHEN a.owner_scope='shared' THEN 0 ELSE 1 END,p.updated_at DESC LIMIT 1`, access.args);
+};
+
+const createDefaultInvestmentPortfolio = async (db, context, initialBalanceDate) => {
+  const account = await createAutomaticRdn(db, context, "Investasi", initialBalanceDate);
+  await db.execute("UPDATE accounts SET is_system_hidden=1 WHERE account_id=?", [account.account_id]);
+  const timestamp = nowIso();
+  const record = { portfolio_id: uuid(), name: "Investasi", broker: "other", rdn_account_id: account.account_id, status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp };
+  await db.execute(`INSERT INTO investment_portfolios(portfolio_id,name,broker,rdn_account_id,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await appendAudit(db, context, { entityType: "investment_portfolio", entityId: record.portfolio_id, next: { ...record, asset_centric: true, rdn_created_automatically: true } });
+  return portfolioRow(db, record.portfolio_id);
+};
+
+const resolveAssetPositionInstrument = async (db, context, payload) => {
+  if (payload.instrument_id) return instrumentRow(db, payload.instrument_id, { active: true });
+  const ticker = tickerValue(payload.ticker);
+  const existing = await db.one("SELECT * FROM investment_instruments WHERE ticker=?", [ticker]);
+  if (existing) {
+    if (existing.status !== "active") throw appError("INSTRUMENT_NOT_FOUND", "Instrumen investasi aktif tidak ditemukan.", 404);
+    return existing;
+  }
+  assertOwner(context.actor);
+  const input = investmentInstrumentInput(payload, null);
+  return createInvestmentInstrumentRecord(db, context, input, nowIso());
+};
+
+const assetPositionPortfolio = async (db, context, payload, positionDate) => {
+  if (payload.portfolio_id) {
+    const portfolio = await portfolioRow(db, payload.portfolio_id);
+    assertPortfolioOperable(context, portfolio);
+    if (payload.row_version !== undefined && payload.row_version !== null && payload.row_version !== "") assertVersion(portfolio, payload.row_version);
+    return portfolio;
+  }
+  const existing = await defaultPortfolioForActor(db, context);
+  if (existing && positionDate >= existing.initial_balance_date) return existing;
+  return createDefaultInvestmentPortfolio(db, context, positionDate);
+};
+
+export const createInvestmentAssetPosition = async (db, context) => {
+  const payload = context.payload || {};
+  const positionDate = dateValue(payload.position_date || context.today || todayJakarta(), "Tanggal posisi investasi");
+  if (positionDate > (context.today || todayJakarta())) throw appError("FUTURE_DATE", "Posisi investasi tidak boleh bertanggal di masa depan.", 400);
+  const portfolio = await assetPositionPortfolio(db, context, payload, positionDate);
+  assertPortfolioOperable(context, portfolio);
+  const instrument = await resolveAssetPositionInstrument(db, context, payload);
+  assertPortfolioHistoryDate(portfolio, positionDate, "Tanggal posisi investasi");
+  await assertActivityAfterReconciliation(db, portfolio.portfolio_id, positionDate);
+  const existing = await db.one(`SELECT 1 AS found FROM (
+    SELECT instrument_id FROM investment_trades WHERE portfolio_id=? AND instrument_id=?
+    UNION ALL SELECT instrument_id FROM investment_valuations WHERE portfolio_id=? AND instrument_id=?
+    UNION ALL SELECT instrument_id FROM investment_corrections WHERE portfolio_id=? AND instrument_id=?
+  ) LIMIT 1`, [portfolio.portfolio_id, instrument.instrument_id, portfolio.portfolio_id, instrument.instrument_id, portfolio.portfolio_id, instrument.instrument_id]);
+  if (existing) throw appError("INVESTMENT_ASSET_EXISTS", "Aset ini sudah memiliki catatan. Gunakan Beli, Jual, atau Perbarui nilai pada detail aset.", 409);
+  const shares = positiveInteger(payload.shares, "Jumlah kepemilikan");
+  const costBasis = positiveInteger(payload.cost_basis, "Modal tercatat");
+  const referencePrice = positiveInteger(payload.reference_price, "Harga terakhir");
+  const record = {
+    correction_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, correction_date: positionDate,
+    share_delta: shares, cost_basis_delta: costBasis, cash_delta: 0, reason: "Posisi awal aset", correction_type: "opening_position",
+    reference_price: referencePrice, cash_effect_enabled: 0, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso(),
+  };
+  await db.execute(`INSERT INTO investment_corrections(correction_id,portfolio_id,instrument_id,correction_date,share_delta,cost_basis_delta,cash_delta,reason,correction_type,reference_price,cash_effect_enabled,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  const rowVersion = await bumpPortfolio(db, context, portfolio);
+  await appendAudit(db, context, { entityType: "investment_asset_position", entityId: record.correction_id, next: { ...record, row_version: rowVersion } });
+  return { ...publicRow(record), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, row_version: rowVersion };
+};
+
 const createTrade = async (db, context, tradeType) => {
   const payload = context.payload || {};
   const portfolio = await portfolioRow(db, payload.portfolio_id);
@@ -335,7 +409,7 @@ const createTrade = async (db, context, tradeType) => {
   if (tradeDate > (context.today || todayJakarta())) throw appError("FUTURE_DATE", "Transaksi investasi tidak boleh bertanggal di masa depan.", 400);
   assertPortfolioHistoryDate(portfolio, tradeDate, "Tanggal transaksi investasi");
   await assertChronology(db, portfolio.portfolio_id, tradeDate);
-  await assertTradeAfterReconciliation(db, portfolio.portfolio_id, tradeDate);
+  await assertActivityAfterReconciliation(db, portfolio.portfolio_id, tradeDate);
   const lots = positiveInteger(payload.lots, "Jumlah lot");
   const shares = safeMultiply(lots, Number(instrument.lot_size), "Jumlah lembar");
   const price = positiveInteger(payload.price_per_share, "Harga per saham");
@@ -347,14 +421,12 @@ const createTrade = async (db, context, tradeType) => {
   if (tradeType === "sell") {
     const holding = currentState.holdings.find((item) => item.instrument_id === instrument.instrument_id);
     if (!holding || shares > holding.shares) throw appError("INSUFFICIENT_HOLDING", "Jumlah yang dijual melebihi kepemilikan yang tersedia.", 409, { availableShares: holding?.shares || 0 });
-  } else {
-    const issue = await firstNegativeBalance(db, portfolio, {
-      candidate: { transaction_date: tradeDate, investment_account_id: portfolio.rdn_account_id, investment_cash_effect: -cashAmount }, fromDate: tradeDate,
-    });
-    if (issue && !portfolio.allow_negative) throw appError("INSUFFICIENT_RDN", "Saldo RDN tidak cukup untuk pembelian ini.", 409, { date: issue.date, balance: issue.balance });
   }
-  const record = { trade_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, trade_type: tradeType, trade_date: tradeDate, lots, share_quantity: shares, price_per_share: price, fee_amount: fee, gross_amount: gross, cash_amount: cashAmount, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
-  await db.execute(`INSERT INTO investment_trades(trade_id,portfolio_id,instrument_id,trade_type,trade_date,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  // Schema v17 treats Buy/Sell as an investment position record only. The cash amount
+  // remains part of the immutable trade history for cost basis/realized P&L, but it no
+  // longer mutates an RDN/account balance. Historical v16 rows keep their old cash impact.
+  const record = { trade_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, trade_type: tradeType, trade_date: tradeDate, lots, share_quantity: shares, price_per_share: price, fee_amount: fee, gross_amount: gross, cash_amount: cashAmount, cash_effect_enabled: 0, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
+  await db.execute(`INSERT INTO investment_trades(trade_id,portfolio_id,instrument_id,trade_type,trade_date,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,cash_effect_enabled,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   const rowVersion = await bumpPortfolio(db, context, portfolio);
   await appendAudit(db, context, { entityType: "investment_trade", entityId: record.trade_id, next: { ...record, row_version: rowVersion } });
   return { ...publicRow(record), row_version: rowVersion };

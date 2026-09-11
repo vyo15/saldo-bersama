@@ -22,11 +22,12 @@ const metaLabel = (item) => item.asset_type === "mutual_fund"
 
 const trailingLabel = (item) => item.asset_type === "mutual_fund" ? "Reksa Dana" : item.sector;
 
-const InvestmentAssetPicker = ({ value = "", existingInstruments = [], disabled = false, onSelect, onKindChange }) => {
+const InvestmentAssetPicker = ({ value = "", existingInstruments = [], allowedTickers = null, disabled = false, onSelect, onKindChange }) => {
   const [kind, setKind] = useState(() => investmentMutualFundByTicker(value) ? "mutual_fund" : "stock");
   const [query, setQuery] = useState("");
   const existingTickers = useMemo(() => new Set(existingInstruments.map((item) => String(item.ticker || "").trim().toUpperCase())), [existingInstruments]);
-  const available = useMemo(() => CATALOGS[kind].filter((item) => !existingTickers.has(item.ticker)), [existingTickers, kind]);
+  const allowedTickerSet = useMemo(() => Array.isArray(allowedTickers) ? new Set(allowedTickers.map((item) => String(item || "").trim().toUpperCase())) : null, [allowedTickers]);
+  const available = useMemo(() => CATALOGS[kind].filter((item) => !existingTickers.has(item.ticker) && (!allowedTickerSet || allowedTickerSet.has(item.ticker))), [allowedTickerSet, existingTickers, kind]);
   const visible = useMemo(() => {
     const normalized = normalize(query);
     if (!normalized) return available;

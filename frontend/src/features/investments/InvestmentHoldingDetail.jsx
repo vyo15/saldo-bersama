@@ -1,5 +1,4 @@
 import { FiEdit3 } from "react-icons/fi";
-import { MoneyInIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -32,7 +31,7 @@ const HoldingActivity = ({ portfolio, holding }) => {
           <small>{formatDateLongIndonesia(item.activity_date) || item.activity_date}</small>
         </div>
         <div className={activityStyles.activityValue}>
-          {trade ? <><span>{buy ? "Saldo RDN keluar" : "Saldo RDN masuk"}</span><Money value={item.cash_amount} /></> : null}
+          {trade ? <><span>{buy ? "Nilai pembelian" : "Nilai penjualan"}</span><Money value={item.cash_amount} /></> : null}
           {valuation ? <><span>Harga referensi</span><Money value={item.price_per_share} /></> : null}
           {opening ? <><span>Posisi awal</span><strong>{holdingQuantityLabel(item.share_delta, holding)}</strong></> : null}
           {!trade && !valuation && !opening ? <span>Koreksi tercatat</span> : null}
@@ -54,13 +53,14 @@ const InvestmentHoldingDetail = ({ portfolio, holding, onClose, onAction }) => {
   const footer = <div className="form-actions">
     <Button type="button" onClick={onClose}>Tutup</Button>
     {portfolio.can_operate ? <Button type="button" icon={FiEdit3} onClick={() => onAction("price", portfolio, { initialInstrumentId: holding.instrument_id })}>Perbarui nilai</Button> : null}
-    {canSell ? <Button type="button" variant="primary" icon={MoneyInIcon} onClick={() => onAction("sell", portfolio, { initialInstrumentId: holding.instrument_id })}>Catat penjualan</Button> : null}
+    {portfolio.can_operate ? <Button type="button" onClick={() => onAction("buy", portfolio, { initialInstrumentId: holding.instrument_id })}>Beli</Button> : null}
+    {canSell ? <Button type="button" variant="primary" onClick={() => onAction("sell", portfolio, { initialInstrumentId: holding.instrument_id })}>Jual</Button> : null}
   </div>;
   return <Modal open title={`Detail ${holding.ticker || "investasi"}`} description="Detail holding aktual dari catatan investasi. Nilai berasal dari catatan manual atau transaksi terakhir, bukan harga pasar live." onClose={onClose} footer={footer}>
     <div className={formStyles.review}>
       <div>
         <h3>{holding.name || "Instrumen investasi"}</h3>
-        <p className={formStyles.formHint}>Saldo RDN portfolio ini berasal dari rekening RDN yang terikat pada portfolio.</p>
+        <p className={formStyles.formHint}>{mutualFund ? "Reksa Dana" : "Saham"} · pencatatan manual tanpa koneksi broker.</p>
       </div>
       <dl className={formStyles.reviewGrid}>
         <div><dt>Kepemilikan</dt><dd>{quantityLabel}</dd></div>

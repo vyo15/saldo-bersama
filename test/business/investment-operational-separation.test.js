@@ -199,7 +199,7 @@ test("RDN memakai reconciliation Investasi manual tanpa reminder otomatis", asyn
   }
 });
 
-test("trend laporan merekonsiliasi investment_account_events dan total kekayaan tidak perlu double-count Cash RDN", async () => {
+test("trend laporan tetap memakai saldo rekening sementara overview investasi memisahkan cash RDN dan nilai aset", async () => {
   const db = await seed();
   try {
     await createTransaction(db, context("transactions.create", {
@@ -213,12 +213,12 @@ test("trend laporan merekonsiliasi investment_account_events dan total kekayaan 
 
     const dashboard = await dashboardOverview(db, context("dashboard.overview", { period }));
     const investments = await investmentOverview(db, context("investments.overview"));
-    assert.equal(dashboard.totalBalance, 30_000_000);
+    assert.equal(dashboard.totalBalance, 35_000_000);
     assert.equal(dashboard.nonInvestmentBalance, 15_000_000);
-    assert.equal(investments.summary.rdn_cash, 15_000_000);
+    assert.equal(investments.summary.rdn_cash, 20_000_000);
     assert.equal(investments.summary.market_value, 5_000_000);
-    assert.equal(investments.summary.portfolio_value, 20_000_000);
-    assert.equal(dashboard.nonInvestmentBalance + investments.summary.portfolio_value, 35_000_000);
+    assert.equal(investments.summary.portfolio_value, 25_000_000);
+    assert.equal(dashboard.nonInvestmentBalance + investments.summary.portfolio_value, 40_000_000);
 
     const report = await monthlyReport(db, context("reports.monthly", { period, trend_months: 1 }));
     assert.equal(report.trend.items.at(-1)?.totalBalance, dashboard.totalBalance);

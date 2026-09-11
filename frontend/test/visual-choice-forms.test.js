@@ -118,7 +118,7 @@ test("ownership identity picker stays compact until expanded inline", async () =
 });
 
 test("inline account picker stays compact, searchable, and expands in the same form", async () => {
-  const [source, css, allocations, funding, accounts, goals, recurring, investments, reconciliation, transaction, transfer, budgets] = await Promise.all([
+  const [source, css, allocations, funding, accounts, goals, recurring, reconciliation, transaction, transfer, budgets] = await Promise.all([
     read("components/common/InlineSelectionPicker.jsx"),
     read("components/common/InlineSelectionPicker.module.css"),
     read("features/allocations/AllocationDialogLayer.jsx"),
@@ -126,7 +126,6 @@ test("inline account picker stays compact, searchable, and expands in the same f
     read("features/accounts/components/AccountEditorDialogs.jsx"),
     read("features/goals/components/GoalDialogs.jsx"),
     read("features/recurring/RecurringDialogs.jsx"),
-    read("features/investments/InvestmentSetupDialog.jsx"),
     read("features/reconciliations/components/ReconciliationForm.jsx"),
     read("features/transactions/MobileTransactionFields.jsx"),
     read("features/transactions/MobileTransferFields.jsx"),
@@ -163,16 +162,15 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(goals, /<InlineSelectionPicker[\s\S]*label="Rekening tujuan"/);
   assert.match(goals, /<InlineSelectionPicker label=\{label\}/);
   assert.match(recurring, /<InlineSelectionPicker label=\{label\}/);
-  assert.match(investments, /<InlineSelectionPicker[\s\S]*label="Rekening RDN"/);
   assert.match(reconciliation, /<InlineSelectionPicker[\s\S]*label="Rekening"/);
   assert.match(transaction, /<InlineSelectionPicker[\s\S]*label=\{label\}/);
   assert.match(transaction, /<MobileTransactionCategoryField/);
   assert.match(transfer, /<InlineSelectionPicker/);
   assert.match(allocations, /label="Dari alokasi"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
   assert.match(funding, /label="Ke Alokasi Dana"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
-  assert.match(recurring, /const CategoryField[\s\S]*<InlineSelectionPicker/);
+  assert.match(recurring, /const CategoryField[\s\S]*<SelectionField/);
   assert.match(recurring, /const PaymentEnvelopeField[\s\S]*<InlineSelectionPicker/);
-  assert.match(budgets, /<InlineSelectionPicker label="Kategori"/);
+  assert.match(budgets, /<SelectionField label="Kategori"/);
 });
 
 test("SelectionField keeps app-owned selection accessible without native browser dropdowns", async () => {

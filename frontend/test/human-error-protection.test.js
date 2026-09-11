@@ -254,7 +254,9 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
     read("src/features/settings/MembersSettingsPage.jsx"),
   ]);
 
-  assert.match(transactionForm, /dismissible=\{draftGuard\.discardPrompt \|\| \(!submitting && !outcomeUnknown\)\}/);
+  assert.match(transactionForm, /dismissible=\{!submitting && !outcomeUnknown\}/);
+  assert.match(transactionForm, /const requestClose = \(\) => \{[\s\S]*onClose\?\.\(\);[\s\S]*return true;/);
+  assert.doesNotMatch(transactionForm, /discardPrompt|Buang perubahan transaksi|Data transaksi belum dikirim|Lanjut mengisi/);
   assert.doesNotMatch(transactionForm, /onClose=\{submitting \? \(\) => \{\} : onClose\}/);
 
   assert.match(budgets, /const submitting = saveState\.status === "submitting"/);
@@ -444,7 +446,7 @@ test("editor jadwal rutin memakai master rule, bukan snapshot occurrence, dan me
   assert.match(page, /due_day: Number\(item\.rule_due_day \|\| 1\)/);
   assert.doesNotMatch(page, /due_day: Number\(String\(item\.due_date/);
   assert.match(page, /label="Nominal perkiraan"[\s\S]*required/);
-  assert.match(page, /InlineSelectionPicker label="Kategori" required/);
+  assert.match(page, /SelectionField label="Kategori" required/);
   assert.match(page, /InlineSelectionPicker label=\{label\} required/);
   assert.match(page, /Tanggal jatuh tempo\/masuk \*/);
   assert.match(page, /Tanggal mulai \*/);
@@ -622,7 +624,7 @@ test("form transaksi mengunci field setelah outcome unknown dan hanya menawarkan
   assert.match(form, /submitState\.status === "unknown"/);
   assert.match(form, /disabled=\{fields\.outcomeUnknown\}/);
   assert.match(form, /Coba lagi data yang sama/);
-  assert.match(form, /dismissible=\{draftGuard\.discardPrompt \|\| \(!submitting && !outcomeUnknown\)\}/);
+  assert.match(form, /dismissible=\{!submitting && !outcomeUnknown\}/);
   assert.match(transfer, /intentLocked=\{outcomeUnknown\}/);
   assert.match(transfer, /Data transfer dikunci sementara/);
   assert.match(money, /disabled=\{disabled\}/);

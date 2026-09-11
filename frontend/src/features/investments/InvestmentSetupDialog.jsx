@@ -1,233 +1,182 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import Money from "../../components/common/Money.jsx";
+import MoneyInput from "../../components/common/MoneyInput.jsx";
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
-import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
-import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
-import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
-import { investmentRdnDisplayLabel } from "../../shared/presentation/account.js";
-import { MUTUAL_FUND_EXCHANGE } from "../../shared/presentation/investmentAssets.js";
-import InvestmentFormField from "./InvestmentFormField.jsx";
+import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import InvestmentAssetPicker from "./InvestmentAssetPicker.jsx";
-import { createInvestmentPortfolio, invalidateInvestmentReads, upsertInvestmentInstrument } from "./investments.api.js";
-import { validateInvestmentSetup } from "./investments.model.js";
+import InvestmentFormField from "./InvestmentFormField.jsx";
+import { createInvestmentAssetPosition, invalidateInvestmentReads } from "./investments.api.js";
+import { validateInvestmentAssetPosition } from "./investments.model.js";
 
 import styles from "./InvestmentForm.module.css";
 
-const PORTFOLIO_DEFAULTS = Object.freeze({ name: "Catatan investasi", broker: "other" });
-const INSTRUMENT_DEFAULTS = Object.freeze({ lot_size: 100, exchange: "IDX", asset_type: "stock" });
-const AUTO_RDN_VALUE = "__auto_rdn__";
+const TODAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
+const ticker = (value) => String(value || "").trim().toUpperCase();
 
-const StartChoice = ({ active, title, description, onClick }) => (
-  <button className={`${styles.startChoice}${active ? ` ${styles.startChoiceActive}` : ""}`} type="button" aria-pressed={active} onClick={onClick}>
-    <span className={styles.startChoiceRadio} aria-hidden="true" />
-    <span>
-      <strong>{title}</strong>
-      <small>{description}</small>
-    </span>
-  </button>
-);
+const assetPositionPreview = (form, asset) => {
+  const quantity = Number(form.opening_quantity || 0);
+  const lotSize = Number(asset?.lot_size || 1);
+  const shares = isMutualFundInstrument(asset || {}) ? quantity : quantity * lotSize;
+  const averagePrice = Number(form.average_price || 0);
+  const referencePrice = Number(form.reference_price || 0);
+  const costBasis = Number.isSafeInteger(shares * averagePrice) ? shares * averagePrice : 0;
+  const marketValue = Number.isSafeInteger(shares * referencePrice) ? shares * referencePrice : 0;
+  return { shares, costBasis, marketValue };
+};
 
-const StartModeFields = ({ value, onChange }) => (
-  <div className={styles.startChoices} role="group" aria-label="Pilih cara memulai investasi">
-    <StartChoice
-      active={value === "existing"}
-      title="Saya sudah punya investasi"
-      description="Catat aset lama dan Saldo RDN saat ini sebagai kondisi awal. Tahap ini tidak membuat Transfer atau pembelian historis."
-      onClick={() => onChange("existing")}
-    />
-    <StartChoice
-      active={value === "new"}
-      title="Saya mulai investasi dari sekarang"
-      description="Buat portofolio + RDN Rp0 tanpa transaksi awal. Setelah setup selesai, top up baru memakai Transfer Bank → RDN."
-      onClick={() => onChange("new")}
-    />
-  </div>
-);
+const PositionSummary = ({ form, asset }) => {
+  if (!asset || !Number(form.opening_quantity) || !Number(form.average_price) || !Number(form.reference_price)) return null;
+  const preview = assetPositionPreview(form, asset);
+  return <section className={styles.review} aria-label="Ringkasan posisi investasi">
+    <dl className={styles.reviewGrid}>
+      <div><dt>Modal tercatat</dt><dd><Money value={preview.costBasis} /></dd></div>
+      <div><dt>Nilai saat ini</dt><dd><Money value={preview.marketValue} /></dd></div>
+    </dl>
+    <small className={styles.formHint}>Posisi ini hanya menjadi catatan awal aset. Tidak ada saldo rekening yang dipindahkan dan tidak ada order yang dikirim ke broker.</small>
+  </section>;
+};
 
-const rdnOptions = (accounts) => [
-  {
-    value: AUTO_RDN_VALUE,
-    label: "Buat RDN Rp0 otomatis",
-    meta: "Tidak ada transfer saat setup; top up dilakukan setelah portofolio siap",
-    icon: AccountIcon,
-  },
-  ...accounts.map((item) => ({
-    value: item.account_id,
-    label: investmentRdnDisplayLabel(item),
-    ...accountOptionVisual(item),
-  })),
-];
 
-const PortfolioSetupFields = ({ form, accounts, fieldErrors, onFieldChange, disabled }) => <>
-  <StartModeFields value={form.start_mode} onChange={(value) => onFieldChange("start_mode", value)} />
-  <InvestmentFormField
-    id="investment-portfolio-source"
-    label="Sumber catatan (opsional)"
-    hint="Contoh: Ajaib, Stockbit, Bibit, atau aplikasi tempat posisi ini dicatat. Hanya label; tidak ada koneksi atau sinkronisasi."
-    error={fieldErrors.source_label}
-  >
-    <input maxLength="100" value={form.source_label || ""} placeholder="Contoh: Ajaib" onChange={(event) => onFieldChange("source_label", event.target.value)} />
-  </InvestmentFormField>
-  <InlineSelectionPicker
-    className={styles.field}
-    label="Rekening RDN"
-    hint="Pilih RDN yang sudah ada atau biarkan sistem membuat RDN Rp0. Setup tidak memindahkan uang; top up berikutnya tetap melalui Transfer."
-    error={fieldErrors.rdn_account_id}
-    value={form.rdn_account_id || AUTO_RDN_VALUE}
-    onChange={(accountId) => onFieldChange("rdn_account_id", accountId)}
-    disabled={disabled}
-    searchable={accounts.length > 8}
-    searchPlaceholder="Cari rekening RDN…"
-    options={rdnOptions(accounts)}
-  />
-</>;
+const heldAssetEntries = (portfolios) => {
+  const values = new Set();
+  for (const portfolio of portfolios) for (const holding of portfolio.holdings || []) values.add(ticker(holding.ticker));
+  return [...values].filter(Boolean).map((value) => ({ ticker: value }));
+};
 
-const InstrumentSetupFields = ({ form, existingInstruments, disabled, onAssetSelect, onAssetKindChange }) => <InvestmentAssetPicker
-  value={form.ticker || ""}
-  existingInstruments={existingInstruments}
-  disabled={disabled}
-  onSelect={onAssetSelect}
-  onKindChange={onAssetKindChange}
-/>;
-
-const SetupFields = ({ mode, form, accounts, existingInstruments, fieldErrors, onFieldChange, onAssetSelect, onAssetKindChange, disabled }) => <fieldset className={styles.intentFieldset} disabled={disabled}>
-  {mode === "portfolio"
-    ? <PortfolioSetupFields form={form} accounts={accounts} fieldErrors={fieldErrors} onFieldChange={onFieldChange} disabled={disabled} />
-    : <InstrumentSetupFields form={form} existingInstruments={existingInstruments} disabled={disabled} onAssetSelect={onAssetSelect} onAssetKindChange={onAssetKindChange} />}
-</fieldset>;
-
-const canonicalPortfolioName = (form) => String(form.source_label || "").trim() || PORTFOLIO_DEFAULTS.name;
-
-const createSetupPayload = (mode, form) => {
-  if (mode !== "portfolio") {
-    return { ticker: form.ticker.trim().toUpperCase(), name: form.instrument_name.trim(), exchange: form.exchange.trim().toUpperCase(), lot_size: Number(form.lot_size), status: "active" };
-  }
-  const automaticRdn = form.rdn_account_id === AUTO_RDN_VALUE || !form.rdn_account_id;
+const createAssetPositionPayload = (form, asset, instruments) => {
+  const registered = instruments.find((item) => ticker(item.ticker) === ticker(asset.ticker) && item.status === "active") || null;
+  const preview = assetPositionPreview(form, asset);
+  const instrument = registered ? { instrument_id: registered.instrument_id } : {
+    ticker: ticker(asset.ticker),
+    name: asset.name,
+    exchange: ticker(asset.exchange),
+    lot_size: Number(asset.lot_size || 1),
+    status: "active",
+  };
   return {
-    name: canonicalPortfolioName(form),
-    broker: PORTFOLIO_DEFAULTS.broker,
-    source_label: String(form.source_label || "").trim(),
-    rdn_account_id: automaticRdn ? "" : form.rdn_account_id,
-    auto_create_rdn: automaticRdn,
+    ...instrument,
+    shares: preview.shares,
+    cost_basis: preview.costBasis,
+    reference_price: Number(form.reference_price),
+    position_date: form.position_date,
+    notes: form.notes || "",
   };
 };
 
-const persistSetup = (mode, payload) => mode === "portfolio" ? createInvestmentPortfolio(payload) : upsertInvestmentInstrument(payload);
-
-const dialogCopy = (mode) => mode === "instrument"
-  ? { title: "Tambah aset investasi", description: "Pilih aset untuk dicatat; tindakan ini tidak membeli aset." }
-  : { title: "Tambah investasi", description: "Pilih kondisi Anda saat ini. Setup menetapkan titik mulai pencatatan tanpa Transfer atau pembelian otomatis." };
-
-const setupCanSubmit = (mode, form) => mode === "instrument" ? Boolean(form.ticker) : Boolean(form.start_mode);
-const setupSubmitLabel = (mode, form, outcomeUnknown) => {
-  if (outcomeUnknown) return "Coba lagi data yang sama";
-  if (mode !== "instrument") return "Lanjutkan";
-  return form.asset_type === "mutual_fund" ? "Tambah reksa dana" : "Tambah saham";
+const InvestmentPositionFields = ({ form, asset, heldTickers, allowedTickers, outcomeUnknown, fieldErrors, onAssetSelect, onAssetKindChange, onFieldChange }) => {
+  const mutualFund = isMutualFundInstrument(asset || {});
+  return <fieldset className={styles.intentFieldset} disabled={outcomeUnknown}>
+    <InvestmentAssetPicker value={form.ticker} existingInstruments={heldTickers} allowedTickers={allowedTickers} disabled={outcomeUnknown} onSelect={onAssetSelect} onKindChange={onAssetKindChange} />
+    {fieldErrors.ticker ? <p className={styles.fieldError} role="alert">{fieldErrors.ticker}</p> : null}
+    {asset ? <>
+      <div className={styles.formRow}>
+        <InvestmentFormField id="investment-position-quantity" label={mutualFund ? "Jumlah unit" : "Jumlah lot"} required error={fieldErrors.opening_quantity}>
+          <input min="1" step="1" type="number" value={form.opening_quantity} onChange={(event) => onFieldChange("opening_quantity", event.target.value)} />
+        </InvestmentFormField>
+        <InvestmentFormField id="investment-position-date" label="Tanggal posisi" required error={fieldErrors.position_date}>
+          <TemporalInput type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />
+        </InvestmentFormField>
+      </div>
+      <MoneyInput id="investment-position-average" label={mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"} required value={form.average_price} error={fieldErrors.average_price} onChange={(value) => onFieldChange("average_price", value)} />
+      <MoneyInput id="investment-position-current" label={mutualFund ? "Nilai per unit saat ini" : "Harga saham saat ini"} required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
+      <InvestmentFormField id="investment-position-notes" label="Catatan (opsional)" error={fieldErrors.notes}>
+        <textarea maxLength="500" value={form.notes} onChange={(event) => onFieldChange("notes", event.target.value)} />
+      </InvestmentFormField>
+      <PositionSummary form={form} asset={asset} />
+    </> : null}
+  </fieldset>;
 };
 
-const InvestmentSetupDialog = ({ accounts, instruments = [], owner, mode = "portfolio", initialRdnAccountId = "", onClose, onSuccess }) => {
+const InvestmentSetupDialog = ({ instruments = [], portfolios = [], owner = false, onClose, onSuccess }) => {
   const formRef = useRef(null);
-  const resolvedMode = mode === "instrument" && owner ? "instrument" : "portfolio";
   const [form, setForm] = useState({
-    ...PORTFOLIO_DEFAULTS,
-    ...INSTRUMENT_DEFAULTS,
-    source_label: "",
-    start_mode: "existing",
-    rdn_account_id: initialRdnAccountId || AUTO_RDN_VALUE,
+    ticker: "",
+    opening_quantity: "",
+    average_price: "",
+    reference_price: "",
+    position_date: TODAY(),
+    notes: "",
   });
+  const [asset, setAsset] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
-  const canSubmit = setupCanSubmit(resolvedMode, form);
-  const copy = dialogCopy(resolvedMode);
-  const guard = useUnsavedChangesGuard({ open: true, value: form, onClose, blocked: busy || outcomeUnknown });
 
+  const heldTickers = useMemo(() => heldAssetEntries(portfolios), [portfolios]);
+  const allowedTickers = useMemo(() => owner ? null : instruments.filter((item) => item.status === "active").map((item) => ticker(item.ticker)), [instruments, owner]);
+  const guard = useUnsavedChangesGuard({ open: true, value: { ...form, asset: asset?.ticker || "" }, onClose, blocked: busy || outcomeUnknown });
+
+  const clearErrorFor = (key) => setFieldErrors((current) => current[key] ? Object.fromEntries(Object.entries(current).filter(([name]) => name !== key && name !== "_form")) : current);
   const onFieldChange = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
-    setFieldErrors((current) => {
-      const stale = key === "source_label" ? new Set(["source_label", "name"]) : new Set([key]);
-      return Object.fromEntries(Object.entries(current).filter(([name]) => !stale.has(name)));
-    });
+    clearErrorFor(key);
     setError("");
   };
-
-  const onAssetSelect = (asset) => {
+  const onAssetSelect = (nextAsset) => {
     if (outcomeUnknown) return;
-    setForm((current) => ({
-      ...current,
-      ticker: asset.ticker,
-      instrument_name: asset.name,
-      exchange: asset.exchange,
-      lot_size: asset.lot_size,
-      asset_type: asset.asset_type || "stock",
-    }));
+    setAsset(nextAsset);
+    setForm((current) => ({ ...current, ticker: nextAsset.ticker }));
     setFieldErrors({});
     setError("");
   };
-
-  const onAssetKindChange = (assetType) => {
+  const onAssetKindChange = () => {
     if (outcomeUnknown) return;
-    setForm((current) => ({
-      ...current,
-      ticker: "",
-      instrument_name: "",
-      exchange: assetType === "mutual_fund" ? MUTUAL_FUND_EXCHANGE : "IDX",
-      lot_size: assetType === "mutual_fund" ? 1 : 100,
-      asset_type: assetType,
-    }));
+    setAsset(null);
+    setForm((current) => ({ ...current, ticker: "" }));
     setFieldErrors({});
     setError("");
   };
-
-  const focusFirstInvalid = () => globalThis.requestAnimationFrame?.(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!canSubmit) return;
-    const formForValidation = resolvedMode === "portfolio" ? { ...form, name: canonicalPortfolioName(form) } : form;
-    const nextErrors = validateInvestmentSetup(resolvedMode, formForValidation, accounts);
+    const nextErrors = validateInvestmentAssetPosition(form, asset);
     setFieldErrors(nextErrors);
-    if (Object.keys(nextErrors).length) { focusFirstInvalid(); return; }
+    if (Object.keys(nextErrors).length) {
+      globalThis.requestAnimationFrame?.(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
+      return;
+    }
+    const payload = createAssetPositionPayload(form, asset, instruments);
     setBusy(true);
     setError("");
     try {
-      const saved = await persistSetup(resolvedMode, createSetupPayload(resolvedMode, form));
+      const saved = await createInvestmentAssetPosition(payload);
       setOutcomeUnknown(false);
       invalidateInvestmentReads();
-      onSuccess(resolvedMode, form, saved);
+      onSuccess?.(saved, asset);
       onClose();
     } catch (caught) {
       setOutcomeUnknown(isOutcomeUnknownError(caught));
-      setError(caught?.message || "Setup investasi belum berhasil.");
+      setError(caught?.message || "Investasi belum berhasil ditambahkan.");
     } finally {
       setBusy(false);
     }
   };
 
-  return <>
-    <Modal
-      open
-      title={copy.title}
-      description={copy.description}
-      onClose={busy || outcomeUnknown ? undefined : guard.requestClose}
-      discardGuard={guard}
-      discardSubject="setup investasi"
-      dismissible={!busy && !outcomeUnknown}
-      footer={<>
-        <Button type="button" onClick={guard.discardAndClose} disabled={busy || outcomeUnknown}>Batal</Button>
-        <Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!canSubmit}>{setupSubmitLabel(resolvedMode, form, outcomeUnknown)}</Button>
-      </>}
-    >
-      <form ref={formRef} id="investment-setup-form" className={styles.form} onSubmit={submit} noValidate>
-        {error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{error}</div> : null}
-        {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data setup dikunci sementara. Jangan ubah RDN, aset investasi, atau nilai lain. Tekan “Coba lagi data yang sama” agar idempotency key yang sama memverifikasi hasil tanpa membuat data ganda.</p> : null}
-        <SetupFields mode={resolvedMode} form={form} accounts={accounts} existingInstruments={instruments} fieldErrors={fieldErrors} onFieldChange={onFieldChange} onAssetSelect={onAssetSelect} onAssetKindChange={onAssetKindChange} disabled={outcomeUnknown} />
-      </form>
-    </Modal>
-  </>;
+  return <Modal
+    open
+    title="Tambah investasi"
+    description="Pilih saham atau reksa dana, lalu catat posisi yang Anda miliki saat ini."
+    onClose={busy || outcomeUnknown ? undefined : guard.requestClose}
+    discardGuard={guard}
+    discardSubject="investasi"
+    dismissible={!busy && !outcomeUnknown}
+    footer={<>
+      <Button type="button" onClick={guard.discardAndClose} disabled={busy || outcomeUnknown}>Batal</Button>
+      <Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!asset}>{outcomeUnknown ? "Coba lagi data yang sama" : "Simpan investasi"}</Button>
+    </>}
+  >
+    <form ref={formRef} id="investment-setup-form" className={styles.form} onSubmit={submit} noValidate>
+      {fieldErrors._form ? <div className="notice notice--danger" role="alert">{fieldErrors._form}</div> : null}
+      {error ? <div className={`notice ${outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{error}</div> : null}
+      {outcomeUnknown ? <p className={styles.intentGuard} role="status">Data dikunci sementara. Jangan ubah aset, jumlah, harga, atau tanggal. Tekan “Coba lagi data yang sama” untuk memverifikasi hasil tanpa membuat catatan ganda.</p> : null}
+      <InvestmentPositionFields form={form} asset={asset} heldTickers={heldTickers} allowedTickers={allowedTickers} outcomeUnknown={outcomeUnknown} fieldErrors={fieldErrors} onAssetSelect={onAssetSelect} onAssetKindChange={onAssetKindChange} onFieldChange={onFieldChange} />
+    </form>
+  </Modal>;
 };
 
 export default InvestmentSetupDialog;

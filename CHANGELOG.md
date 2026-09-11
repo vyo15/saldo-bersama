@@ -1,3 +1,10 @@
+## 11 September 2026 - Investasi asset-centric schema v17
+
+- Mengubah `/investasi` dari hierarchy broker/RDN/portfolio menjadi pencatatan **aset langsung**: saham dan reksa dana tampil pada tab **Aset / Aktivitas**, dengan filter jenis, detail nilai/modal/quantity/P&L, serta flow Tambah investasi tanpa setup Ajaib/Bibit/Indodax/RDN. Dashboard desktop/mobile memakai `summary.market_value` sebagai total investasi user-facing.
+- Menambah `investments.assets.create` dan migration `015_investment_asset_centric.sql`. Compatibility portfolio/rekening tetap dipertahankan untuk FK/histori, tetapi rekening internal baru ditandai `is_system_hidden=1` dan tidak muncul pada daftar rekening/picker user-facing.
+- Direct opening position dan Buy/Sell v17 menyimpan `cash_effect_enabled=0`: nominal tetap dipakai untuk weighted cost basis/realized P&L, tetapi pencatatan aset tidak mensyaratkan atau mengubah Cash RDN. Existing trade/correction v15/v16 default ke `cash_effect_enabled=1`, sehingga ledger historis tidak ditulis ulang. Ownership reuse portfolio juga diperkeras agar Administrator tidak mengambil portfolio personal user lain.
+- Memperbarui backup/restore compatibility ke schema v17 termasuk backup v16, menutup omission compatibility v16 pada supported-version set, menyelaraskan API/authorization/schema/PRD/design/deployment/recovery/test docs, dan menambah regression direct-position, cash-effect, hidden-account, migration, serta backup compatibility.
+
 ## 10 September 2026 - Entity picker mobile konsisten dan scrollbar bersih
 
 - Menyatukan pemilihan rekening pada composer Transaksi dan Transfer dengan `InlineSelectionPicker` yang sudah canonical di Buat Alokasi: logo/icon rekening, nama lengkap, metadata `Tersedia`/`Saldo`, selected row, search hanya saat daftar panjang, dan pilihan berkembang langsung di form tanpa subview `Pilih rekening` terpisah. `MobileTransactionSelectionView.jsx/.module.css` lama dihapus karena tidak lagi memiliki consumer.

@@ -602,11 +602,11 @@ const InvestmentWidget = ({ summary, balanceVisible }) => {
       </div>
       <div className={dashboardClass("shared-investment-widget__total")}>
         <span>Total investasi tercatat</span>
-        <SensitiveMoney visible={balanceVisible} value={summary.portfolio_value || 0} />
+        <SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} />
       </div>
       <dl>
-        <div><dt>Nilai aset</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /></dd></div>
-        <div><dt>Saldo RDN</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.rdn_cash || 0} /></dd></div>
+        <div><dt>Modal tercatat</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.cost_basis || 0} /></dd></div>
+        <div><dt>Nilai saat ini</dt><dd><SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /></dd></div>
       </dl>
       {hasAssets ? (
         <div className={dashboardClass("shared-investment-widget__pl")}>
@@ -620,7 +620,7 @@ const InvestmentWidget = ({ summary, balanceVisible }) => {
       ) : (
         <div className={dashboardClass("shared-investment-widget__notice")}>
           <FiAlertCircle aria-hidden="true" />
-          <span><strong>Belum ada aset tercatat</strong><small>Dana saat ini berada di Saldo RDN.</small></span>
+          <span><strong>Belum ada aset tercatat</strong><small>Tambahkan saham atau reksa dana dari halaman Investasi.</small></span>
         </div>
       )}
     </article>

@@ -17,14 +17,14 @@ test("microcopy edukatif tetap satu-sumber setelah picker Investasi bermigrasi k
     read("src/features/approvals/ApprovalCenterPage.jsx"),
   ]);
 
-  assert.match(setup, /Pilih aset untuk dicatat; tindakan ini tidak membeli aset\./);
-  assert.doesNotMatch(setup, /Menambahkan saham hanya menyiapkan instrumen pencatatan/);
+  assert.match(setup, /Pilih saham atau reksa dana, lalu catat posisi yang Anda miliki saat ini\./);
+  assert.match(setup, /Tidak ada saldo rekening yang dipindahkan dan tidak ada order yang dikirim ke broker/);
   assert.match(picker, /saham LQ45 tersedia di katalog/);
   assert.match(picker, /reksa dana tersedia di katalog/);
   assert.doesNotMatch(picker, /Daftar dibatasi pada saham LQ45 yang disediakan prototype/);
   assert.doesNotMatch(picker, /Bursa dan ukuran lot sudah ditetapkan otomatis/);
 
-  assert.equal((dialog.match(/tidak mengirim order broker/gi) || []).length, 1, "guard broker cukup satu kali pada review");
+  assert.equal((dialog.match(/tidak mengirim order ke broker/gi) || []).length, 1, "guard broker cukup satu kali pada review");
   assert.doesNotMatch(dialog, /Saldo Bersama hanya mencatat transaksi yang sudah dilakukan di aplikasi investasi/);
   assert.doesNotMatch(dialog, /Posisi awal mencatat kondisi yang sudah ada saat Anda mulai memakai Saldo Bersama/);
 

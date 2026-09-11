@@ -131,10 +131,11 @@ test("Notification Center meneruskan contextual workflow dan Investasi tidak kem
   assert.match(notifications, /Periksa Alokasi Dana/);
   assert.match(notifications, /Target tertinggal/);
   assert.doesNotMatch(notifications, /financialNotificationCategory/);
-  assert.match(investments, /useInvestmentAttentionReconciliation/);
-  assert.match(investments, /mode: "reconcile"/);
-  assert.match(investments, /returnTo: attention\.attentionSource === "notification-center" \? "\/notifikasi"/);
-  assert.match(investments, /investments:attention-portfolio-missing/);
+  assert.match(investments, /useDashboardAttentionState/);
+  assert.match(investments, /investment_reconciliation_stale/);
+  assert.match(investments, /Rekonsiliasi RDN lama tetap tersimpan sebagai histori/);
+  assert.match(investments, /consumeAttention\(\)/);
+  assert.doesNotMatch(investments, /mode: "reconcile"/);
   assert.match(readModels, /can_reconcile: canOperate && item\.account_type !== "investment"/);
   assert.match(reconciliationService, /INVESTMENT_RECONCILIATION_REQUIRED/);
 });
