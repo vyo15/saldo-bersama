@@ -8,11 +8,10 @@ const inactiveUnused = { instrument_id: "inactive-unused", ticker: "OLD2", statu
 const instruments = [active, inactiveHeld, inactiveUnused];
 const holdings = [{ instrument_id: "inactive-held", shares: 100 }];
 
-test("investment instrument options tidak menutup capability sell/reconcile untuk holding inactive", () => {
+test("investment instrument options tidak menutup capability jual/perbarui nilai untuk holding inactive", () => {
   assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "buy").map((item) => item.instrument_id), ["active"]);
   assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "sell").map((item) => item.instrument_id), ["inactive-held"]);
   assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "price").map((item) => item.instrument_id), ["inactive-held"]);
-  assert.deepEqual(selectInvestmentInstruments(instruments, holdings, "reconcile").map((item) => item.instrument_id), ["active", "inactive-held"]);
   const oddLotHolding = [{ instrument_id: "inactive-held", shares: 50, lot_size: 100 }];
   assert.deepEqual(selectInvestmentInstruments(instruments, oddLotHolding, "sell"), []);
   assert.deepEqual(selectInvestmentInstruments(instruments, oddLotHolding, "price").map((item) => item.instrument_id), ["inactive-held"]);
@@ -56,7 +55,8 @@ test("presentasi detail holding membedakan ownership, sumber harga, hasil, dan a
   assert.equal(investmentProfitLossLabel(0), "Impas");
   assert.equal(investmentActivityLabel({ activity_type: "trade", trade_type: "buy", ticker: "BBCA" }), "Pembelian dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "trade", trade_type: "sell", ticker: "BBCA" }), "Penjualan dicatat · BBCA");
-  assert.equal(investmentActivityLabel({ activity_type: "valuation", ticker: "BBCA" }), "Harga manual diperbarui · BBCA");
+  assert.equal(investmentActivityLabel({ activity_type: "valuation", ticker: "BBCA" }), "Harga/lembar diperbarui · BBCA");
+  assert.equal(investmentActivityLabel({ activity_type: "valuation", ticker: "IHAJJ", asset_type: "mutual_fund" }), "NAB/unit diperbarui · IHAJJ");
   assert.equal(investmentActivityLabel({ activity_type: "opening_position", instrument_id: "active", ticker: "BBCA" }), "Posisi awal dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "correction", instrument_id: "active", ticker: "BBCA" }), "Koreksi dicatat · BBCA");
   assert.equal(investmentActivityLabel({ activity_type: "correction" }), "Koreksi dicatat · Saldo RDN");
@@ -82,7 +82,7 @@ test("validasi presentasi Investasi memberi inline error tanpa mengambil alih ot
   assert.match(sell.lots, /Maksimal 2 lot/);
 });
 
-test("validasi harga, rekonsiliasi, dan opening position menutup field finansial serta eligibility instrumen", () => {
+test("validasi harga dan opening position menutup field finansial serta eligibility instrumen", () => {
   const bmri = { instrument_id: "bmri", ticker: "BMRI", status: "active", lot_size: 100 };
   const goto = { instrument_id: "goto", ticker: "GOTO", status: "inactive", lot_size: 100 };
   const portfolio = { holdings: [{ instrument_id: "active", shares: 1_000, lot_size: 100 }, { instrument_id: "goto", shares: 25, lot_size: 100 }] };
@@ -94,20 +94,10 @@ test("validasi harga, rekonsiliasi, dan opening position menutup field finansial
   const priceErrors = validateInvestmentOperation("price", {
     instrument_id: "bmri", price_per_share: 0, valuation_date: "2026-09-03",
   }, options);
-  assert.equal(priceErrors.instrument_id, "Pilih saham yang tersedia.");
+  assert.equal(priceErrors.instrument_id, "Pilih aset yang tersedia.");
   assert.match(priceErrors.price_per_share, /lebih dari 0/);
   assert.match(priceErrors.valuation_date, /masa depan/);
 
-  assert.deepEqual(validateInvestmentOperation("reconcile", {
-    actual_cash: 0, reconciliation_date: "2026-09-02", "quantity:active": 10, "quantity:bmri": 0, "quantity:goto": 0.25,
-  }, options), {});
-  const reconcileErrors = validateInvestmentOperation("reconcile", {
-    actual_cash: -1, reconciliation_date: "2026-09-03", "quantity:active": -1, "quantity:bmri": 0, "quantity:goto": "invalid",
-  }, options);
-  assert.match(reconcileErrors.actual_cash, /0 atau lebih/);
-  assert.match(reconcileErrors.reconciliation_date, /masa depan/);
-  assert.match(reconcileErrors["quantity:active"], /lot aktual tidak valid/);
-  assert.match(reconcileErrors["quantity:goto"], /lot aktual tidak valid/);
 
   assert.deepEqual(validateInvestmentOperation("opening_position", {
     instrument_id: "bmri", opening_quantity: 1, average_price: 10_000, reference_price: 11_000, actual_cash: "", position_date: "2026-09-02", notes: "Posisi awal dari broker",
@@ -140,19 +130,6 @@ test("validasi harga, rekonsiliasi, dan opening position menutup field finansial
   assert.match(openingErrors.actual_cash, /0 atau lebih/);
   assert.match(openingErrors.position_date, /masa depan/);
   assert.equal(openingErrors.notes, "Catatan maksimal 500 karakter.");
-});
-
-test("validasi koreksi menjaga input konsisten sebelum server melakukan validasi authoritative", () => {
-  const base = { instruments: [active], portfolio: { holdings: [] }, userRole: "owner", today: "2026-09-02" };
-  const empty = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", share_delta: 0, cost_basis_delta: 0, cash_delta: 0 }, base);
-  assert.match(empty._form, /harus mengubah/);
-
-  const mismatch = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", instrument_id: "active", quantity_delta: 1, cost_basis_delta: -1000, cash_delta: 0 }, base);
-  assert.match(mismatch.quantity_delta, /searah/);
-  assert.match(mismatch.cost_basis_delta, /searah/);
-
-  const member = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", cash_delta: 1 }, { ...base, userRole: "member" });
-  assert.match(member._form, /Administrator/);
 });
 
 test("validasi posisi aset langsung menjaga jumlah, harga, tanggal, dan batas catatan", () => {

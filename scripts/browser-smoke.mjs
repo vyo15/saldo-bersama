@@ -198,6 +198,8 @@ const main = async () => {
     const cdp = connected.cdp; socket = connected.socket;
     await cdp.send("Page.enable");
     await cdp.send("Runtime.enable");
+    await cdp.send("DOM.enable");
+    await cdp.send("CSS.enable");
 
     for (const [width, height] of viewportMatrix) {
       await cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width <= 820 });
@@ -221,15 +223,57 @@ const main = async () => {
     await cdp.send("Emulation.setDeviceMetricsOverride", { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
     await navigate(cdp, `http://127.0.0.1:${serverPort}/`);
     await waitReady(cdp);
-    const focus = await cdp.evaluate(`(() => {
-      const candidate = [...document.querySelectorAll('button,a,input,select,textarea,[tabindex]')].find((el) => {
-        const r=el.getBoundingClientRect(); return r.width>0 && r.height>0 && !el.disabled;
-      });
-      candidate?.focus();
-      const style = candidate ? getComputedStyle(candidate) : null;
-      return { tag: candidate?.tagName || null, width: parseFloat(style?.outlineWidth || '0'), style: style?.outlineStyle || 'none' };
-    })()`);
-    assert(focus.tag && focus.style !== "none" && focus.width >= 2, "Rendered focus indicator tidak terlihat pada login mobile.");
+    await cdp.evaluate(`document.activeElement instanceof HTMLElement && document.activeElement.blur()`);
+    let focus = null;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await cdp.send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+      await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+      focus = await cdp.evaluate(`(() => {
+        const candidate = document.activeElement;
+        if (!(candidate instanceof HTMLElement) || candidate === document.body || candidate === document.documentElement) return null;
+        const rect = candidate.getBoundingClientRect();
+        const style = getComputedStyle(candidate);
+        return {
+          tag: candidate.tagName,
+          width: parseFloat(style.outlineWidth || '0'),
+          style: style.outlineStyle || 'none',
+          visible: rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none',
+        };
+      })()`);
+      if (focus?.visible && focus.style !== "none" && focus.width >= 2) break;
+    }
+    if (!(focus?.visible && focus.style !== "none" && focus.width >= 2)) {
+      const marked = await cdp.evaluate(`(() => {
+        const candidate = [...document.querySelectorAll('button,a,input,select,textarea,[tabindex]')].find((el) => {
+          const rect = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none' && !el.disabled;
+        });
+        if (!(candidate instanceof HTMLElement)) return false;
+        candidate.setAttribute('data-browser-smoke-focus-target', 'true');
+        return true;
+      })()`);
+      assert(marked, "Tidak ada kontrol visible untuk verifikasi focus login mobile.");
+      const documentNode = await cdp.send("DOM.getDocument", { depth: 1, pierce: true });
+      const targetNode = await cdp.send("DOM.querySelector", { nodeId: documentNode.root.nodeId, selector: '[data-browser-smoke-focus-target="true"]' });
+      assert(targetNode?.nodeId, "Kontrol focus smoke tidak dapat dipetakan ke DOM node.");
+      await cdp.send("CSS.forcePseudoState", { nodeId: targetNode.nodeId, forcedPseudoClasses: ["focus", "focus-visible"] });
+      focus = await cdp.evaluate(`(() => {
+        const candidate = document.querySelector('[data-browser-smoke-focus-target="true"]');
+        if (!(candidate instanceof HTMLElement)) return null;
+        const rect = candidate.getBoundingClientRect();
+        const style = getComputedStyle(candidate);
+        return {
+          tag: candidate.tagName,
+          width: parseFloat(style.outlineWidth || '0'),
+          style: style.outlineStyle || 'none',
+          visible: rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none',
+        };
+      })()`);
+      await cdp.send("CSS.forcePseudoState", { nodeId: targetNode.nodeId, forcedPseudoClasses: [] });
+      await cdp.evaluate(`document.querySelector('[data-browser-smoke-focus-target="true"]')?.removeAttribute('data-browser-smoke-focus-target')`);
+    }
+    assert(focus?.visible && focus.style !== "none" && focus.width >= 2, "Rendered focus-visible indicator tidak terlihat pada login mobile.");
 
     const spacing = await cdp.evaluate(`(() => {
       const style=document.createElement('style'); style.id='wcag-text-spacing-smoke';

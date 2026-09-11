@@ -41,6 +41,7 @@ export const ACTION_POLICIES = Object.freeze({
   "investments.trades.buy": write(),
   "investments.trades.sell": write(),
   "investments.valuations.update": write(),
+  "investments.valuations.bulkUpdate": write(),
   "investments.reconciliations.create": write(),
   "investments.corrections.create": write(),
   "investments.openingPositions.create": write(),

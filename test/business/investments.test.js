@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 import {
-  buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentHoldingStateFromEvents, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  bulkUpdateInvestmentValuations, buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentHoldingStateFromEvents, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../../api/_lib/services/investments.js";
 import { snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
@@ -187,6 +187,70 @@ test("investment buy mencatat posisi tanpa mengubah cash RDN dan valuation membe
     assert.equal(overview.summary.unrealized_pl, 990_000);
     assert.equal(overview.summary.realized_pl, 0);
     assert.equal(valuation.row_version, 3);
+  } finally { db.close(); }
+});
+
+test("bulk update nilai menyimpan harga saham dan NAB beberapa aset secara atomik dengan satu bump row version", async () => {
+  const db = await seed({ initialBalance: 30_000_000 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const fund = await upsertInvestmentInstrument(db, context(owner, "investments.instruments.upsert", { ticker: "IHAJJ", name: "Insight Haji Syariah Fund", exchange: "REKSADANA", lot_size: 1 }, { key: "instrument:ihajj:bulk:12345678" }));
+    const first = await buy(db, owner, portfolio, instrument, { lots: 10, price_per_share: 8_000, fee_amount: 0, key: "buy:bulk:stock:12345678" });
+    const second = await buyInvestment(db, context(owner, "investments.trades.buy", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: fund.instrument_id, lots: 100, price_per_share: 1_100, fee_amount: 0,
+    }, { rowVersion: first.row_version, key: "buy:bulk:fund:12345678" }));
+
+    const result = await bulkUpdateInvestmentValuations(db, context(owner, "investments.valuations.bulkUpdate", {
+      valuation_date: TODAY,
+      portfolios: [{
+        portfolio_id: portfolio.portfolio_id,
+        row_version: second.row_version,
+        valuations: [
+          { instrument_id: instrument.instrument_id, price_per_share: 9_250 },
+          { instrument_id: fund.instrument_id, price_per_share: 1_175 },
+        ],
+      }],
+    }, { key: "valuation:bulk:12345678" }));
+
+    assert.equal(result.valuation_count, 2);
+    assert.equal(result.portfolios[0].row_version, second.row_version + 1);
+    const rows = await db.all("SELECT instrument_id,price_per_share,valuation_date FROM investment_valuations WHERE portfolio_id=? ORDER BY price_per_share DESC", [portfolio.portfolio_id]);
+    assert.equal(rows.length, 2);
+    assert.deepEqual(new Map(rows.map((row) => [row.instrument_id, Number(row.price_per_share)])), new Map([[instrument.instrument_id, 9_250], [fund.instrument_id, 1_175]]));
+    assert.ok(rows.every((row) => row.valuation_date === TODAY));
+
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    const byTicker = new Map(overview.portfolios[0].holdings.map((holding) => [holding.ticker, holding]));
+    assert.equal(byTicker.get("BBCA").price_per_share, 9_250);
+    assert.equal(byTicker.get("IHAJJ").price_per_share, 1_175);
+  } finally { db.close(); }
+});
+
+test("valuasi hanya boleh dicatat untuk aset yang dimiliki pada tanggal valuasi dan bulk gagal tanpa partial write", async () => {
+  const db = await seed({ initialBalance: 30_000_000 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const other = await upsertInvestmentInstrument(db, context(owner, "investments.instruments.upsert", { ticker: "BMRI", name: "Bank Mandiri", exchange: "IDX", lot_size: 100 }, { key: "instrument:bmri:valuation-guard:12345678" }));
+    const bought = await buy(db, owner, portfolio, instrument, { key: "buy:valuation-guard:12345678" });
+
+    await assert.rejects(() => updateInvestmentValuation(db, context(owner, "investments.valuations.update", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, valuation_date: "2026-09-01", price_per_share: 9_000,
+    }, { rowVersion: bought.row_version, key: "valuation:before-holding:12345678" })), (error) => error.code === "HOLDING_NOT_FOUND");
+
+    await assert.rejects(() => bulkUpdateInvestmentValuations(db, context(owner, "investments.valuations.bulkUpdate", {
+      valuation_date: TODAY,
+      portfolios: [{
+        portfolio_id: portfolio.portfolio_id,
+        row_version: bought.row_version,
+        valuations: [
+          { instrument_id: instrument.instrument_id, price_per_share: 9_250 },
+          { instrument_id: other.instrument_id, price_per_share: 7_000 },
+        ],
+      }],
+    }, { key: "valuation:bulk-invalid-holding:12345678" })), (error) => error.code === "HOLDING_NOT_FOUND");
+
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM investment_valuations WHERE portfolio_id=?", [portfolio.portfolio_id])).count), 0);
+    assert.equal(Number((await db.one("SELECT row_version FROM investment_portfolios WHERE portfolio_id=?", [portfolio.portfolio_id])).row_version), bought.row_version);
   } finally { db.close(); }
 });
 

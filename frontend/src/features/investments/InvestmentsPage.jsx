@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { FiPlus } from "react-icons/fi";
+import { FiPlus, FiRefreshCw } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -17,6 +17,7 @@ const InvestmentOverview = lazy(() => import("./InvestmentOverview.jsx"));
 const InvestmentHoldingDetail = lazy(() => import("./InvestmentHoldingDetail.jsx"));
 const InvestmentDialog = lazy(() => import("./InvestmentDialog.jsx"));
 const InvestmentSetupDialog = lazy(() => import("./InvestmentSetupDialog.jsx"));
+const InvestmentValuationDialog = lazy(() => import("./InvestmentValuationDialog.jsx"));
 
 const investmentRdnAccountId = (portfolio) => String(portfolio?.rdn_account_id || portfolio?.account_id || "");
 const portfolioForRdn = (portfolios, rdnAccountId) => portfolios.find((item) => investmentRdnAccountId(item) === String(rdnAccountId || "")) || null;
@@ -45,7 +46,7 @@ const useLegacyInvestmentContinuation = ({ location, navigate, data, ready, setS
 };
 
 const InvestmentOverlays = ({ page }) => {
-  const { data, user, setupOpen, setSetupOpen, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction } = page;
+  const { data, user, setupOpen, setSetupOpen, valuationOpen, setValuationOpen, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onValuationSuccess, onInvestmentSuccess, openAction } = page;
   return <Suspense fallback={<LazyActionFallback surface="modal" title="Investasi" label="Menyiapkan aksi Investasi..." />}>
     {setupOpen ? <InvestmentSetupDialog
       instruments={data.instruments || []}
@@ -53,6 +54,11 @@ const InvestmentOverlays = ({ page }) => {
       owner={user?.role === "owner"}
       onClose={() => setSetupOpen(false)}
       onSuccess={onSetupSuccess}
+    /> : null}
+    {valuationOpen ? <InvestmentValuationDialog
+      portfolios={data.portfolios || []}
+      onClose={() => setValuationOpen(false)}
+      onSuccess={onValuationSuccess}
     /> : null}
     {holdingDetail ? <InvestmentHoldingDetail
       portfolio={holdingDetail.portfolio}
@@ -99,14 +105,21 @@ const InvestmentsPage = () => {
   const navigate = useNavigate();
   const overview = useApiResource("investments.overview");
   const [setupOpen, setSetupOpen] = useState(false);
+  const [valuationOpen, setValuationOpen] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [holdingDetail, setHoldingDetail] = useState(null);
   const data = overview.data || { summary: {}, portfolios: [], instruments: [], activity: [] };
   const assetCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.holdings || []).length, 0), [data.portfolios]);
+  const operableAssetCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.can_operate === false ? 0 : (portfolio.holdings || []).length), 0), [data.portfolios]);
 
   const openAction = (mode, portfolio, options = {}) => setDialog({ mode, portfolio, ...options });
   const onSetupSuccess = (_saved, asset) => {
     notify({ message: `${asset?.ticker || "Aset investasi"} berhasil ditambahkan.`, tone: "success", dedupeKey: "investments:asset:create" });
+    overview.reload().catch(() => {});
+  };
+  const onValuationSuccess = (result) => {
+    const count = Number(result?.valuation_count || 0);
+    notify({ message: `${count.toLocaleString("id-ID")} nilai investasi berhasil diperbarui.`, tone: "success", dedupeKey: "investments:valuation:bulk" });
     overview.reload().catch(() => {});
   };
   const onInvestmentSuccess = (mode) => {
@@ -117,20 +130,23 @@ const InvestmentsPage = () => {
   useLegacyInvestmentContinuation({ location, navigate, data, ready: overview.status === "ready" && !overview.isRefreshing, setSetupOpen, setDialog, setHoldingDetail });
   useEffect(() => {
     if (!attention || !["investment_reconciliation_stale", "investment_reconciliation_difference"].includes(attention.attentionType)) return;
-    notify({ message: "Pencatatan investasi kini berbasis aset. Rekonsiliasi RDN lama tetap tersimpan sebagai histori dan tidak diperlukan untuk pencatatan baru.", tone: "info", dedupeKey: "investments:legacy-reconciliation" });
+    notify({ message: "Pencatatan investasi kini berbasis aset. Rekonsiliasi RDN lama tetap tersimpan sebagai histori kompatibilitas; gunakan Perbarui nilai untuk harga saham atau NAB terbaru.", tone: "info", dedupeKey: "investments:legacy-reconciliation" });
     consumeAttention();
   }, [attention, consumeAttention, notify]);
 
   if (overview.status === "loading") return <NativePageSkeleton kind="investments" label="Memuat investasi…" />;
   if (overview.status === "error") return <ErrorState error={overview.error} onRetry={overview.reload} />;
 
-  const page = { data, user, setupOpen, setSetupOpen, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction };
+  const page = { data, user, setupOpen, setSetupOpen, valuationOpen, setValuationOpen, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onValuationSuccess, onInvestmentSuccess, openAction };
   return <div className={`page-stack ${styles.page}`}>
     <RefreshWarning error={overview.refreshError} onRetry={() => overview.reload().catch(() => {})} />
     <PageHeader
       title="Investasi"
       description="Catat saham dan reksa dana langsung sebagai aset, tanpa wadah broker atau portfolio di tampilan."
-      actions={<Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => setSetupOpen(true)} aria-label="Tambah investasi">Tambah investasi</Button>}
+      actions={<div className={styles.headerActions}>
+        {operableAssetCount > 0 ? <Button className={styles.valuationAction} variant="primary" icon={FiRefreshCw} data-preload-action="investmentValuation" onClick={() => setValuationOpen(true)} aria-label="Perbarui nilai investasi">Perbarui nilai</Button> : null}
+        <Button className={styles.setupAction} icon={FiPlus} data-preload-action="investmentSetup" onClick={() => setSetupOpen(true)} aria-label="Tambah investasi">Tambah investasi</Button>
+      </div>}
       help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak memindahkan saldo rekening, dan tidak mengambil harga pasar live."
     />
     {assetCount === 0 ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>

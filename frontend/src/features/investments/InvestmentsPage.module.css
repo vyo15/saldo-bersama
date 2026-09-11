@@ -296,3 +296,32 @@
   .firstInvestmentPaths { grid-template-columns: 1fr; }
   .firstInvestmentSetup :global(.button) { width: 100%; }
 }
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.valuationAction {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .headerActions {
+    gap: var(--space-1);
+  }
+
+  .valuationAction {
+    width: var(--mobile-control-height);
+    min-width: var(--mobile-control-height);
+    height: var(--mobile-control-height);
+    padding: 0;
+    border-radius: var(--control-radius);
+  }
+
+  .valuationAction > span {
+    display: none;
+  }
+}

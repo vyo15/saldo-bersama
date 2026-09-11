@@ -28,6 +28,23 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.doesNotMatch(`${page}\n${overview}`, /Top up RDN|Tarik RDN|Sumber catatan|Ajaib|Bibit|Indodax|Market Movers|Top Gainers|Top Losers/i);
 });
 
+test("Perbarui nilai massal membedakan harga saham dan NAB tanpa mengubah jumlah kepemilikan", async () => {
+  const [page, dialog, api] = await Promise.all([
+    read("src/features/investments/InvestmentsPage.jsx"),
+    read("src/features/investments/InvestmentValuationDialog.jsx"),
+    read("src/features/investments/investments.api.js"),
+  ]);
+  assert.match(page, /aria-label="Perbarui nilai investasi">Perbarui nilai<\/Button>/);
+  assert.match(page, /operableAssetCount > 0/);
+  assert.match(dialog, /title="Perbarui nilai investasi"/);
+  assert.match(dialog, /NAB per unit/);
+  assert.match(dialog, /Harga per lembar/);
+  assert.match(dialog, /Jumlah kepemilikan tidak berubah/);
+  assert.match(dialog, /bulkUpdateInvestmentValuations/);
+  assert.match(dialog, /row_version: portfolio\.row_version/);
+  assert.match(api, /investments\.valuations\.bulkUpdate/);
+});
+
 test("aksi Investasi berada pada detail aset dan tetap capability-driven", async () => {
   const [overview, detail, model] = await Promise.all([
     read("src/features/investments/InvestmentOverview.jsx"),
@@ -39,24 +56,22 @@ test("aksi Investasi berada pada detail aset dan tetap capability-driven", async
   assert.match(detail, /portfolio\.can_operate \? <Button[\s\S]*?>Beli<\/Button>/);
   assert.match(detail, /canSell \? <Button[\s\S]*?>Jual<\/Button>/);
   assert.match(detail, /Aktivitas investasi terbaru/);
-  for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual", "Nilai manual", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(model, new RegExp(label));
+  for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga/lembar diperbarui", "NAB/unit diperbarui", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(model, new RegExp(label));
 });
 
 test("styling Investasi memakai token tema dan kontrak responsive mobile canonical", async () => {
-  const styleNames = [
+  const styles = await Promise.all([
     "InvestmentsPage.module.css",
     "InvestmentForm.module.css",
     "InvestmentHero.module.css",
     "HoldingCard.module.css",
     "InvestmentActivity.module.css",
     "InvestmentShared.module.css",
-  ];
-  const styleParts = await Promise.all(styleNames.map((name) => read(`src/features/investments/${name}`)));
-  const styles = styleParts.join("\n");
-  const holdingStyles = styleParts[styleNames.indexOf("HoldingCard.module.css")];
+    "InvestmentValuationDialog.module.css",
+  ].map((name) => read(`src/features/investments/${name}`))).then((parts) => parts.join("\n"));
   assert.match(styles, /@media \(max-width: 900px\)/);
   assert.match(styles, /\.holdingMetrics \{[\s\S]*?display:\s*none;/);
-  assert.match(holdingStyles, /\.unitPrice \{\s*display:\s*none;[\s\S]*?@media \(max-width: 620px\) \{[\s\S]*?\.unitPrice \{\s*display:\s*block;/);
+  assert.match(styles, /\.unitPrice \{\s*display:\s*none;[\s\S]*?@media \(max-width: 620px\) \{[\s\S]*?\.unitPrice \{\s*display:\s*block;/);
   assert.doesNotMatch(styles, /\.assetType\s*\{/);
   assert.match(styles, /\.segment \{[\s\S]*?display:\s*flex;/);
   assert.match(styles, /\.assetFilters/);
@@ -74,8 +89,8 @@ test("Tambah investasi mencatat posisi aset langsung tanpa membuat broker atau R
   assert.match(setup, /title="Tambah investasi"/);
   assert.match(setup, /InvestmentAssetPicker/);
   assert.match(setup, /label=\{mutualFund \? "Jumlah unit" : "Jumlah lot"\}/);
-  assert.match(setup, /Harga rata-rata per saham/);
-  assert.match(setup, /Harga saham saat ini/);
+  assert.match(setup, /Harga rata-rata per lembar/);
+  assert.match(setup, /Harga per lembar saat ini/);
   assert.match(setup, /Tanggal posisi/);
   assert.match(setup, /Tidak ada saldo rekening yang dipindahkan dan tidak ada order yang dikirim ke broker/);
   assert.match(setup, /createInvestmentAssetPosition\(payload\)/);

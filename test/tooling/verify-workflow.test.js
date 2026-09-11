@@ -79,6 +79,10 @@ test("browser smoke memakai DevTools port ephemeral agar stabil di Windows dan G
   assert.match(source, /stderrTail/);
   assert.match(source, /child\.once\("error"/);
   assert.match(source, /result\?\.errorText/);
+  assert.match(source, /Input\.dispatchKeyEvent/);
+  assert.match(source, /CSS\.forcePseudoState/);
+  assert.match(source, /Rendered focus-visible indicator/);
+  assert.doesNotMatch(source, /candidate\?\.focus\(\)/);
   assert.doesNotMatch(source, /19000\s*\+\s*Math\.floor|Math\.random\(\).*debug/i);
 });
 

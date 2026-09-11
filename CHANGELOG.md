@@ -1,6 +1,13 @@
+## 11 September 2026 - Update Nilai Investasi massal dan reconcile legacy cleanup
+
+- Menjadikan **Perbarui nilai** sebagai flow normal Investasi untuk perubahan harga pasar manual: saham memakai **Harga per lembar**, reksa dana memakai **NAB per unit**, sedangkan jumlah lot/unit tidak berubah hanya karena harga bergerak. Halaman Investasi sekarang memiliki aksi massal untuk memperbarui beberapa aset pada satu tanggal valuasi.
+- Menambah mutation transaksional `investments.valuations.bulkUpdate`: beberapa snapshot valuation dalam satu submit divalidasi terhadap holding aktif, chronology, ownership, `row_version`, idempotency, dan dibungkus satu transaksi database; setiap portfolio hanya dibump sekali sehingga tidak terjadi stale-version antarbaris.
+- Mempertahankan `investments.reconciliations.create` dan `investments.corrections.create` hanya sebagai contract compatibility/recovery untuk histori v15/v16. UI asset-centric tidak menghidupkan kembali rekonsiliasi RDN/lot sebagai workflow harian karena checkpoint legacy dapat mengunci periode histori. Residual validator/API reconcile-correction yang sudah tidak dipakai di frontend dibersihkan.
+- Menyelaraskan copy detail, activity, onboarding, API/authorization/implementation/status docs, dan regression test agar tidak lagi menyamakan perubahan harga dengan perubahan kepemilikan.
+
 ## 11 September 2026 - GitHub Quality smoke + harga aset compact
 
-- Memperkeras rendered browser smoke agar portable pada Windows dan GitHub Actions Linux: Chrome/Chromium memakai remote-debugging port ephemeral melalui `DevToolsActivePort`, startup memantau process exit, dan kegagalan menyertakan tail stderr yang dibatasi agar error CI tidak lagi berhenti pada “Chrome DevTools endpoint tidak siap” tanpa diagnosis. Quality gate tetap fail-closed dan tidak di-skip.
+- Memperkeras rendered browser smoke agar portable pada Windows dan GitHub Actions Linux: Chrome/Chromium memakai remote-debugging port ephemeral melalui `DevToolsActivePort`, startup memantau process exit, kegagalan menyertakan tail stderr yang dibatasi, dan verifikasi focus sekarang menekan Tab melalui Chrome DevTools Protocol dan memiliki fallback `CSS.forcePseudoState`, sehingga `:focus-visible` diuji secara deterministik di Windows maupun GitHub Actions. Quality gate tetap fail-closed dan tidak di-skip.
 - Memperkeras `npm run prod`/Production preflight dengan anonymous `/api/session`: `401 UNAUTHENTICATED` dianggap sehat, sedangkan `5xx` menjadi blocker walaupun `/api/health` hanya menunjukkan warning operasional. Ini menutup false-positive runtime/schema mismatch setelah deploy.
 - Menampilkan harga catatan terakhir pada daftar Investasi mobile sebagai `Rp… / saham` atau `Rp… / unit`, menggantikan badge tipe aset yang redundan; desktop tetap memakai metric harga lengkap. Tidak ada perubahan schema/API/saldo/ledger.
 
