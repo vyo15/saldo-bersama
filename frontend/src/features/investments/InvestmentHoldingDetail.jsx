@@ -32,7 +32,7 @@ const HoldingActivity = ({ portfolio, holding }) => {
         </div>
         <div className={activityStyles.activityValue}>
           {trade ? <><span>{buy ? "Nilai pembelian" : "Nilai penjualan"}</span><Money value={item.cash_amount} /></> : null}
-          {valuation ? <><span>{isMutualFundInstrument(holding) ? "NAB per unit" : "Harga per lembar"}</span><Money value={item.price_per_share} /></> : null}
+          {valuation ? <><span>Harga referensi</span><Money value={item.price_per_share} /></> : null}
           {opening ? <><span>Posisi awal</span><strong>{holdingQuantityLabel(item.share_delta, holding)}</strong></> : null}
           {!trade && !valuation && !opening ? <span>Koreksi tercatat</span> : null}
         </div>
@@ -65,7 +65,7 @@ const InvestmentHoldingDetail = ({ portfolio, holding, onClose, onAction }) => {
       <dl className={formStyles.reviewGrid}>
         <div><dt>Kepemilikan</dt><dd>{quantityLabel}</dd></div>
         <div><dt>Modal tercatat</dt><dd><Money value={holding.cost_basis} /></dd></div>
-        <div><dt>{mutualFund ? "NAB per unit terakhir" : "Harga per lembar terakhir"}</dt><dd><Money value={holding.price_per_share} />{holding.valuation_date ? ` · ${formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}` : ""}</dd></div>
+        <div><dt>{mutualFund ? "Nilai per unit terakhir" : "Harga catatan terakhir"}</dt><dd><Money value={holding.price_per_share} />{holding.valuation_date ? ` · ${formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}` : ""}</dd></div>
         <div><dt>Nilai tercatat</dt><dd><Money value={holding.market_value} /></dd></div>
         <div><dt>Hasil belum direalisasi</dt><dd><Money value={holding.unrealized_pl} /> · {performanceLabel(holding.unrealized_pl)}{returnPercent != null ? ` · ${percentLabel(returnPercent)}` : ""}</dd></div>
       </dl>

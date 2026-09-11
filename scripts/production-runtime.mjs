@@ -12,7 +12,6 @@ import { checkProductionDatabaseProfile, inspectProductionDatabaseHealth } from 
 
 export const PRODUCTION_ORIGIN = "https://saldo-bersama.vercel.app";
 const HEALTH_URL = `${PRODUCTION_ORIGIN}/api/health`;
-const SESSION_URL = `${PRODUCTION_ORIGIN}/api/session`;
 const REQUEST_TIMEOUT_MS = 12_000;
 const DEVELOPMENT_LOCAL_ENV_FILE = ".env.local";
 const PRODUCTION_LOCAL_ENV_FILE = ".env.production.local";
@@ -131,24 +130,6 @@ export const checkProductionOperatorEnvironment = async ({
   };
 };
 
-export const checkProductionAnonymousSession = async ({ fetchImpl = fetch } = {}) => {
-  let sessionResponse;
-  try {
-    sessionResponse = await fetchWithTimeout(fetchImpl, SESSION_URL, { headers: { Accept: "application/json" } });
-  } catch (error) {
-    throw Object.assign(new Error(`Endpoint sesi Production tidak dapat dihubungi (${error?.name === "AbortError" ? "timeout" : "network"}).`), { code: "PRODUCTION_SESSION_UNREACHABLE" });
-  }
-  const contentType = String(sessionResponse.headers?.get?.("content-type") || "").toLowerCase();
-  const sessionBody = contentType.includes("application/json") ? await sessionResponse.json().catch(() => null) : null;
-  if (sessionResponse.status !== 401 || sessionBody?.ok !== false || sessionBody?.error?.code !== "UNAUTHENTICATED") {
-    throw Object.assign(
-      new Error(`Endpoint sesi Production belum siap (HTTP ${sessionResponse.status}, code ${sessionBody?.error?.code || "unknown"}).`),
-      { code: "PRODUCTION_SESSION_DEGRADED", status: sessionResponse.status, sessionCode: sessionBody?.error?.code || null },
-    );
-  }
-  return { status: sessionResponse.status, code: sessionBody.error.code };
-};
-
 export const checkProductionFrontend = async ({ fetchImpl = fetch } = {}) => {
   let shellResponse;
   try {
@@ -161,12 +142,6 @@ export const checkProductionFrontend = async ({ fetchImpl = fetch } = {}) => {
     throw Object.assign(new Error(`Frontend Production belum siap (HTTP ${shellResponse.status}).`), { code: "PRODUCTION_FRONTEND_DEGRADED", status: shellResponse.status });
   }
   return { status: shellResponse.status };
-};
-
-export const checkProductionApplicationSurface = async ({ fetchImpl = fetch } = {}) => {
-  const session = await checkProductionAnonymousSession({ fetchImpl });
-  const frontend = await checkProductionFrontend({ fetchImpl });
-  return { session, frontend };
 };
 
 export const checkProductionRuntime = async ({ fetchImpl = fetch } = {}) => {
@@ -182,11 +157,11 @@ export const checkProductionRuntime = async ({ fetchImpl = fetch } = {}) => {
     throw Object.assign(new Error(`Vercel Production belum sehat (HTTP ${healthResponse.status}, status ${serviceStatus || "unknown"}).`), { code: "PRODUCTION_DEGRADED", status: healthResponse.status, serviceStatus: serviceStatus || null });
   }
 
-  await checkProductionApplicationSurface({ fetchImpl });
+  await checkProductionFrontend({ fetchImpl });
 
   console.log("Vercel Production: ready");
   console.log(`URL: ${PRODUCTION_ORIGIN}`);
-  console.log("Health: API + database/schema/operations healthy; anonymous session endpoint + frontend shell reachable");
+  console.log("Health: API + database/schema/operations healthy; frontend shell reachable");
   return { origin: PRODUCTION_ORIGIN, serviceStatus };
 };
 
@@ -322,7 +297,7 @@ export const runProductionRuntime = async ({
   open = false,
   prepare = prepareTrustedProductionRuntime,
   runtimeCheck = checkProductionRuntime,
-  applicationCheck = checkProductionApplicationSurface,
+  frontendCheck = checkProductionFrontend,
   degradationReporter = reportProductionDegradation,
   diagnosticsReader = inspectProductionDatabaseHealth,
 } = {}) => {
@@ -338,10 +313,10 @@ export const runProductionRuntime = async ({
       error.details = { ...(error.details || {}), blockers: readiness.blockers };
       throw error;
     }
-    await applicationCheck();
+    await frontendCheck();
     console.warn(`Vercel Production core siap; operational warning tidak memblokir aplikasi${readiness.warnings.length ? ` (${readiness.warnings.join(", ")})` : ""}.`);
     console.log(`URL: ${PRODUCTION_ORIGIN}`);
-    console.log("Health aggregate masih degraded sampai scheduler/integrasi pulih; database/schema/session/frontend tetap siap.");
+    console.log("Health aggregate masih degraded sampai scheduler/integrasi pulih; database/schema/frontend tetap siap.");
     status = { origin: PRODUCTION_ORIGIN, serviceStatus: "degraded", coreReady: true, warnings: readiness.warnings };
   }
   if (status?.serviceStatus === "ok") {

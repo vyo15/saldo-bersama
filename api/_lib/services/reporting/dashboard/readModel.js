@@ -27,7 +27,7 @@ import {
   todayJakarta,
 } from "../../core.js";
 import { dateBefore } from "../shared.js";
-import { reconciliationAlertStatement } from "./alerts.js";
+import { investmentReconciliationAlertStatement, reconciliationAlertStatement } from "./alerts.js";
 
 // Read plans deliberately batch related queries. Keep mapping pure so moving these
 // helpers cannot create a second source of financial business rules.
@@ -409,7 +409,10 @@ export const dashboardReadPlan = (context, periodContext) => {
   });
   add("budgets", budgetListStatement(scopedContext));
   add("envelopes", envelopeItemsStatement(context.actor, { period, includeClosed: false }));
-  if (!historical) add("reconciliation", reconciliationAlertStatement(context.actor));
+  if (!historical) {
+    add("reconciliation", reconciliationAlertStatement(context.actor));
+    add("investmentReconciliation", investmentReconciliationAlertStatement());
+  }
   return { statements, indexes, goalIndexes };
 };
 
@@ -431,5 +434,6 @@ export const mapDashboardReadRows = (rows, plan, context, periodContext, preload
     budgets: mapBudgetListRows(rows[indexes.budgets] || [], scopedContext).items,
     dashboardEnvelopes: dashboardEnvelopeCapabilities(mapEnvelopeItemRows(rows[indexes.envelopes] || []), context.actor),
     reconciliationRows: historical ? [] : rows[indexes.reconciliation] || [],
+    investmentReconciliationRows: historical ? [] : rows[indexes.investmentReconciliation] || [],
   };
 };

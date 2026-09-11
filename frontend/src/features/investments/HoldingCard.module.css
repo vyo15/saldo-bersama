@@ -1,12 +1,4 @@
-/* Dense holding rows: summary first on mobile, full cost/price metrics on wider screens. */
-
-.holdingsSection {
-  display: grid;
-  gap: var(--space-2);
-  min-width: 0;
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--border);
-}
+/* Compact investment asset rows: identity on the left, current value + P/L on the right. */
 
 .holdings {
   display: grid;
@@ -15,11 +7,12 @@
 
 .holdingCard {
   display: grid;
-  grid-template-columns: minmax(13rem, 1.05fr) minmax(9rem, .58fr) minmax(18rem, 1.3fr);
+  grid-template-columns: minmax(0, 1fr) minmax(10.5rem, auto);
   align-items: center;
   gap: var(--space-4);
   min-width: 0;
-  padding: var(--space-3) var(--space-1);
+  min-height: 4.5rem;
+  padding: .8rem .15rem;
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   border-radius: 0;
@@ -31,7 +24,11 @@
   border-bottom: 0;
 }
 
-@media (hover: hover) and (pointer: fine) { .holdingCard:hover { background: color-mix(in srgb, var(--surface-soft) 74%, transparent); } }
+@media (hover: hover) and (pointer: fine) {
+  .holdingCard:hover {
+    background: color-mix(in srgb, var(--surface-soft) 74%, transparent);
+  }
+}
 
 .holdingIdentity {
   display: flex;
@@ -43,7 +40,7 @@
 .stockLogo {
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: var(--radius-md);
+  border-radius: 50%;
 }
 
 .holdingIdentity > div {
@@ -54,24 +51,23 @@
 .holdingNameRow {
   display: flex;
   align-items: baseline;
-  gap: var(--space-2);
   min-width: 0;
 }
 
 .holdingNameRow h4 {
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
+  color: var(--text);
   font-size: var(--font-size-body-sm);
-}
-
-.holdingNameRow > span {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .holdingIdentity p {
-  margin: .15rem 0 0;
+  margin: .2rem 0 0;
   overflow: hidden;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
@@ -82,77 +78,30 @@
 
 .holdingValueBlock {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-2);
+  justify-items: end;
+  gap: .2rem;
   min-width: 0;
   text-align: end;
 }
 
-.holdingValueBlock > div {
-  display: grid;
-  justify-items: end;
-  gap: .1rem;
-  min-width: 0;
-}
-
-.holdingValueBlock span {
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-}
-
 .holdingValueBlock strong {
   min-width: 0;
+  color: var(--text);
   font-size: var(--font-size-body-sm);
-  overflow-wrap: anywhere;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 .holdingValueBlock small {
+  min-width: 0;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
-.holdingChevron {
-  width: 1rem;
-  height: 1rem;
-  color: var(--text-muted);
-}
-
-.holdingMetrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.holdingMetrics > div {
-  display: grid;
-  align-content: center;
-  gap: .15rem;
-  min-width: 0;
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--border);
-}
-
-.holdingMetrics dt {
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.holdingMetrics dd {
-  min-width: 0;
-  margin: 0;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  overflow-wrap: anywhere;
-}
-
-.holdingMetrics dd small {
-  display: block;
-  margin-top: .15rem;
-  color: var(--text-muted);
-  font-size: .75rem;
-  font-weight: var(--font-weight-regular);
+.holdingValueBlock :global(.money) {
+  font: inherit;
 }
 
 .holdingCardInteractive {
@@ -163,102 +112,6 @@
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
-}
-
-@media (max-width: 1180px) {
-  .holdingCard {
-    grid-template-columns: minmax(13rem, 1fr) minmax(9rem, .65fr);
-  }
-
-  .holdingMetrics {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 900px) {
-  .holdingsSection {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .holdingCard {
-    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto);
-    gap: var(--space-3);
-    padding: .7rem 0;
-  }
-
-  .holdingMetrics {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 620px) {
-  .holdingCard {
-    grid-template-columns: minmax(0, 1fr) minmax(6.8rem, auto);
-    gap: var(--space-2);
-    min-height: 3.8rem;
-    padding: .55rem 0;
-  }
-
-  .stockLogo {
-    width: 2.35rem;
-    height: 2.35rem;
-    border-radius: .75rem;
-  }
-
-  .holdingIdentity {
-    gap: .75rem;
-  }
-
-  .holdingNameRow {
-    gap: .4rem;
-  }
-
-  .holdingNameRow h4,
-  .holdingValueBlock strong {
-    font-size: .8rem;
-  }
-
-  .holdingNameRow > span,
-  .holdingIdentity p,
-  .unitPrice,
-  .holdingValueBlock span,
-  .holdingValueBlock small {
-    font-size: .75rem;
-  }
-
-  .holdingValueBlock > div {
-    gap: 0;
-  }
-
-  .holdingValueBlock span {
-    display: none;
-  }
-
-  .holdingChevron {
-    width: .9rem;
-    height: .9rem;
-  }
-
-  .holdingMetrics {
-    display: none;
-  }
-}
-
-@media (max-width: 370px) {
-  .holdingCard {
-    grid-template-columns: minmax(0, 1fr) minmax(6rem, auto);
-  }
-
-  .stockLogo {
-    width: 2.15rem;
-    height: 2.15rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .holdingCard {
-    transition: none;
-  }
 }
 
 .assetListCard {
@@ -278,7 +131,9 @@
   scrollbar-width: none;
 }
 
-.assetFilters::-webkit-scrollbar { display: none; }
+.assetFilters::-webkit-scrollbar {
+  display: none;
+}
 
 .assetFilters button {
   flex: 0 0 auto;
@@ -305,25 +160,16 @@
   outline-offset: 2px;
 }
 
-.unitPrice {
-  display: none;
-  margin-top: .2rem;
-  color: var(--text-muted);
-  font-size: .75rem;
-  font-weight: var(--font-weight-semibold);
-  line-height: 1.35;
-}
-
-.unitPrice :global(.money) {
-  color: inherit;
-  font: inherit;
-}
-
 @media (max-width: 900px) {
   .assetListCard {
     padding: var(--space-3) var(--space-4);
     border-radius: var(--mobile-card-radius);
     box-shadow: none;
+  }
+
+  .holdingCard {
+    grid-template-columns: minmax(0, 1fr) minmax(9.25rem, auto);
+    gap: var(--space-3);
   }
 }
 
@@ -332,12 +178,56 @@
     padding: var(--space-3);
   }
 
-  .unitPrice {
-    display: block;
-  }
-
   .assetFilters {
     margin: 0 calc(var(--space-1) * -1);
     padding-inline: var(--space-1);
+  }
+
+  .holdingCard {
+    grid-template-columns: minmax(0, 1fr) minmax(7.75rem, auto);
+    gap: var(--space-2);
+    min-height: 4.15rem;
+    padding: .7rem 0;
+  }
+
+  .stockLogo {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .holdingIdentity {
+    gap: .7rem;
+  }
+
+  .holdingNameRow h4,
+  .holdingValueBlock strong {
+    font-size: .8rem;
+  }
+
+  .holdingIdentity p,
+  .holdingValueBlock small {
+    font-size: .75rem;
+  }
+}
+
+@media (max-width: 370px) {
+  .holdingCard {
+    grid-template-columns: minmax(0, 1fr) minmax(7rem, auto);
+  }
+
+  .stockLogo {
+    width: 2.3rem;
+    height: 2.3rem;
+  }
+
+  .holdingIdentity p,
+  .holdingValueBlock small {
+    font-size: var(--font-size-xs);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holdingCard {
+    transition: none;
   }
 }

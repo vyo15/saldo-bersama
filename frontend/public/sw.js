@@ -124,14 +124,19 @@ self.addEventListener("push", (event) => {
   try { payload = event.data?.json() || {}; } catch { payload = {}; }
   const copy = notificationCopy(payload);
   const notificationId = String(payload.notificationId || "").slice(0, 120) || undefined;
-  event.waitUntil(self.registration.showNotification(copy.title, {
-    body: copy.body,
-    icon: "/icons/icon-192.png?v=4",
-    badge: "/icons/notification-badge-96.png?v=1",
-    tag: notificationId,
-    renotify: false,
-    data: { targetPath: safeTargetPath(payload.targetPath) }
-  }));
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(copy.title, {
+      body: copy.body,
+      icon: "/icons/icon-192.png?v=4",
+      badge: "/icons/notification-badge-96.png?v=1",
+      tag: notificationId,
+      renotify: false,
+      data: { targetPath: safeTargetPath(payload.targetPath) }
+    }),
+    self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => Promise.all(clients.map((client) => client.postMessage({ type: "NOTIFICATION_RECEIVED" }))))
+      .catch(() => {}),
+  ]));
 });
 
 self.addEventListener("notificationclick", (event) => {

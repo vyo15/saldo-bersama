@@ -2,7 +2,7 @@ import { readBatchRows } from "../../db/readBatchRows.js";
 import { NOTIFICATION_TYPE_VALUES } from "../../domainConstants.js";
 import webpush from "web-push";
 import { appendAudit } from "../audit.js";
-import { appError, assertVersion, nowIso, parseJson, sanitizeText, strictBoolean, uuid } from "../core.js";
+import { appError, assertVersion, boundedInteger, nowIso, parseJson, sanitizeText, strictBoolean, uuid } from "../core.js";
 import {
   configureWebPushClient,
   normalizePushEndpoint,
@@ -90,6 +90,29 @@ export const unregisterPush = async (db, context) => {
     next: { status: "inactive" },
   });
   return { unregistered: true, unregisteredAt: timestamp };
+};
+
+export const notificationCenter = async (db, context) => {
+  const limit = boundedInteger(context.payload?.limit, 80, 1, 120, "Batas notifikasi");
+  const rows = await db.all(`SELECT notification_id,notification_type,title,body,target_path,scheduled_at,status,created_at
+    FROM notification_queue
+    WHERE user_id=?
+    ORDER BY COALESCE(scheduled_at,created_at) DESC,created_at DESC
+    LIMIT ?`, [context.actor.user_id, limit]);
+  return {
+    items: rows.map((row) => ({
+      id: `event:${row.notification_id}`,
+      source: "event",
+      notificationId: row.notification_id,
+      type: row.notification_type,
+      title: row.title,
+      message: row.body,
+      targetPath: row.target_path || "/",
+      occurredAt: row.scheduled_at || row.created_at,
+      deliveryStatus: row.status,
+      severity: row.notification_type === "recurring_funding_shortage" ? "warning" : "info",
+    })),
+  };
 };
 
 export const notificationPreferences = async (db, context) => {

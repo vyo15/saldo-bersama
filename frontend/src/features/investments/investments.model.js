@@ -24,6 +24,11 @@ const nonNegativeIntegerError = (value, label) => {
   return "";
 };
 
+const signedIntegerError = (value, label) => {
+  if (finiteInteger(value) == null) return `${label} harus berupa bilangan bulat.`;
+  return "";
+};
+
 const todayJakarta = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 
 
@@ -57,6 +62,7 @@ export const selectInvestmentInstruments = (instruments = [], holdings = [], mod
     return holding && Number(holding.shares || 0) >= lotSize;
   });
   if (mode === "price") return instruments.filter((item) => heldIds.has(item.instrument_id));
+  if (mode === "reconcile") return instruments.filter((item) => item.status === "active" || heldIds.has(item.instrument_id));
   if (mode === "opening_position") return instruments.filter((item) => item.status === "active" && !heldIds.has(item.instrument_id));
   return instruments;
 };
@@ -133,7 +139,7 @@ export const investmentActivityForInstrument = (activity = [], instrumentId = ""
 export const investmentActivityLabel = (activity = {}) => {
   const ticker = activity.ticker || "saham";
   if (activity.activity_type === "trade") return `${activity.trade_type === "buy" ? "Pembelian dicatat" : "Penjualan dicatat"} · ${ticker}`;
-  if (activity.activity_type === "valuation") return `${activity.asset_type === "mutual_fund" ? "NAB/unit diperbarui" : "Harga/lembar diperbarui"} · ${ticker}`;
+  if (activity.activity_type === "valuation") return `${activity.asset_type === "mutual_fund" ? "Nilai manual diperbarui" : "Harga manual diperbarui"} · ${ticker}`;
   if (activity.activity_type === "opening_position") return activity.instrument_id ? `Posisi awal dicatat · ${ticker}` : "Saldo awal RDN dicatat";
   return `Koreksi dicatat · ${activity.instrument_id ? ticker : "Saldo RDN"}`;
 };
@@ -152,8 +158,8 @@ const instrumentForMode = (mode, form, instruments, portfolio) => {
 };
 
 const tradeInstrumentLabels = (instrument) => isMutualFundInstrument(instrument || {})
-  ? { quantity: "Unit", price: "NAB per unit", availability: "unit" }
-  : { quantity: "Lot", price: "Harga per lembar", availability: "lot" };
+  ? { quantity: "Unit", price: "Nilai per unit", availability: "unit" }
+  : { quantity: "Lot", price: "Harga per saham", availability: "lot" };
 
 const availableTradeQuantity = (instrument, holding) => {
   if (isMutualFundInstrument(instrument || {})) return Number(holding?.shares || 0);
@@ -187,12 +193,90 @@ const validateTrade = (mode, form, context) => {
 
 const validatePrice = (form, context) => {
   const errors = {};
-  const selected = instrumentForMode("price", form, context.instruments, context.portfolio);
-  if (!selected) errors.instrument_id = "Pilih aset yang tersedia.";
-  const priceError = positiveIntegerError(form.price_per_share, isMutualFundInstrument(selected || {}) ? "NAB per unit" : "Harga per lembar");
-  const dateError = requiredDateError(form.valuation_date, "Tanggal nilai", context.today);
+  if (!instrumentForMode("price", form, context.instruments, context.portfolio)) errors.instrument_id = "Pilih saham yang tersedia.";
+  const priceError = positiveIntegerError(form.price_per_share, "Harga per saham");
+  const dateError = requiredDateError(form.valuation_date, "Tanggal harga", context.today);
   if (priceError) errors.price_per_share = priceError;
   if (dateError) errors.valuation_date = dateError;
+  return errors;
+};
+
+const reconcileQuantityError = ({ form, item, holdings }) => {
+  const key = `quantity:${item.instrument_id}`;
+  const holding = holdings.find((candidate) => candidate.instrument_id === item.instrument_id);
+  const lotSize = Number(item.lot_size || holding?.lot_size || 100);
+  const mutualFund = isMutualFundInstrument(item);
+  const holdingShares = Number(holding?.shares || 0);
+  const fallback = mutualFund ? holdingShares : holdingShares / lotSize;
+  const quantity = Number(form[key] ?? fallback);
+  const shares = mutualFund ? quantity : quantity * lotSize;
+  const valid = Number.isFinite(quantity) && quantity >= 0 && Number.isSafeInteger(shares);
+  return valid ? null : [key, `${item.ticker || item.name} · ${mutualFund ? "unit" : "lot"} aktual tidak valid.`];
+};
+
+const validateReconcile = (form, context) => {
+  const { instruments, portfolio, today } = context;
+  const errors = {};
+  const cashError = nonNegativeIntegerError(form.actual_cash, "Saldo RDN aktual");
+  const dateError = requiredDateError(form.reconciliation_date, "Tanggal pencocokan", today);
+  if (cashError) errors.actual_cash = cashError;
+  if (dateError) errors.reconciliation_date = dateError;
+
+  const holdings = portfolio?.holdings || [];
+  for (const item of selectInvestmentInstruments(instruments, holdings, "reconcile")) {
+    const quantityError = reconcileQuantityError({ form, item, holdings });
+    if (quantityError) errors[quantityError[0]] = quantityError[1];
+  }
+  return errors;
+};
+
+const correctionIntegerErrors = (form, instruments) => {
+  const errors = {};
+  const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
+  const quantity = Number(form.quantity_delta || 0);
+  const lotSize = Number(instrument?.lot_size || 100);
+  const shares = isMutualFundInstrument(instrument || {}) ? quantity : quantity * lotSize;
+  const shareError = !Number.isFinite(quantity) || !Number.isSafeInteger(shares) ? "Delta lot/unit tidak valid." : "";
+  const costError = signedIntegerError(form.cost_basis_delta || 0, "Delta cost basis");
+  const cashError = signedIntegerError(form.cash_delta || 0, "Delta saldo RDN");
+  if (shareError) errors.quantity_delta = shareError;
+  if (costError) errors.cost_basis_delta = costError;
+  if (cashError) errors.cash_delta = cashError;
+  return errors;
+};
+
+const validateCorrectionHolding = (form, instruments, errors) => {
+  const shareDelta = Number(form.quantity_delta || 0);
+  const costDelta = Number(form.cost_basis_delta || 0);
+  const cashDelta = Number(form.cash_delta || 0);
+  if (!shareDelta && !costDelta && !cashDelta) errors._form = "Koreksi harus mengubah lot/unit, cost basis, atau saldo RDN.";
+
+  if (!shareDelta && !costDelta) {
+    if (form.instrument_id) errors.instrument_id = "Kosongkan saham bila koreksi hanya mengubah saldo RDN.";
+    return;
+  }
+
+  if (!shareDelta || !costDelta || Math.sign(shareDelta) !== Math.sign(costDelta)) {
+    errors.quantity_delta = "Delta lot/unit dan cost basis harus sama-sama diisi dan searah.";
+    errors.cost_basis_delta = "Delta lot/unit dan cost basis harus sama-sama diisi dan searah.";
+  }
+  if (!instruments.some((item) => item.instrument_id === form.instrument_id)) errors.instrument_id = "Pilih saham untuk koreksi kepemilikan.";
+};
+
+const validateCorrection = (form, context) => {
+  const { instruments, userRole, today } = context;
+  const errors = {};
+  if (userRole !== "owner") return { _form: "Koreksi investasi hanya tersedia untuk Administrator." };
+
+  const dateError = requiredDateError(form.correction_date, "Tanggal koreksi", today);
+  if (dateError) errors.correction_date = dateError;
+  if (String(form.reason || "").trim().length < 5) errors.reason = "Alasan koreksi minimal 5 karakter.";
+
+  const integerErrors = correctionIntegerErrors(form, instruments);
+  Object.assign(errors, integerErrors);
+  if (Object.keys(integerErrors).length) return errors;
+
+  validateCorrectionHolding(form, instruments, errors);
   return errors;
 };
 
@@ -227,9 +311,8 @@ const openingPositionAssetErrors = (form, context) => {
     instrument || {},
     isMutualFundInstrument(instrument || {}) ? "Jumlah unit" : "Jumlah lot",
   );
-  const mutualFund = isMutualFundInstrument(instrument || {});
-  const averageError = positiveIntegerError(form.average_price, mutualFund ? "NAB rata-rata per unit" : "Harga rata-rata per lembar");
-  const priceError = positiveIntegerError(form.reference_price, mutualFund ? "NAB per unit" : "Harga per lembar");
+  const averageError = positiveIntegerError(form.average_price, "Harga rata-rata beli");
+  const priceError = positiveIntegerError(form.reference_price, "Harga sekarang");
   if (quantityError) errors.opening_quantity = quantityError;
   if (averageError) errors.average_price = averageError;
   if (priceError) errors.reference_price = priceError;
@@ -253,6 +336,8 @@ const operationValidators = {
   buy: (form, context) => validateTrade("buy", form, context),
   sell: (form, context) => validateTrade("sell", form, context),
   price: validatePrice,
+  reconcile: validateReconcile,
+  correction: validateCorrection,
   opening_position: validateOpeningPosition,
 };
 
@@ -270,8 +355,8 @@ const assetPositionFieldErrors = (form, instrument, today) => {
   const errors = {};
   const mutualFund = isMutualFundInstrument(instrument || {});
   const quantityError = investmentQuantityError(form.opening_quantity, instrument || {}, mutualFund ? "Jumlah unit" : "Jumlah lot");
-  const averageError = positiveIntegerError(form.average_price, mutualFund ? "NAB rata-rata per unit" : "Harga rata-rata per lembar");
-  const referenceError = positiveIntegerError(form.reference_price, mutualFund ? "NAB per unit saat ini" : "Harga per lembar saat ini");
+  const averageError = positiveIntegerError(form.average_price, mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham");
+  const referenceError = positiveIntegerError(form.reference_price, mutualFund ? "Nilai per unit saat ini" : "Harga saham saat ini");
   const dateError = requiredDateError(form.position_date, "Tanggal posisi", today);
   if (!instrument || !String(form.ticker || instrument?.ticker || "").trim()) errors.ticker = "Pilih saham atau reksa dana yang ingin dicatat.";
   if (quantityError) errors.opening_quantity = quantityError;

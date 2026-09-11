@@ -77,7 +77,7 @@ const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, errors
         <TemporalInput type="date" max={TODAY()} value={form.trade_date} onChange={(event) => onFieldChange("trade_date", event.target.value)} />
       </InvestmentFormField>
     </div>
-    <MoneyInput id="investment-trade-price" label={mutualFund ? "NAB per unit" : "Harga per lembar"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
+    <MoneyInput id="investment-trade-price" label={mutualFund ? "Nilai per unit" : "Harga per saham"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
     {mode === "buy" && instrument ? (() => {
       const average = investmentProjectedAverage(form, instruments, portfolio);
       return <div className={formStyles.averagePreview} role="status"><span>{mutualFund ? "Average nilai/unit" : "Average harga/lembar"}</span><strong><Money value={average.nextAverage} /></strong><small>{average.currentShares > 0 ? <>Sebelum pembelian <Money value={average.currentAverage} /></> : "Posisi baru"}</small></div>;
@@ -99,7 +99,7 @@ const TradeReview = ({ mode, form, instruments, portfolio }) => {
     <dl className={formStyles.reviewGrid}>
       <div><dt>Aset</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
       <div><dt>Kuantitas</dt><dd>{preview.lots.toLocaleString("id-ID")} {mutualFund ? "unit" : "lot"}</dd></div>
-      <div><dt>{mutualFund ? "NAB per unit" : "Harga per lembar"}</dt><dd><Money value={preview.pricePerShare} /></dd></div>
+      <div><dt>{mutualFund ? "Nilai per unit" : "Harga per saham"}</dt><dd><Money value={preview.pricePerShare} /></dd></div>
       <div><dt>Nilai tercatat</dt><dd><Money value={preview.rdnAmount} /></dd></div>
       {mode === "buy" ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div><dt>{mutualFund ? "Average nilai/unit setelah beli" : "Average harga/lembar setelah beli"}</dt><dd><Money value={average.nextAverage} /></dd></div>; })() : null}
       <div><dt>Tanggal</dt><dd>{formatDateLongIndonesia(form.trade_date) || form.trade_date}</dd></div>
@@ -113,7 +113,7 @@ const PriceFields = ({ form, onFieldChange, instruments, errors }) => {
   const mutualFund = isMutualFundInstrument(instrument || {});
   return <>
     <InstrumentField form={form} onFieldChange={onFieldChange} instruments={instruments} error={errors.instrument_id} />
-    <MoneyInput id="investment-price" label={mutualFund ? "NAB per unit" : "Harga per lembar"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
+    <MoneyInput id="investment-price" label={mutualFund ? "Nilai per unit" : "Harga per saham"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
     <InvestmentFormField id="investment-valuation-date" label="Tanggal nilai" required error={errors.valuation_date}>
       <TemporalInput type="date" max={TODAY()} value={form.valuation_date} onChange={(event) => onFieldChange("valuation_date", event.target.value)} />
     </InvestmentFormField>
@@ -125,7 +125,7 @@ const dialogTitle = (mode) => ({ buy: "Catat pembelian", sell: "Catat penjualan"
 const dialogDescription = (mode) => ({
   buy: "Tambahkan pembelian ke posisi aset. Pencatatan ini tidak memindahkan saldo rekening.",
   sell: "Kurangi posisi aset sesuai penjualan yang sudah Anda lakukan di luar Saldo Bersama.",
-  price: "Perbarui harga per lembar atau NAB per unit manual terakhir tanpa mengubah jumlah kepemilikan.",
+  price: "Perbarui harga atau nilai manual terakhir tanpa membuat transaksi.",
 })[mode] || "Perbarui catatan investasi.";
 
 const initialForm = ({ initialInstrumentId, initialDraft }) => ({

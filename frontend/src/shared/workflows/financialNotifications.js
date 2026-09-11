@@ -56,6 +56,8 @@ const RECONCILIATION_TYPES = new Set([
   "investment_reconciliation_difference",
 ]);
 
+const EVENT_ACTION_TYPES = new Set(["recurring_funding_shortage"]);
+
 const ACTION_TYPES = new Set([
   ...RECONCILIATION_TYPES,
   "recurring_due",
@@ -79,6 +81,9 @@ export const financialNotificationTitle = (alert = {}) => {
   if (alert.type === "envelope_threshold") return "Periksa Alokasi Dana";
   if (alert.type === "unallocated_expense") return "Alokasikan pengeluaran";
   if (alert.type === "unallocated_funds") return "Dana alokasi belum cukup";
+  if (alert.type === "recurring_funding_shortage") return "Dana jadwal rutin belum cukup";
+  if (alert.type === "recurring_completed") return "Jadwal rutin selesai";
+  if (alert.type === "manual_reminder") return String(alert.title || "Pengingat");
   return String(alert.title || "Notifikasi");
 };
 
@@ -92,6 +97,8 @@ const ENTITY_READERS = Object.freeze({
   goal_behind: (alert) => entityFromPattern(alert, /^(.*)\s+tertinggal dari rencana$/i),
   unallocated_expense: (alert) => entityFromPattern(alert, /^(\d+\s+pengeluaran)\b/i),
   unallocated_funds: (alert) => entityFromPattern(alert, /^(.*)\s+kekurangan dana$/i),
+  recurring_funding_shortage: (alert) => entityFromPattern(alert, /^Dana\s+(.*)\s+belum cukup$/i),
+  recurring_completed: (alert) => entityFromPattern(alert, /^(.*)\s+berhasil dicatat$/i),
 });
 
 const reconciliationFact = (alert) => {
@@ -118,6 +125,9 @@ const FACT_READERS = Object.freeze({
   goal_behind: (alert) => compactMonthlyAmount(alert.message),
   unallocated_expense: () => "Belum masuk Alokasi Dana",
   unallocated_funds: (alert) => Number(alert.fundingGap || 0) > 0 ? `Kurang Rp ${Number(alert.fundingGap).toLocaleString("id-ID")}` : "Dana alokasi belum mencukupi kebutuhan",
+  recurring_funding_shortage: (alert) => String(alert.message || "Dana rekening sumber belum mencukupi").replace(/[.!?]+$/, ""),
+  recurring_completed: (alert) => String(alert.message || "Pembayaran rutin sudah dicatat").replace(/[.!?]+$/, ""),
+  manual_reminder: (alert) => String(alert.message || "Pengingat Anda sudah waktunya").replace(/[.!?]+$/, ""),
 });
 
 export const financialNotificationEntity = (alert = {}) => {
@@ -130,7 +140,21 @@ export const financialNotificationFact = (alert = {}) => {
   return FACT_READERS[alert.type]?.(alert) || String(alert.message || "").replace(/[.!?]+$/, "").trim();
 };
 
-export const notificationRequiresAction = (alert = {}) => ACTION_TYPES.has(alert.type) || alert.severity === "danger" || alert.severity === "warning";
+export const notificationRequiresAction = (alert = {}) => ACTION_TYPES.has(alert.type) || EVENT_ACTION_TYPES.has(alert.type) || alert.severity === "danger" || alert.severity === "warning";
+
+export const mergeNotificationCenterItems = (alerts = [], events = []) => {
+  const active = (Array.isArray(alerts) ? alerts : []).filter((item) => item?.id).map((item) => ({ ...item, source: item.source || "active" }));
+  const activeTypes = new Set(active.map((item) => item.type));
+  const recentEvents = (Array.isArray(events) ? events : [])
+    .filter((item) => item?.id && !(["recurring_due", "budget_threshold", "envelope_threshold", "goal_behind", "unallocated_expense"].includes(item.type) && activeTypes.has(item.type)))
+    .map((item) => ({ ...item, source: "event" }));
+  return [...active, ...recentEvents].sort((left, right) => {
+    const leftAction = notificationRequiresAction(left) ? 1 : 0;
+    const rightAction = notificationRequiresAction(right) ? 1 : 0;
+    if (leftAction !== rightAction) return rightAction - leftAction;
+    return String(right.occurredAt || "").localeCompare(String(left.occurredAt || ""));
+  });
+};
 
 export const useFinancialNotificationReadState = ({ alerts = [], scope = "anonymous" }) => {
   const [readMap, setReadMap] = useState(() => readStoredMap(scope));

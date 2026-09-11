@@ -19,8 +19,9 @@ import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import { formatDateLongIndonesia } from "../../../domain/dates.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
-import { financialNotificationTitle, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
+import { financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
 import { dashboardDueLabel, dashboardInsightState, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
+import { useApiResource } from "../../../hooks/useApiResource.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
@@ -238,7 +239,8 @@ const MobileInvestment = ({ summary, balanceVisible }) => {
 
 const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, displayName, balanceVisible, onToggleBalance, onOpenTransactionDetail, onOpenTransaction, setupContent }) => {
   const { recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel } = viewModel;
-  const notificationState = useFinancialNotificationReadState({ alerts: overview.alerts || [], scope: user?.uid || user?.email || "anonymous" });
+  const notificationEvents = useApiResource("notifications.center", { limit: 80 }, { enabled: Boolean(user) });
+  const notificationState = useFinancialNotificationReadState({ alerts: mergeNotificationCenterItems(overview.alerts || [], notificationEvents.data?.items || []), scope: user?.uid || user?.email || "anonymous" });
   return <section className={dashboardClass("mobile-finance-dashboard")} aria-label="Ringkasan keuangan mobile">
     <h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1>
     <MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} notificationCount={notificationState.unreadCount} />

@@ -13,7 +13,7 @@ const actionFromEvent = (event) => event.target?.closest?.("[data-preload-action
 
 const contextualActionsForPath = (pathname) => {
   if (pathname === "/rekening") return ["accountEditor"];
-  if (pathname === "/investasi") return ["investmentDialog", "investmentSetup", "investmentValuation"];
+  if (pathname === "/investasi") return ["investmentDialog", "investmentSetup"];
   if (pathname === "/target") return ["goalDialog"];
   if (pathname === "/perencanaan/jadwal") return ["recurringDialog"];
   if (pathname.startsWith("/perencanaan/")) return ["allocationOverlay"];

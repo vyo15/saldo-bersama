@@ -13,6 +13,7 @@ export {
 } from "./notifications/pushSecurity.js";
 export {
   NOTIFICATION_TYPES,
+  notificationCenter,
   notificationPreferences,
   notificationStatus,
   registerPush,

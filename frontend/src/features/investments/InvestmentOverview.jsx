@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { FiActivity, FiChevronRight, FiMinus, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
+import { FiActivity, FiMinus, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
@@ -21,7 +21,7 @@ const tone = (value) => Number(value || 0) > 0
 
 const percentLabel = (value) => value == null
   ? null
-  : `${value >= 0 ? "+" : ""}${value.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
+  : `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
 
 const investmentTrendIcon = (value) => {
   const amount = Number(value || 0);
@@ -56,23 +56,16 @@ const InvestmentHero = ({ summary, assetCount }) => {
         </dl>
       </div>
       <div className={heroStyles.heroFooter}>
-        <p>Harga saham dan NAB reksa dana memakai catatan manual terakhir, bukan market feed live.</p>
+        <p>Harga memakai catatan manual terakhir, bukan harga pasar live.</p>
       </div>
     </section>
   );
 };
 
-const holdingQuantity = (holding) => {
-  const mutualFund = isMutualFundInstrument(holding);
-  const shares = Number(holding.shares || 0);
-  if (mutualFund) return `${shares.toLocaleString("id-ID")} unit`;
-  const lots = shares / Math.max(1, Number(holding.lot_size || 100));
-  return `${lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
-};
-
 const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
   const mutualFund = isMutualFundInstrument(holding);
-  const returnPercent = investmentReturnPercent(holding.unrealized_pl, holding.cost_basis);
+  const unrealized = Number(holding.unrealized_pl || 0);
+  const returnPercent = investmentReturnPercent(unrealized, holding.cost_basis);
   const openOnKeyboard = (event) => {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenDetail(); }
   };
@@ -81,27 +74,16 @@ const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
       <div className={holdingStyles.holdingIdentity}>
         <InvestmentAssetLogo ticker={holding.ticker} className={holdingStyles.stockLogo} />
         <div>
-          <div className={holdingStyles.holdingNameRow}><h4>{mutualFund ? holding.name || holding.ticker : holding.ticker || "Aset"}</h4><span>{holdingQuantity(holding)}</span></div>
-          <p>{mutualFund ? holding.ticker : holding.name || "Instrumen investasi"}</p>
-          <small className={holdingStyles.unitPrice}>
-            {Number(holding.price_per_share || 0) > 0
-              ? <><Money value={holding.price_per_share} /> / {mutualFund ? "unit" : "saham"}</>
-              : "Harga belum dicatat"}
-          </small>
+          <div className={holdingStyles.holdingNameRow}><h4>{mutualFund ? holding.name || holding.ticker : holding.ticker || "Aset"}</h4></div>
+          <p>{mutualFund ? holding.ticker || "Reksa Dana" : holding.name || "Instrumen investasi"}</p>
         </div>
       </div>
       <div className={holdingStyles.holdingValueBlock}>
-        <div>
-          <strong><Money value={holding.market_value} /></strong>
-          <small className={tone(holding.unrealized_pl)}>{returnPercent != null ? percentLabel(returnPercent) : <Money value={holding.unrealized_pl} />}</small>
-        </div>
-        <FiChevronRight className={holdingStyles.holdingChevron} aria-hidden="true" />
+        <strong><Money value={holding.market_value} /></strong>
+        <small className={tone(unrealized)}>
+          <Money value={unrealized} />{returnPercent != null ? ` (${percentLabel(returnPercent)})` : ""}
+        </small>
       </div>
-      <dl className={holdingStyles.holdingMetrics}>
-        <div><dt>Kepemilikan</dt><dd>{holdingQuantity(holding)}</dd></div>
-        <div><dt>Modal tercatat</dt><dd><Money value={holding.cost_basis} /></dd></div>
-        <div><dt>{mutualFund ? "NAB per unit" : "Harga per lembar"}</dt><dd><Money value={holding.price_per_share} />{holding.valuation_date ? <small>{formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}</small> : null}</dd></div>
-      </dl>
       {!portfolio.can_operate ? <span className="sr-only">Hanya dapat dilihat</span> : null}
     </article>
   );
@@ -134,7 +116,7 @@ const ActivityValue = ({ activity }) => {
     ? `${Number(shares || 0).toLocaleString("id-ID")} unit`
     : `${(Number(shares || 0) / lotSize).toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
   if (activity.activity_type === "trade") return <><span>{activity.trade_type === "buy" ? "Nilai pembelian" : "Nilai penjualan"}</span><Money value={activity.cash_amount} /></>;
-  if (activity.activity_type === "valuation") return <><span>{mutualFund ? "NAB per unit" : "Harga per lembar"}</span><Money value={activity.price_per_share} /></>;
+  if (activity.activity_type === "valuation") return <><span>Harga terakhir</span><Money value={activity.price_per_share} /></>;
   if (activity.activity_type === "opening_position") return <><span>Posisi awal</span><strong>{quantity(activity.share_delta)}</strong></>;
   if (Number(activity.share_delta || 0) !== 0) return <><span>Koreksi kepemilikan</span><strong>{Number(activity.share_delta || 0) > 0 ? "+" : ""}{quantity(activity.share_delta)}</strong></>;
   return <span>Koreksi tercatat</span>;

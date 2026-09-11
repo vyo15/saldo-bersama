@@ -81,8 +81,8 @@ const InvestmentPositionFields = ({ form, asset, heldTickers, allowedTickers, ou
           <TemporalInput type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />
         </InvestmentFormField>
       </div>
-      <MoneyInput id="investment-position-average" label={mutualFund ? "NAB rata-rata per unit" : "Harga rata-rata per lembar"} required value={form.average_price} error={fieldErrors.average_price} onChange={(value) => onFieldChange("average_price", value)} />
-      <MoneyInput id="investment-position-current" label={mutualFund ? "NAB per unit saat ini" : "Harga per lembar saat ini"} required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
+      <MoneyInput id="investment-position-average" label={mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"} required value={form.average_price} error={fieldErrors.average_price} onChange={(value) => onFieldChange("average_price", value)} />
+      <MoneyInput id="investment-position-current" label={mutualFund ? "Nilai per unit saat ini" : "Harga saham saat ini"} required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
       <InvestmentFormField id="investment-position-notes" label="Catatan (opsional)" error={fieldErrors.notes}>
         <textarea maxLength="500" value={form.notes} onChange={(event) => onFieldChange("notes", event.target.value)} />
       </InvestmentFormField>

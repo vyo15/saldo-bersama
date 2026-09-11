@@ -10,9 +10,10 @@ import Button from "../components/common/Button.jsx";
 import ThemeToggle from "../components/common/ThemeToggle.jsx";
 import UserAvatar from "../components/common/UserAvatar.jsx";
 import { MOBILE_SECONDARY_GROUPS } from "../config/navigation.js";
-import { useFinancialNotificationReadState } from "../shared/workflows/financialNotifications.js";
+import { mergeNotificationCenterItems, useFinancialNotificationReadState } from "../shared/workflows/financialNotifications.js";
 import { useFinance } from "../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../app/TransactionComposerContext.jsx";
+import { useApiResource } from "../hooks/useApiResource.js";
 import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
 import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
 import useMobileTabScrollRestoration from "../hooks/useMobileTabScrollRestoration.js";
@@ -21,7 +22,7 @@ import useActionPrefetch from "../hooks/useActionPrefetch.js";
 import useVisualViewportInsets from "../hooks/useVisualViewportInsets.js";
 import useModalActivity from "../hooks/useModalActivity.js";
 import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
-import { getMutationActivitySnapshot, subscribeToMutationActivity } from "../services/api/client.js";
+import { apiClient, getMutationActivitySnapshot, subscribeToMutationActivity } from "../services/api/client.js";
 import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
 import OfflineBanner from "../components/pwa/OfflineBanner.jsx";
 import UpdateAvailableNotice from "../components/pwa/UpdateAvailableNotice.jsx";
@@ -160,12 +161,24 @@ const useAppShellRuntime = ({ overview, user, composerOpen, refreshAll }) => {
   const mutationActivity = useSyncExternalStore(subscribeToMutationActivity, getMutationActivitySnapshot, getMutationActivitySnapshot);
   const modalActivity = useModalActivity();
   const serviceWorkerUpdate = useServiceWorkerUpdate({ blocked: composerOpen || modalActivity.modalOpen || mutationActivity.activeCount > 0 });
-  const notificationState = useFinancialNotificationReadState({ alerts: overview?.alerts || [], scope: user?.uid || user?.email || "anonymous" });
+  const notificationEvents = useApiResource("notifications.center", { limit: 80 }, { enabled: Boolean(user) });
+  const notificationItems = mergeNotificationCenterItems(overview?.alerts || [], notificationEvents.data?.items || []);
+  const notificationState = useFinancialNotificationReadState({ alerts: notificationItems, scope: user?.uid || user?.email || "anonymous" });
 
   useEffect(() => {
     if (!network.recoveryRevision || mutationActivity.activeCount > 0) return;
     refreshAll().catch(() => {});
   }, [mutationActivity.activeCount, network.recoveryRevision, refreshAll]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return undefined;
+    const onNotificationMessage = (event) => {
+      if (event.data?.type !== "NOTIFICATION_RECEIVED") return;
+      apiClient.invalidate(["notifications.center", "dashboard.overview", "app.initialState"]);
+    };
+    navigator.serviceWorker.addEventListener("message", onNotificationMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onNotificationMessage);
+  }, []);
 
   useEffect(() => {
     const unreadCount = Number(notificationState.unreadCount || 0);
@@ -190,6 +203,7 @@ const AppShell = () => {
   const dashboardRoute = location.pathname === "/";
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
+  const notificationsRoute = location.pathname === "/notifikasi";
   const wideContentRoute = dashboardRoute || ["/laporan", "/investasi", "/notifikasi"].includes(location.pathname);
   const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
   const { installPrompt, network, notificationState, serviceWorkerUpdate } = useAppShellRuntime({ overview, user, composerOpen, refreshAll });
@@ -214,7 +228,7 @@ const AppShell = () => {
     <>
       <SideNavigation />
 
-      <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}${accountsRoute ? " app-shell--accounts" : ""}`}>
+      <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}${accountsRoute ? " app-shell--accounts" : ""}${notificationsRoute ? " app-shell--notifications" : ""}`}>
         <DesktopAppHeader isRefreshing={isRefreshing} notificationState={notificationState} user={user} onLogout={handleLogout} />
 
         <div className="app-shell__main">

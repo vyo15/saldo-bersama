@@ -3,7 +3,6 @@ const ACTION_LOADERS = Object.freeze({
   accountEditor: () => import("../features/accounts/components/AccountEditorDialogs.jsx"),
   investmentDialog: () => import("../features/investments/InvestmentDialog.jsx"),
   investmentSetup: () => import("../features/investments/InvestmentSetupDialog.jsx"),
-  investmentValuation: () => import("../features/investments/InvestmentValuationDialog.jsx"),
   goalDialog: () => import("../features/goals/components/GoalDialogLayer.jsx"),
   recurringDialog: () => import("../features/recurring/RecurringDialogLayer.jsx"),
   allocationOverlay: () => import("../features/allocations/AllocationOverlayLayer.jsx"),

@@ -446,102 +446,12 @@ export const updateInvestmentValuation = async (db, context) => {
   assertPortfolioHistoryDate(portfolio, valuationDate, "Tanggal harga");
   const latest = await db.one("SELECT valuation_date FROM investment_valuations WHERE portfolio_id=? AND instrument_id=? ORDER BY valuation_date DESC,created_at DESC LIMIT 1", [portfolio.portfolio_id, instrument.instrument_id]);
   if (latest?.valuation_date && valuationDate < latest.valuation_date) throw appError("VALUATION_CHRONOLOGY_CONFLICT", `Harga terbaru sudah tercatat pada ${latest.valuation_date}.`, 409);
-  const price = positiveInteger(payload.price_per_share, "Harga/NAB");
-  const stateAtValuation = await portfolioState(db, portfolio, valuationDate);
-  if (!stateAtValuation.holdings.some((holding) => holding.instrument_id === instrument.instrument_id)) {
-    throw appError("HOLDING_NOT_FOUND", "Nilai hanya dapat diperbarui untuk aset yang dimiliki pada tanggal tersebut.", 409, { instrumentId: instrument.instrument_id, valuationDate });
-  }
+  const price = positiveInteger(payload.price_per_share, "Harga per saham");
   const record = { valuation_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, valuation_date: valuationDate, price_per_share: price, idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
   await db.execute("INSERT INTO investment_valuations(valuation_id,portfolio_id,instrument_id,valuation_date,price_per_share,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)", Object.values(record));
   const rowVersion = await bumpPortfolio(db, context, portfolio);
   await appendAudit(db, context, { entityType: "investment_valuation", entityId: record.valuation_id, next: { ...record, row_version: rowVersion } });
   return { ...publicRow(record), row_version: rowVersion };
-};
-
-const bulkValuationGroups = (payload) => {
-  if (!Array.isArray(payload.portfolios) || !payload.portfolios.length) {
-    throw appError("VALUATIONS_REQUIRED", "Pilih minimal satu aset dengan nilai baru.", 400);
-  }
-  if (payload.portfolios.length > 25) throw appError("TOO_MANY_PORTFOLIOS", "Terlalu banyak kelompok investasi dalam satu pembaruan.", 400);
-  return payload.portfolios;
-};
-
-const normalizedBulkValuations = (group) => {
-  if (!Array.isArray(group?.valuations) || !group.valuations.length) {
-    throw appError("VALUATIONS_REQUIRED", "Setiap kelompok investasi harus memiliki minimal satu nilai baru.", 400);
-  }
-  if (group.valuations.length > 100) throw appError("TOO_MANY_VALUATIONS", "Maksimal 100 aset dapat diperbarui sekaligus.", 400);
-  const seen = new Set();
-  return group.valuations.map((item) => {
-    const instrumentId = String(item?.instrument_id || "").trim();
-    if (!instrumentId || seen.has(instrumentId)) throw appError("INVALID_VALUATIONS", "Daftar aset yang diperbarui harus unik dan valid.", 400);
-    seen.add(instrumentId);
-    return { instrument_id: instrumentId, price_per_share: positiveInteger(item?.price_per_share, "Harga/NAB") };
-  });
-};
-
-const bulkValuationIdempotencyKey = (base, groupIndex, valuationIndex) => `${String(base || "bulk").slice(0, 170)}:${groupIndex}:${valuationIndex}`;
-
-export const bulkUpdateInvestmentValuations = async (db, context) => {
-  const payload = context.payload || {};
-  const valuationDate = dateValue(payload.valuation_date || context.today || todayJakarta(), "Tanggal nilai");
-  if (valuationDate > (context.today || todayJakarta())) throw appError("FUTURE_DATE", "Nilai investasi tidak boleh bertanggal di masa depan.", 400);
-
-  const groups = bulkValuationGroups(payload);
-  const seenPortfolios = new Set();
-  const prepared = [];
-
-  for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
-    const group = groups[groupIndex] || {};
-    const portfolioId = String(group.portfolio_id || "").trim();
-    if (!portfolioId || seenPortfolios.has(portfolioId)) throw appError("INVALID_VALUATIONS", "Portfolio pada pembaruan nilai harus unik dan valid.", 400);
-    seenPortfolios.add(portfolioId);
-
-    const portfolio = await portfolioRow(db, portfolioId);
-    assertPortfolioOperable(context, portfolio);
-    assertVersion(portfolio, group.row_version);
-    assertPortfolioHistoryDate(portfolio, valuationDate, "Tanggal nilai");
-
-    const valuations = normalizedBulkValuations(group);
-    const state = await portfolioState(db, portfolio, valuationDate);
-    const heldIds = new Set(state.holdings.map((holding) => holding.instrument_id));
-    for (const valuation of valuations) {
-      if (!heldIds.has(valuation.instrument_id)) throw appError("HOLDING_NOT_FOUND", "Nilai hanya dapat diperbarui untuk aset yang dimiliki pada tanggal tersebut.", 409, { instrumentId: valuation.instrument_id });
-      await instrumentRow(db, valuation.instrument_id);
-      const latest = await db.one("SELECT valuation_date FROM investment_valuations WHERE portfolio_id=? AND instrument_id=? ORDER BY valuation_date DESC,created_at DESC LIMIT 1", [portfolio.portfolio_id, valuation.instrument_id]);
-      if (latest?.valuation_date && valuationDate < latest.valuation_date) {
-        throw appError("VALUATION_CHRONOLOGY_CONFLICT", `Nilai terbaru untuk salah satu aset sudah tercatat pada ${latest.valuation_date}.`, 409, { instrumentId: valuation.instrument_id, latestDate: latest.valuation_date });
-      }
-    }
-    prepared.push({ portfolio, valuations, groupIndex });
-  }
-
-  const updated = [];
-  for (const { portfolio, valuations, groupIndex } of prepared) {
-    const records = [];
-    for (let valuationIndex = 0; valuationIndex < valuations.length; valuationIndex += 1) {
-      const valuation = valuations[valuationIndex];
-      const record = {
-        valuation_id: uuid(),
-        portfolio_id: portfolio.portfolio_id,
-        instrument_id: valuation.instrument_id,
-        valuation_date: valuationDate,
-        price_per_share: valuation.price_per_share,
-        idempotency_key: bulkValuationIdempotencyKey(context.idempotencyKey, groupIndex, valuationIndex),
-        created_by: context.actor.user_id,
-        created_at: nowIso(),
-      };
-      await db.execute("INSERT INTO investment_valuations(valuation_id,portfolio_id,instrument_id,valuation_date,price_per_share,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)", Object.values(record));
-      records.push(record);
-    }
-    const rowVersion = await bumpPortfolio(db, context, portfolio);
-    for (const record of records) {
-      await appendAudit(db, context, { entityType: "investment_valuation", entityId: record.valuation_id, next: { ...record, row_version: rowVersion, bulk_update: true } });
-    }
-    updated.push({ portfolio_id: portfolio.portfolio_id, row_version: rowVersion, valuation_count: records.length });
-  }
-
-  return { valuation_date: valuationDate, valuation_count: updated.reduce((sum, item) => sum + item.valuation_count, 0), portfolios: updated };
 };
 
 const actualHoldingMap = (value) => {

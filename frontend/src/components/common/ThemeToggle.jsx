@@ -5,7 +5,7 @@ import styles from "./ThemeToggle.module.css";
 const ThemeToggle = ({ className = "", showLabel = false, tone = "surface" }) => {
   const { theme, toggleTheme } = useTheme();
   const darkMode = theme === "dark";
-  const Icon = darkMode ? FiSun : FiMoon;
+  const Icon = darkMode ? FiMoon : FiSun;
   const nextLabel = darkMode ? "Aktifkan light mode" : "Aktifkan dark mode";
   const classes = [
     styles.toggle,
@@ -27,8 +27,9 @@ const ThemeToggle = ({ className = "", showLabel = false, tone = "surface" }) =>
       title={nextLabel}
       data-ui="theme-toggle"
     >
-      <Icon aria-hidden="true" />
-      {showLabel ? <span>{darkMode ? "Light mode" : "Dark mode"}</span> : null}
+      <span className={styles.labelIcon} aria-hidden="true"><Icon /></span>
+      {showLabel ? <span className={styles.labelCopy}><strong>Mode gelap</strong><small>{darkMode ? "Aktif" : "Nonaktif"}</small></span> : null}
+      {showLabel ? <span className={styles.switchTrack} aria-hidden="true"><span className={styles.switchThumb} /></span> : null}
     </button>
   );
 };

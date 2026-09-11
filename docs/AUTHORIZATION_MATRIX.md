@@ -46,7 +46,6 @@
 | `investments.trades.buy` | Ya | Ya |
 | `investments.trades.sell` | Ya | Ya |
 | `investments.valuations.update` | Ya | Ya |
-| `investments.valuations.bulkUpdate` | Ya | Ya |
 | `investments.reconciliations.create` | Ya | Ya |
 | `investments.corrections.create` | Ya | Tidak |
 | `accounts.list` | Ya | Ya |
@@ -124,6 +123,7 @@ Catatan rekonsiliasi: `reconciliations.create` tetap dapat dipanggil Administrat
 | `mirror.sync` | Ya | Tidak |
 | `mirror.rebuild` | Ya | Tidak |
 | `integrations.status` | Ya | Ya |
+| `notifications.center` | Ya | Ya |
 | `notifications.status` | Ya | Ya |
 | `notifications.preferences` | Ya | Ya |
 | `notifications.updatePreference` | Ya | Ya |

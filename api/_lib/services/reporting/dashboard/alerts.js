@@ -13,6 +13,23 @@ const usageThreshold = (percentage, custom = 75) => {
   return null;
 };
 
+export const investmentReconciliationAlertStatement = () => ({
+  sql: `SELECT p.portfolio_id,p.name,p.rdn_account_id,latest.reconciliation_date,latest.status
+    FROM investment_portfolios p
+    JOIN accounts a ON a.account_id=p.rdn_account_id
+    LEFT JOIN (
+      SELECT portfolio_id,reconciliation_date,status FROM (
+        SELECT portfolio_id,reconciliation_date,status,created_at,ROW_NUMBER() OVER (PARTITION BY portfolio_id ORDER BY reconciliation_date DESC,created_at DESC) AS rn
+        FROM investment_reconciliations
+      ) ranked WHERE rn=1
+    ) latest ON latest.portfolio_id=p.portfolio_id
+    WHERE p.status='active' AND a.status='active'
+      AND (EXISTS (SELECT 1 FROM investment_trades t WHERE t.portfolio_id=p.portfolio_id)
+        OR EXISTS (SELECT 1 FROM investment_corrections c WHERE c.portfolio_id=p.portfolio_id))
+    ORDER BY p.name COLLATE NOCASE`,
+  args: [],
+});
+
 export const reconciliationAlertStatement = (actor) => {
   const access = readableAccountSql(actor, "a");
   return {
@@ -51,6 +68,38 @@ const reconciliationAlertsFromRows = (rows, accounts) => {
       message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir dicocokkan." : "Pastikan saldo aplikasi sama dengan saldo yang benar-benar Anda lihat.",
       targetPath: "/rekonsiliasi",
       ...(row.reconciled_at ? { lastReconciledAt: String(row.reconciled_at).slice(0, 10) } : {}),
+    });
+  }
+  return alerts;
+};
+
+const investmentReconciliationAlertsFromRows = (rows) => {
+  const today = todayJakarta();
+  const alerts = [];
+  for (const row of rows || []) {
+    const label = row.name || "Investasi";
+    if (row.status === "mismatch") {
+      alerts.push({
+        id: `investment-reconciliation-difference:${row.rdn_account_id}`,
+        type: "investment_reconciliation_difference",
+        severity: "danger",
+        title: `Investasi ${label} berbeda`,
+        message: "Rekonsiliasi terakhir masih memiliki selisih. Periksa holding dan nilai aktual sebelum melanjutkan.",
+        targetPath: "/investasi",
+        lastReconciledAt: row.reconciliation_date || undefined,
+      });
+      continue;
+    }
+    const age = row.reconciliation_date ? dayDifference(String(row.reconciliation_date).slice(0, 10), today) : Number.POSITIVE_INFINITY;
+    if (age <= 30) continue;
+    alerts.push({
+      id: `investment-reconciliation-stale:${row.rdn_account_id}`,
+      type: "investment_reconciliation_stale",
+      severity: "info",
+      title: row.reconciliation_date ? `Saatnya cocokkan investasi ${label}` : `Investasi ${label} belum pernah dicocokkan`,
+      message: row.reconciliation_date ? "Sudah lebih dari 30 hari sejak investasi terakhir dicocokkan." : "Bandingkan catatan aplikasi dengan posisi aktual investasi Anda.",
+      targetPath: "/investasi",
+      ...(row.reconciliation_date ? { lastReconciledAt: String(row.reconciliation_date).slice(0, 10) } : {}),
     });
   }
   return alerts;
@@ -177,6 +226,7 @@ export const buildFinancialAlerts = ({
   budgets,
   unallocatedCount,
   reconciliationRows = [],
+  investmentReconciliationRows = [],
 }) => {
   if (historical) return [];
   return sortFinancialAlerts([
@@ -187,5 +237,6 @@ export const buildFinancialAlerts = ({
     ...recurringAlerts(recurring),
     ...goalAlerts(goals),
     ...reconciliationAlertsFromRows(reconciliationRows, accounts),
+    ...investmentReconciliationAlertsFromRows(investmentReconciliationRows),
   ]);
 };

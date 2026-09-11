@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = (relative) => readFile(path.join(root, relative), "utf8");
 
-test("notification center memakai alert dashboard canonical tanpa membuat mutation authority baru", async () => {
+test("notification center menggabungkan alert aktif dan event queue actor tanpa membuat mutation authority baru", async () => {
   const [page, state, presentation, app] = await Promise.all([
     source("src/features/notifications/NotificationsPage.jsx"),
     source("src/shared/workflows/financialNotifications.js"),
@@ -17,7 +17,8 @@ test("notification center memakai alert dashboard canonical tanpa membuat mutati
 
   assert.match(app, /path="notifikasi"/);
   assert.match(page, /useFinance\(\)/);
-  assert.match(page, /overview\?\.alerts \|\| \[\]/);
+  assert.match(page, /mergeNotificationCenterItems\(overview\?\.alerts \|\| \[\], eventFeed\.data\?\.items \|\| \[\]\)/);
+  assert.match(page, /useApiResource\("notifications\.center"/);
   assert.match(page, /financialAlertGuidance\(alert, \{ source: "notification-center" \}\)/);
   assert.doesNotMatch(page, /notificationSource/);
   assert.match(page, /aria-label="Tandai semua dibaca"/);
@@ -31,7 +32,11 @@ test("notification center memakai alert dashboard canonical tanpa membuat mutati
   assert.match(state, /window\.addEventListener\(READ_STATE_EVENT, sync\)/);
   assert.match(state, /readMapRef\.current = next/);
   assert.match(presentation, /attentionSource: source/);
-  assert.doesNotMatch(page, /apiClient|notification_queue|createTransaction|adjustment|updateBalance/);
+  assert.doesNotMatch(page, /notification_queue|createTransaction|adjustment|updateBalance/);
+  assert.match(state, /mergeNotificationCenterItems/);
+  assert.match(state, /manual_reminder/);
+  assert.match(state, /recurring_funding_shortage/);
+  assert.match(state, /recurring_completed/);
 });
 
 test("dashboard hanya menampilkan next action utama dan desktop/mobile mengarah ke notification center", async () => {
@@ -54,6 +59,15 @@ test("dashboard hanya menampilkan next action utama dan desktop/mobile mengarah 
   assert.match(css, /\.mobile-next-action\s*\{/);
   assert.match(css, /\.mobile-notification-badge\s*\{/);
   assert.doesNotMatch(css, /\.mobile-notification-badge[^}]*font-size:\s*9px/s);
+});
+
+test("rekonsiliasi tetap dapat dirender sebelum rekening dipilih", async () => {
+  const form = await source("src/features/reconciliations/components/ReconciliationForm.jsx");
+
+  assert.match(form, /const accountType = account\?\.account_type;/);
+  assert.match(form, /value=\{selectedAccount\?\.account_id \|\| ""\}/);
+  assert.doesNotMatch(form, /account\.account_type/);
+  assert.doesNotMatch(form, /Cocokkan Investasi/);
 });
 
 test("rekonsiliasi tidak menganggap saldo sistem sebagai saldo aktual sebelum konfirmasi user", async () => {
@@ -104,9 +118,9 @@ test("notification center dan rekonsiliasi menjaga target sentuh mobile canonica
   ]);
 
   assert.match(notificationsCss, /\.back, \.readAll \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(notificationsCss, /\.filter \{[^}]*min-height:\s*var\(--control-height-md\);/s);
-  assert.match(notificationsCss, /@media \(max-width: 820px\)[\s\S]*\.readAll,\s*\.filter \{ min-height:\s*var\(--mobile-control-height\); \}/s);
-  assert.match(notificationsCss, /@media \(max-width: 380px\)[\s\S]*\.back, \.readAll \{ width:\s*var\(--mobile-control-height\); height:\s*var\(--mobile-control-height\); \}/s);
+  assert.match(notificationsCss, /\.filter \{[^}]*min-height:\s*40px;/s);
+  assert.match(notificationsCss, /@media \(max-width: 820px\)[\s\S]*\.header \{[^}]*display:\s*grid;/s);
+  assert.match(notificationsCss, /\.back, \.readAll \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
   assert.match(reconciliationCss, /@media \(max-width: 820px\)[\s\S]*\.notesToggle \{ min-height:\s*var\(--mobile-control-height\); \}/s);
 });
 

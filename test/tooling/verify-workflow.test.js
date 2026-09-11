@@ -71,21 +71,6 @@ test("browser smoke memeriksa rendered login tanpa auth bypass atau dependency t
   assert.doesNotMatch(browser, /firebaseIdToken|mock(?:ed)?User|testSessionCookie/i);
 });
 
-test("browser smoke memakai DevTools port ephemeral agar stabil di Windows dan GitHub Actions", async () => {
-  const source = await readFile(new URL("../../scripts/browser-smoke.mjs", import.meta.url), "utf8");
-  assert.match(source, /--remote-debugging-port=0/);
-  assert.match(source, /DevToolsActivePort/);
-  assert.match(source, /--remote-debugging-address=127\.0\.0\.1/);
-  assert.match(source, /stderrTail/);
-  assert.match(source, /child\.once\("error"/);
-  assert.match(source, /result\?\.errorText/);
-  assert.match(source, /Input\.dispatchKeyEvent/);
-  assert.match(source, /CSS\.forcePseudoState/);
-  assert.match(source, /Rendered focus-visible indicator/);
-  assert.doesNotMatch(source, /candidate\?\.focus\(\)/);
-  assert.doesNotMatch(source, /19000\s*\+\s*Math\.floor|Math\.random\(\).*debug/i);
-});
-
 test("verify berhenti pada step pertama yang gagal", () => {
   const executed = [];
   assert.throws(

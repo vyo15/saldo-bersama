@@ -84,7 +84,7 @@ const dashboardDaysRemaining = ({ historical, period, currentPeriod, today, boun
 
 const dashboardResult = (context, periodContext, readState) => {
   const { period, bounds, today, currentPeriod, historical, cutoffDate } = periodContext;
-  const { accounts, openingAccounts, cashFlowRow, recentTransactionRows, transactionPeriodLocked, categoryExpenses, recurring, goals, budgets, dashboardEnvelopes, reconciliationRows } = readState;
+  const { accounts, openingAccounts, cashFlowRow, recentTransactionRows, transactionPeriodLocked, categoryExpenses, recurring, goals, budgets, dashboardEnvelopes, reconciliationRows, investmentReconciliationRows } = readState;
   const balance = dashboardBalanceMetrics(accounts, openingAccounts, recurring);
   const allocation = allocationSummary(balance.operableAccounts, dashboardEnvelopes);
   const safeToSpend = Math.max(0, balance.safeToSpend - allocation.unboundRemaining);
@@ -105,6 +105,7 @@ const dashboardResult = (context, periodContext, readState) => {
     budgets,
     unallocatedCount,
     reconciliationRows,
+    investmentReconciliationRows,
   });
   return {
     periodKey: period,

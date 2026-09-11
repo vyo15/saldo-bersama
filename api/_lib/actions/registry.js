@@ -17,9 +17,9 @@ import {
   applyFullDataReset, applyImport, applyRestore, applyTrialDataReset, createTechnicalBackup, integrityWithMaintenanceRecovery, previewFullDataReset, previewImport,
   previewRestore, previewTrialDataReset, readFullDataResetStatus, readTrialDataResetStatus,
 } from "../services/maintenance/index.js";
-import { notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
+import { notificationCenter, notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
 import {
-  bulkUpdateInvestmentValuations, buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../services/investments.js";
 import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
@@ -103,7 +103,6 @@ const ACTION_HANDLERS = Object.freeze({
   "investments.trades.buy": buyInvestment,
   "investments.trades.sell": sellInvestment,
   "investments.valuations.update": updateInvestmentValuation,
-  "investments.valuations.bulkUpdate": bulkUpdateInvestmentValuations,
   "investments.reconciliations.create": reconcileInvestment,
   "investments.corrections.create": correctInvestment,
   "investments.openingPositions.create": createOpeningPosition,
@@ -176,6 +175,7 @@ const ACTION_HANDLERS = Object.freeze({
   "periods.previewClose": previewClosePeriod,
   "periods.close": closePeriod,
   "periods.reopen": reopenPeriod,
+  "notifications.center": notificationCenter,
   "notifications.status": notificationStatus,
   "notifications.preferences": notificationPreferences,
   "notifications.updatePreference": updateNotificationPreference,

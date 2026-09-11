@@ -103,7 +103,7 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 
 - [ ] Hero Dashboard memakai **Saldo rekening** (`nonInvestmentBalance`), sedangkan Saldo RDN hanya muncul pada konteks Investasi; privacy masking mencakup keduanya.
 - [ ] `safeToSpend`, `dailySafeToSpend`, dan dana belum dialokasikan tidak berubah naik karena Saldo RDN; Bank → RDN menurunkan Saldo rekening tanpa mengubah total kekayaan, RDN → Bank melakukan kebalikannya.
-- [ ] Income/expense/refund/adjustment ordinary tidak dapat memakai rekening Investasi; Transfer Bank ↔ RDN legacy tetap valid, sedangkan Buy/Sell v17 hanya mencatat posisi investasi dan **tidak** mengubah Saldo RDN atau menjadi income/expense.
+- [ ] Income/expense/refund/adjustment ordinary tidak dapat memakai rekening Investasi; Transfer Bank ↔ RDN tetap valid. Direct opening-position serta Buy/Sell v17 adalah pencatatan aset (`cash_effect_enabled=0`) dan **tidak** mengubah Saldo RDN; histori v15/v16 yang cash-enabled tetap readable melalui compatibility event.
 - [ ] Alokasi Dana dan Jadwal Rutin baru tidak menawarkan/menerima RDN sebagai rekening operasional; data legacy tetap readable tanpa mengikat Saldo RDN sebagai dana tersedia.
 - [ ] Trend saldo harian/bulanan merekonsiliasi `investment_account_events`, dan snapshot Total kekayaan tidak menjumlahkan `totalBalance + portfolio_value` sehingga Saldo RDN tidak double-count.
 
@@ -111,11 +111,11 @@ Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; hi
 
 - [ ] `Tambah aset` menampilkan switch `Saham LQ45` dan `Reksa Dana`; tidak ada form tambah instrumen manual.
 - [ ] Reksa Dana Haji Syariah (IHAJJ) dan Capital Fixed Income Fund (CAPFIX) menampilkan logo yang benar.
-- [ ] Reksa dana memakai `unit` dan **NAB per unit**; saham memakai **lot-only pada UI** dan **harga per lembar**, sementara konversi share quantity tetap internal/backend.
-- [ ] Card aset mobile menampilkan harga catatan terakhir sebagai `Rp… / saham` atau `Rp… / unit`; badge tipe aset tidak diulang karena jenis sudah tersedia pada filter, dan fallback **Harga belum dicatat** tampil bila valuation belum ada.
-- [ ] Catat pembelian/penjualan reksa dana tetap manual tracking posisi dan **tidak** mengubah Saldo RDN pada schema v17; histori compatibility v16 tetap readable tanpa membuat income/expense baru.
+- [ ] Reksa dana memakai `unit` dan `nilai per unit`; saham memakai **lot-only pada UI** dan `harga per saham`, sementara konversi share quantity tetap internal/backend.
+- [ ] Row daftar aset wajib tetap minimal pada mobile/desktop: logo + identitas kiri, nilai saat ini kanan, lalu P/L nominal + persentase; quantity/modal/harga tidak diduplikasi di list dan tetap tersedia setelah membuka detail.
+- [ ] Catat pembelian/penjualan reksa dana v17 tetap manual tracking dan memperbarui holding/cost basis tanpa mengubah Saldo RDN; histori legacy cash-enabled tetap dipertahankan untuk recovery/read compatibility.
 - [ ] Tidak ada copy/flow yang memberi kesan marketplace, NAV live, koneksi broker, atau order execution.
 
 - [ ] Notification Center mobile tampil sebagai task inbox ringkas: back icon 44px tanpa card berat, `Baca semua` aksesibel, dan seluruh tipe utama (rekonsiliasi, jadwal, anggaran, Alokasi Dana, Target, unallocated expense) hanya menampilkan aksi + entitas + satu fakta + chevron; contextual entry tidak meminta entity yang sama dipilih ulang.
 - [ ] Attention Investasi yang menunjuk portfolio yang sudah tidak tersedia memberi feedback informatif dan tidak membuka dialog dengan entity stale.
-- [ ] Alert reconciliation RDN/Investasi legacy membuka `/investasi` hanya sebagai konteks compatibility lalu dikonsumsi menjadi feedback informatif; generic `reconciliations.create` tetap menolak account Investasi dan account read model tidak mengekspos `can_reconcile` untuk RDN.
+- [ ] Alert RDN/Investasi membuka reconciliation portfolio Investasi; generic `reconciliations.create` menolak account Investasi dan account read model tidak mengekspos `can_reconcile` untuk RDN.

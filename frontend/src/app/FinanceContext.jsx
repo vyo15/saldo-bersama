@@ -129,7 +129,7 @@ const useFinanceRefreshers = (authStatus, user, controls, loadInitialState) => {
   const refreshOverview = useCallback(async () => {
     if (!authenticated(authStatus, user)) return null;
     const token = beginFinanceRequest(controls.requestEpoch.current, ["overview"]);
-    apiClient.invalidate(["dashboard.overview", "app.initialState"]);
+    apiClient.invalidate(["dashboard.overview", "app.initialState", "notifications.center"]);
     controls.setState(nextLoadState(Boolean(controls.overviewRef.current)));
     try {
       const nextOverview = await apiClient.request("dashboard.overview", {}, { force: true });
@@ -172,7 +172,7 @@ const useFinanceRefreshers = (authStatus, user, controls, loadInitialState) => {
   }, [authStatus, controls, user]);
 
   const refreshAll = useCallback(() => {
-    apiClient.invalidate(INITIAL_ACTIONS);
+    apiClient.invalidate([...INITIAL_ACTIONS, "notifications.center"]);
     return loadInitialState({ force: true });
   }, [loadInitialState]);
 
