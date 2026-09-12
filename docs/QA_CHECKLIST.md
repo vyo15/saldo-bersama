@@ -1,124 +1,86 @@
 # QA Checklist
 
-Checklist ini **evergreen**. Detail skenario domain berada di `TEST_PLAN.md`; history patch berada di Git/`CHANGELOG.md`. Jangan menyimpan baseline tanggal lama atau checkbox `[x]` dari patch sebelumnya di file ini.
+> **Status:** Canonical / evergreen checklist  
+> **Purpose:** Checklist manual lintas-domain sebelum delivery.  
+> **Update when:** Quality gate atau kategori QA umum berubah.  
+> **Boundary:** Detail regression domain berada di `TEST_PLAN.md`; hasil run/history berada di CI/Git/CHANGELOG.
 
 ## 1. Source dan impact
 
-- [ ] Source/ZIP terbaru sudah dibaca dan root project/path aktual disebutkan.
-- [ ] `docs/INDEX.md` bagian **Peta perubahan** sudah dipakai untuk menentukan contract, test, dan docs yang relevan.
-- [ ] Root cause sudah dibedakan dari symptom/visual workaround.
-- [ ] Scope file jelas; area guarded memiliki approval eksplisit.
-- [ ] Test existing yang menyentuh area perubahan sudah dicari **sebelum** patch.
+- [ ] Source/ZIP terbaru dan root project aktual sudah diverifikasi.
+- [ ] `docs/INDEX.md` **Peta perubahan** dipakai untuk menentukan authority docs, source, dan test yang relevan.
+- [ ] Root cause dibedakan dari workaround visual/symptom.
+- [ ] Guarded/high-risk area memiliki approval yang diperlukan.
+- [ ] Test existing yang menyentuh area perubahan sudah dicari sebelum patch.
 
-## 2. Regression contract
+## 2. Behavior dan regression
 
-- [ ] Bug/regression memiliki test yang membuktikan behavior/contract yang benar.
-- [ ] Test behavior tidak mengunci nama variabel lokal, urutan helper internal, atau bentuk JSX yang bukan contract.
-- [ ] Static/source-text assertion hanya digunakan untuk invariant literal: route/dependency/forbidden API/security/architecture.
-- [ ] Targeted regression dijalankan setelah implementasi final dan PASS.
-- [ ] Test yang membandingkan path/file source menormalkan separator (`\` vs `/`) agar quality gate tidak berbeda antara Windows/Git Bash dan POSIX.
-- [ ] Tidak ada production code yang diubah hanya untuk memuaskan assertion stale.
+- [ ] Bug/regression memiliki test behavior/contract yang relevan bila feasible.
+- [ ] Static/source assertion hanya mengunci invariant literal, bukan nama helper/variabel lokal.
+- [ ] Targeted regression PASS setelah implementasi final.
+- [ ] Perubahan setelah PASS memicu pengulangan gate relevan.
+- [ ] Tidak ada production code yang diubah hanya untuk memuaskan test stale.
 
-## 3. Data integrity dan security
+## 3. Financial integrity dan security
 
-- [ ] Nominal tetap integer Rupiah dan timezone/date contract tidak berubah diam-diam.
-- [ ] Transfer tetap netral terhadap total income/expense dan hanya antar rekening valid berbeda.
-- [ ] Transfer memvalidasi source/debit sebagai rekening yang dapat dioperasikan actor dan destination sebagai rekening aktif/readable; personal Member → personal pasangan diizinkan dengan ownership transaksi mengikuti source, sedangkan shared → personal oleh Member wajib approval Administrator.
-- [ ] Target shared dapat menerima sumber shared/personal actor yang representable tanpa memberi Member akses ke rekening personal pasangan.
-- [ ] Mutation tetap memakai validation, idempotency, row-version/concurrency, server confirmation, dan audit canonical sesuai scope.
-- [ ] Simulasikan `OUTCOME_UNKNOWN`: retry payload yang sama memakai intent/key yang sama, payload berbeda pada action yang sama diblok, dan form transaksi tidak dapat diedit/didismiss sebelum hasil definitif.
-- [ ] Authorization tetap deny-by-default; actor/role/email/audit field dari client tidak dipercaya.
+- [ ] Rupiah tetap integer; timezone/currency canonical tidak berubah diam-diam.
+- [ ] Transfer tetap netral terhadap income/expense dan memakai source/destination valid.
+- [ ] Saldo, Dana Tersedia, Dialokasikan, RDN, dan investasi tidak double-count atau tertukar.
+- [ ] Mutation menjaga validation, idempotency, row-version/concurrency, authorization, dan audit sesuai scope.
+- [ ] `OUTCOME_UNKNOWN` tidak menghasilkan intent/payload kedua secara diam-diam.
+- [ ] Delete/import/restore/reset/migration mengikuti preview/backup/confirmation/integrity policy yang relevan.
 - [ ] Secret/token/raw financial data/raw stack trace tidak masuk frontend, log, fixture, commit, atau ZIP.
-- [ ] Delete/import/restore/reset/migration mengikuti preview, backup, confirmation, integrity check, dan audit bila relevan.
 
-## 4. UI/UX dan accessibility
+## 4. Planning dan realtime
 
-- [ ] Loading, empty, error, offline/unauthorized/conflict state relevan tersedia.
-- [ ] Keyboard, focus, label, contrast, reduced motion, tap target, dan responsive breakpoint terdampak diperiksa; focus authored memakai indicator opaque ≥3:1, termasuk setiap endpoint hero/gradient, bukan alpha ring.
-- [ ] Semantic foreground/background baru atau berubah diuji pada light **dan** dark. Untuk `rgba()`/soft background, hitung alpha compositing terhadap host surface sebelum menilai rasio; normal text/status/selected state target ≥4.5:1.
-- [ ] `theme-color` runtime tetap berasal dari computed `--page`; fallback HTML/manifest tidak drift dari light `--page`.
-- [ ] Error field form transaksi hilang saat input/dependency sudah diperbaiki tanpa menghapus error lain; perubahan sumber tidak mempertahankan destination transfer yang sudah tidak representable.
-- [ ] Pencocokan definitif berakhir pada state completed; Selesai/X/Escape keluar dari create flow dan mismatch menyediakan jalur review transaksi tanpa membuat intent kedua otomatis.
-- [ ] Pada mobile: native form control efektif 16px, target interaktif ≥44×44px, safe-area top/bottom, metadata finansial penting ~12px+, nominal utama tidak ellipsis, keyboard virtual, dan horizontal overflow diperiksa pada viewport relevan; root tidak menyembunyikan overflow horizontal, document scroll tetap aktif, visual scrollbar root tidak terlihat, intentional horizontal scroller tidak menampilkan batang scrollbar, dan hover touch tidak sticky.
-- [ ] Primary-tab scroll restoration, Back/Forward history restoration, dan true-empty vs filtered/subsection-empty diperiksa bila shell/navigation/collection presentation berubah.
-- [ ] Untuk perubahan navigation/motion: hover/focus/pointer-down internal link memprefetch route tanpa request eksternal, perpindahan route hanya menganimasikan content canvas (shell tetap stabil), loader cepat tidak berkedip, tombol/FAB/nav memberi pressed feedback, dan reduced-motion menghapus travel non-esensial.
-- [ ] True-empty hanya memiliki satu primary create/setup CTA; summary/hero/toolbar nol dan secondary action yang belum representable tidak tampil bersamaan. Filtered-empty menawarkan reset/tampilkan data tersedia, bukan create entity baru.
-- [ ] Jika shell mobile sudah memiliki global primary action yang identik (quick-add transaksi), route/header/true-empty tidak merender CTA kedua untuk handler yang sama.
-- [ ] Ikon `+` tidak dipakai untuk beberapa mutation berbeda pada surface yang sama. Aksi domain yang bukan create-global (mis. adjustment dana) memakai label eksplisit; page-level create, card next-step, dan global FAB memiliki hierarchy yang berbeda dan capability-gated.
-- [ ] Detail object yang berisi sub-item erat (khususnya Alokasi Dana → Kebutuhan/Jadwal) tidak berubah menjadi tumpukan card setara: satu master surface memiliki section hierarchy, grouped rows, progress/status yang dapat dipindai, dan secondary lifecycle action tidak bersaing dengan CTA utama.
-- [ ] Realtime global: mutation pada domain server-backed menaikkan revision resource canonical dan perangkat/tab lain memperbarui data tanpa hard refresh; `budgets.batchCreate` juga menginvalidasi Kebutuhan, Alokasi, Jadwal Rutin, dashboard/laporan/notifikasi yang terdampak.
-- [ ] Pull-to-refresh mobile memakai SyncCoordinator yang sama, tidak memakai `window.location.reload()`, tidak menghapus draft/form, dan nonaktif ketika modal/composer/mutation/nested-scroll aktif atau perangkat offline.
-- [ ] `Tambah kebutuhan` pada detail Alokasi memakai compact multi-item list: hanya row aktif expanded, nominal rata kanan, total batch di footer, disclosure Pengaturan tidak membuat false dirty-state, touch target tetap ≥44px, maksimum 20 item, kategori yang sudah ada/terpilih tidak dapat dipilih ulang, dan kegagalan satu item tidak meninggalkan Kebutuhan/Jadwal parsial.
-- [ ] Ikon finansial mengikuti taxonomy semantic canonical: tidak ada `FiDollarSign` di `frontend/src`, `FiCreditCard` hanya untuk Metode pembayaran, rekening memakai `AccountIcon`/ikon tipe canonical, arus transaksi memakai `MoneyInIcon`/`MoneyOutIcon`/`TransferIcon`, dan trend Up/Down/Minus mengikuti nilai aktual.
-- [ ] App-owned list tidak kembali memakai native `<select>`; `SelectionField`/selection view diperiksa untuk semantics `combobox/listbox/option` + `aria-selected`, selected state, search bila list panjang (`label/meta/keywords`), Arrow Up/Down + Home/End, Escape/outside dismiss, focus-visible, target sentuh ≥44px, inline expansion mobile, popover desktop, dan clipping di modal/scroll container.
-- [ ] App-owned date/month/time tidak kembali memakai native browser picker; gunakan `TemporalInput`/`TemporalPickerField`, dan picker yang dibuka dari modal harus tetap berada pada same-modal subview tanpa menumpuk dialog.
-- [ ] Dynamic option yang punya identitas nyata memakai visual recognition canonical tanpa mengganti label: rekening/provider = logo/ikon tipe, kategori = ikon kategori, pencatat = avatar/inisial, Alokasi Dana = ikon lapisan, saham = logo katalog bila tersedia, fallback ticker mark. Secondary `meta` tetap ringkas dan fallback tanpa visual tidak menggeser alignment.
-- [ ] Effective mobile hit target diverifikasi pada `SelectionField` default/compact/embedded + search, filter/read-all Notification Center, dan aksi link-style Rekonsiliasi; tampilan boleh compact tetapi host interaktif tetap ≥44×44px.
-- [ ] Fixed explanatory choice (terutama `Cara mencatat kebutuhan`, Jenis Jadwal Rutin, dan Aksi penyesuaian Alokasi) memakai `VisualChoiceGroup descriptive`: tile sejajar/equal-height, icon badge konsisten, selected check jelas, label tidak terpotong, description maksimal dua baris, dan helper tidak berubah menjadi card/paragraf bertumpuk.
-- [ ] Mobile dan desktop tidak drift pada business rule yang sama.
-- [ ] Workflow continuation hanya memberi navigasi/prefill; tidak ada auto-submit finansial, duplicate recovery entry point, atau blocker UI yang melampaui contract backend.
-- [ ] Pada setiap page/modal/sheet, satu fakta edukatif tidak diulang antara description, helper field, caption list, notice, dan tombol Info; helper hanya memberi konteks baru. Warning/error/destructive/recovery/outcome-unknown tetap terlihat persisten.
-- [ ] Satu surface mobile tidak menampilkan beberapa trigger Info untuk topik edukatif yang dapat digabungkan; aksesibilitas, target sentuh, focus management, dan isi bantuan tetap memakai primitive canonical.
-- [ ] Device/viewport journey relevan mengikuti skenario manual `TEST_PLAN.md` bila perubahan menyentuh UI/responsive.
-- [ ] Initial loading feature memakai skeleton/layout reservation; spinner full-screen hanya untuk auth/session/blocking state dan background refresh tidak menghapus data lama.
-- [ ] User-triggered lazy modal/sheet menampilkan shell/fallback segera; tidak ada `Suspense fallback={null}` atau klik yang tampak tidak merespons.
-- [ ] Slow chunk/network: route >120ms memberi progress/skeleton tanpa mengganti shell; warm/prefetched route tidak mem-flash loader.
-- [ ] Reconnect dan resume stale melakukan read refresh tanpa mutation aktif; offline/session gate tetap jujur dan tidak membuka offline financial write/cache.
-- [ ] PWA update tidak restart selama modal/composer/mutation aktif; shortcut Tambah transaksi membuka composer; App Badge failure tidak memengaruhi Notification Center.
-- [ ] Browser Back menutup modal lebih dulu dan modal non-dismissible tidak dapat dilewati saat proses submit. Uji juga **buka → tutup/batal → buka lagi** serta **modal A → modal B → tutup → buka lagi** tanpa refresh manual; tidak boleh ada overlay/history stale, route jump, body scroll-lock bocor, atau focus tersangkut di modal lama. Keyboard mobile tidak menutupi input/CTA dan reduced-motion meniadakan shimmer/travel non-esensial.
+- [ ] Alokasi baru tidak meminta budget awal sebagai flow utama; Kebutuhan mengatur funding dari Dana Tersedia sesuai contract.
+- [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
+- [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
+- [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
+- [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, dan tidak menghapus draft/form.
+- [ ] Reconnect/foreground/offline recovery tidak memicu duplicate mutation atau refresh ganda yang tidak perlu.
 
-## 5. Dokumentasi
+## 5. UI/UX dan accessibility
 
-- [ ] Contract canonical yang berubah diperbarui pada patch yang sama.
-- [ ] `PROJECT_STATUS.md` hanya diubah bila current-state memang berubah.
-- [ ] `IMPLEMENTATION_MATRIX.md` hanya diubah bila status Implemented/Partial/Planned atau gap berubah.
-- [ ] `TEST_PLAN.md` memuat regression aktif baru; `QA_CHECKLIST.md` tidak diduplikasi dengan detail feature.
-- [ ] Tidak ada instruksi lama yang bertentangan dengan source/runtime aktual.
+- [ ] Loading, empty, filtered-empty, error, offline, unauthorized, maintenance, dan conflict state relevan tersedia.
+- [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak.
+- [ ] Mobile control penting ≥44×44px; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
+- [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
+- [ ] Modal diuji buka → tutup/batal → buka lagi; Browser Back/focus/body scroll lock tidak stale.
+- [ ] True-empty hanya memiliki satu primary next action; filtered-empty menawarkan reset/show-all, bukan membuat entity baru.
+- [ ] Detail object dengan sub-item erat memakai section/list hierarchy, bukan tumpukan card setara tanpa kebutuhan.
+- [ ] Satu fakta edukatif tidak diulang pada description, helper, card, dan notice di surface yang sama.
+- [ ] Warning finansial/destructive/recovery/error/conflict tetap dekat dengan dampaknya dan tidak disembunyikan demi minimalisme.
 
-## 6. Automated gate
+## 6. Auth, PWA, dan device
 
-- [ ] Source validation yang tercakup oleh `npm run verify` PASS.
-- [ ] `npm run lint` PASS tanpa warning.
-- [ ] `npm run test` PASS.
-- [ ] `npm run build` PASS dan build-budget internal pada `npm run verify` PASS.
-- [ ] Guarded/data/security regression tercakup oleh frontend/backend suite pada `npm run verify`; targeted domain test tambahan dijalankan bila scope memerlukannya.
-- [ ] Trial Reset preview/apply tersedia untuk setiap Administrator pada database terikat `development`/`production`, tetapi `unbound`/marker asing ditolak sebelum side effect; `reset.status` tetap readable untuk recovery.
-- [ ] Untuk frontend/user-flow change, rendered browser smoke pada `npm run verify` PASS dan manual device QA tambahan dicatat untuk authenticated/real-device behavior yang tidak dapat direproduksi secara aman oleh anonymous smoke.
-- [ ] Final `npm run verify` PASS pada tree yang sama dengan patch yang akan dikirim.
+- [ ] Production OAuth/session diuji bila auth/session berubah; localhost fallback tidak dianggap evidence Production.
+- [ ] PWA update/install/Push diuji pada device relevan bila scope menyentuh PWA/notification.
+- [ ] Offline tidak mengizinkan financial write queue.
+- [ ] Responsive surface yang berubah diperiksa pada viewport/device target, bukan hanya CSS source.
 
-## 7. Artifact hygiene dan delivery
+## 7. Data, operations, dan deployment
 
-- [ ] `npm run clean` (default dry-run) tidak menunjukkan protected path seperti `.git`, `.vercel`, `.env.local`, atau `node_modules`; penghapusan nyata hanya dengan `npm run clean -- --apply`.
-- [ ] Clean source dibuat dengan `npm run zip`, bukan ZIP manual seluruh workspace. PASS menghasilkan `saldo-bersama-clean.zip` secara atomic; failure harus exit non-zero dan tidak membuat archive baru.
-- [ ] Clean ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, build/dist, coverage, cache, export/data privat, patch/diff, atau secret. Artifact/`docs/UNVERIFIED_BUILD_REPORT.md` dari workflow lama hanya boleh dipakai sebagai input diagnosis dan tidak dipertahankan pada source canonical hasil remediation.
-- [ ] Setelah `npm run verify`, `npm run zip`, atau pre-push selesai baik PASS maupun gagal, generated build/test artifact dibersihkan otomatis; dependency, `.env.local`, `.vercel`, dan repository Git tetap dipertahankan. Cache Vite di `frontend/node_modules/.vite*` boleh dibersihkan karena generated dan akan dibuat ulang.
-- [ ] `git status --short` ditinjau sebelum commit.
-- [ ] Delivery Git memakai `git push origin main` tanpa `--no-verify`; pre-push memverifikasi ref/SHA aktual + full gate, dan **Quality / check** server-side dipantau setelah push.
+- [ ] Schema/binding environment sesuai target; Development dan Production tidak tertukar.
+- [ ] Migration/data-sensitive change memiliki backup + integrity evidence sebelum Production.
+- [ ] Google bridge/Push/external resource diuji hanya bila scope menyentuh integrasi tersebut.
+- [ ] Rollback/forward-fix path jelas untuk perubahan berisiko.
 
-## Dashboard empty-action
+## 8. Dokumentasi
 
-- [ ] Rencana Keuangan/Jadwal Terdekat/Aktivitas Terbaru mobile yang kosong terlihat sebagai aksi tambah (dashed + `+` + helper singkat), bukan sebagai record finansial palsu.
-- [ ] Klik empty-action tidak langsung membuat data: form canonical terbuka otomatis hanya bila capability/prerequisite cukup dan tetap menunggu input serta Simpan user.
-- [ ] Kebutuhan dengan tepat satu Alokasi Dana manageable langsung membuka dialog Kebutuhan; beberapa Alokasi meminta user memilih; tanpa Alokasi tetapi rekening operasional tersedia membuka dialog Buat Alokasi Dana.
-- [ ] Jadwal kosong membuka create Jadwal Rutin; Aktivitas kosong membuka Transaction Composer global; planning desktop Kebutuhan/Jadwal/Target mengikuti semantic empty-action yang sama.
+- [ ] Authority doc yang berubah diperbarui pada patch yang sama.
+- [ ] `PROJECT_STATUS.md` hanya diubah bila current-state berubah; history tidak ditempel ke snapshot.
+- [ ] `IMPLEMENTATION_MATRIX.md` hanya diubah bila status/evidence/gap berubah.
+- [ ] `TEST_PLAN.md` memuat regression evergreen, bukan heading tanggal/hardening patch.
+- [ ] Dokumen historical tidak dimodernisasi menjadi authority aktif.
+- [ ] Tidak ada local Markdown link/orphan active doc atau instruksi lama yang bertentangan dengan source/runtime.
 
-## Investasi / RDN - pemisahan saldo operasional
+## 9. Full gate dan artifact
 
-- [ ] Hero Dashboard memakai **Saldo rekening** (`nonInvestmentBalance`), sedangkan Saldo RDN hanya muncul pada konteks Investasi; privacy masking mencakup keduanya.
-- [ ] `safeToSpend`, `dailySafeToSpend`, dan dana belum dialokasikan tidak berubah naik karena Saldo RDN; Bank → RDN menurunkan Saldo rekening tanpa mengubah total kekayaan, RDN → Bank melakukan kebalikannya.
-- [ ] Income/expense/refund/adjustment ordinary tidak dapat memakai rekening Investasi; Transfer Bank ↔ RDN tetap valid. Direct opening-position serta Buy/Sell v17 adalah pencatatan aset (`cash_effect_enabled=0`) dan **tidak** mengubah Saldo RDN; histori v15/v16 yang cash-enabled tetap readable melalui compatibility event.
-- [ ] Alokasi Dana dan Jadwal Rutin baru tidak menawarkan/menerima RDN sebagai rekening operasional; data legacy tetap readable tanpa mengikat Saldo RDN sebagai dana tersedia.
-- [ ] Trend saldo harian/bulanan merekonsiliasi `investment_account_events`, dan snapshot Total kekayaan tidak menjumlahkan `totalBalance + portfolio_value` sehingga Saldo RDN tidak double-count.
-
-## Investasi prototype - Reksa Dana
-
-- [ ] `Tambah aset` menampilkan switch `Saham LQ45` dan `Reksa Dana`; tidak ada form tambah instrumen manual.
-- [ ] Reksa Dana Haji Syariah (IHAJJ) dan Capital Fixed Income Fund (CAPFIX) menampilkan logo yang benar.
-- [ ] Reksa dana memakai `unit` dan `nilai per unit`; saham memakai **lot-only pada UI** dan `harga per saham`, sementara konversi share quantity tetap internal/backend.
-- [ ] Row daftar aset wajib tetap minimal pada mobile/desktop: logo + identitas kiri, nilai saat ini kanan, lalu P/L nominal + persentase; quantity/modal/harga tidak diduplikasi di list dan tetap tersedia setelah membuka detail.
-- [ ] Catat pembelian/penjualan reksa dana v17 tetap manual tracking dan memperbarui holding/cost basis tanpa mengubah Saldo RDN; histori legacy cash-enabled tetap dipertahankan untuk recovery/read compatibility.
-- [ ] Tidak ada copy/flow yang memberi kesan marketplace, NAV live, koneksi broker, atau order execution.
-
-- [ ] Notification Center mobile tampil sebagai task inbox ringkas: back icon 44px tanpa card berat, `Baca semua` aksesibel, dan seluruh tipe utama (rekonsiliasi, jadwal, anggaran, Alokasi Dana, Target, unallocated expense) hanya menampilkan aksi + entitas + satu fakta + chevron; contextual entry tidak meminta entity yang sama dipilih ulang.
-- [ ] Attention Investasi yang menunjuk portfolio yang sudah tidak tersedia memberi feedback informatif dan tidak membuka dialog dengan entity stale.
-- [ ] Alert RDN/Investasi membuka reconciliation portfolio Investasi; generic `reconciliations.create` menolak account Investasi dan account read model tidak mengekspos `can_reconcile` untuk RDN.
+- [ ] `npm run verify` PASS pada tree final yang sama dengan artifact/delivery.
+- [ ] `npm run lint`, test/build diagnosis tambahan dijalankan bila full gate menunjukkan area spesifik.
+- [ ] `npm run clean` dry-run tidak menyentuh path protected.
+- [ ] Clean source dibuat dengan `npm run zip`; bila verification gagal, command exit non-zero dan **tidak membuat archive baru**.
+- [ ] ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, dist/build, coverage, cache, database/export privat, patch/diff, atau secret.
+- [ ] `git status --short` ditinjau sebelum commit/push.
+- [ ] Delivery Git tidak memakai `--no-verify`/force push dan GitHub **Quality** dipantau setelah push.

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { DATABASE_SCHEMA_VERSION } from "../api/_lib/db/schema.js";
 
 export const PRODUCTION_ORIGIN = "https://saldo-bersama.vercel.app";
 const HEALTH_URL = `${PRODUCTION_ORIGIN}/api/health`;
@@ -28,12 +29,16 @@ export const checkProductionFrontend = async ({ fetchImpl = fetch } = {}) => {
   return { status: shellResponse.status };
 };
 
-export const productionCoreReadiness = (health = {}) => {
+export const productionCoreReadiness = (health = {}, { localExpectedSchemaVersion = DATABASE_SCHEMA_VERSION } = {}) => {
   const blockers = [];
   if (!health?.schema?.ready) blockers.push("SCHEMA_NOT_READY");
   if (health?.maintenanceMode) blockers.push("MAINTENANCE_MODE");
   if (health?.coreOperationsHealthy === false) blockers.push("CORE_OPERATIONS_DEGRADED");
-  return { ready: blockers.length === 0, blockers };
+  const liveVersion = Number(health?.schema?.version || 0);
+  const liveExpected = Number(health?.schema?.expectedVersion || 0);
+  const localExpected = Number(localExpectedSchemaVersion || 0);
+  if (localExpected > 0 && (liveVersion < localExpected || liveExpected < localExpected)) blockers.push("PRODUCTION_RELEASE_BEHIND_SOURCE");
+  return { ready: blockers.length === 0, blockers, localExpectedSchemaVersion: localExpected };
 };
 
 export const checkProductionRuntime = async ({ fetchImpl = fetch } = {}) => {
@@ -48,7 +53,9 @@ export const checkProductionRuntime = async ({ fetchImpl = fetch } = {}) => {
   const readiness = productionCoreReadiness(data);
   if (!healthResponse.ok || healthBody?.ok !== true || data.status !== "ok" || !readiness.ready) {
     throw Object.assign(
-      new Error(`Vercel Production belum sehat (HTTP ${healthResponse.status}, status ${data.status || "unknown"}).`),
+      new Error(readiness.blockers.includes("PRODUCTION_RELEASE_BEHIND_SOURCE")
+        ? `Vercel Production masih tertinggal dari source lokal: live schema v${data?.schema?.version ?? "?"}/${data?.schema?.expectedVersion ?? "?"}, source membutuhkan v${readiness.localExpectedSchemaVersion}.`
+        : `Vercel Production belum sehat (HTTP ${healthResponse.status}, status ${data.status || "unknown"}).`),
       { code: "PRODUCTION_DEGRADED", status: healthResponse.status, serviceStatus: data.status || null, health: data, blockers: readiness.blockers },
     );
   }
@@ -95,7 +102,7 @@ if (isCli) {
     if (error?.health?.schema) {
       console.error(`Schema live: v${error.health.schema.version ?? "?"}/${error.health.schema.expectedVersion ?? "?"}; binding=${error.health.schema.databaseEnvironment || "unknown"}.`);
     }
-    console.error("Jika schema tertinggal, jalankan `npm run db:migrate -- production`; operasi tersebut memakai secret langsung di Vercel Production build.");
+    console.error("Jika schema tertinggal, jalankan `npm run prod:update`; operasi tersebut memakai secret langsung di Vercel Production build.");
     process.exitCode = 1;
   });
 }

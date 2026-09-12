@@ -14,7 +14,7 @@ const maintenanceSource = async () => {
 
 test("backup memakai snapshot transaction, checksum, gzip limit, nama unik, dan Drive bridge", async () => {
   const maintenance = await maintenanceSource();
-  assert.match(maintenance, /snapshotDatabase = async \(db\) => db\.transaction/);
+  assert.match(maintenance, /snapshotDatabase = async \(db, \{ schemaVersion = DATABASE_SCHEMA_VERSION \} = \{\}\) => db\.transaction/);
   assert.match(maintenance, /MAX_BACKUP_COMPRESSED_BYTES/);
   assert.match(maintenance, /maxOutputLength: MAX_BACKUP_JSON_BYTES/);
   assert.match(maintenance, /digest\(canonicalJson\(payload\)\)/);
@@ -136,6 +136,22 @@ test("backup schema v20 menyimpan data canonical termasuk investasi dan request 
       "database_environment", "maintenance_mode", "scheduler_last_run_at", "scheduler_last_success_at", "scheduler_last_failure_at", "scheduler_last_error_code",
     ].includes(row.key)), false);
     assert.equal(validateSnapshot(snapshot), snapshot.checksum);
+  } finally { db.close(); }
+});
+
+test("snapshot pre-migration memakai schema database aktual dan v18 tidak memaksa tabel budget_history", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const v18 = await snapshotDatabase(db, { schemaVersion: 18 });
+    assert.equal(v18.manifest.schemaVersion, 18);
+    assert.equal(Object.hasOwn(v18.tables, "budget_history"), false);
+    assert.equal(Object.hasOwn(v18.manifest.tables, "budget_history"), false);
+    assert.equal(validateSnapshot(v18), v18.checksum);
+
+    const v19 = await snapshotDatabase(db, { schemaVersion: 19 });
+    assert.equal(v19.manifest.schemaVersion, 19);
+    assert.equal(Object.hasOwn(v19.tables, "budget_history"), true);
+    assert.equal(validateSnapshot(v19), v19.checksum);
   } finally { db.close(); }
 });
 

@@ -8,7 +8,9 @@
 
 - Behavior/contract yang berubah:
 - Regression test terkait:
-- Docs canonical yang diperbarui, atau alasan `N/A`:
+- Docs canonical yang diperbarui / authority docs, atau alasan `N/A`:
+- Snapshot (`PROJECT_STATUS`/matrix) berubah? `Ya / Tidak`
+- Changelog/history perlu? `Ya / Tidak`
 
 ## Validation aktual
 
@@ -25,7 +27,7 @@ test domain tambahan:
 - [ ] Tidak ada secret/data finansial nyata/generated artifact
 - [ ] Dampak schema/auth/API/saldo/backup/deployment diperiksa sesuai scope
 - [ ] Regression test menguji behavior/contract, bukan detail implementasi yang rapuh
-- [ ] Docs impact sudah diperiksa mengikuti docs/INDEX.md
+- [ ] Docs impact sudah diperiksa mengikuti docs/INDEX.md; current docs tidak menerima history patch dan historical docs tidak diperlakukan sebagai authority
 - [ ] Rollback/forward-fix jelas untuk perubahan berisiko
 
 PR bersifat opsional untuk review kolaboratif. Workflow rutin repository private adalah `git push origin main` dengan managed pre-push fail-closed; bila PR dipakai, tetap tunggu **Quality / check** PASS dan review/approval guarded sesuai risiko.

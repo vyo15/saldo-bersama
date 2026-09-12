@@ -1,5 +1,8 @@
 # Workflow Canonical
 
+> **Status:** Canonical  
+> **Purpose:** Workflow source review, implementation, validation, docs, dan delivery.
+
 ## Team
 
 ```text

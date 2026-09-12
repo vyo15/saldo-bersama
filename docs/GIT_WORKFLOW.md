@@ -1,5 +1,8 @@
 # Git Workflow
 
+> **Status:** Canonical  
+> **Purpose:** Aturan commit/push/direct-main dan managed pre-push.
+
 Workflow canonical Saldo Bersama untuk repository private ini sengaja sederhana: **kerja di `main`, commit, lalu `git push origin main`**. Safety gate dipindahkan ke pre-push Auto Quality Guard agar pengguna tidak perlu membuat branch/PR untuk perubahan rutin.
 
 Lihat juga `../CONTRIBUTING.md`.

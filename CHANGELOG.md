@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Production migration recovery hardening
+
+- Memperbaiki bug target migration yang sebelumnya menyamakan prefix file `017`/`018` dengan schema v17/v18; target canonical sekarang dibaca dari deklarasi `system_config.schema_version`, sehingga migration tersebut benar menuju v19/v20.
+- Menambahkan `npm run prod:update` sebagai workflow tunggal backup → migration → integrity → promote → live health verification; `db:migrate -- production` diarahkan ke workflow yang sama agar runtime/database tidak kembali drift.
+- Backup pre-migration sekarang version-aware terhadap schema database aktual dan dibuat fresh sebelum update; seluruh migration pending dijalankan dalam satu transaksi atomik sehingga kegagalan migration/integrity me-roll-back schema ke versi awal. Backup v18 tidak memerlukan tabel `budget_history`, sedangkan backup v19/v20 tetap mempertahankan data lifecycle canonical.
+- Mempertahankan perbaikan dashboard desktop `transactionCreatorLabel` dan regression guard agar desktop/mobile tetap parity setelah rollout schema.
+
 ## 12 September 2026 — Merge schema v20: lifecycle Kebutuhan, dekorasi Alokasi, realtime hardening
 
 - Menggabungkan lifecycle Kebutuhan compact v19 (`017_budget_lifecycle_history.sql`) dengan dekorasi Alokasi presentation-only v20 (`018_envelope_decoration.sql`) tanpa menimpa dashboard resilience/performance pada project utama.

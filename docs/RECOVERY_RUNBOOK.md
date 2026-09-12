@@ -1,78 +1,98 @@
 # Recovery Runbook
 
+> **Status:** Runbook  
+> **Purpose:** Prosedur current untuk backup, import/restore guarded, integrity recovery, dan full reset.  
+> **Authority:** Struktur current di `TURSO_SCHEMA.md`; detail perubahan historis berada di migrations/`CHANGELOG.md`.
+
 ## Jenis artefak
 
-- Excel: export untuk pengguna, tidak dapat dipakai restore.
-- Sheets mirror: laporan read-only, dapat dibangun ulang.
-- Technical backup: snapshot recovery terkompresi dan ter-checksum di Google Drive.
+- **Excel:** export pengguna; bukan artefak restore.
+- **Sheets mirror:** read-only mirror dan dapat dibangun ulang.
+- **Technical backup:** snapshot recovery terkompresi + checksum yang disimpan pada Drive melalui bridge tepercaya.
 
-## Backup
+## Kontrak backup current
 
-Backup wajib berisi manifest, schema version, created_at/by, table counts, checksum, dan seluruh tabel recovery-safe. Pada schema v20, enam tabel Investment (`investment_instruments`, `investment_portfolios`, `investment_trades`, `investment_valuations`, `investment_reconciliations`, `investment_corrections`) termasuk authoritative recovery data; holding/market value/P&L summary tidak dipercaya sebagai state bebas karena harus dapat dihitung ulang dari history canonical. `envelope_rules.decoration_key` ikut backup; snapshot lama yang belum memilikinya dinormalisasi ke `auto`. `sync_revisions` tidak ikut backup/restore karena hanya metadata koordinasi realtime dan dibangun ulang oleh mutation berikutnya; revision tidak pernah menjadi financial authority. Push subscription tidak ikut backup/restore karena merupakan credential perangkat yang harus didaftarkan ulang setelah recovery. Pembuatan manual/before-import/before-restore dicatat di `backup_runs` dan audit. Nama file unik; file existing hanya boleh digunakan ulang bila backup ID dan checksum cocok.
+Backup wajib membawa manifest, schema version, `created_at/by`, table counts, checksum, dan seluruh tabel authoritative yang dinyatakan recovery-safe oleh implementation current. Data Investment authoritative (instrument/portfolio/trade/valuation/reconciliation/correction), metadata Alokasi/Kebutuhan yang authoritative, audit/lifecycle yang diwajibkan, dan marker compatibility current harus ikut bila termasuk kontrak backup.
 
+Derived summary seperti holding/market value/P&L tidak dipercaya sebagai state bebas; nilainya harus dapat dihitung kembali dari history canonical. `sync_revisions` tidak diperlakukan sebagai financial authority dan tidak perlu dipulihkan sebagai revision lama. Push subscription juga tidak dipulihkan karena merupakan credential perangkat yang harus didaftarkan ulang.
+
+Pembuatan manual/before-import/before-restore dicatat di `backup_runs` dan audit. Nama file unik; artefak existing hanya boleh dianggap sama bila backup ID dan checksum cocok.
 
 ## Import guarded
 
-Import transaksi maksimal 50 record dan bersifat all-or-nothing. File dianggap input tidak tepercaya; field kontrol internal seperti `confirm_duplicate`, actor, role, audit field, atau reserved linkage tidak boleh dipakai untuk melewati guard backend. Preview mensimulasikan record secara berurutan di transaction rollback-only sehingga dampak saldo, Alokasi Dana, period lock, reference aktif, dan duplicate antarbaris ikut dihitung secara kumulatif. Satu baris invalid atau duplicate membuat seluruh preview `acceptable=false` dan `import.apply` wajib menolak tanpa membuat transaksi. Apply yang acceptable membuat safety backup, memvalidasi ulang semua record dalam satu transaction, menjalankan integrity check, menulis audit, lalu commit. Kegagalan pada record mana pun harus rollback seluruh record import.
+Import transaksi maksimal 50 record dan **all-or-nothing**. Input dianggap tidak tepercaya; field kontrol internal seperti actor, role, audit, reserved linkage, atau duplicate override tidak boleh mengalahkan backend guard.
+
+Preview menjalankan simulasi berurutan dalam transaction rollback-only sehingga saldo, Dana Tersedia/Alokasi, period lock, reference aktif, dan duplicate antarbaris dihitung kumulatif. Satu row invalid/duplicate membuat seluruh preview tidak acceptable. Apply acceptable membuat safety backup, memvalidasi ulang seluruh record dalam satu transaction, menjalankan integrity check, menulis audit, lalu commit. Kegagalan satu record me-roll back seluruh import.
 
 ## Restore guarded
 
 1. Administrator memasukkan Drive file ID.
-2. Backend membaca melalui signed bridge.
-3. Verifikasi ukuran, gzip, JSON, checksum, dan schema version.
-4. Buat preview dengan expiry dan tampilkan nama file, waktu backup, schema version, serta row counts utama.
-5. User mengisi alasan, menyelesaikan seluruh acknowledgement, dan mengetik frasa `RESTORE SALDO BERSAMA` secara persis.
+2. Backend membaca file melalui signed bridge.
+3. Verifikasi ukuran, gzip/JSON, checksum, schema/backup compatibility, dan manifest.
+4. Buat preview ber-expiry yang menampilkan nama file, waktu backup, schema version, serta row counts utama.
+5. User mengisi alasan, menyelesaikan acknowledgement, dan mengetik `RESTORE SALDO BERSAMA` secara persis.
 6. Buat safety backup dari database aktif.
 7. Aktifkan maintenance fail-closed.
-8. Apply restore dalam transaction database.
+8. Apply restore dalam transaction database menggunakan normalizer compatibility current.
 9. Jalankan `PRAGMA foreign_key_check` dan business integrity.
-10. Perubahan tabel, audit restore, status preview, pembukaan maintenance, dan antrean rebuild commit atomik hanya jika semua lulus.
+10. Commit data + audit restore + status preview + pembukaan maintenance + antrean rebuild hanya bila seluruh validasi lulus.
 11. Rebuild Sheets mirror dan reconcile Calendar melalui outbox.
 
-Jika apply atau integrity gagal, transaction rollback dan maintenance tetap aktif sampai owner menjalankan integrity/recovery yang terverifikasi. Backup v3-v19 dinormalisasi additive ke runtime v20 tanpa mengarang histori Investment. Backup v15+ wajib membawa enam tabel Investment canonical; backup v16 mempertahankan opening-position/trade notes, sedangkan backup v17 juga membawa `accounts.is_system_hidden` serta `cash_effect_enabled` pada trade/correction. Default additive menjaga histori v15/v16 tetap memiliki cash effect. Restore menolak backup bila email aktif yang sama memiliki `user_id` berbeda, mempertahankan UID/status/role pengguna yang saat ini diizinkan, dan tidak menghidupkan kembali push credential perangkat. Jangan menyatakan restore berhasil sebelum seluruh verifikasi selesai.
+Jika apply/integrity gagal, transaction rollback dan maintenance tetap aktif sampai recovery terverifikasi. Restore normalizer boleh menerima format backup historis yang memang masih didukung runtime current, tetapi **tidak boleh mengarang histori yang tidak ada**. Identity/user mapping harus mencegah email aktif yang sama dipulihkan dengan canonical user ID berbeda. Push credential lama tidak boleh dihidupkan kembali.
 
+Jangan menyatakan restore berhasil sebelum seluruh verifikasi selesai.
 
+## Recovery objectives dan retention
 
-## Recovery objectives dan retention decision
-
-Sebelum aplikasi dipakai untuk data finansial nyata, owner wajib menetapkan dan mencatat tiga keputusan operasional berikut tanpa mengubah business logic:
+Sebelum aplikasi dipakai sebagai dependency finansial nyata, owner wajib menetapkan dan mencatat:
 
 - **RPO:** kehilangan data maksimum yang masih dapat diterima.
-- **RTO:** durasi maksimum sampai aplikasi kembali dapat digunakan dengan data terverifikasi.
-- **Retention backup:** berapa lama backup harian/mingguan/bulanan dipertahankan.
+- **RTO:** durasi maksimum sampai aplikasi dapat dipakai kembali dengan data terverifikasi.
+- **Retention backup:** lama penyimpanan backup harian/mingguan/bulanan.
 
-Source **tidak menetapkan angka secara sepihak** karena nilai tersebut memengaruhi biaya, privacy, kapasitas Drive, dan ekspektasi recovery. Release readiness untuk data nyata dianggap belum lengkap selama tiga nilai itu belum disetujui.
+Source tidak menetapkan angka sepihak karena keputusan ini memengaruhi biaya, privacy, kapasitas Drive, dan ekspektasi recovery.
 
-Untuk data Investment, restore baru definitif bila quantity holding, remaining cost basis, realized P/L, unrealized P/L pada harga snapshot/fallback yang sama, chronology, `cash_effect_enabled`, hidden-account visibility, serta ledger parity histori dapat dihitung ulang sama dengan backup. Scenario recovery minimal mencakup direct asset v17 → multi-buy → partial sell → valuation → backup → restore pada database terisolasi → compare, ditambah fixture histori v15/v16 yang membuktikan cash effect lama tetap sama. Mismatch harus menghentikan success; jangan memperbaiki history dengan SQL manual atau summary overwrite.
+## Evidence restore drill minimum
 
-Evidence restore drill minimal mencatat: commit/schema, database tujuan terisolasi, backup ID/file name (tanpa resource secret), checksum verification, row counts sebelum/sesudah, saldo per rekening, hasil `PRAGMA foreign_key_check`, business integrity, rebuild Sheets/Calendar, waktu mulai/selesai, serta hasil akhir. Drill tidak boleh menggunakan database Production aktif sebagai target.
+Drill dilakukan pada database terisolasi/disposable, **bukan Production aktif**, dan minimal mencatat:
+
+- commit + schema/runtime target;
+- backup ID/file name tanpa secret;
+- checksum verification;
+- row counts sebelum/sesudah;
+- saldo per rekening dan Dana Tersedia yang relevan;
+- `PRAGMA foreign_key_check` + business integrity;
+- parity Investment: quantity, remaining cost basis, realized/unrealized P/L dengan harga pembanding yang sama, chronology, cash-effect compatibility, dan hidden-account visibility;
+- rebuild Sheets/Calendar;
+- waktu mulai/selesai dan hasil akhir.
+
+Mismatch harus menghentikan klaim sukses. Jangan memperbaiki history dengan SQL manual atau summary overwrite.
 
 ## Incident response
 
 - Jangan mengubah data langsung melalui Turso console kecuali prosedur maintenance disetujui.
-- Simpan request ID, waktu, actor, error code, dan backup ID.
-- Jangan membagikan stack trace/token pada pengguna.
-- Uji restore drill berkala pada salinan terisolasi sementara atau branch disposable; jangan gunakan database aktif dan jangan mempertahankannya sebagai database Development permanen.
+- Simpan request ID, waktu, actor, error code, dan backup ID; jangan simpan secret/token di evidence.
+- Jangan membagikan stack trace/token kepada pengguna.
+- Uji restore drill pada salinan terisolasi/branch disposable dan jangan mempertahankannya sebagai Development permanen.
 
 ## Pemulihan satu entity sebelum full restore
 
-Kesalahan pengguna biasa harus ditangani melalui lifecycle per-item:
+Kesalahan pengguna biasa ditangani melalui lifecycle per-item:
 
-- rekening/kategori arsip → action restore dengan alasan dan `row_version`;
-- transaksi cancelled → restore khusus owner bila period, reference, duplicate, dan balance guard lulus;
-- member nonaktif → reaktivasi eksplisit oleh Administrator setelah status/role/row version diverifikasi;
-- periode salah ditutup → buka kembali secara berurutan dengan alasan;
-- mismatch Investment → reconciliation lalu correction eksplisit Administrator; trade/valuation lama tidak diedit atau di-hard-delete sebagai mekanisme koreksi.
+- rekening/kategori arsip → restore dengan alasan dan `row_version`;
+- transaksi cancelled → restore owner bila period/reference/duplicate/balance guard lulus;
+- member nonaktif → reaktivasi eksplisit Administrator setelah status/role/version diverifikasi;
+- periode salah ditutup → buka kembali berurutan dengan alasan;
+- mismatch Investment → reconciliation lalu correction eksplisit; trade/valuation lama tidak diedit/hard-delete sebagai mekanisme koreksi.
 
-Full database restore bukan mekanisme undo harian. Gunakan restore guarded hanya bila kerusakan mencakup banyak data atau lifecycle per-item tidak dapat menjaga konsistensi. Rekening kosong yang dihapus melalui `accounts.deleteUnused` tidak dipulihkan per item; audit tetap tersedia dan rekening baru dapat dibuat kembali tanpa memalsukan histori.
+Full restore bukan mekanisme undo harian. Rekening kosong yang dihapus melalui `accounts.deleteUnused` tidak dipulihkan per-item; audit tetap tersedia dan rekening baru dapat dibuat kembali tanpa memalsukan histori.
 
-
-## Full reset
+## Full reset recovery
 
 1. Jangan retry `fullReset.apply` setelah timeout/5xx.
 2. Gunakan `fullReset.status` dengan opaque idempotency recovery key yang sama.
-3. Jika `committed`, anggap reset selesai dan jangan kirim intent yang sama lagi.
-4. Jika `processing`, tunggu lalu periksa status ulang.
-5. Jika `not_committed` dan maintenance normal, buat preview baru sebelum intent baru.
-6. Jika `recovery_required`, jalankan integrity recovery. Maintenance hanya boleh dibuka jika integrity check lulus dan `maintenance.recover` tercatat atomik.
-7. Untuk mengembalikan data yang telah di-full-reset, gunakan safety backup yang terverifikasi melalui workflow Restore, bukan menulis ulang data secara manual.
+3. `committed` → anggap selesai dan jangan kirim intent yang sama.
+4. `processing` → tunggu dan periksa status ulang.
+5. `not_committed` + maintenance normal → buat preview baru sebelum intent baru.
+6. `recovery_required` → jalankan integrity recovery; maintenance hanya boleh dibuka bila check lulus dan `maintenance.recover` tercatat atomik.
+7. Untuk mengembalikan data yang sudah di-full-reset, gunakan safety backup terverifikasi melalui workflow Restore; jangan tulis ulang data manual.

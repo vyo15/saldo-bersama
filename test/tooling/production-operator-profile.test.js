@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { remoteProductionBuildArgs, runRemoteProductionDatabaseOperation } from "../../scripts/remote-production-database-operation.mjs";
+import { extractVercelDeploymentUrl, remoteProductionBuildArgs, runRemoteProductionDatabaseOperation } from "../../scripts/remote-production-database-operation.mjs";
 
 test("operasi Production memakai staged Vercel production build tanpa menarik secret ke lokal", () => {
   const args = remoteProductionBuildArgs("migrate");
@@ -55,4 +55,38 @@ test("staged Production operation memulihkan .env.local byte-for-byte setelah ve
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+
+test("prod:update membangun candidate staged lalu promote deployment yang sama", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "saldo-prod-update-"));
+  const calls = [];
+  try {
+    const result = await runRemoteProductionDatabaseOperation({
+      operation: "update",
+      root,
+      loginEnsurer: async () => {},
+      projectEnsurer: async () => {},
+      runner: async ({ args }) => {
+        calls.push(args);
+        if (args[0] === "deploy") {
+          return { code: 0, stdout: "Production https://saldo-bersama-candidate-team.vercel.app\n", stderr: "" };
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      },
+      logger: { log() {} },
+    });
+    assert.equal(result.operation, "update");
+    assert.equal(result.promoted, true);
+    assert.equal(result.deploymentUrl, "https://saldo-bersama-candidate-team.vercel.app");
+    assert.equal(calls[0].at(-1), "SALDO_BERSAMA_DB_OPERATION=update");
+    assert.deepEqual(calls[1], ["promote", "https://saldo-bersama-candidate-team.vercel.app", "--yes", "--no-color"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("deployment URL parser mengambil candidate vercel.app dari output CLI", () => {
+  assert.equal(extractVercelDeploymentUrl({ stdout: "Inspect https://vercel.com/x\nProduction https://saldo-bersama-abc-team.vercel.app" }), "https://saldo-bersama-abc-team.vercel.app");
+  assert.equal(extractVercelDeploymentUrl({ stdout: "tidak ada url" }), null);
 });

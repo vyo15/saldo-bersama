@@ -29,6 +29,6 @@ test("Production release preflight fail-closed bila remote integrity gagal", asy
     }),
     (error) => error?.code === "PRODUCTION_RELEASE_SCHEMA_NOT_READY"
       && error?.remoteCode === "DATABASE_SCHEMA_MISMATCH"
-      && /db:migrate -- production/.test(error.message),
+      && /prod:update/.test(error.message),
   );
 });

@@ -71,3 +71,18 @@ test("nama operasi build database harus canonical", () => {
     (error) => error?.code === "VERCEL_DB_OPERATION_INVALID",
   );
 });
+
+
+test("staged update memakai source candidate yang sama untuk migration dan integrity", () => {
+  const calls = [];
+  const result = runVercelBuild({
+    environment: productionEnvironment("update"),
+    buildRunner: () => calls.push("build"),
+    nodeRunner: (args, env) => calls.push({ args, env }),
+  });
+  assert.equal(calls[0], "build");
+  assert.deepEqual(calls[1].args, ["scripts/db-migrate.mjs", "production"]);
+  assert.deepEqual(calls[2].args, ["scripts/db-integrity.mjs", "production"]);
+  assert.equal(calls[1].env.SALDO_BERSAMA_REMOTE_DB_CONTEXT, "1");
+  assert.deepEqual(result, { operation: "update", databaseOperationRan: true });
+});

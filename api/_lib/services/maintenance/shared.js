@@ -130,16 +130,26 @@ const TRANSIENT_SYSTEM_CONFIG_KEYS = new Set([
   "scheduler_last_error_code",
 ]);
 
-export const snapshotDatabase = async (db) => db.transaction(async (tx) => {
-  const results = await tx.batch(BACKUP_TABLES.map((table) => ({ sql: `SELECT * FROM ${quoted(table)}` })));
-  const tables = Object.fromEntries(BACKUP_TABLES.map((table, index) => [table, results[index].rows]));
+const backupTablesForSchemaVersion = (schemaVersion = DATABASE_SCHEMA_VERSION) => {
+  const version = Number(schemaVersion || 0);
+  return BACKUP_TABLES.filter((table) => !(version < 19 && table === "budget_history"));
+};
+
+export const snapshotDatabase = async (db, { schemaVersion = DATABASE_SCHEMA_VERSION } = {}) => db.transaction(async (tx) => {
+  const normalizedSchemaVersion = Number(schemaVersion || 0);
+  if (!Number.isSafeInteger(normalizedSchemaVersion) || normalizedSchemaVersion < 3 || normalizedSchemaVersion > DATABASE_SCHEMA_VERSION) {
+    throw appError("BACKUP_SCHEMA_UNSUPPORTED", "Schema database tidak didukung untuk backup teknis.", 409);
+  }
+  const tablesToSnapshot = backupTablesForSchemaVersion(normalizedSchemaVersion);
+  const results = await tx.batch(tablesToSnapshot.map((table) => ({ sql: `SELECT * FROM ${quoted(table)}` })));
+  const tables = Object.fromEntries(tablesToSnapshot.map((table, index) => [table, results[index].rows]));
   tables.system_config = tables.system_config.filter((row) => !TRANSIENT_SYSTEM_CONFIG_KEYS.has(String(row.key || "")));
   const manifest = {
     format: "saldo-bersama-backup",
-    version: DATABASE_SCHEMA_VERSION,
-    schemaVersion: DATABASE_SCHEMA_VERSION,
+    version: normalizedSchemaVersion,
+    schemaVersion: normalizedSchemaVersion,
     createdAt: nowIso(),
-    tables: Object.fromEntries(BACKUP_TABLES.map((table) => [table, tables[table].length])),
+    tables: Object.fromEntries(tablesToSnapshot.map((table) => [table, tables[table].length])),
   };
   const payload = { manifest, tables };
   const checksum = digest(canonicalJson(payload));

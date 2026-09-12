@@ -4,7 +4,7 @@ import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const allowedOperations = new Set(["", "migrate", "integrity", "bind"]);
+const allowedOperations = new Set(["", "migrate", "integrity", "bind", "update"]);
 
 export const resolveVercelDatabaseOperation = (environment = process.env) => {
   const operation = String(environment.SALDO_BERSAMA_DB_OPERATION || "").trim().toLowerCase();
@@ -73,7 +73,7 @@ export const runVercelBuild = ({
     DATABASE_ENVIRONMENT: "production",
     NODE_ENV: "production",
   };
-  if (operation === "migrate") {
+  if (operation === "migrate" || operation === "update") {
     nodeRunner(["scripts/db-migrate.mjs", "production"], remoteEnv);
     nodeRunner(["scripts/db-integrity.mjs", "production"], remoteEnv);
   } else if (operation === "integrity") {

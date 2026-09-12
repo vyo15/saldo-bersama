@@ -48,3 +48,14 @@ test("dashboard desktop tidak dereference cashFlow tanpa guard dan memakai bound
   assert.doesNotMatch(desktop, /overview\.cashFlow\.income/);
   assert.doesNotMatch(desktop, /overview\.cashFlow\.expense/);
 });
+
+
+test("dashboard desktop membawa creator resolver ke model transaksi dan fallback tidak dapat crash", async () => {
+  const desktop = await readFile(new URL("../src/features/dashboard/components/DesktopFinanceDashboard.jsx", import.meta.url), "utf8");
+  assert.match(desktop, /const \{ accountBalances, categoryLookup, recentTransactions, expenseByCategory, transactionCreatorLabel \} = viewModel/);
+  assert.match(desktop, /selectedTransaction,\s*transactionCreatorLabel,/);
+  assert.match(desktop, /typeof transactionCreatorLabel === "function"/);
+  assert.match(desktop, /: "Anggota keluarga"/);
+  assert.match(desktop, /dicatat \{creatorLabel\}/);
+  assert.doesNotMatch(desktop, /dicatat \{transactionCreatorLabel\(item\)\}/);
+});

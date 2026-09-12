@@ -1,5 +1,8 @@
 # Environment Variables
 
+> **Status:** Canonical reference  
+> **Purpose:** Reference environment key, scope, sensitivity, dan source value.
+
 Dokumen ini adalah daftar **canonical** untuk Vercel Production dan Development serta dua profile lokal pada setiap workstation tepercaya: `.env.local` (Development) dan `.env.production.local` (Production). Jangan menambahkan nama lain tanpa perubahan source dan review.
 
 ## Kebijakan environment
@@ -202,35 +205,29 @@ Jangan mengandalkan Production sebagai sumber untuk mengambil kembali secret Sen
 
 
 
-## Cutover Development/Production database isolation
+## Database Development/Production isolation
 
-Perubahan ini adalah operasi environment, bukan sekadar edit source. Jalankan hanya dari komputer tepercaya setelah backup/integrity evidence tersedia.
+Development dan Production **sudah merupakan dua scope runtime terpisah**. Bagian ini adalah kontrak maintenance/provisioning, bukan prosedur cutover historis.
 
-1. Buat database Turso **Development** baru.
-2. Terapkan migration canonical sampai schema v20 pada Development, lalu bind dan jalankan integrity check. Command tanpa target membaca `.env.local`:
-   ```bash
-   npm run db:migrate
-   npm run db:bind-environment -- development
-   npm run db:integrity
-   ```
-   Rebind silang wajib ditolak dan migration memeriksa binding existing sebelum mutation.
-3. Pastikan `system_config.timezone=Asia/Jakarta`, `currency=IDR`, `database_environment=development`, dan business integrity lulus.
-4. Siapkan token Development baru. Jangan reuse token Production setelah isolation.
-5. Ubah Vercel **Development** `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, dan `DATABASE_ENVIRONMENT=development` ke nilai Development. Jangan mengubah Production pada langkah ini.
-6. Pastikan Vercel **Production** tetap memakai database/token Production dan `DATABASE_ENVIRONMENT=production`. Dari komputer tepercaya, siapkan `.env.production.local`, ambil backup Production terverifikasi, lalu jalankan secara eksplisit:
-   ```bash
-   npm run env:check:production
-   npm run db:migrate -- production
-   npm run db:bind-environment -- production
-   npm run db:integrity -- production
-   ```
-   Profile Production tidak pernah diambil dari `.env.local`; runtime v20 baru boleh menerima traffic setelah langkah ini lulus.
-7. Jalankan `npm run dev`, lalu `npm run env:check` dan smoke read/write menggunakan data dummy pada Development.
-8. Verifikasi aplikasi Production tetap sehat dan tidak pernah mengakses database Development.
-9. Setelah kedua scope terbukti terpisah, rotasi credential lama sesuai `SECRET_ROTATION_RUNBOOK.md` dan revoke token yang tidak lagi dipakai.
-10. Simpan evidence tanpa nilai secret. Source baru boleh menyatakan isolation selesai setelah langkah di atas dibuktikan.
+- Development wajib memakai database/token Development, `SESSION_SECRET` Development, VAPID pair Development, dan `DATABASE_ENVIRONMENT=development`.
+- Production wajib memakai database/token Production, `SESSION_SECRET` Production, VAPID pair Production, dan `DATABASE_ENVIRONMENT=production`.
+- Preview tidak boleh membawa credential database aktif.
+- Rebind silang wajib ditolak. Migration selalu mengikuti chain canonical sampai schema current dan baru dianggap siap setelah integrity check lulus.
 
-`npm run env:push:development` membaca `.env.local`; jangan menjalankannya sebelum memastikan `.env.local` sudah menunjuk database Development yang benar.
+Provisioning/maintenance database environment dilakukan dari komputer tepercaya:
+
+```bash
+# Development
+npm run db:migrate
+npm run db:bind-environment -- development
+npm run db:integrity
+
+# Production
+npm run env:check:production
+npm run prod:update
+```
+
+`prod:update` memakai staged Vercel Production build sehingga credential Sensitive tidak perlu diekspor ke workstation. Backup verified fresh pada schema aktif dibuat otomatis sebelum mutation; seluruh pending migration dijalankan atomik, lalu integrity dan promotion runtime menjadi bagian workflow yang sama. `.env.local` hanya untuk Development dan `.env.production.local` hanya mirror operator gitignored, bukan syarat untuk update Production.
 
 ## Apps Script Properties canonical
 

@@ -4,6 +4,7 @@ Perubahan siap dikerjakan bila:
 
 - objective dan acceptance criteria jelas;
 - area source yang terdampak sudah diidentifikasi;
+- authority doc untuk behavior/contract yang terdampak sudah dipilih melalui `docs/INDEX.md`; historical/RFC Proposed tidak dipakai sebagai current authority;
 - source terbaru dan path aktual sudah diperiksa;
 - dependency dan kemungkinan overlap perubahan sudah dinilai;
 - risiko terhadap auth, authorization, data finansial, schema, migration, backup/restore, integration, dan destructive action sudah dinilai;

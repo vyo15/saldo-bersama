@@ -90,10 +90,11 @@ Tujuan aturan ini adalah mengurangi bolak-balik yang tidak perlu tanpa menurunka
 Prioritas:
 
 1. source dan test aktual;
-2. contract/ADR/RFC canonical;
-3. `docs/WORKFLOW.md` dan `docs/PROJECT_STATUS.md`;
-4. percakapan;
-5. memory.
+2. authority canonical yang dirouting oleh `docs/INDEX.md` serta ADR accepted yang relevan;
+3. `docs/WORKFLOW.md` dan snapshot `docs/PROJECT_STATUS.md`;
+4. RFC hanya sesuai statusnya (Proposed tidak boleh dianggap runtime);
+5. percakapan;
+6. memory.
 
 Jika docs berbeda dengan source, source menang dan drift harus dijelaskan serta diperbaiki bila masih dalam scope.
 

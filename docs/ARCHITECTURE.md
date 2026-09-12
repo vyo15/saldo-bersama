@@ -1,8 +1,11 @@
 # Arsitektur Saldo Bersama
 
-## Auth/session dan environment hardening v12
+> **Status:** Canonical  
+> **Purpose:** Menjelaskan runtime boundaries, data flow, read model, concurrency, dan integration architecture current.
 
-Runtime memakai session v2 server-side: cookie signed HttpOnly hanya membawa credential opaque, sedangkan `user_sessions` mengikat session ke user canonical dan menyimpan verifier hash. Gateway/export/session resolver tidak mempercayai role/email dari cookie. OAuth production memakai PKCE S256. Database juga memiliki `database_environment`; runtime harus cocok dengan `DATABASE_ENVIRONMENT` dan `VERCEL_ENV`, sehingga Development/Production silang serta Preview bercredential fail-closed.
+## Authentication, session, dan environment isolation
+
+Runtime memakai signed server-side session: cookie signed HttpOnly hanya membawa credential opaque, sedangkan `user_sessions` mengikat session ke user canonical dan menyimpan verifier hash. Gateway/export/session resolver tidak mempercayai role/email dari cookie. OAuth production memakai PKCE S256. Database juga memiliki `database_environment`; runtime harus cocok dengan `DATABASE_ENVIRONMENT` dan `VERCEL_ENV`, sehingga Development/Production silang serta Preview bercredential fail-closed.
 
 
 ## Ringkasan
@@ -27,7 +30,7 @@ PWA React/Vite
 
 ## Kebijakan environment
 
-Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari Vercel Development. Vercel Production adalah runtime deployment, sedangkan Preview tetap kosong. Infrastruktur live legacy masih dapat memiliki satu Turso database sampai cutover ADR-0007 selesai, tetapi source v16 **tidak lagi mengizinkan sharing tersebut sebagai runtime normal**: Development dan Production harus memakai database/token terpisah dan binding `database_environment` yang sesuai. Selama hanya satu database tersedia, salah satu environment akan fail-closed. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
+Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari Vercel Development. Vercel Production adalah runtime deployment, sedangkan Preview tidak membawa credential database aktif. Development dan Production wajib memakai database/token/session secret yang terpisah serta binding `database_environment` yang sesuai; cross-binding fail-closed. ADR-0007 hanya history keputusan dan tidak lagi mendefinisikan runtime current. Nama environment canonical dan lokasi setiap secret didokumentasikan di `ENVIRONMENT_VARIABLES.md`.
 
 ## Trust boundaries
 
@@ -101,11 +104,11 @@ allocated_remaining = total sisa Alokasi Dana aktif dari rekening sumber
 available_balance = balance - allocated_remaining
 ```
 
-`balance` tetap saldo ledger fisik. Membuat Alokasi Dana hanya mengikat dana bebas. Expense yang memakai Alokasi Dana wajib memakai rekening sumber Alokasi Dana yang sama; bagian yang ter-cover oleh Alokasi Dana menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Alokasi Dana dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif.
+`balance` tetap saldo ledger fisik. Membuat **wadah** Alokasi tidak mengikat dana; penyimpanan/perubahan Kebutuhan secara otomatis mengubah `allocated_amount` sebesar delta yang aman dari Dana Tersedia, sedangkan manual fund/release tetap advanced/compatibility control. Expense yang memakai Alokasi Dana wajib memakai rekening sumber yang sama; bagian yang ter-cover menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Alokasi Dana dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif. Shortage Kebutuhan ditolak atomic sebelum partial state dibuat.
 
 ## Global realtime synchronization
 
-Runtime schema v19 mempertahankan `sync_revisions` yang diperkenalkan pada v18 sebagai sinyal invalidation lintas perangkat. `api/_lib/syncRevisions.js` adalah sumber canonical dependency mutation → read-resource. Dispatcher menaikkan revision di transaction yang sama dengan mutation; session dan scheduler/job yang berada di luar dispatcher menaikkan revision eksplisit. Frontend `SyncCoordinator` membandingkan `sync.state`, menginvalidasi hanya resource yang berubah, dan menunggu mounted read selesai sebelum memajukan baseline. Foreground, reconnect, BroadcastChannel, push, polling visible, dan pull-to-refresh memakai coordinator yang sama. Local draft/form/modal state tidak ikut di-reset. Revision bukan financial authority dan tidak masuk logical backup.
+Runtime current memakai `sync_revisions` sebagai sinyal invalidation lintas perangkat. `api/_lib/syncRevisions.js` adalah sumber canonical dependency mutation → read-resource. Dispatcher menaikkan revision di transaction yang sama dengan mutation; session dan scheduler/job yang berada di luar dispatcher menaikkan revision eksplisit. Frontend `SyncCoordinator` membandingkan `sync.state`, menginvalidasi hanya resource yang berubah, dan menunggu mounted read selesai sebelum memajukan baseline. Foreground, reconnect, BroadcastChannel, push, polling visible, dan pull-to-refresh memakai coordinator yang sama. Local draft/form/modal state tidak ikut di-reset. Revision bukan financial authority dan tidak masuk logical backup.
 
 
 ## Concurrency
@@ -143,6 +146,6 @@ Google Sheets mirror hanya memuat rekening, transaksi, anggaran, Alokasi Dana, J
 Keputusan dan trade-off canonical dicatat di `docs/adr/`. Perubahan guarded/lintas tim harus melalui RFC pada `docs/rfc/` sebelum ADR diperbarui.
 
 
-## Alokasi presentation metadata v20
+## Allocation presentation metadata
 
 `envelope_rules.decoration_key` adalah metadata presentasi canonical untuk kartu Alokasi Dana. Field ini ikut read model dan backup/restore tetapi tidak menjadi financial authority; perubahan dekorasi tidak mengubah saldo, Dana Tersedia, ownership, rekonsiliasi, atau transaksi.

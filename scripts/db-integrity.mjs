@@ -34,7 +34,7 @@ export const runLocalDatabaseIntegrity = async ({ databaseEnvironment, projectRo
       foreignKeyIssues: [],
       businessIssues: [],
       message: databaseEnvironment === "production"
-        ? "Schema database Production belum siap. Jalankan npm run db:migrate -- production; operasi tersebut berjalan di Vercel Production build dan memakai secret Production langsung dari Vercel."
+        ? "Schema database Production belum siap. Jalankan npm run prod:update; operasi tersebut berjalan di Vercel Production build dan memakai secret Production langsung dari Vercel."
         : "Schema database Development belum siap. Jalankan npm run db:migrate, lalu ulangi integrity.",
     };
     logger.log(JSON.stringify(result, null, 2));

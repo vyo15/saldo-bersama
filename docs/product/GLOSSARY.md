@@ -1,5 +1,9 @@
 # Glossary
 
+> **Status:** Canonical  
+> **Purpose:** Menetapkan arti istilah produk/keuangan agar copy, source, test, dan docs tidak memakai mental model berbeda.  
+> **Update when:** Makna istilah atau hubungan finansial berubah.
+
 | Istilah | Definisi canonical |
 |---|---|
 | Rekening | Wadah saldo dengan saldo awal dan transaksi; dapat `shared` atau `personal`. Kedua jenis tetap terlihat penuh oleh dua anggota keluarga terotorisasi. |
@@ -23,11 +27,11 @@
 | Active | Record masih berlaku terhadap perhitungan/operasi. |
 | Cancelled | Transaksi dibatalkan secara audit-safe dan tidak memengaruhi saldo. |
 | Archived | Record tidak aktif untuk penggunaan normal tetapi tidak dihapus permanen. |
-| Alokasi Dana | Bagian saldo yang dialokasikan dari satu rekening sumber untuk tujuan/periode tertentu. Tidak membuat saldo atau transaksi ledger baru. Implementasi internal tetap memakai entitas `envelope_rules`/`envelope_periods` dan route compatibility `/perencanaan/kantong`. |
+| Alokasi Dana | Wadah perencanaan account-bound. Dana di dalamnya adalah bagian Saldo yang diikat dari Dana Tersedia, terutama sebagai hasil total Kebutuhan. Mengikat/melepas dana tidak membuat transaksi ledger baru. Manual fund/release adalah advanced/compatibility control, bukan flow utama pembuatan wadah. Implementasi internal tetap memakai `envelope_rules`/`envelope_periods`. |
 | Periode Alokasi Dana | Siklus aktif satu Alokasi Dana. Saat periode ditutup, sistem selalu menyiapkan periode aktif berikutnya. Policy `unallocated` memulai periode berikutnya pada Rp0, sedangkan `carry` hanya membawa sisa aktual. |
-| Kebutuhan | Anggaran kategori di dalam satu Alokasi Dana. Implementasi internal memakai record `budgets` yang terhubung melalui `envelope_rule_id`; kategori master tetap dipakai ulang dan tidak diduplikasi. |
+| Kebutuhan | Rencana nominal kategori di dalam satu Alokasi Dana. Menambah/mengubah Kebutuhan otomatis menyesuaikan dana Alokasi dari Dana Tersedia bila aman; menghapus/menurunkan hanya melepas sisa yang belum terpakai/dipesan dan tidak menyapu buffer. Implementasi internal memakai `budgets` + `envelope_rule_id`. |
 | Anggaran | Istilah/domain legacy untuk record budget Kebutuhan. Tidak ada menu Anggaran terpisah; `/anggaran` hanya compatibility redirect ke Alokasi Dana. |
-| Budget | Batas nominal kategori per periode. |
+| Budget | Nama internal/legacy untuk record Kebutuhan per periode; bukan surface produk terpisah. |
 | Recurring | Aturan pemasukan/tagihan yang menghasilkan occurrence. |
 | Occurrence | Kejadian per tanggal dari recurring rule. |
 | Target/Goal | Tujuan tabungan yang terhubung ke rekening dan mutasi. |

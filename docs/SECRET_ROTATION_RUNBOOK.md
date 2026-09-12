@@ -4,7 +4,7 @@ Gunakan runbook ini bila `SESSION_SECRET`, `TURSO_AUTH_TOKEN`, `VAPID_PRIVATE_KE
 
 ## Boundary saat ini
 
-Source v17 mewajibkan binding environment fail-closed dan tidak mendukung sharing Development/Production sebagai konfigurasi normal. Runbook tetap tidak boleh menganggap live isolation selesai sebelum evidence membuktikan dua database/token berbeda.
+Runtime current mewajibkan binding environment fail-closed dan tidak mendukung sharing credential/database Development dan Production sebagai konfigurasi normal. Rotation hanya boleh dilakukan setelah target environment dapat dibuktikan dengan database/token yang benar.
 
 Konsekuensinya:
 
@@ -19,13 +19,13 @@ Konsekuensinya:
 2. Buat/rotasi token **secara terpisah** untuk database Development dan Production; jangan menyalin satu token lintas environment. Jika live target belum dapat dibedakan dengan pasti, hentikan rotasi dan verifikasi infrastruktur lebih dulu.
 3. Simpan token baru hanya pada secret store/runtime yang sah.
 4. Perbarui local `.env.local` pada komputer tepercaya.
-5. Sinkronkan environment sesuai scope tanpa menampilkan nilai token. Setelah isolation, Development hanya menerima token Development dan Production hanya menerima token Production.
+5. Sinkronkan environment sesuai scope tanpa menampilkan nilai token. Development hanya menerima token Development dan Production hanya menerima token Production.
 6. Buat deployment baru bila runtime memerlukan redeploy untuk membaca environment terbaru.
 7. Verifikasi login, `system.health`, read transaksi, dan operation non-destructive yang relevan. Untuk perubahan data, gunakan test dummy hanya bila aplikasi masih pada fase trial dan preview memastikan tidak ada data nyata terdampak.
 8. Setelah seluruh runtime yang diperlukan terbukti menggunakan token baru, revoke token lama di Turso.
 9. Verifikasi ulang health dan catat evidence tanpa nilai secret.
 
-Jangan revoke token lama sebelum runtime yang diperlukan terbukti memakai token baru. Setelah isolation, verifikasi dan revoke dilakukan per environment agar kegagalan Development tidak memaksa rollback credential Production.
+Jangan revoke token lama sebelum runtime yang diperlukan terbukti memakai token baru. verifikasi dan revoke dilakukan per environment agar kegagalan Development tidak memaksa rollback credential Production.
 
 ## Urutan rotasi `SESSION_SECRET`
 

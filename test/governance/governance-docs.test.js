@@ -48,7 +48,8 @@ const requiredFiles = [
   "docs/AUTHORIZATION_MATRIX.md",
   "docs/DATA_DICTIONARY.md",
   "docs/DATABASE_MIGRATION_POLICY.md",
-  "docs/LEGACY_SHEETS_TO_TURSO_CUTOVER.md",
+  "docs/history/README.md",
+  "docs/history/LEGACY_SHEETS_TO_TURSO_CUTOVER.md",
   "docs/SECURITY_MODEL.md",
   "docs/THREAT_MODEL.md",
   "docs/OPERATIONS_RUNBOOK.md",
@@ -73,6 +74,33 @@ const retiredTaskFiles = [
 const quotedStrings = (source) => [...source.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+
+const markdownLinkReferences = (relative) => {
+  const source = read(relative);
+  return [...source.matchAll(/\]\(([^)]+\.md)(?:#[^)]+)?\)/g)]
+    .map((match) => match[1])
+    .filter((reference) => !/^(?:https?:|mailto:)/i.test(reference));
+};
+
+const markdownFilesUnder = (relativeDir) => {
+  const output = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(path.join(root, dir), { withFileTypes: true })) {
+      const next = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(next);
+      else if (entry.isFile() && entry.name.endsWith(".md")) output.push(next);
+    }
+  };
+  walk(relativeDir);
+  return output;
+};
+
+const resolveDocReference = (sourceFile, reference) => {
+  const relativeTarget = path.normalize(path.join(path.dirname(sourceFile), reference)).replaceAll("\\", "/");
+  if (exists(relativeTarget)) return relativeTarget;
+  const rootTarget = path.normalize(reference).replaceAll("\\", "/");
+  return rootTarget;
+};
 const referencedMarkdownFiles = (relative) => {
   const source = read(relative);
   const references = new Set();
@@ -87,10 +115,19 @@ test("governance foundation and required-reading files exist", () => {
   requiredFiles.forEach((relative) => assert.equal(exists(relative), true, `Missing governance file: ${relative}`));
 });
 
-test("README, AGENTS, and documentation index contain no broken local Markdown references", () => {
+test("active documentation contains no broken local Markdown references", () => {
   for (const source of ["README.md", "AGENTS.md", "docs/INDEX.md"]) {
     for (const target of referencedMarkdownFiles(source)) {
-      assert.equal(exists(target), true, `Broken Markdown reference in ${source}: ${target}`);
+      const resolved = exists(target) ? target : path.normalize(target.replace(/^docs\//, "")).replaceAll("\\", "/");
+      assert.equal(exists(target) || exists(resolved), true, `Broken Markdown/code reference in ${source}: ${target}`);
+    }
+  }
+
+  const markdownFiles = ["README.md", "AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", ...markdownFilesUnder("docs")];
+  for (const source of markdownFiles) {
+    for (const reference of markdownLinkReferences(source)) {
+      const target = resolveDocReference(source, reference);
+      assert.equal(exists(target), true, `Broken Markdown link in ${source}: ${reference}`);
     }
   }
 });
@@ -136,6 +173,58 @@ test("documentation index exposes product boundaries and guarded delivery workfl
     assert.match(index, new RegExp(escapeRegExp(reference)));
   }
   assert.doesNotMatch(index, /tasks\/README|TASK_TEMPLATE/);
+});
+
+test("documentation index defines one authority map and references every active root doc", () => {
+  const index = read("docs/INDEX.md");
+  assert.match(index, /## Authority map/);
+  for (const authority of [
+    "product/PRODUCT_REQUIREMENTS.md", "product/GLOSSARY.md", "IMPLEMENTATION_MATRIX.md", "PROJECT_STATUS.md",
+    "ARCHITECTURE.md", "API_CONTRACT.md", "AUTHORIZATION_MATRIX.md", "TURSO_SCHEMA.md", "DATA_DICTIONARY.md",
+    "UI_DESIGN_SYSTEM.md", "TEST_PLAN.md", "QA_CHECKLIST.md", "WORKFLOW.md", "GIT_WORKFLOW.md", "DEPLOYMENT.md",
+  ]) assert.match(index, new RegExp(escapeRegExp(authority)));
+
+  for (const file of readdirSync(path.join(root, "docs")).filter((name) => name.endsWith(".md") && name !== "INDEX.md")) {
+    assert.ok(index.includes(file), `Active root documentation is orphaned from INDEX.md: ${file}`);
+  }
+});
+
+test("current-state docs do not become patch journals", () => {
+  for (const file of [
+    "docs/PROJECT_STATUS.md", "docs/TEST_PLAN.md", "docs/UI_DESIGN_SYSTEM.md", "docs/ARCHITECTURE.md",
+    "docs/DEPLOYMENT.md", "docs/IMPLEMENTATION_MATRIX.md", "docs/DATA_DICTIONARY.md",
+  ]) {
+    const source = read(file);
+    assert.doesNotMatch(source, /^#{2,4} .*Hardening v\d+/im, `${file} contains versioned hardening heading`);
+    assert.doesNotMatch(source, /^#{2,4} .*\b20\d{2}\b/im, `${file} contains dated current-doc heading`);
+  }
+  assert.match(read("docs/PROJECT_STATUS.md"), /^# Project Status\n/);
+  assert.doesNotMatch(read("docs/TEST_PLAN.md"), /Regression audit \d{1,2} .*20\d{2}/i);
+});
+
+test("allocation and needs documentation matches automatic funding source contract", () => {
+  const fundingSource = read("api/_lib/services/planning/budgetFunding.js");
+  const requirements = read("docs/product/PRODUCT_REQUIREMENTS.md");
+  const design = read("docs/UI_DESIGN_SYSTEM.md");
+  const testPlan = read("docs/TEST_PLAN.md");
+  const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
+
+  assert.match(fundingSource, /adjustEnvelopeForBudgetDelta/);
+  assert.match(fundingSource, /BUDGET_FUNDING_INSUFFICIENT/);
+  assert.match(requirements, /otomatis.*Dana Tersedia|Dana Tersedia.*otomatis/is);
+  assert.match(requirements, /BUDGET_FUNDING_INSUFFICIENT/);
+  assert.match(testPlan, /tidak meminta budget awal/i);
+  assert.match(testPlan, /tidak ada partial budget\/recurring\/funding write/i);
+  assert.match(matrix, /delta Kebutuhan otomatis fund\/release/i);
+  assert.doesNotMatch(requirements, /Menambah atau mengedit Kebutuhan tidak boleh otomatis memindahkan dana/i);
+  assert.doesNotMatch(design, /Dana yang disiapkan|Susun kebutuhan/);
+});
+
+test("legacy cutover is historical and no longer an active root runbook", () => {
+  assert.equal(exists("docs/LEGACY_SHEETS_TO_TURSO_CUTOVER.md"), false);
+  assert.equal(exists("docs/history/LEGACY_SHEETS_TO_TURSO_CUTOVER.md"), true);
+  assert.match(read("docs/history/README.md"), /bukan workflow aktif/i);
+  assert.match(read("docs/DOCUMENT_LIFECYCLE.md"), /docs\/history\//);
 });
 
 test("contribution policy and Git workflow cross-reference each other", () => {

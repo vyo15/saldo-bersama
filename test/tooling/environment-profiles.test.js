@@ -214,7 +214,7 @@ test("production runtime check memverifikasi health backend dan frontend shell a
           ok: true,
           data: {
             status: "ok",
-            schema: { ready: true, version: 18, expectedVersion: 18, databaseEnvironment: "production" },
+            schema: { ready: true, version: 20, expectedVersion: 20, databaseEnvironment: "production" },
             maintenanceMode: false,
             coreOperationsHealthy: true,
           },
@@ -302,21 +302,21 @@ test("Google bridge pusat fail closed bila DEV/PROD lengkap tetapi drift", async
   }
 });
 
-test("Production core readiness hanya memblokir schema, maintenance, dan core operations", () => {
+test("Production core readiness memblokir core failure dan release live yang tertinggal dari source", () => {
   const ready = productionCoreReadiness({
-    schema: { ready: true },
+    schema: { ready: true, version: 20, expectedVersion: 20 },
     maintenanceMode: false,
     coreOperationsHealthy: true,
   });
-  assert.deepEqual(ready, { ready: true, blockers: [] });
+  assert.deepEqual(ready, { ready: true, blockers: [], localExpectedSchemaVersion: 20 });
 
   const blocked = productionCoreReadiness({
-    schema: { ready: false },
+    schema: { ready: false, version: 18, expectedVersion: 18 },
     maintenanceMode: true,
     coreOperationsHealthy: false,
   });
   assert.equal(blocked.ready, false);
-  assert.deepEqual(blocked.blockers, ["SCHEMA_NOT_READY", "MAINTENANCE_MODE", "CORE_OPERATIONS_DEGRADED"]);
+  assert.deepEqual(blocked.blockers, ["SCHEMA_NOT_READY", "MAINTENANCE_MODE", "CORE_OPERATIONS_DEGRADED", "PRODUCTION_RELEASE_BEHIND_SOURCE"]);
 });
 
 test("npm run prod hanya memeriksa runtime remote dan tidak membutuhkan profile Production lokal", async () => {

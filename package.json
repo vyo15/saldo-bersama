@@ -11,6 +11,7 @@
     "dev": "node scripts/start-vite-dev.mjs",
     "prod": "node scripts/production-runtime.mjs --open",
     "prod:check": "node scripts/production-runtime.mjs",
+    "prod:update": "node scripts/production-update.mjs",
     "diagnose": "node scripts/diagnose-runtime.mjs",
     "env:status": "node scripts/environment-status.mjs",
     "env:pull:development": "node scripts/pull-development-environment.mjs",

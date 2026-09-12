@@ -1,5 +1,8 @@
 # GitHub Ruleset Baseline
 
+> **Status:** Canonical  
+> **Purpose:** Enforcement repository pada GitHub.
+
 Repository Saldo Bersama private memakai direct `main` workflow yang dijaga oleh pre-push Auto Quality Guard. File source tidak dapat mengaktifkan ruleset GitHub dengan sendirinya; setting GitHub tetap harus diverifikasi langsung.
 
 ## Target `main`

@@ -13,7 +13,7 @@ export const checkProductionReleasePreflight = async ({
     throw Object.assign(
       new Error(
         "Production DB belum kompatibel atau integrity check remote gagal. Push dibatalkan agar runtime baru tidak terdeploy sebelum database siap. "
-        + "Pastikan backup Production terverifikasi, jalankan `npm run db:migrate -- production`, lalu `npm run db:integrity -- production`, dan ulangi `git push origin main`. "
+        + "Jalankan `npm run prod:update` untuk menyelaraskan backup, schema, integrity, dan runtime Production, lalu ulangi `git push origin main`. "
         + "Operasi memakai staged Vercel Production build sehingga secret Sensitive tetap berada di Vercel.",
       ),
       { cause: error, code: "PRODUCTION_RELEASE_SCHEMA_NOT_READY", remoteCode: error?.code || null },

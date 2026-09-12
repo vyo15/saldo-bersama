@@ -1,6 +1,6 @@
 # Security Model
 
-## Session v2 dan device registry
+## Session dan device registry
 
 Cookie session canonical adalah signed/HttpOnly/SameSite credential opaque (`session_id` + secret acak). Database `user_sessions` hanya menyimpan SHA-256 verifier hash dan metadata perangkat coarse; raw secret, cookie, token Firebase, IP, dan raw user-agent tidak disimpan. Row session yang expired/revoked dapat dipurge setelah retention sebagai credential ephemeral; restore terkontrol mengosongkan registry agar credential pra-restore tidak hidup kembali. `api/gateway.js`, `api/export.js`, dan `/api/session` memakai resolver registry authoritative yang sama, lalu memvalidasi user aktif, Firebase UID binding, dan role terbaru pada registry `users` canonical. User hanya dapat list/revoke session miliknya; role change/deactivation mencabut seluruh session user. Google OAuth production memakai state + nonce + PKCE S256.
 

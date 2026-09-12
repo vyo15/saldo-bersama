@@ -304,7 +304,7 @@ test("manual reminder menjaga delivery pending, lifecycle cancellation, dan inte
 });
 
 test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah dihapus", async () => {
-  for (const file of ["docs/TURSO_SCHEMA.md", "docs/GOOGLE_INTEGRATIONS.md", "docs/LEGACY_SHEETS_TO_TURSO_CUTOVER.md", "docs/RECOVERY_RUNBOOK.md", "docs/ENVIRONMENT_VARIABLES.md"]) assert.equal(await exists(file), true, file);
+  for (const file of ["docs/TURSO_SCHEMA.md", "docs/GOOGLE_INTEGRATIONS.md", "docs/history/LEGACY_SHEETS_TO_TURSO_CUTOVER.md", "docs/RECOVERY_RUNBOOK.md", "docs/ENVIRONMENT_VARIABLES.md"]) assert.equal(await exists(file), true, file);
   assert.equal(await exists("docs/GOOGLE_SHEETS_SCHEMA.md"), false);
   const architecture = await source("docs/ARCHITECTURE.md");
   assert.match(architecture, /Turso/);

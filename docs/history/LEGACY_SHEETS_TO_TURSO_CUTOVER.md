@@ -1,5 +1,9 @@
 # Legacy Google Sheets to Turso Cutover
 
+> **Status:** Historical — one-time cutover yang sudah selesai.  
+> **Current authority:** Turso current schema/operations mengikuti `../TURSO_SCHEMA.md`, `../DEPLOYMENT.md`, dan `../RECOVERY_RUNBOOK.md`.  
+> Dokumen ini dipertahankan untuk audit/recovery context dan tidak boleh digunakan sebagai workflow aktif.
+
 Dokumen ini hanya untuk one-time cutover database Google Sheets lama ke Turso. Kebijakan perubahan schema Turso setelah cutover berada di `DATABASE_MIGRATION_POLICY.md`.
 
 ## Tujuan

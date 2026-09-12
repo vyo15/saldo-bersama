@@ -1,5 +1,8 @@
 # Authorization Matrix
 
+> **Status:** Canonical  
+> **Purpose:** Role/capability authorization contract current.
+
 ## Prinsip
 
 - Default deny.
@@ -195,5 +198,5 @@ UI menggunakan role **Administrator** dan **Member**. Untuk kompatibilitas data/
 ## Transparansi data keluarga
 
 - Filter dan laporan hanya boleh dibangun dari transaksi/rekening yang lolos scope backend.
-- `creatorExpenses` adalah aktivitas pencatatan keluarga, bukan kontribusi biaya. `costShareExpenses` tetap response compatibility untuk histori schema v11 dan tidak menjadi surface laporan canonical.
+- `creatorExpenses` adalah aktivitas pencatatan keluarga, bukan kontribusi biaya. `costShareExpenses` tetap response compatibility untuk histori cost-share legacy dan tidak menjadi surface laporan canonical.
 - Kedua pengguna terotorisasi membaca seluruh data finansial keluarga. `personal` membatasi siapa yang dapat mengoperasikan rekening, bukan siapa yang dapat melihatnya. Mode balance-only/contribution-only/private tidak masuk roadmap; RFC-0015 berstatus Rejected.

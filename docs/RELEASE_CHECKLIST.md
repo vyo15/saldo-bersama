@@ -1,37 +1,54 @@
 # Release Checklist
 
-## Pre-release
+> **Status:** Runbook  
+> **Purpose:** Checklist release current yang reusable dan tidak terikat nomor patch/migration tertentu.  
+> **Authority:** Detail deployment di `DEPLOYMENT.md`, regression di `TEST_PLAN.md`, dan recovery di `RECOVERY_RUNBOOK.md`.
 
-- [ ] Semua perubahan yang termasuk release sudah disetujui dan validation relevan sudah selesai.
-- [ ] Commit release berada di `main`; `git push origin main` hanya dilanjutkan setelah managed pre-push memverifikasi ref/SHA aktual, full `npm run verify` PASS, dan Production schema/binding preflight read-only PASS. **Quality / check** server-side dipantau setelah push.
-- [ ] `npm run verify` lulus pada Node 22.15.0+ (22.x) atau Node 24.x.
-- [ ] Untuk perubahan frontend/UI, `npm run verify` lulus termasuk rendered browser smoke; pemeriksaan manual device/viewport relevan tetap dilakukan untuk authenticated journey, virtual keyboard, dan real-device behavior yang tidak dicakup anonymous smoke.
-- [ ] Migration/schema impact direview bila relevan.
-- [ ] Untuk schema v20, backup teknis **verified pada schema v18** tersedia sebelum `017_budget_lifecycle_history.sql`, lalu backup **verified pada schema v19** tersedia sebelum `018_envelope_decoration.sql`; keduanya diterapkan berurutan setelah `016_global_sync_revisions.sql`, database di-bind ke environment yang benar, dan integrity lulus (`npm run db:integrity` untuk Development atau `npm run db:integrity -- production` untuk Production) **sebelum runtime schema baru dipush**. Production migration existing fail-closed bila tidak ada backup `verified` pada schema saat ini.
-- [ ] Planning diuji dengan Administrator dan Member: Member dapat mengelola scope Bersama serta planning personal yang bersumber dari rekening pribadinya sendiri; planning personal anggota lain tetap read-only, assignee Alokasi tetap dihormati, aksi user-facing `budgets.remove` mengikuti scope planning yang boleh dikelola Member, sedangkan hard-delete history-bearing/recovery/restore tetap dilindungi server dan aksi recovery legacy tetap Administrator-only.
-- [ ] Alokasi existing diuji add/release tanpa perubahan saldo ledger; dashboard memisahkan dana tersedia dari pengeluaran tanpa Alokasi Dana.
-- [ ] Cost sharing expense shared diuji `unspecified`/50:50/persentase dan report menyebut pembagian beban, bukan kontribusi aktual.
-- [ ] Investment v17 diuji end-to-end pada data test terisolasi: `investments.assets.create` dapat membuat saham/reksa dana langsung tanpa setup broker/RDN; compatibility account baru `is_system_hidden=1` tidak muncul pada `accounts.list`; hero/Dashboard memakai `market_value`; direct opening position serta Buy/Sell baru memiliki `cash_effect_enabled=0` dan tidak mengubah/bergantung pada Saldo RDN; over-sell/stale `row_version`/IDOR/invalid fee/tanggal tetap ditolak; weighted cost basis + valuation/P&L benar; Member tidak dapat reuse portfolio personal user lain. Fixture histori v15/v16 tetap membuktikan `cash_effect_enabled=1` dan ledger cash lama tidak berubah.
-- [ ] Backup schema v20 memuat seluruh history Investment authoritative + opening-position/trade notes + `is_system_hidden` + `cash_effect_enabled` + `budget_history`; restore drill v18→v19, v19→v20, dan v20→v20 lulus foreign-key + business integrity. Hasil restore dibandingkan untuk hidden-account visibility, holding, cost basis, P/L, chronology, cash-effect flags, dan ledger parity sebelum success diklaim.
-- [ ] Backup/rollback tersedia bila data terdampak.
-- [ ] Environment change tervalidasi tanpa menampilkan secret.
-- [ ] Jika auth mobile berubah, Firebase Google provider dan Authorized Domains (`localhost`, `saldo-bersama.vercel.app`) sudah diverifikasi tanpa memindahkan authorization dari registry `users`/role backend; OAuth Web Client yang sama dengan `VITE_GOOGLE_CLIENT_ID` memuat `https://saldo-bersama.vercel.app/api/auth/google/callback`, `GOOGLE_OAUTH_CLIENT_SECRET` tersedia hanya pada secret store tepercaya/Vercel Production Sensitive, dan tidak ada secret pada `VITE_*`, Git, ZIP, log, screenshot, atau chat.
-- [ ] Security/privacy/accessibility/performance review relevan selesai.
+## 1. Source dan quality
 
-## Deploy
+- [ ] Scope release jelas dan authority docs yang terdampak sudah diperbarui.
+- [ ] `npm run verify` lulus pada runtime Node yang didukung.
+- [ ] Untuk perubahan UI: rendered/browser smoke yang tersedia lulus dan manual device/viewport check dilakukan untuk journey authenticated, keyboard/gesture, theme, serta responsive behavior yang relevan.
+- [ ] Tidak ada secret, `.env*`, database dump, `node_modules`, archive lama, atau generated junk pada source delivery.
+- [ ] `npm run zip` hanya digunakan setelah full verification PASS; gate gagal harus menghasilkan exit non-zero tanpa archive baru.
 
-- [ ] Production env scope benar.
-- [ ] `DATABASE_ENVIRONMENT=production`, binding database Production cocok, database Development berbeda, dan Preview tidak membawa credential database aktif.
-- [ ] `npm run env:check:production` memastikan public app/Google/Firebase/origin selaras dengan Development, sementara host/token Turso, `SESSION_SECRET`, dan pasangan VAPID berbeda lintas environment.
-- [ ] Migration hanya dijalankan bila disetujui.
-- [ ] Smoke test Administrator/Member sesuai scope.
-- [ ] Setelah cutover session v2, perangkat legacy diarahkan login ulang; halaman Perangkat dapat list/revoke own session dan revoke-all tanpa IDOR.
-- [ ] Login desktop dan mobile memakai tombol branded yang sama: production harus berpindah full-page melalui Google OAuth server flow lalu callback membentuk server session tanpa freeze/double-submit; localhost/device emulation boleh memakai Firebase popup fallback. Vercel Logs harus menunjukkan `session.oauth.start`, callback `session.login` dengan `flow=google-oauth-server` dan status 200, lalu `GET /api/session` 200. Production tidak lagi diharapkan membuat client `POST /api/session`.
-- [ ] Saldo/data integrity diverifikasi bila transaksi/data terdampak.
+## 2. Database dan recovery
 
-## Close
+- [ ] Dampak schema/data direview. Bila ada migration Production, jalankan workflow canonical `npm run prod:update`; tooling harus membuat backup **verified fresh** dari schema aktif sebelum mutation dan menjalankan pending migration secara atomik.
+- [ ] Migration canonical mencapai schema current, integrity PASS, dan candidate source yang sama berhasil dipromosikan serta health live diverifikasi.
+- [ ] `DATABASE_ENVIRONMENT`, database URL/token, dan binding target cocok; rebind silang Development/Production harus fail-closed.
+- [ ] Untuk perubahan data berisiko tinggi, restore drill atau rollback evidence yang relevan tersedia sesuai `RECOVERY_RUNBOOK.md`.
+- [ ] Tidak ada klaim restore/migration sukses sebelum foreign-key + business-integrity checks selesai.
 
-- [ ] Commit/tag release dicatat bila digunakan.
-- [ ] Known issue/rollback window dicatat.
-- [ ] Known issue, follow-up, atau pekerjaan tersisa dicatat bila ada.
-- [ ] `PROJECT_STATUS.md` mencerminkan kondisi aktual.
+## 3. Financial/domain smoke
+
+- [ ] Rekening/saldo/Dana Tersedia tetap memenuhi invariant ledger; Transfer internal netral terhadap income/expense.
+- [ ] Alokasi/Kebutuhan: pembuatan Alokasi tidak meminta budget awal sebagai flow utama; Kebutuhan fund/release Alokasi dari Dana Tersedia secara atomic; shortage menjelaskan gap dan tidak membuat partial state.
+- [ ] Administrator/Member diuji sesuai capability shared/own-personal; backend tetap menjadi authorization authority.
+- [ ] Investasi asset-centric dapat menambah saham/reksa dana tanpa setup broker/RDN UI; Buy/Sell current bersifat accounting-only, oversell/stale write/invalid fee/tanggal tetap ditolak, dan compatibility histori tetap readable.
+- [ ] Realtime/pull-to-refresh tidak memerlukan hard reload dan draft lokal tidak hilang saat sync/reconnect.
+- [ ] Bila perubahan menyentuh report/notification/reconciliation, targeted smoke pada surface tersebut selesai.
+
+## 4. Environment dan authentication
+
+- [ ] Production env scope benar dan berbeda dari Development untuk database/token/session/VAPID sebagaimana diwajibkan `ENVIRONMENT_VARIABLES.md`.
+- [ ] `npm run env:check:production` lulus tanpa membocorkan secret.
+- [ ] Production OAuth Web Client memuat callback `https://saldo-bersama.vercel.app/api/auth/google/callback`.
+- [ ] `GOOGLE_OAUTH_CLIENT_SECRET` hanya berada pada secret store/Vercel Production Sensitive dan tidak pernah masuk `VITE_*`, Git, ZIP, log, screenshot, atau chat.
+- [ ] Login Production desktop/mobile memakai branded server OAuth flow; localhost/device emulation tetap memakai Firebase popup fallback.
+- [ ] Vercel Logs/health menunjukkan session/login/read path sukses tanpa freeze/double-submit pada smoke release yang relevan.
+
+## 5. Deploy
+
+- [ ] Gunakan staged Vercel Production build sesuai `DEPLOYMENT.md`.
+- [ ] Migration hanya dijalankan bila memang bagian release; gunakan `npm run prod:update` agar backup, migration, integrity, promotion, dan live verification tidak terpisah.
+- [ ] Smoke Administrator/Member dilakukan sesuai area yang berubah.
+- [ ] Saldo/data integrity diverifikasi bila ledger/planning/investment/data migration terdampak.
+- [ ] Google bridge/Calendar/Drive/Web Push dicek bila release menyentuh integrasi tersebut.
+
+## 6. Close release
+
+- [ ] Known issue, rollback window, dan follow-up dicatat di tempat yang benar.
+- [ ] `PROJECT_STATUS.md` diperbarui hanya jika **current state** berubah; jangan append kronologi release.
+- [ ] Perubahan historis dicatat di `CHANGELOG.md`/Git bila diperlukan.
+- [ ] Commit/tag release dicatat bila workflow release menggunakannya.

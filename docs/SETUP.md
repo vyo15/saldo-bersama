@@ -1,188 +1,91 @@
 # Setup
 
-## 1. Runtime
+> **Status:** Canonical onboarding  
+> **Purpose:** Menyiapkan workstation Development sampai aplikasi dapat dijalankan.  
+> **Update when:** Runtime/tooling/bootstrap Development berubah.  
+> **Boundary:** Daftar/arti env ada di `ENVIRONMENT_VARIABLES.md`; deployment Production ada di `DEPLOYMENT.md`.
 
-Gunakan Node **22.15.0+ pada lini 22.x** atau Node **24.x** dan npm 10+. Versi preferensi project dipin pada `.node-version` ke **22.15.0** agar PC kantor yang belum dapat memakai Node 24 tetap menjadi environment first-class. `npm run dev` fail-closed hanya bila runtime berada di luar rentang yang didukung. Frontend memakai `react-router` 7.18.2, yang kompatibel dengan baseline Node 22. `npm run dev` dapat menjalankan `npm ci` otomatis ketika dependency workspace belum tersedia. Untuk validasi lokal setelah patch, command canonical adalah `npm run verify`; command ini memakai dependency yang sudah terpasang dan tidak menjalankan `npm ci`. `npm ci` tetap canonical untuk clean CI, clone/bootstrap baru, perubahan package/lockfile, atau reinstall dependency.
+## Prerequisite
 
-### Windows Git Bash
+- Git
+- Node `22.15.0+` pada 22.x atau Node 24.x
+- npm sesuai lockfile
+- akses Vercel project private dan Development environment bila mengerjakan runtime terhubung
 
-Gunakan `fnm` agar Node project tidak bertabrakan dengan instalasi Node global Windows:
-
-```bash
-winget install -e --id Schniz.fnm
-grep -qxF 'eval "$(fnm env --use-on-cd --shell bash)"' ~/.bashrc || echo 'eval "$(fnm env --use-on-cd --shell bash)"' >> ~/.bashrc
-source ~/.bashrc
-fnm install 22.15.0
-fnm default 22.15.0
-fnm use
-hash -r
-node -v
-npm -v
-```
-
-Hasil `node -v` minimal `v22.15.0` pada lini 22.x, atau boleh memakai Node 24.x. `fnm env --use-on-cd` membaca `.node-version` setiap kali Git Bash masuk ke repository.
-
-Jika `fnm use` pada shell yang sudah terlanjur terbuka menampilkan `We can't find the necessary environment variables`, aktifkan environment pada shell tersebut lalu ulangi:
+## Bootstrap source
 
 ```bash
-eval "$(fnm env --use-on-cd --shell bash)"
-fnm use
-hash -r
-node -v
-```
-
-### Windows: `npm ci` gagal `EPERM` pada Rollup/esbuild/native module
-
-`npm ci` selalu membersihkan `node_modules` sebelum memasang dependency dari lockfile. Di Windows, proses Node/Vite yang masih berjalan dapat mengunci file native seperti `rollup.win32-x64-msvc.node`, sehingga npm gagal dengan `EPERM ... unlink`. Ini bukan alasan untuk mengganti `npm ci` dengan `npm install` atau mengubah lockfile.
-
-1. Hentikan semua `npm run dev`, Vite preview, atau proses Node yang sedang memakai repository ini. Tutup terminal development yang masih aktif.
-2. Jalankan cleanup dependency project:
-
-```bash
-npm run clean:dependencies -- --force
-```
-
-3. Setelah cleanup berhasil, install ulang secara canonical:
-
-```bash
+git clone <repo>
+cd saldo-bersama
 npm ci
 ```
 
-4. Jika cleanup masih melaporkan `Dependency masih dikunci Windows`, tutup aplikasi yang memakai project ini. Bila lock tetap ada, restart Windows lalu ulangi langkah 2 dan 3. Jangan memakai `taskkill /F /IM node.exe` sebagai langkah default karena command tersebut dapat mematikan proses Node milik project lain.
+`npm ci` digunakan untuk bootstrap/reinstall/clean CI, bukan ritual sebelum setiap test/push.
 
-Setelah dependency berhasil terpasang, jangan mengulang `npm ci` untuk setiap perubahan source. Gunakan:
+## Development environment canonical
+
+Development lokal mengambil konfigurasi canonical dari **Vercel Development**, bukan dari Production.
+
+```bash
+npm run env:pull:development
+npm run env:status
+```
+
+Jika environment Development perlu disinkronkan dari file lokal yang sudah diverifikasi, gunakan script canonical pada `package.json` dan ikuti klasifikasi `ENVIRONMENT_VARIABLES.md`; jangan menyalin secret lewat chat/dokumentasi.
+
+Database Development harus dibinding secara eksplisit:
+
+```bash
+npm run db:bind-environment -- development
+```
+
+Verifikasi marker `DATABASE_ENVIRONMENT=development`. Development dan Production memakai database terpisah; **jangan melakukan rebind silang** atau memakai credential Production sebagai shortcut local debugging.
+
+## Menjalankan aplikasi
+
+```bash
+npm run dev
+```
+
+Bootstrap Development akan memvalidasi environment yang diperlukan. Bila environment tidak lengkap, perbaiki Vercel Development/source env sesuai `ENVIRONMENT_VARIABLES.md`; jangan fallback diam-diam ke Production.
+
+## Auth lokal
+
+- Production canonical memakai server OAuth.
+- Localhost/device emulation boleh memakai Firebase popup fallback.
+- Authorization tetap backend; env/auth bootstrap lokal tidak boleh membuat bypass role/session.
+
+## Database dan migration
+
+- Turso adalah source of truth.
+- Migration Production tidak dijalankan otomatis saat `npm run dev`.
+- Perubahan schema mengikuti `DATABASE_MIGRATION_POLICY.md` dan merupakan guarded change.
+- Untuk inspection/integrity gunakan tooling canonical dan database environment yang benar; jangan menjalankan destructive command hanya untuk memastikan koneksi.
+
+## Quality lokal
+
+Targeted test boleh dijalankan selama development. Full gate sebelum final delivery:
 
 ```bash
 npm run verify
 ```
 
-`npm run verify` memeriksa runtime Node yang didukung dan kesehatan dependency secara read-only melalui npm, lalu menjalankan check dan guard regression. Bila dependency tidak sinkron, verify berhenti dengan instruksi recovery tanpa menghapus `node_modules` secara otomatis.
-
-Validator source menampilkan jumlah endpoint Vercel yang benar-benar aktif dan batas maksimum secara terpisah. Baseline saat ini adalah **5 Vercel Functions canonical** (`gateway`, `export`, `health`, `jobs`, `session`) dengan **batas maksimum 12**. Angka 12 bukan target jumlah function.
-
-## 2. Onboarding
-
-Baca `../AGENTS.md`, `WORKFLOW.md`, `GIT_WORKFLOW.md`, dan `PROJECT_STATUS.md` sebelum mengubah source. Validasi source aktual dan jalankan quality gate sesuai scope sebelum commit/push.
-
-## 3. Bootstrap lokal otomatis
-
-Pada komputer baru:
+Clean archive:
 
 ```bash
-git clone <repository-url>
-cd saldo-bersama
-npm run dev
+npm run zip
 ```
 
-Alur `npm run dev` pada terminal interaktif:
+`npm run zip` menjalankan verification terlebih dahulu dan hanya membuat archive jika PASS.
 
-1. Memastikan runtime aktif adalah Node `22.15.0+` pada lini 22.x atau Node `24.x`; PC kantor dengan Node `22.15.0` tidak memerlukan `fnm use` hanya untuk menjalankan project.
-2. Memeriksa dependency runtime utama (`vite`, `react`, `@fontsource-variable/manrope`, dan Firebase modular) dari workspace frontend.
-3. Menjalankan `npm ci` hanya bila dependency tersebut belum tersedia.
-4. Membersihkan token OIDC sementara dan key legacy dari `.env.local` bila file sudah ada.
-5. Meminta login Vercel hanya bila sesi belum ada.
-6. Menghubungkan repository ke project `saldo-bersama`; bila link otomatis gagal, membuka pemilihan project satu kali.
-7. Mencoba menarik **Vercel Development Environment** terbaru ke file sementara pada setiap start interaktif.
-8. Menghapus `VERCEL_OIDC_TOKEN`, key legacy, duplikat, grup opsional parsial, serta `GOOGLE_OAUTH_CLIENT_SECRET` bila key Production-only salah ditempatkan pada Development/cache lokal.
-9. Memvalidasi sepuluh key core, `DATABASE_ENVIRONMENT=development`, dan satu grup Web Push lengkap/valid.
-10. Mengganti `.env.local` secara atomik hanya setelah hasil pull lolos validasi. Jika login/link/pull Vercel sedang tidak tersedia tetapi cache `.env.local` lama sudah lengkap, cache tersebut dipertahankan dan dipakai sementara.
-11. Memeriksa Turso Development benar-benar reachable serta schema/binding siap, termasuk saat memakai cache lokal.
-12. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
+## Sebelum mengubah source
 
-`npm run dev` tidak membuat atau mengubah `.env.production.local`; provisioning Production dipicu hanya saat `npm run prod` membutuhkan profile tersebut.
+Baca:
 
-Refresh Development setiap start tetap dicoba agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Jika login/link/pull gagal karena Vercel tidak tersedia sementara `.env.local` lama sudah lengkap, `npm run dev` memakai cache Development tersebut lalu tetap menjalankan preflight Turso/schema/binding. Hasil pull yang berhasil tetapi invalid tetap fail-closed. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
+1. `../AGENTS.md`;
+2. `INDEX.md` untuk authority/peta perubahan;
+3. `WORKFLOW.md` dan `GIT_WORKFLOW.md`;
+4. authority domain yang relevan;
+5. `PROJECT_STATUS.md` hanya untuk snapshot current state.
 
-Jika `npm run dev` berhenti karena **hanya `DATABASE_ENVIRONMENT` yang belum tersedia**, jangan menambahkan `DATABASE_ENVIRONMENT=development` ke konfigurasi yang masih memakai database/token Production. Itu biasanya berarti cutover satu-database ADR-0007 belum selesai. Buat database Turso Development terpisah, arahkan `.env.local` ke URL/token Development, set `DATABASE_ENVIRONMENT=development`, lalu jalankan secara berurutan:
-
-```bash
-npm run db:migrate
-npm run db:bind-environment -- development
-npm run db:integrity
-npm run env:push:development
-```
-
-Setelah itu `npm run dev` akan menarik Vercel Development yang sudah terisolasi. Production harus tetap memakai database/token Production dan `DATABASE_ENVIRONMENT=production`; jangan melakukan rebind silang pada database lama.
-
-## 4. Seed Vercel Development satu kali
-
-Dari komputer tepercaya yang sudah memiliki `.env.local` canonical lengkap:
-
-```bash
-npm run env:clean
-npm run env:check
-npm run env:push:development
-```
-
-Untuk kebutuhan settings saja, gunakan command scoped berikut agar Turso, allowlist, Firebase, dan session tidak disentuh:
-
-```bash
-npm run env:push:development -- --settings-only
-```
-
-Command settings selalu menyinkronkan pasangan Web Push yang valid dan ikut menyinkronkan Google bridge bila grup tersebut sudah aktif di `.env.local`. Gunakan pasangan VAPID **Development** canonical; jangan generate VAPID baru per laptop/browser. Karena database Development/Production sudah dipisahkan, VAPID Development juga harus berbeda dari Production.
-
-Untuk mengecek Web Push yang sudah ada, jangan generate key. Jalankan:
-
-```bash
-npm run env:pull:development
-npm run env:status
-npm run diagnose
-```
-
-`env:status` hanya menampilkan fingerprint public key, bukan private key/token. `diagnose` memvalidasi pasangan key dan menampilkan `Web Push: ready` serta hasil verifikasi Push terakhir bila audit tersedia. Setelah Development terisi, komputer lain cukup menjalankan `npm run dev`. Tidak perlu copy/edit `.env.local` per perangkat. Izin notifikasi browser tetap harus diberikan satu kali oleh pengguna pada setiap browser/perangkat.
-
-Production tetap terpisah. Pada setiap PC/laptop tepercaya, `npm run prod` membuat mirror `.env.production.local` bila perlu lalu **mengisinya otomatis dari Vercel Production**; tidak ada langkah copy Turso manual dalam workflow normal. `npm run dev` tidak menyentuh profile Production. Placeholder Sensitive dari export biasa tidak dipercaya dan tooling mencoba jalur runtime Vercel sebelum fail-closed.
-
-Untuk penggunaan harian cukup:
-
-```bash
-npm run dev
-npm run prod
-```
-
-`npm run prod` tidak menimpa Development. Ia memastikan project Vercel ter-link, menarik environment **Production** otomatis (`vercel env pull --environment=production`) dan mencoba `vercel env run -e production` untuk key runtime yang tidak diekspor biasa, lalu menyimpan mirror aman pada `.env.production.local`. Selama `env run`, `.env.local` dan mirror Production lama disembunyikan sementara serta key aplikasi dari shell parent dibuang, sehingga dotenv Development tidak dapat menimpa scope Production. Marker `DATABASE_ENVIRONMENT` non-secret dari explicit Production pull menjadi authority; runtime capture dengan marker lain dianggap kontaminasi dan diabaikan. Profile DEV hanya dibaca untuk membuktikan isolasi host/token Turso, `SESSION_SECRET`, dan pasangan VAPID. Setelah itu Turso Production diperiksa read-only bersama Vercel Production aktual. Migration/backup/restore tetap maintenance eksplisit; localhost tidak dijalankan dengan database Production.
-
-Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local`, `.env.production.local`, atau `.vercel`.
-
-## 5. Database
-
-Operasi database tanpa target memakai profile Development `.env.local`:
-
-```bash
-npm run db:migrate
-npm run db:bind-environment -- development
-npm run db:integrity
-```
-
-Production tidak pernah memakai `.env.local`. Setelah backup Production terverifikasi dan `.env.production.local` lolos `npm run env:check:production`, target harus disebut eksplisit:
-
-```bash
-npm run db:migrate -- production
-npm run db:bind-environment -- production
-npm run db:integrity -- production
-```
-
-Tooling mutation migration membaca binding existing sebelum menulis dan menolak profile Production yang ternyata menunjuk database yang sudah terikat ke Development, atau sebaliknya. Migration hanya eksplisit. Administrator pertama hanya boleh bootstrap jika tabel users dan seluruh data bisnis masih kosong serta email tersebut tercantum sebagai Administrator pada `ALLOWED_USERS_JSON` (`administrator`, dinormalisasi ke compatibility key internal). Setelah bootstrap, anggota operasional dikelola dari Pengaturan → Anggota dan tidak memerlukan perubahan environment. Selama cutover ADR-0007 belum selesai dan hanya satu database legacy tersedia, jangan membuat data dummy atau menjalankan destructive operation terhadap database tersebut dari Development. Source v17 akan fail-closed sampai Development memiliki database/token terpisah.
-
-## 6. Integrasi Google
-
-Deploy Apps Script bridge, isi Script Properties, buat spreadsheet mirror, Calendar, dan folder backup. Verifikasi `integration.health` sebelum menyalakan scheduler.
-
-Saat deploy Web App, pilih **Execute as me/deployer** dan **Anyone/anonymous**. Keamanan berasal dari HMAC + timestamp + nonce, bukan sesi browser Google.
-
-Jika Integrasi Google menampilkan `Gangguan`, jalankan `npm run diagnose` pada komputer tepercaya. Diagnostic membedakan liveness `/exec` dan signed health tanpa mencetak secret. `MESSAGE_EXPIRED` akan dicoba pulih satu kali dengan clock offset dari timestamp Apps Script, tetapi jam Windows tetap harus disinkronkan. `INVALID_SIGNATURE` berarti shared secret tidak cocok, sedangkan `UNKNOWN_ACTION`/`GOOGLE_BRIDGE_DEPLOYMENT_STALE` biasanya berarti deployment Web App masih versi lama dan perlu **New version**.
-
-### OAuth login mobile Production
-
-OAuth Web Client yang dipakai `VITE_GOOGLE_CLIENT_ID` harus mempunyai authorized redirect URI `https://saldo-bersama.vercel.app/api/auth/google/callback`. Simpan client secret Web Client tersebut hanya sebagai `GOOGLE_OAUTH_CLIENT_SECRET` pada `.env.production.local` komputer tepercaya, lalu sinkronkan ke Vercel Production dengan `npm run env:push:production`. Production desktop/mobile memakai server-side authorization-code callback; localhost/device emulation tetap memakai Firebase popup. Nilai secret tidak boleh ditempel ke chat, screenshot, Git, atau ZIP.
-
-## 7. PWA dan Web Push
-
-- iOS/iPadOS: buka melalui Safari, pilih Share, Add to Home Screen, lalu jalankan dari ikon aplikasi sebelum mengaktifkan notifikasi.
-- Android/desktop: gunakan prompt Pasang Saldo Bersama atau jalankan dari browser HTTPS yang mendukung Push API.
-- Desktop `http://localhost` dapat dipakai untuk development. Alamat LAN seperti `http://192.168.x.x` tidak aman dan harus ditolak. Pengujian ponsel memakai deployment HTTPS.
-- Push permission hanya diminta setelah pengguna menekan Aktifkan.
-- Status aktif memerlukan subscription browser dan registrasi backend yang cocok. Setelah aktivasi, backend mengirim notifikasi verifikasi otomatis. Pengguna tetap harus memeriksa status pada `/pengaturan/notifikasi` dan memastikan notifikasi benar-benar muncul pada perangkat.
-- Bila permission ditolak, aktifkan kembali dari pengaturan browser atau sistem operasi.
-- `/api/*` tidak dicache dan write offline ditolak.
+Jangan memperlakukan CHANGELOG, ADR lama, RFC Proposed, atau `history/` sebagai current behavior kecuali authority canonical secara eksplisit merujuknya.

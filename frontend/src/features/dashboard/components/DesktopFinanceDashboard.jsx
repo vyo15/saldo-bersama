@@ -176,7 +176,7 @@ const buildDesktopModel = ({
   searchTerm,
   selectedTransactionId,
 }) => {
-  const { accountBalances, categoryLookup, recentTransactions, expenseByCategory } = viewModel;
+  const { accountBalances, categoryLookup, recentTransactions, expenseByCategory, transactionCreatorLabel } = viewModel;
   const selectedAccount = accountBalances.find((item) => item.account_id === selectedAccountId)
     || accountBalances[0]
     || null;
@@ -203,6 +203,7 @@ const buildDesktopModel = ({
     selectedAccountTransactions,
     transactionRows,
     selectedTransaction,
+    transactionCreatorLabel,
     ...categoryStatistics(expenseByCategory),
     ...planningSummary(overview, expenseByCategory),
   };
@@ -458,6 +459,9 @@ const TransactionRow = ({ row, categoryLookup, transactionCreatorLabel, selected
   const Icon = transactionCategoryIcon(category, item.transaction_type);
   const title = item.description || item.merchant || category?.name || "Transaksi";
   const active = selectedTransaction?.transaction_id === item.transaction_id;
+  const creatorLabel = typeof transactionCreatorLabel === "function"
+    ? transactionCreatorLabel(item)
+    : "Anggota keluarga";
   return (
     <tr className={dashboardClass(active ? "is-selected" : "")}>
       <td><strong>{formatTransactionDate(item.transaction_date)}</strong><small>{item.status || "active"}</small></td>
@@ -469,7 +473,7 @@ const TransactionRow = ({ row, categoryLookup, transactionCreatorLabel, selected
           aria-pressed={active}
         >
           <span className={dashboardClass(`shared-transaction-icon shared-transaction-icon--${item.transaction_type || "default"}`)}><Icon aria-hidden="true" /></span>
-          <span><strong>{title}</strong><small>{item.merchant || TRANSACTION_LABELS[item.transaction_type] || "Transaksi"} · dicatat {transactionCreatorLabel(item)}</small></span>
+          <span><strong>{title}</strong><small>{item.merchant || TRANSACTION_LABELS[item.transaction_type] || "Transaksi"} · dicatat {creatorLabel}</small></span>
         </button>
       </td>
       <td><span className={dashboardClass(`shared-category-chip shared-category-chip--${transactionTone(item.transaction_type)}`)}>{category?.name || TRANSACTION_LABELS[item.transaction_type] || "Lainnya"}</span></td>

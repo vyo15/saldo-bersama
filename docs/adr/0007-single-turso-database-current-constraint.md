@@ -33,7 +33,7 @@ Plan berikut adalah urutan cutover yang membawa project keluar dari constraint s
 Urutan cutover historis:
 
 1. Buat database Turso Development baru tanpa menyalin credential Production ke source/chat/log.
-2. Terapkan seluruh migration canonical sampai schema v19 pada database Development.
+2. Terapkan seluruh migration canonical sampai schema v20 pada database Development.
 3. Bind database tersebut secara eksplisit dengan `npm run db:bind-environment -- development`; rebind silang wajib ditolak.
 4. Verifikasi `timezone=Asia/Jakarta`, `currency=IDR`, foreign key, dan business integrity.
 5. Isi Vercel Development `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, dan `DATABASE_ENVIRONMENT=development` dengan scope Development. Production tetap memakai credential Production dan `DATABASE_ENVIRONMENT=production`.

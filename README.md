@@ -7,10 +7,11 @@ Aplikasi keuangan privat untuk dua akun Google, dipakai dari ponsel, tablet, dan
 Baca berurutan:
 
 1. `AGENTS.md`
-2. `docs/WORKFLOW.md`
-3. `docs/PROJECT_STATUS.md`
-4. `docs/INDEX.md`
-5. source dan test aktual pada area perubahan
+2. `docs/INDEX.md` — pilih authority sesuai pertanyaan/area
+3. `docs/WORKFLOW.md`
+4. authority domain yang relevan
+5. `docs/PROJECT_STATUS.md` hanya untuk snapshot current state
+6. source dan test aktual pada area perubahan
 
 Repository/source aktual selalu lebih tinggi prioritasnya daripada memory atau percakapan lama.
 
@@ -36,7 +37,7 @@ Repository/source aktual selalu lebih tinggi prioritasnya daripada memory atau p
 - Google Sheets tidak menulis balik ke Turso.
 - Excel bukan backup recovery.
 - Write offline ditolak; browser tidak mengantre transaksi finansial.
-- Dana yang dipisahkan ke Alokasi Dana tidak membuat transaksi bank palsu: saldo rekening tetap aktual, sedangkan `Dana tersedia` mengurangi bagian yang sudah terikat; Tambah/Kembalikan dana tetap tercatat sebagai aktivitas Alokasi.
+- Alokasi Dana tidak membuat transaksi bank palsu. Membuat wadah Alokasi tidak meminta budget awal; Kebutuhan yang disimpan otomatis mengikat/melepas Dana Tersedia sesuai delta yang aman. Saldo rekening fisik baru berubah ketika transaksi aktual terjadi; manual Tambah/Kembalikan dana tetap advanced/compatibility control untuk buffer/recovery.
 - Rekonsiliasi Investasi bersifat manual. Notification Center memprioritaskan kondisi operasional aktif; rekonsiliasi saldo yang baru dikonfirmasi menjadi checkpoint sehingga selisih tetap berada di histori tanpa terus menjadi notifikasi aktif.
 
 ## Menjalankan lokal
@@ -101,15 +102,15 @@ npm run db:integrity
 npm run db:import-legacy -- path/to/legacy-export.json
 ```
 
-Production wajib eksplisit dan memakai `.env.production.local`:
+Production schema/runtime diperbarui dengan satu workflow canonical:
 
 ```bash
-npm run db:migrate -- production
-npm run db:bind-environment -- production
-npm run db:integrity -- production
+npm run prod:update
 ```
 
-Import Production, bila benar-benar bagian cutover yang disetujui, memakai `--environment=production` selain preview/backup/confirmation canonical. Migration/import/restore tetap guarded dan hanya dijalankan setelah approval eksplisit, preview/backup, serta integrity check sesuai runbook.
+`prod:update` menjalankan staged Vercel Production build dari source yang sama, membaca schema database aktual, membuat **backup verified fresh** dari schema aktif, menerapkan seluruh migration pending dalam **satu transaksi atomik** sampai schema runtime current, menjalankan integrity sebelum commit lalu verifikasi final, dan mempromosikan candidate yang sama ke domain Production dan memverifikasi health live. `npm run db:migrate -- production` dipertahankan sebagai alias kompatibilitas ke workflow yang sama agar operator lama tidak lagi meninggalkan database dan runtime pada versi berbeda. Credential Sensitive tetap berada di Vercel; `.env.production.local` bukan prasyarat untuk update runtime/database.
+
+Import Production, bila benar-benar bagian cutover yang disetujui, memakai `--environment=production` selain preview/backup/confirmation canonical. Migration/import/restore tetap guarded dan hanya dijalankan setelah approval eksplisit serta integrity/recovery policy sesuai runbook.
 
 ## Endpoint
 
