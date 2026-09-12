@@ -1,12 +1,14 @@
 import path from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadDatabaseProfile, resolveDatabaseProfileTarget } from "./database-profile.mjs";
+import { runRemoteProductionDatabaseOperation } from "./remote-production-database-operation.mjs";
 import { getDatabase } from "../api/_lib/db/httpClient.js";
 import { DATABASE_ENVIRONMENTS, DATABASE_SCHEMA_VERSION, invalidateSchemaCache } from "../api/_lib/db/schema.js";
 import { nowIso } from "../api/_lib/services/core.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const isRemoteProductionContext = () => process.env.SALDO_BERSAMA_REMOTE_DB_CONTEXT === "1";
 
 export const resolveDatabaseEnvironmentTarget = ({
   argv = process.argv.slice(2),
@@ -52,19 +54,30 @@ export const bindDatabaseEnvironment = async ({ database = null, environment = p
   });
 };
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  Promise.resolve()
-    .then(async () => {
-      const environment = resolveDatabaseProfileTarget();
-      await loadDatabaseProfile({ root, environment });
-      return resolveDatabaseEnvironmentTarget({ argv: [environment], environment: process.env.DATABASE_ENVIRONMENT });
-    })
-    .then((environment) => bindDatabaseEnvironment({ environment }))
-    .then(({ environment, changed }) => {
-      console.log(`Database ${changed ? "diikat" : "sudah terikat"} ke environment: ${environment}.`);
-    })
-    .catch((error) => {
-      console.error(error?.message || "Binding environment database gagal.");
-      process.exitCode = 1;
-    });
+export const runDatabaseBinding = async ({ argv = process.argv.slice(2), projectRoot = root } = {}) => {
+  const environment = resolveDatabaseProfileTarget({ argv });
+  if (environment === "production" && !isRemoteProductionContext()) {
+    return runRemoteProductionDatabaseOperation({ operation: "bind", root: projectRoot });
+  }
+  if (environment === "production" && isRemoteProductionContext()) {
+    if (String(process.env.VERCEL_ENV || "").trim().toLowerCase() !== "production") {
+      throw Object.assign(new Error("Remote binding Production hanya boleh berjalan pada Vercel Production build."), { code: "REMOTE_PRODUCTION_CONTEXT_INVALID" });
+    }
+    process.env.DATABASE_ENVIRONMENT = "production";
+    process.env.NODE_ENV = "production";
+  } else {
+    await loadDatabaseProfile({ root: projectRoot, environment, refreshRemote: false });
+  }
+  const target = resolveDatabaseEnvironmentTarget({ argv: [environment], environment: process.env.DATABASE_ENVIRONMENT });
+  const result = await bindDatabaseEnvironment({ environment: target });
+  console.log(`Database ${result.changed ? "diikat" : "sudah terikat"} ke environment: ${result.environment}.`);
+  return result;
+};
+
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isDirectRun) {
+  runDatabaseBinding().catch((error) => {
+    console.error(error?.message || "Binding environment database gagal.");
+    process.exitCode = 1;
+  });
 }

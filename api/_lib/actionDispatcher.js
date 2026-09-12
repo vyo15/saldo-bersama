@@ -21,6 +21,7 @@ import { resolveActor } from "./services/users.js";
 import { appError, todayJakarta } from "./services/core.js";
 import { integrationEnqueuers } from "./services/integrations.js";
 import { requiresIdempotencyKey } from "./security.js";
+import { bumpActionSyncRevisions } from "./syncRevisions.js";
 
 const MAINTENANCE_QUERY = "SELECT value FROM system_config WHERE key='maintenance_mode'";
 
@@ -117,13 +118,18 @@ const executeRead = async (db, context, metrics = newReadMetrics()) => {
 // the idempotency key first and preserve an explicit "unknown" state on 5xx failures
 // instead of claiming the side effect definitely failed.
 const executeExternal = async (db, context, definition, needsIdempotency, fingerprint) => {
-  if (!needsIdempotency) return executeAction(db, context);
+  if (!needsIdempotency) {
+    const result = await executeAction(db, context);
+    await bumpActionSyncRevisions(db, context.action);
+    return result;
+  }
   const reservation = await reserveExternalIdempotency(db, context, fingerprint, {
     allowUnknownRetry: Boolean(definition?.retryUnknownSafe),
   });
   if (reservation.replayed) return reservation.result;
   try {
     const result = await executeAction(db, context);
+    await bumpActionSyncRevisions(db, context.action);
     await completeExternalIdempotency(db, context, fingerprint, result);
     return result;
   } catch (error) {
@@ -150,6 +156,7 @@ const executeTransactional = (db, context, needsIdempotency, fingerprint) => db.
     if (existing !== null) return existing;
   }
   const result = await executeAction(tx, context);
+  await bumpActionSyncRevisions(tx, context.action);
   if (needsIdempotency) await persistIdempotency(tx, context, fingerprint, result);
   return result;
 });

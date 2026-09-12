@@ -24,14 +24,6 @@ export const assertPositiveRupiah = (value, { max = Number.MAX_SAFE_INTEGER } = 
   return amount;
 };
 
-export const assertNonNegativeRupiah = (value, { max = Number.MAX_SAFE_INTEGER } = {}) => {
-  if (value === undefined || value === null || String(value).trim() === "") return 0;
-  const amount = parseRupiah(value);
-  if (amount < 0) throw new RangeError("Nominal tidak boleh kurang dari nol.");
-  if (amount > max) throw new RangeError("Nominal melebihi batas aman.");
-  return amount;
-};
-
 export const formatRupiah = (value) => IDR_FORMATTER.format(Number(value || 0));
 
 export const formatCompactRupiah = (value) => new Intl.NumberFormat("id-ID", {

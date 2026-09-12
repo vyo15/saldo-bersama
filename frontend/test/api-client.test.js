@@ -232,7 +232,7 @@ test("useApiResource memperlakukan idle enabled sebagai initial loading agar hal
 test("resource aktif berlangganan invalidation action agar mutation global tidak meninggalkan state stale", async () => {
   const source = await readFile(new URL("../src/hooks/useApiResource.js", import.meta.url), "utf8");
   assert.match(source, /subscribeToInvalidation\(action/);
-  assert.match(source, /load\(\{ force: true \}\)\.catch/);
+  assert.match(source, /subscribeToInvalidation\(action, \(\) => load\(\{ force: true \}\)\)/);
 
   const { apiClient, subscribeToInvalidation } = await import("../src/services/api/client.js");
   apiClient.clearCache();

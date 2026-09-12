@@ -29,6 +29,15 @@ export default async function handler(request, response) {
   logEvent(status === "ok" ? "debug" : "warn", "health.request.completed", { requestId, status: 200, serviceStatus: status, databaseStatus, durationMs: Date.now() - startedAt });
   return ok(response, {
     status,
+    schema: {
+      ready: Boolean(schema?.ready),
+      version: Number.isFinite(Number(schema?.version)) ? Number(schema.version) : null,
+      expectedVersion: Number.isFinite(Number(schema?.expectedVersion)) ? Number(schema.expectedVersion) : null,
+      databaseEnvironment: schema?.databaseEnvironment || null,
+      environmentReady: Boolean(schema?.environmentReady),
+    },
+    maintenanceMode,
+    coreOperationsHealthy,
     timestamp: new Date().toISOString(),
     requestId,
   });

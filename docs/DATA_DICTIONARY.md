@@ -1,6 +1,6 @@
 # Data Dictionary
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `015_investment_asset_centric.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `016_global_sync_revisions.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -100,7 +100,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 - Kebutuhan/Alokasi Dana threshold serta alert rekonsiliasi.
 - `investment` holdings, remaining cost basis, average cost, market value, realized P/L, dan unrealized P/L dihitung dari trade/correction history + harga terakhir yang diketahui; tidak disimpan sebagai angka bebas edit.
 
-## Model planned — belum ada di schema v17
+## Model planned — belum ada di schema v18
 
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
@@ -113,6 +113,8 @@ Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API contract, authorization, audit, backup/restore, dan rollback disetujui.
 
 
-## Schema v17
+## Schema v18
 
-Migration canonical terbaru: `015_investment_asset_centric.sql`. Migration v17 menambah `accounts.is_system_hidden` serta `cash_effect_enabled` pada trade/correction dan memperbarui `investment_account_events` agar histori cash lama tetap direplay, sedangkan direct position dan Buy/Sell v17 baru tidak mengubah rekening. Migration v16 `014_investment_opening_position.sql` tetap menjadi dasar semantic opening-position/trade notes dan menambah trade notes dan metadata semantic `opening_position` pada history correction secara additive; tidak membuat fake Buy dan tidak mengubah histori transaksi existing. Migration v15 `013_investment_tracking.sql` tetap menjadi dasar portfolio/instrument/trade/valuation/reconciliation/correction Investment dan view `investment_account_events`. RDN tetap rekening canonical, Bank ↔ RDN tetap Transfer, sedangkan buy/sell tidak diklasifikasikan sebagai income/expense. Runtime v17 menerima backup v3-v16 secara additive; enam tabel Investment diwajibkan pada backup schema ≥15 dan field v16 dinormalisasi saat restore backup lama. Migration v14 tetap menjadi dasar foto profil Google + request kolaborasi Member, v13 durable rate-limit bucket, dan v12 registry session/environment binding.
+Migration canonical terbaru: `016_global_sync_revisions.sql`. Migration v18 menambah `sync_revisions` sebagai metadata koordinasi runtime untuk realtime lintas perangkat; revision bukan financial authority dan tidak menggantikan read-model canonical. Mutation dispatcher menaikkan revision resource di transaction yang sama dengan write bisnis, sedangkan jalur runtime di luar dispatcher seperti session dan scheduler menaikkan revision secara eksplisit. `sync.state` mengekspos snapshot revision kecil untuk invalidation terarah.
+
+Migration v17 `015_investment_asset_centric.sql`. Migration v17 menambah `accounts.is_system_hidden` serta `cash_effect_enabled` pada trade/correction dan memperbarui `investment_account_events` agar histori cash lama tetap direplay, sedangkan direct position dan Buy/Sell v17 baru tidak mengubah rekening. Migration v16 `014_investment_opening_position.sql` tetap menjadi dasar semantic opening-position/trade notes dan menambah trade notes dan metadata semantic `opening_position` pada history correction secara additive; tidak membuat fake Buy dan tidak mengubah histori transaksi existing. Migration v15 `013_investment_tracking.sql` tetap menjadi dasar portfolio/instrument/trade/valuation/reconciliation/correction Investment dan view `investment_account_events`. RDN tetap rekening canonical, Bank ↔ RDN tetap Transfer, sedangkan buy/sell tidak diklasifikasikan sebagai income/expense. Runtime v17 menerima backup v3-v16 secara additive; enam tabel Investment diwajibkan pada backup schema ≥15 dan field v16 dinormalisasi saat restore backup lama. Migration v14 tetap menjadi dasar foto profil Google + request kolaborasi Member, v13 durable rate-limit bucket, dan v12 registry session/environment binding.

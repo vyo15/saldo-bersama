@@ -21,6 +21,7 @@ const external = (options = {}) => definePolicy("external", { idempotencyRequire
 
 export const ACTION_POLICIES = Object.freeze({
   "system.health": read({ maintenanceAllowed: true }),
+  "sync.state": read({ maintenanceAllowed: true }),
   "app.initialState": snapshotRead(),
   "bootstrap.get": snapshotRead(),
   "users.list": read(),
@@ -92,6 +93,7 @@ export const ACTION_POLICIES = Object.freeze({
   "recurring.reversePayment": write(),
   "recurring.restoreRule": write(),
   "budgets.list": read(),
+  "budgets.batchCreate": write(),
   "budgets.upsert": write(),
   "budgets.previewLifecycle": snapshotRead(),
   "budgets.archive": write(),

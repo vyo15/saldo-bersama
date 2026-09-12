@@ -26,6 +26,7 @@ import { appendAudit } from "./_lib/services/audit.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { verifyFirebaseIdToken } from "./_lib/firebase.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
+import { bumpSyncRevisions } from "./_lib/syncRevisions.js";
 
 const GOOGLE_AUTHORIZE_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -160,9 +161,16 @@ const databaseForRequest = (request) => request.database || getDatabase();
 const issueSession = async (request, verifiedIdentity, requestId, database = null) => {
   const db = database || databaseForRequest(request);
   await assertDatabaseReady(db);
-  const actor = await resolveLoginIdentity(db, verifiedIdentity, { requestId });
-  const signedActor = { ...verifiedIdentity, role: actor.role };
-  const create = (tx) => createRegisteredSession(tx, { actor, signedActor, request, requestId, photoURL: actor.photo_url || "" });
+  const create = async (tx) => {
+    // Identity bootstrap/binding/profile sync, session registration, and the realtime
+    // revision signal share one transaction so another device can never observe a
+    // changed user/session state without a matching revision bump.
+    const actor = await resolveLoginIdentity(tx, verifiedIdentity, { requestId });
+    const signedActor = { ...verifiedIdentity, role: actor.role };
+    const session = await createRegisteredSession(tx, { actor, signedActor, request, requestId, photoURL: actor.photo_url || "" });
+    await bumpSyncRevisions(tx, ["sessions.listOwn", "users.list", "bootstrap.get", "app.initialState", "audit.list"]);
+    return session;
+  };
   return typeof db.transaction === "function" ? db.transaction(create) : create(db);
 };
 
@@ -196,6 +204,7 @@ const logoutSession = async (request, response, requestId, startedAt) => {
         next: { revoked: true, reason: "logout" },
       });
     }
+    if (revoked.revoked && !revoked.alreadyRevoked) await bumpSyncRevisions(tx, ["sessions.listOwn", "audit.list"]);
     return revoked;
   };
   if (typeof db.transaction === "function") await db.transaction(revoke);

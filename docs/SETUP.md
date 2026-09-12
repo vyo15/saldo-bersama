@@ -89,7 +89,7 @@ Alur `npm run dev` pada terminal interaktif:
 11. Memeriksa Turso Development benar-benar reachable serta schema/binding siap, termasuk saat memakai cache lokal.
 12. Menjalankan server lokal hanya setelah dependency, environment, dan database Development valid.
 
-`npm run dev` tidak membuat atau mengubah `.env.production.local`; provisioning Production dipicu hanya saat `npm run prod` membutuhkan profile tersebut.
+`npm run dev` tidak membuat atau mengubah `.env.production.local`. Runtime Production tidak membutuhkan profile lokal tersebut; file hanya opsional untuk seed/rotasi env Production.
 
 Refresh Development setiap start tetap dicoba agar laptop, PC kantor, dan komputer tepercaya lain tidak menyimpan allowlist, session, VAPID, atau konfigurasi settings yang sudah tertinggal. Jika login/link/pull gagal karena Vercel tidak tersedia sementara `.env.local` lama sudah lengkap, `npm run dev` memakai cache Development tersebut lalu tetap menjalankan preflight Turso/schema/binding. Hasil pull yang berhasil tetapi invalid tetap fail-closed. Terminal non-interaktif tidak membuka login/network bootstrap dan hanya menerima `.env.local` yang sudah valid.
 
@@ -132,7 +132,7 @@ npm run diagnose
 
 `env:status` hanya menampilkan fingerprint public key, bukan private key/token. `diagnose` memvalidasi pasangan key dan menampilkan `Web Push: ready` serta hasil verifikasi Push terakhir bila audit tersedia. Setelah Development terisi, komputer lain cukup menjalankan `npm run dev`. Tidak perlu copy/edit `.env.local` per perangkat. Izin notifikasi browser tetap harus diberikan satu kali oleh pengguna pada setiap browser/perangkat.
 
-Production tetap terpisah. Pada setiap PC/laptop tepercaya, `npm run prod` membuat `.env.production.local` skeleton aman satu kali bila belum ada lalu berhenti. Isi credential Production canonical yang sama dari secret store yang sah; `npm run dev` tidak menyentuh profile Production dan file existing tidak pernah ditimpa otomatis.
+Production tetap terpisah dan **Vercel-managed**. `npm run prod` tidak membuat mirror secret lokal; command memeriksa deployment Production aktual. Secret Sensitive tetap berada di Vercel. Operasi database Production memakai staged Vercel Production build sehingga tidak ada langkah copy Turso manual dan tidak memerlukan Turso CLI.
 
 Untuk penggunaan harian cukup:
 
@@ -141,7 +141,7 @@ npm run dev
 npm run prod
 ```
 
-`npm run prod` tidak pull/menimpa Development; ia membaca profile DEV hanya untuk membuktikan isolasi host/token Turso, `SESSION_SECRET`, dan pasangan VAPID, lalu memeriksa Turso Production read-only serta Vercel Production aktual. Grup Google bridge pusat boleh di-seed ke Production lokal hanya bila grup DEV lengkap dan grup PROD kosong; drift lengkap ditolak. Command sinkronisasi `env:push:*`, migration, backup/restore, dan diagnosis tetap hanya untuk maintenance/runbook khusus. Kita sengaja tidak membuat localhost memakai database Production karena itu tidak mereplikasi Secure cookie/server OAuth dan meningkatkan risiko mutation Production dari mesin lokal.
+`npm run prod` tidak menimpa Development dan tidak membaca plaintext secret Production. Ia memeriksa Vercel Production aktual. `npm run db:migrate -- production`, `db:integrity -- production`, dan `db:bind-environment -- production` membuat staged Production deployment tanpa alias (`--skip-domain`) dan menjalankan operasi saat secret Production tersedia di build environment Vercel. `.env.local` dipulihkan byte-for-byte jika `vercel link` menyentuhnya. Migration/backup/restore tetap maintenance eksplisit; localhost tidak dijalankan dengan database Production.
 
 Daftar canonical dan pemisahan scope ada di `ENVIRONMENT_VARIABLES.md`. Jangan commit `.env.local`, `.env.production.local`, atau `.vercel`.
 
@@ -155,7 +155,7 @@ npm run db:bind-environment -- development
 npm run db:integrity
 ```
 
-Production tidak pernah memakai `.env.local`. Setelah backup Production terverifikasi dan `.env.production.local` lolos `npm run env:check:production`, target harus disebut eksplisit:
+Production tidak pernah memakai `.env.local` sebagai credential database. Setelah backup Production terverifikasi, target harus disebut eksplisit; tooling menjalankannya di staged Vercel Production build:
 
 ```bash
 npm run db:migrate -- production
@@ -175,7 +175,7 @@ Jika Integrasi Google menampilkan `Gangguan`, jalankan `npm run diagnose` pada k
 
 ### OAuth login mobile Production
 
-OAuth Web Client yang dipakai `VITE_GOOGLE_CLIENT_ID` harus mempunyai authorized redirect URI `https://saldo-bersama.vercel.app/api/auth/google/callback`. Simpan client secret Web Client tersebut hanya sebagai `GOOGLE_OAUTH_CLIENT_SECRET` pada `.env.production.local` komputer tepercaya, lalu sinkronkan ke Vercel Production dengan `npm run env:push:production`. Production desktop/mobile memakai server-side authorization-code callback; localhost/device emulation tetap memakai Firebase popup. Nilai secret tidak boleh ditempel ke chat, screenshot, Git, atau ZIP.
+OAuth Web Client yang dipakai `VITE_GOOGLE_CLIENT_ID` harus mempunyai authorized redirect URI `https://saldo-bersama.vercel.app/api/auth/google/callback`. Simpan client secret Web Client tersebut sebagai `GOOGLE_OAUTH_CLIENT_SECRET` Sensitive di Vercel Production. Untuk initial seed/rotasi, gunakan secret store tepercaya dan profile `.env.production.local` sementara bila menjalankan `npm run env:push:production`; runtime tidak memerlukan file itu. Production desktop/mobile memakai server-side authorization-code callback; localhost/device emulation tetap memakai Firebase popup. Nilai secret tidak boleh ditempel ke chat, screenshot, Git, atau ZIP.
 
 ## 7. PWA dan Web Push
 

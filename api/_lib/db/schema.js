@@ -1,21 +1,23 @@
 import crypto from "node:crypto";
 import { getDatabase } from "./httpClient.js";
 
-export const DATABASE_SCHEMA_VERSION = 17;
+export const DATABASE_SCHEMA_VERSION = 18;
 export const DATABASE_ENVIRONMENTS = Object.freeze(["development", "production"]);
 const CACHE_MS = 60_000;
 let cached = null;
 
 const environmentStatus = (config) => {
-  const expectedEnvironment = String(process.env.DATABASE_ENVIRONMENT || "").trim().toLowerCase();
+  const explicitEnvironment = String(process.env.DATABASE_ENVIRONMENT || "").trim().toLowerCase();
   const runtimeEnvironment = String(process.env.VERCEL_ENV || "").trim().toLowerCase();
+  const runtimeEnvironmentSupported = DATABASE_ENVIRONMENTS.includes(runtimeEnvironment);
+  const expectedEnvironment = explicitEnvironment || (runtimeEnvironmentSupported ? runtimeEnvironment : "");
   const databaseEnvironment = String(config.database_environment || "unbound").trim().toLowerCase();
   const runtimeEnvironmentPresent = Boolean(runtimeEnvironment);
   const environmentRequired = runtimeEnvironmentPresent || Boolean(expectedEnvironment);
   const environmentConfigured = DATABASE_ENVIRONMENTS.includes(expectedEnvironment);
-  const runtimeEnvironmentSupported = !runtimeEnvironmentPresent || DATABASE_ENVIRONMENTS.includes(runtimeEnvironment);
+  const explicitMatchesRuntime = !explicitEnvironment || !runtimeEnvironmentPresent || explicitEnvironment === runtimeEnvironment;
   const runtimeMatchesExpected = !runtimeEnvironmentPresent
-    || (runtimeEnvironmentSupported && environmentConfigured && runtimeEnvironment === expectedEnvironment);
+    || (runtimeEnvironmentSupported && environmentConfigured && explicitMatchesRuntime && runtimeEnvironment === expectedEnvironment);
   const environmentReady = !environmentRequired
     || (environmentConfigured && runtimeMatchesExpected && databaseEnvironment === expectedEnvironment);
   return {

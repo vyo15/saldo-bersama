@@ -213,7 +213,7 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /label="Ambil dana dari"/);
   assert.match(allocations, /<InlineOwnershipPicker[\s\S]{0,220}legend="Digunakan oleh"/);
   assert.match(allocations, /description: "Digunakan oleh semua anggota"/);
-  assert.match(allocations, /Tersedia setelah dialokasikan/);
+  assert.match(allocations, /Dana mengikuti Kebutuhan/);
   assert.match(allocations, /filteredActiveItems = useMemo/);
   assert.match(allocations, /allocationFilter === "shared"/);
   assert.match(allocations, /allocationFilter === "mine"/);

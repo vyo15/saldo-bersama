@@ -46,7 +46,7 @@ Import harus dipreview dan diuji pada salinan terisolasi sementara terlebih dahu
 1. Aktifkan maintenance pada source lama.
 2. Buat final safety backup.
 3. Ambil snapshot final dan checksum.
-4. Pastikan `.env.production.local` menunjuk Turso Production, `DATABASE_ENVIRONMENT=production`, dan `npm run env:check:production` lulus.
+4. Pastikan Vercel Production menunjuk Turso Production. Jalankan `npm run db:integrity -- production`; command memakai staged Vercel Production build dan tidak membutuhkan `.env.production.local`.
 5. Migrasikan/bind Production secara eksplisit, preview snapshot yang sama, lalu apply hanya setelah fingerprint diperiksa:
    ```bash
    npm run db:migrate -- production

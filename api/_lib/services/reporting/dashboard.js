@@ -1,4 +1,5 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
+import { presentSyncRevisionRows, syncRevisionStatement } from "../../syncRevisions.js";
 import { appError, boundedInteger, monthBounds, nowIso, periodKey, sanitizeText, todayJakarta } from "../core.js";
 import { transactionCapabilities } from "../transactionPolicy.js";
 import { buildFinancialAlerts } from "./dashboard/alerts.js";
@@ -156,12 +157,16 @@ export const appInitialState = async (db, context) => {
   // their own cutoff account rows because they cannot reuse today's balances.
   const periodContext = dashboardPeriodContext(context, []);
   const dashboardPlan = dashboardReadPlan(context, periodContext);
-  const combinedRows = await readBatchRows(db, [...bootstrapStatements, ...dashboardPlan.statements]);
+  const syncStatement = syncRevisionStatement();
+  const combinedRows = await readBatchRows(db, [...bootstrapStatements, ...dashboardPlan.statements, syncStatement]);
   const bootstrap = mapBootstrapRows(combinedRows.slice(0, bootstrapStatements.length), context);
-  const dashboardRows = combinedRows.slice(bootstrapStatements.length);
+  const dashboardStart = bootstrapStatements.length;
+  const dashboardEnd = dashboardStart + dashboardPlan.statements.length;
+  const dashboardRows = combinedRows.slice(dashboardStart, dashboardEnd);
   const readState = mapDashboardReadRows(dashboardRows, dashboardPlan, context, periodContext, bootstrap.accounts);
   const overview = dashboardResult(context, periodContext, readState);
-  return { bootstrap, overview };
+  const sync = presentSyncRevisionRows(combinedRows[dashboardEnd] || []);
+  return { bootstrap, overview, sync };
 };
 
 export const monthlyReport = async (db, context) => {

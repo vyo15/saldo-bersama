@@ -1,9 +1,11 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
-import { appError, assertOwner, assertVersion, monthBounds, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
+import { appError, assertOwner, assertVersion, monthBounds, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { assertEnvelopeAssigneeAccess, assertPlanningManageScope } from "./shared.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
+import { createRecurringRule } from "./recurring.js";
+import { adjustEnvelopeForBudgetDelta } from "./budgetFunding.js";
 
 const BUDGET_IDENTITY_SQL = "period_key=? AND category_id=? AND scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'') AND COALESCE(envelope_rule_id,'')=COALESCE(?,'')";
 const budgetIdentityArgs = ({ period_key, category_id, scope, owner_user_id, envelope_rule_id }) => [period_key, category_id, scope, owner_user_id, envelope_rule_id || null];
@@ -38,6 +40,29 @@ export const budgetListStatement = (context) => {
   };
 };
 
+const budgetUsageAmount = async (db, budget) => {
+  const bounds = monthBounds(budget.period_key);
+  const row = await db.one(`SELECT COALESCE(SUM(t.amount),0) AS used
+    FROM transactions t
+    LEFT JOIN envelope_periods ep ON ep.envelope_period_id=t.envelope_period_id
+    WHERE t.status='active'
+      AND t.transaction_type='expense'
+      AND t.transaction_date BETWEEN ? AND ?
+      AND t.category_id=?
+      AND t.scope=?
+      AND COALESCE(t.owner_user_id,'')=COALESCE(?,'')
+      AND (? IS NULL OR ep.envelope_rule_id=?)`, [
+    bounds.start,
+    bounds.end,
+    budget.category_id,
+    budget.scope,
+    budget.owner_user_id,
+    budget.envelope_rule_id || null,
+    budget.envelope_rule_id || null,
+  ]);
+  return Math.max(0, Number(row?.used || 0));
+};
+
 const canManageBudget = (actor, row) => {
   if (!actor || !row) return false;
   const scopeAllowed = actor.role === "owner"
@@ -63,7 +88,7 @@ export const listBudgets = async (db, context) => {
 export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, sourcePeriodKey, targetPeriodKey }) => {
   const sourcePeriod = periodKey(sourcePeriodKey);
   const targetPeriod = periodKey(targetPeriodKey);
-  if (sourcePeriod === targetPeriod) return { copied: 0, skipped: 0, source_period_key: sourcePeriod, target_period_key: targetPeriod };
+  if (sourcePeriod === targetPeriod) return { copied: 0, skipped: 0, copied_amount: 0, source_period_key: sourcePeriod, target_period_key: targetPeriod };
   const sourceItems = await db.all(`SELECT b.* FROM budgets b
     JOIN categories c ON c.category_id=b.category_id
     WHERE b.period_key=? AND b.envelope_rule_id=? AND b.status='active'
@@ -71,6 +96,7 @@ export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, s
     ORDER BY b.budget_id`, [sourcePeriod, envelopeRuleId]);
   let copied = 0;
   let skipped = 0;
+  let copiedAmount = 0;
   for (const current of sourceItems) {
     const identityArgs = budgetIdentityArgs({
       period_key: targetPeriod,
@@ -107,8 +133,9 @@ export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, s
     });
     await context.enqueueMirror?.(db, 'budget', next.budget_id);
     copied += 1;
+    copiedAmount += Number(next.amount || 0);
   }
-  return { copied, skipped, source_period_key: sourcePeriod, target_period_key: targetPeriod };
+  return { copied, skipped, copied_amount: copiedAmount, source_period_key: sourcePeriod, target_period_key: targetPeriod };
 };
 
 const resolveBudgetEnvelope = async (db, actor, envelopeRuleId, owned) => {
@@ -120,6 +147,146 @@ const resolveBudgetEnvelope = async (db, actor, envelopeRuleId, owned) => {
   }
   assertEnvelopeAssigneeAccess(actor, envelope);
   return envelope;
+};
+
+const BUDGET_BATCH_LIMIT = 20;
+
+const budgetBatchExistingRows = async (db, { period, owned, envelopeRuleId, item }) => {
+  const identity = {
+    period_key: period,
+    category_id: item.category_id,
+    scope: owned.scope,
+    owner_user_id: owned.owner_user_id,
+    envelope_rule_id: envelopeRuleId,
+  };
+  const exact = await db.one(`SELECT * FROM budgets WHERE ${BUDGET_IDENTITY_SQL}`, budgetIdentityArgs(identity));
+  if (exact) throw appError("BUDGET_ALREADY_EXISTS", "Kategori ini sudah menjadi Kebutuhan pada Alokasi Dana tersebut.", 409, { categoryId: item.category_id });
+  const legacy = await db.one(
+    "SELECT * FROM budgets WHERE period_key=? AND category_id=? AND scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'') AND envelope_rule_id IS NULL",
+    [period, item.category_id, owned.scope, owned.owner_user_id],
+  );
+  if (!legacy) return null;
+  assertVersion(legacy, item.row_version);
+  return legacy;
+};
+
+const recurringContextForBudgetBatch = (context, payload) => ({ ...context, payload, rowVersion: null });
+
+export const createBudgetsBatch = async (db, context) => {
+  const p = context.payload || {};
+  const period = periodKey(p.period_key);
+  const owned = await normalizeOwnedScope(db, context.actor, p);
+  assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
+  const envelopeRuleId = sanitizeText(p.envelope_rule_id, 100);
+  if (!envelopeRuleId) throw appError("BUDGET_BATCH_ENVELOPE_REQUIRED", "Alokasi Dana wajib dipilih untuk menambah beberapa kebutuhan sekaligus.", 400);
+  const envelope = await resolveBudgetEnvelope(db, context.actor, envelopeRuleId, owned);
+  if (!envelope?.source_account_id) throw appError("BUDGET_BATCH_SOURCE_ACCOUNT_REQUIRED", "Rekening sumber Alokasi Dana belum tersedia.", 409);
+
+  const rawItems = Array.isArray(p.items) ? p.items : [];
+  const items = (() => {
+    if (!rawItems.length) throw appError("BUDGET_BATCH_EMPTY", "Tambahkan minimal satu kebutuhan.", 400);
+    if (rawItems.length > BUDGET_BATCH_LIMIT) throw appError("BUDGET_BATCH_LIMIT", `Maksimal ${BUDGET_BATCH_LIMIT} kebutuhan dapat disimpan sekaligus.`, 400);
+    const seen = new Set();
+    return rawItems.map((item, index) => {
+      const categoryId = sanitizeText(item?.category_id, 100);
+      if (!categoryId) throw appError("INVALID_CATEGORY", `Kategori kebutuhan ${index + 1} belum dipilih.`, 400);
+      if (seen.has(categoryId)) throw appError("BUDGET_BATCH_DUPLICATE_CATEGORY", "Kategori yang sama tidak dapat ditambahkan dua kali ke Alokasi Dana yang sama.", 409, { categoryId });
+      seen.add(categoryId);
+      const recordingMode = String(item?.recording_mode || "flexible");
+      if (!["flexible", "scheduled"].includes(recordingMode)) throw appError("INVALID_BUDGET_RECORDING_MODE", "Cara mencatat kebutuhan tidak valid.", 400);
+      return {
+        category_id: categoryId,
+        amount: positiveInteger(item?.amount, `Nominal kebutuhan ${index + 1}`),
+        warning_threshold: Math.min(100, Math.max(1, Number(item?.warning_threshold || 80))),
+        row_version: item?.row_version ?? null,
+        recording_mode: recordingMode,
+        schedule_frequency: sanitizeText(item?.schedule_frequency || "monthly", 30),
+        schedule_due_day: item?.schedule_due_day ?? 20,
+        schedule_start_date: item?.schedule_start_date || todayJakarta(),
+        schedule_payment_method: sanitizeText(item?.schedule_payment_method || "transfer", 40),
+      };
+    });
+  })();
+
+  const prepared = [];
+  for (const item of items) {
+    const category = await db.one("SELECT * FROM categories WHERE category_id=? AND status='active' AND transaction_type='expense'", [item.category_id]);
+    if (!category) throw appError("INVALID_CATEGORY", "Kategori pengeluaran tidak valid.", 400, { categoryId: item.category_id });
+    const legacy = await budgetBatchExistingRows(db, { period, owned, envelopeRuleId, item });
+    prepared.push({ item, category, legacy });
+  }
+
+  const funding = await adjustEnvelopeForBudgetDelta(db, context, {
+    envelopeRuleId,
+    envelopePeriodId: sanitizeText(p.envelope_period_id, 100),
+    periodKey: period,
+    delta: prepared.reduce((total, entry) => total + Number(entry.item.amount || 0), 0),
+    reason: `Pendanaan otomatis ${prepared.length} Kebutuhan`,
+  });
+
+  const created = [];
+  for (const entry of prepared) {
+    const { item, category, legacy } = entry;
+    const budget = await upsertBudget(db, {
+      ...context,
+      skipEnvelopeFunding: true,
+      rowVersion: legacy?.row_version ?? null,
+      payload: {
+        category_id: category.category_id,
+        warning_threshold: item.warning_threshold,
+        scope: owned.scope,
+        period_key: period,
+        amount: item.amount,
+        envelope_rule_id: envelopeRuleId,
+        owner_user_id: owned.owner_user_id,
+        row_version: legacy?.row_version ?? null,
+      },
+    });
+    let schedule = null;
+    if (item.recording_mode === "scheduled") {
+      schedule = await createRecurringRule(db, recurringContextForBudgetBatch(context, {
+        name: category.name || "Pembayaran rutin",
+        kind: "expense",
+        category_id: category.category_id,
+        expected_amount: item.amount,
+        frequency: item.schedule_frequency,
+        due_day: item.schedule_due_day,
+        default_account_id: envelope.source_account_id,
+        payment_method: item.schedule_payment_method,
+        start_date: item.schedule_start_date,
+        auto_debit: false,
+      }));
+      if (schedule.scope !== owned.scope || String(schedule.owner_user_id || "") !== String(owned.owner_user_id || "")) {
+        throw appError("BUDGET_SCHEDULE_SCOPE_MISMATCH", "Jadwal pembayaran dan Kebutuhan harus memiliki kepemilikan yang sama.", 409);
+      }
+    }
+    created.push({ budget, schedule });
+  }
+  return { count: created.length, items: created, funding };
+};
+
+const syncBudgetFundingForUpsert = async (db, context, { current, envelopeRuleId, envelopePeriodId, period, amount }) => {
+  if (!envelopeRuleId || context.skipEnvelopeFunding) return;
+  const alreadyLinked = current?.envelope_rule_id === envelopeRuleId;
+  const previousFundedAmount = alreadyLinked ? Number(current.amount || 0) : 0;
+  if (alreadyLinked && amount < previousFundedAmount) {
+    const usedAmount = await budgetUsageAmount(db, current);
+    if (amount < usedAmount) {
+      throw appError(
+        "BUDGET_AMOUNT_BELOW_USED",
+        `Nominal Kebutuhan tidak dapat lebih kecil dari dana yang sudah terpakai Rp ${usedAmount.toLocaleString("id-ID")}.`,
+        409,
+        { amount, usedAmount, minimumAmount: usedAmount },
+      );
+    }
+  }
+  await adjustEnvelopeForBudgetDelta(db, context, {
+    envelopeRuleId,
+    envelopePeriodId,
+    periodKey: period,
+    delta: amount - previousFundedAmount,
+    reason: current ? "Penyesuaian otomatis nominal Kebutuhan" : "Pendanaan otomatis Kebutuhan",
+  });
 };
 
 export const upsertBudget = async (db, context) => {
@@ -141,6 +308,13 @@ export const upsertBudget = async (db, context) => {
   }
   const amount = positiveInteger(p.amount, "Anggaran kebutuhan");
   const threshold = Math.min(100, Math.max(1, Number(p.warning_threshold || 80)));
+  await syncBudgetFundingForUpsert(db, context, {
+    current,
+    envelopeRuleId,
+    envelopePeriodId: sanitizeText(p.envelope_period_id, 100),
+    period,
+    amount,
+  });
   const now = nowIso();
   let next;
   if (current) {
@@ -262,6 +436,13 @@ export const deleteUnusedBudget = async (db, context) => {
   if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan kebutuhan wajib diisi.", 400);
   const impact = await budgetLifecycleImpact(db, current);
   if (!impact.canDeleteUnused) throw appError("BUDGET_HAS_HISTORY", "Kebutuhan sudah menjadi bagian histori dan hanya dapat diarsipkan.", 409, { lifecycle: impact });
+  if (current.envelope_rule_id) await adjustEnvelopeForBudgetDelta(db, context, {
+    envelopeRuleId: current.envelope_rule_id,
+    envelopePeriodId: sanitizeText(p.envelope_period_id, 100),
+    periodKey: current.period_key,
+    delta: -Number(current.amount || 0),
+    reason: "Dana Kebutuhan yang dihapus dikembalikan otomatis",
+  });
   await cancelScheduledManualRemindersForEntity(db, context, "budget", current.budget_id, "ENTITY_DELETED");
   await appendAudit(db, context, {
     entityType: "budget",
@@ -289,6 +470,17 @@ export const archiveBudget = async (db, context) => {
   assertVersion(current, context.rowVersion ?? p.row_version);
   const reason = sanitizeText(p.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan pengarsipan kebutuhan wajib diisi.", 400);
+  if (current.envelope_rule_id) {
+    const usedAmount = await budgetUsageAmount(db, current);
+    const releasableAmount = Math.max(0, Number(current.amount || 0) - usedAmount);
+    await adjustEnvelopeForBudgetDelta(db, context, {
+      envelopeRuleId: current.envelope_rule_id,
+      envelopePeriodId: sanitizeText(p.envelope_period_id, 100),
+      periodKey: current.period_key,
+      delta: -releasableAmount,
+      reason: "Sisa dana Kebutuhan yang diarsipkan dikembalikan otomatis",
+    });
+  }
   const next = {
     ...current,
     status: "archived",
@@ -323,6 +515,17 @@ export const restoreBudget = async (db, context) => {
   }
   const duplicate = await db.one(`SELECT budget_id FROM budgets WHERE budget_id<>? AND ${BUDGET_IDENTITY_SQL} AND status='active' LIMIT 1`, [current.budget_id, ...budgetIdentityArgs(current)]);
   if (duplicate) throw appError("DUPLICATE_BUDGET", "Sudah ada Kebutuhan aktif untuk kategori, periode, dan Alokasi Dana yang sama.", 409);
+  if (current.envelope_rule_id) {
+    const usedAmount = await budgetUsageAmount(db, current);
+    const remainingNeed = Math.max(0, Number(current.amount || 0) - usedAmount);
+    await adjustEnvelopeForBudgetDelta(db, context, {
+      envelopeRuleId: current.envelope_rule_id,
+      envelopePeriodId: sanitizeText(p.envelope_period_id, 100),
+      periodKey: current.period_key,
+      delta: remainingNeed,
+      reason: "Pendanaan otomatis Kebutuhan yang dipulihkan",
+    });
+  }
   const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id) };
   const update = await db.execute("UPDATE budgets SET status='active',row_version=?,updated_by=?,updated_at=? WHERE budget_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.budget_id, current.row_version]);
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Kebutuhan berubah di perangkat lain.", 409);

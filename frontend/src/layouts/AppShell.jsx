@@ -26,6 +26,7 @@ import { apiClient, getMutationActivitySnapshot, subscribeToMutationActivity } f
 import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
 import OfflineBanner from "../components/pwa/OfflineBanner.jsx";
 import UpdateAvailableNotice from "../components/pwa/UpdateAvailableNotice.jsx";
+import MobilePullToRefresh from "../components/pwa/MobilePullToRefresh.jsx";
 import "../styles/app.css";
 import "../styles/responsive.css";
 
@@ -155,7 +156,7 @@ const PwaStatusStack = ({ offline, degraded, recovering, serviceWorkerUpdate }) 
   );
 };
 
-const useAppShellRuntime = ({ overview, user, composerOpen, refreshAll }) => {
+const useAppShellRuntime = ({ overview, user, composerOpen, syncNow }) => {
   const network = useNetworkStatus();
   const installPrompt = useInstallPrompt();
   const mutationActivity = useSyncExternalStore(subscribeToMutationActivity, getMutationActivitySnapshot, getMutationActivitySnapshot);
@@ -167,18 +168,19 @@ const useAppShellRuntime = ({ overview, user, composerOpen, refreshAll }) => {
 
   useEffect(() => {
     if (!network.recoveryRevision || mutationActivity.activeCount > 0) return;
-    refreshAll().catch(() => {});
-  }, [mutationActivity.activeCount, network.recoveryRevision, refreshAll]);
+    syncNow({ manual: true, reason: "network-recovery" }).catch(() => {});
+  }, [mutationActivity.activeCount, network.recoveryRevision, syncNow]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return undefined;
     const onNotificationMessage = (event) => {
       if (event.data?.type !== "NOTIFICATION_RECEIVED") return;
-      apiClient.invalidate(["notifications.center", "dashboard.overview", "app.initialState"]);
+      apiClient.invalidate(["notifications.center"]);
+      syncNow({ reason: "push-notification" }).catch(() => {});
     };
     navigator.serviceWorker.addEventListener("message", onNotificationMessage);
     return () => navigator.serviceWorker.removeEventListener("message", onNotificationMessage);
-  }, []);
+  }, [syncNow]);
 
   useEffect(() => {
     const unreadCount = Number(notificationState.unreadCount || 0);
@@ -187,12 +189,18 @@ const useAppShellRuntime = ({ overview, user, composerOpen, refreshAll }) => {
     else navigator.clearAppBadge?.().catch?.(() => {});
   }, [notificationState.unreadCount]);
 
-  return { installPrompt, network, notificationState, serviceWorkerUpdate };
+  return {
+    installPrompt,
+    network,
+    notificationState,
+    serviceWorkerUpdate,
+    pullRefreshBlocked: composerOpen || modalActivity.modalOpen || mutationActivity.activeCount > 0,
+  };
 };
 
 const AppShell = () => {
   const { user, logout } = useAuth();
-  const { isRefreshing, refreshError, refreshAll, overview } = useFinance();
+  const { isRefreshing, refreshError, refreshAll, manualRefresh, syncNow, overview } = useFinance();
   const { openTransactionComposer, composerOpen } = useTransactionComposer();
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -206,7 +214,7 @@ const AppShell = () => {
   const notificationsRoute = location.pathname === "/notifikasi";
   const wideContentRoute = dashboardRoute || ["/laporan", "/investasi", "/notifikasi"].includes(location.pathname);
   const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
-  const { installPrompt, network, notificationState, serviceWorkerUpdate } = useAppShellRuntime({ overview, user, composerOpen, refreshAll });
+  const { installPrompt, network, notificationState, serviceWorkerUpdate, pullRefreshBlocked } = useAppShellRuntime({ overview, user, composerOpen, syncNow });
   const { offline, degraded, recovering } = network;
   useMobileTabScrollRestoration(location, navigationType);
   useRoutePrefetch();
@@ -239,6 +247,7 @@ const AppShell = () => {
         </div>
       </div>
 
+      <MobilePullToRefresh onRefresh={manualRefresh} blocked={pullRefreshBlocked || mobileMenuOpen} offline={offline} />
       <PwaStatusStack offline={offline} degraded={degraded} recovering={recovering} serviceWorkerUpdate={serviceWorkerUpdate} />
 
       <DesktopFloatingTransactionAdd visible={desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute} offline={offline} onClick={openTransactionComposer} />

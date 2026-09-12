@@ -75,30 +75,31 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(styles, /allocation-detail-shell/);
   assert.match(styles, /allocation-limit-row/);
 });
-test("detail Alokasi Dana merangkum total Kebutuhan dan hanya menawarkan penyesuaian dana eksplisit", async () => {
-  const [page, dialogs, estimate, detail, presentation, backend] = await Promise.all([
+test("Alokasi baru menjadi wadah Rp0 dan Kebutuhan mendanai Alokasi otomatis", async () => {
+  const [page, dialogs, detail, batchEditor, presentation, runner, backend] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
-    read("src/features/allocations/AllocationNeedEstimate.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
+    read("src/features/budgets/BudgetBatchEditor.jsx"),
     read("src/features/allocations/allocationPresentation.js"),
-    readFile(new URL("../../api/_lib/services/planning/envelopes.js", import.meta.url), "utf8"),
+    read("src/features/allocations/allocationActionRunners.js"),
+    readFile(new URL("../../api/_lib/services/planning/budgets.js", import.meta.url), "utf8"),
   ]);
-  assert.match(dialogs, /label="Dana yang disiapkan \(opsional\)"/);
-  assert.doesNotMatch(dialogs, /id="envelope-default"[^>]*required/);
-  assert.match(dialogs, /Boleh dikosongkan/);
-  assert.match(dialogs, /AllocationNeedEstimate/);
+  assert.doesNotMatch(dialogs, /Dana yang disiapkan|AllocationNeedEstimate|Susun kebutuhan/);
+  assert.match(dialogs, /Dana mengikuti Kebutuhan/);
+  assert.match(runner, /default_amount: 0/);
+  assert.match(runner, /allocated_amount: 0/);
+  assert.match(page, /setDetailAction\("add-need"\)/);
   assert.match(detail, /Jumlah kebutuhan/);
   assert.match(detail, /Dialokasikan/);
-  assert.match(detail, /Pengaturan alokasi/);
-  assert.match(detail, /Atur dana/);
-  assert.match(detail, /onAdjustAllocation\(item, summary\.gap\)/);
-  assert.match(detail, /showGlobalExpenseAction\(state\.canRecordExpense, linkedBudgets\)/);
-  assert.match(detail, /showStandardAdjustAction\(canAdjustAllocation, item, linkedBudgets\)/);
-  assert.match(detail, /Pindahkan dana/);
-  assert.match(page, /openAdjust\(item, "fund", amount\)/);
+  assert.match(detail, /Dana Alokasi lama belum mengikuti total Kebutuhan/);
+  assert.match(detail, /Pulihkan dana/);
+  assert.doesNotMatch(detail, /showStandardAdjustAction|>Atur dana</);
+  assert.match(batchEditor, /Dana belum mencukupi/);
+  assert.match(batchEditor, /Tambah saldo/);
+  assert.match(batchEditor, /Setelah dialokasikan/);
   assert.match(presentation, /allocationNeedsFundingSummary/);
-  assert.match(backend, /nonNegativeInteger\(payload\.default_amount \?\? 0/);
+  assert.match(backend, /adjustEnvelopeForBudgetDelta/);
   assert.doesNotMatch(detail, /requestAdjustEnvelopeAllocation|adjustEnvelopeAllocation/);
 });
 test("detail Alokasi Dana dan dialog Kebutuhan tetap lazy agar route planning memiliki headroom bundle", async () => {
@@ -139,7 +140,46 @@ test("penutupan Alokasi Dana menjaga continuity periode dan Kebutuhan tetap opt-
   assert.match(actions, /released_amount/);
   assert.match(dialogs, /Periode berikutnya tetap disiapkan agar alokasi tidak terputus/);
   assert.match(dialogs, /Pakai lagi \{p\.closeNeedsCount\} kebutuhan di periode berikutnya/);
-  assert.match(dialogs, /Transaksi, saldo, serta dana Alokasi tidak ikut dipindahkan/);
+  assert.match(dialogs, /dana yang dibutuhkan dipisahkan otomatis dari Dana Tersedia/);
+  assert.match(dialogs, /Jika dana belum cukup, penutupan dibatalkan tanpa perubahan sebagian/);
   assert.match(detail, /budgetVisualState\(budget, periodMeta\)/);
   assert.doesNotMatch(detail, /const needStatus/);
+});
+
+test("Tambah Kebutuhan pada detail Alokasi memakai batch compact tanpa menggandakan flow edit", async () => {
+  const [controller, batchDraft, dialog, batchEditor, batchStyles, model, api, backendRegistry, backendPolicy] = await Promise.all([
+    read("src/features/budgets/useBudgetActions.js"),
+    read("src/features/budgets/useBudgetBatchDraft.js"),
+    read("src/features/budgets/BudgetDialogLayer.jsx"),
+    read("src/features/budgets/BudgetBatchEditor.jsx"),
+    read("src/features/budgets/BudgetBatchEditor.module.css"),
+    read("src/features/budgets/budgetBatchModel.js"),
+    read("src/features/budgets/budgets.api.js"),
+    readFile(new URL("../../api/_lib/actions/registry.js", import.meta.url), "utf8"),
+    readFile(new URL("../../api/_lib/actions/policy.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(controller, /formMode\(initial\.envelope_rule_id \? "create-batch" : "create-single"\)|setFormMode\(initial\.envelope_rule_id \? "create-batch" : "create-single"\)/);
+  assert.match(controller, /useBudgetBatchDraft/);
+  assert.match(batchDraft, /createBudgetsBatch\(buildBudgetBatchPayload/);
+  assert.match(controller, /const editBudget[\s\S]*state\.edit/);
+  assert.match(controller, /setFormMode\("edit-single"\)/);
+  assert.match(dialog, /BudgetBatchEditor/);
+  assert.match(dialog, /formController\.formMode === "create-batch"/);
+  assert.match(batchEditor, /Tambah kebutuhan lain/);
+  assert.match(batchEditor, /budget-batch-form/);
+  assert.match(batchEditor, /Pengaturan/);
+  assert.match(batchEditor, /rows: controller\.batchRows\.map\(\(row\) => \(\{/);
+  assert.doesNotMatch(batchEditor, /guardValue = \{ context: controller\.form, rows: controller\.batchRows \}/);
+  assert.match(batchEditor, /availableCategoryCount/);
+  assert.match(batchEditor, /disabled=\{addDisabled\}/);
+  assert.match(batchEditor, /Alokasi Dana ·/);
+  assert.match(batchStyles, /grid-template-columns: minmax\(0, 1fr\) 2\.75rem/);
+  assert.match(batchStyles, /border-bottom: 1px solid var\(--border\)/);
+  assert.doesNotMatch(batchStyles, /shadow-floating|shadow-control/);
+  assert.match(model, /validateBudgetBatchRows/);
+  assert.match(model, /Kategori yang sama tidak dapat ditambahkan dua kali/);
+  assert.match(api, /budgets\.batchCreate/);
+  assert.match(backendRegistry, /"budgets\.batchCreate": createBudgetsBatch/);
+  assert.match(backendPolicy, /"budgets\.batchCreate": write\(\)/);
 });

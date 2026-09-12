@@ -25,6 +25,7 @@
 | Action | Administrator | Member |
 |---|---:|---:|
 | `system.health` | Ya | Ya |
+| `sync.state` | Ya | Ya |
 | `app.initialState` | Ya | Ya |
 | `bootstrap.get` | Ya | Ya |
 | `users.list` | Ya | Tidak |
@@ -97,6 +98,7 @@
 | `recurring.restoreRule` | Ya | Tidak |
 | `budgets.list` | Ya | Ya |
 | `budgets.upsert` | Ya | Ya |
+| `budgets.batchCreate` | Ya | Ya |
 | `budgets.previewLifecycle` | Ya | Tidak |
 | `budgets.archive` | Ya | Tidak |
 | `budgets.deleteUnused` | Ya | Tidak |
@@ -180,7 +182,7 @@ Catatan rekonsiliasi: `reconciliations.create` tetap dapat dipanggil Administrat
 - Member hanya dapat mengubah/cancel transaksi yang dibuatnya sendiri **dan** berada pada scope yang dapat dioperasikan. Request manual tetap ditolak backend.
 - Alokasi Dana memiliki dimensi `assignee_user_id` terpisah dari ownership ledger. `NULL` berarti Jatah Bersama. Setiap Alokasi Dana canonical juga terikat pada tepat satu `source_account_id`; **rekening Investasi/RDN bukan sumber operasional yang valid untuk Alokasi baru**. Transaksi yang memakai Alokasi Dana wajib memakai rekening sumber yang sama dan realokasi baru hanya boleh antar Alokasi Dana dari rekening sumber yang sama. Member hanya boleh memakai atau memindahkan Jatah Bersama dan jatah miliknya sendiri; jatah pengguna lain ditolak backend. Rekening personal hanya boleh menjadi sumber jatah untuk pemilik rekening tersebut.
 - `accounts.create/update/previewLifecycle/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `accounts.requestCreate`. `categories.create/update/archive/restore/deleteUnused` tetap Administrator-only; Member hanya dapat mengajukan create lewat `categories.requestCreate`. Review master-data request dan transfer request tetap Administrator-only. `accounts.deleteUnused` hanya pengecualian sempit untuk rekening saldo awal dan saldo saat ini Rp0 yang belum pernah digunakan. `categories.deleteUnused`, `envelopes.deleteUnusedRule`, `recurring.deleteUnusedRule`, `goals.deleteUnused`, dan `budgets.deleteUnused` juga Administrator-only dan hanya boleh berjalan setelah server membuktikan entity history-free; purge umum tetap dilarang. Adjustment dan pemulihan transaksi cancelled tetap Administrator-only.
-- User management, rekening/kategori master, lifecycle destruktif planning, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix. Member dapat create/update Alokasi Dana dan Jadwal Rutin pada scope `shared` atau `personal` miliknya sendiri; Kebutuhan (`budgets.upsert`) mengikuti batas yang sama. Target baru tetap wajib scope `shared`. Planning personal pengguna lain tetap ditolak backend. Disabled button frontend bukan boundary keamanan.
+- User management, rekening/kategori master, lifecycle destruktif planning, period close/reopen, mirror/calendar manual sync, backup/import/restore/bersihkan data testing/integrity adalah Administrator-only sesuai action matrix. Member dapat create/update Alokasi Dana dan Jadwal Rutin pada scope `shared` atau `personal` miliknya sendiri; Kebutuhan (`budgets.upsert` dan `budgets.batchCreate`) mengikuti batas yang sama. Batch create tidak memperluas authority: seluruh item harus mengikuti scope/owner Alokasi yang dapat dikelola actor dan kegagalan ownership salah satu item/jadwal membatalkan batch. Target baru tetap wajib scope `shared`. Planning personal pengguna lain tetap ditolak backend. Disabled button frontend bukan boundary keamanan.
 - Export lengkap Administrator-only melalui `/api/export`. Sheets mirror tetap shared-only.
 - Read model rekening/ledger wajib memakai policy readable; write dan reconciliation create wajib memakai policy operable. Jangan mengandalkan filtering atau disabled button frontend.
 - `totalBalance` tetap metrik readable/transparan seluruh rekening yang dapat dibaca, termasuk Cash RDN, untuk backward compatibility. `nonInvestmentBalance` adalah metrik readable untuk hero **Saldo rekening** dan selalu mengecualikan `account_type=investment`. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, dan `unallocatedCount` adalah metrik actionable: hanya boleh memakai rekening/scope operable actor **dan** selalu mengecualikan rekening Investasi/RDN.

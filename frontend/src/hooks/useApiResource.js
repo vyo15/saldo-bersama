@@ -47,9 +47,7 @@ export const useApiResource = (action, payload = {}, { enabled = true } = {}) =>
 
   useEffect(() => {
     if (!enabled) return undefined;
-    return subscribeToInvalidation(action, () => {
-      load({ force: true }).catch(() => {});
-    });
+    return subscribeToInvalidation(action, () => load({ force: true }));
   }, [action, enabled, load]);
 
   const reload = useCallback(() => load({ force: true }), [load]);

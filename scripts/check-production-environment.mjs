@@ -91,7 +91,7 @@ export const checkProductionEnvironment = async ({
 } = {}) => {
   const productionSource = await readFile(productionPath, "utf8").catch((error) => {
     if (error?.code === "ENOENT") {
-      throw Object.assign(new Error(`${PRODUCTION_LOCAL_ENV_FILE} belum tersedia. Profile Production lokal harus disiapkan satu kali pada komputer tepercaya; Vercel Sensitive tidak dapat dipull kembali.`), { code: "PRODUCTION_LOCAL_ENV_NOT_FOUND" });
+      throw Object.assign(new Error(`${PRODUCTION_LOCAL_ENV_FILE} belum tersedia. File ini hanya diperlukan untuk provisioning/rotasi Production via env:push:production.`), { code: "PRODUCTION_LOCAL_ENV_NOT_FOUND" });
     }
     throw error;
   });
@@ -128,13 +128,20 @@ export const checkProductionEnvironment = async ({
   console.log(`Production profile: ${PRODUCTION_LOCAL_ENV_FILE} complete`);
   console.log("Database/session/Web Push isolation: Development/Production terpisah");
   console.log("Shared public config: aligned");
-  console.log("Production secret source: local trusted profile; tidak dipull dari Vercel Sensitive");
+  console.log("Production provisioning profile lokal valid; runtime/migration Production tetap memakai secret langsung di Vercel.");
   return { developmentStatus, productionStatus, isolation, shared };
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  checkProductionEnvironment().catch((error) => {
-    console.error(error?.message || "Profile Production lokal tidak valid.");
+  (async () => {
+    if (process.argv.includes("--local-provisioning")) {
+      await checkProductionEnvironment();
+      return;
+    }
+    const { checkProductionRuntime } = await import("./production-runtime.mjs");
+    await checkProductionRuntime();
+  })().catch((error) => {
+    console.error(error?.message || "Production environment tidak siap.");
     process.exitCode = 1;
   });
 }

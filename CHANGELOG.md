@@ -1,3 +1,35 @@
+## 12 September 2026 - Production DB via staged Vercel build + Kebutuhan-driven funding
+
+- Menghentikan percobaan menarik kembali secret Vercel Production Sensitive ke workstation. `db:migrate -- production`, `db:integrity -- production`, dan `db:bind-environment -- production` sekarang menjalankan operasi di staged Vercel Production build (`--prod --skip-domain`) sehingga credential Turso tetap berada di Vercel. `npm run prod` hanya memeriksa deployment Production aktual.
+- Runtime database menginfer environment `production` dari `VERCEL_ENV=production` bila `DATABASE_ENVIRONMENT` tidak diset, tetapi tetap fail-closed bila marker eksplisit bertentangan atau database terikat ke environment lain. Pre-push database compatibility memakai staged Production integrity build dari source yang akan dipush.
+- Merge patch Alokasi–Kebutuhan otomatis: Alokasi baru mulai Rp0; create/edit/archive/delete/restore Kebutuhan menyesuaikan `allocated_amount` secara atomic dari Dana Tersedia tanpa mengubah saldo ledger; reuse-needs periode berikutnya ikut didanai setelah carry dan shortage me-rollback seluruh mutation.
+- Membersihkan UI estimator Alokasi lama dan helper Production DB lokal yang tidak lagi dipakai, serta menyelaraskan regression dan dokumentasi.
+- Memperkeras staged database operation: source/frontend wajib berhasil build **sebelum** migration/binding/integrity menyentuh Production, dan tooling memulihkan `.env.local` serta `.gitignore` byte-for-byte setelah `vercel link` agar command DB tidak meninggalkan drift working tree.
+- Membuat script frontend lint/build memanggil entrypoint Node secara platform-agnostic sehingga quality gate tidak bergantung pada executable bit wrapper `.bin` hasil instalasi OS lain.
+
+## 12 September 2026 - Vercel-first Production environment bootstrap
+
+- Mengubah workflow Production agar `npm run prod`, `npm run env:prepare:production`, `npm run env:pull:production`, dan operasi database bertarget `production` otomatis memastikan project Vercel canonical ter-link lalu menarik environment Production; Turso CLI/manual copy tidak lagi menjadi workflow normal.
+- Menambah sinkronisasi dua tahap: `vercel env pull --environment=production` untuk export biasa dan `vercel env run -e production` untuk mencoba memperoleh nilai runtime yang tidak tersedia pada export. Placeholder `[SENSITIVE]` tidak pernah dianggap credential valid dan operasi tetap fail-closed bila key wajib belum tersedia.
+- Menjaga isolasi Development: sinkronisasi Production melakukan snapshot/restore `.env.local` karena `vercel link` dapat menyisipkan `VERCEL_OIDC_TOKEN`; credential DEV tidak pernah disalin ke Production dan marker `DATABASE_ENVIRONMENT=production` wajib berasal dari Vercel Production.
+- Memperkeras precedence runtime Production: sebelum `vercel env run -e production`, mirror `.env.local`/`.env.production.local` disembunyikan sementara dan child process dibersihkan dari key aplikasi yang diwarisi shell. Marker non-secret dari explicit `env pull --environment=production` menjadi authority; runtime capture dengan marker non-production dianggap kontaminasi dan seluruh nilainya diabaikan.
+- Menambahkan regression Vercel Production sync/marker/Sensitive/isolation, menghubungkan pre-push database preflight ke auto-sync Production, serta merapikan lint orphan import dan kompleksitas handler scheduler tanpa mengubah behavior scheduler.
+
+## 12 September 2026 - Kebutuhan multi-item compact dan atomic
+
+- Mengubah flow **Tambah kebutuhan** dari detail Alokasi Dana menjadi editor multi-item compact: beberapa Kebutuhan dapat disusun sekaligus dalam grouped financial list, hanya row aktif yang membuka field, total batch selalu terlihat di footer, dan pengaturan jadwal memakai progressive disclosure agar mobile tetap padat tanpa kehilangan capability existing. Edit Kebutuhan existing tetap single-item.
+- Menambah action canonical `budgets.batchCreate` dengan batas 20 item. Seluruh Kebutuhan pada batch, termasuk Jadwal Rutin opsional per item, dibuat dalam satu transaksi database; kategori ganda, ownership tidak cocok, jadwal invalid, atau error item lain membatalkan seluruh batch sehingga tidak ada partial write. Request tetap idempotent melalui dispatcher canonical.
+- Mempertahankan contract finansial existing: menyimpan Kebutuhan tidak otomatis menambah/melepas dana Alokasi, tidak membuat ledger transaction, dan data budget legacy tanpa `envelope_rule_id` hanya dapat dihubungkan dengan `row_version` yang benar. Authorization Member mengikuti batas `budgets.upsert` untuk shared atau personal milik sendiri.
+- Menambah regression model/UI/backend untuk total payload, kategori duplikat, legacy row-version, idempotency, serta rollback lintas Kebutuhan + Jadwal; menyelaraskan API Contract, Authorization Matrix, PRD, Implementation Matrix, UI Design System, Test Plan, QA Checklist, RFC permission, dan Project Status. Tidak ada migration/schema baru.
+
+## 12 September 2026 - Global realtime + pull-to-refresh schema v18
+
+- Menambah `016_global_sync_revisions.sql`, `sync.state`, dan dependency map mutation → read-resource canonical agar seluruh menu server-backed tersinkron lintas perangkat tanpa hard refresh. Revision mutation database dinaikkan atomik di transaction dispatcher; session dan scheduler/job user-facing yang berada di luar dispatcher ikut menaikkan revision relevan.
+- Menambah frontend global sync coordinator dengan foreground/reconnect, BroadcastChannel, push signal, polling ringan saat visible, retry aman bila reload gagal, dan invalidation hanya untuk resource terdampak/mounted.
+- Menambah pull-to-refresh mobile global di AppShell tanpa `window.location.reload()`, dengan guard modal/composer/mutation/offline/nested-scroll dan preservation draft/form.
+- Merge dengan `budgets.batchCreate`: batch Kebutuhan atomic tetap dipertahankan dan sekarang masuk dependency realtime canonical, termasuk optional Jadwal Rutin yang dibuat pada transaction yang sama.
+- Memperbarui schema contract, API/authorization, deployment, recovery, test plan, implementation matrix, dan dokumentasi arsitektur ke runtime v18.
+
 ## 11 September 2026 - Rekonsiliasi initial-state hardening
 
 - Memperbaiki crash route `/rekonsiliasi` saat halaman dibuka tanpa rekening terpilih. Copy saldo sekarang null-safe sehingga `selectedAccount=null` tetap merender picker awal dan tidak jatuh ke `AppErrorBoundary`.

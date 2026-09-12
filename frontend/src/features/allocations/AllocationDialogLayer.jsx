@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { FiArrowLeft, FiArrowRight, FiChevronDown, FiList, FiPlus } from "react-icons/fi";
+import { FiArrowLeft, FiArrowRight, FiChevronDown, FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
@@ -10,8 +9,6 @@ import InlineSelectionPicker from "../../components/common/InlineSelectionPicker
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { accountOptionVisual, allocationOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
-import AllocationNeedEstimate from "./AllocationNeedEstimate.jsx";
-import { allocationEstimateTotal, createInitialAllocationEstimate } from "./allocationNeedEstimateModel.js";
 import { allocationAssigneeLabel } from "./allocationPresentation.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
@@ -66,43 +63,24 @@ const buildAssigneeOptions = (assigneeState) => [
   })),
 ];
 
-const invalidEstimate = (rows, total, availableAmount) => (
-  total <= 0
-  || total > availableAmount
-  || rows.some((row) => !row.category_id || Number(row.amount || 0) <= 0)
-);
-
-const CreateEnvelopeFooter = ({ estimateOpen, estimateTotal, estimateInvalid, onBackEstimate, onApplyEstimate, close, createMutation, insufficientAmount }) => (
-  estimateOpen
-    ? <>
-      <Button type="button" onClick={onBackEstimate}>Kembali</Button>
-      <Button variant="primary" type="button" disabled={estimateInvalid} onClick={onApplyEstimate}>Gunakan {formatRupiah(estimateTotal)}</Button>
-    </>
-    : <>
-      <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
-      <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy} disabled={insufficientAmount}>Buat alokasi</Button>
-    </>
-);
+const CreateEnvelopeFooter = ({ close, createMutation }) => <>
+  <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
+  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Buat alokasi</Button>
+</>;
 
 const CreateEnvelopeForm = ({
   createForm,
   setCreateForm,
   accounts,
   usersStatus,
-  expenseCategories,
   assigneeState,
   assigneeOptions,
-  selectedSource,
-  availableAmount,
-  enteredAmount,
-  insufficientAmount,
   onChangeSource,
-  onOpenEstimate,
   message,
   createEnvelope,
 }) => (
   <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
-    <label className="field form-grid__full"><span>Nama alokasi *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Belanja Rumah" /></label>
+    <label className="field form-grid__full"><span>Nama alokasi *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
     <InlineSelectionPicker
       className="form-grid__full"
       label="Ambil dana dari"
@@ -132,6 +110,7 @@ const CreateEnvelopeForm = ({
       disabled={usersStatus === "loading"}
       helper={assigneeState.locked ? "Pemilik mengikuti rekening sumber dan tidak dapat diubah." : usersStatus === "loading" ? "Memuat pengguna aktif..." : ""}
     />
+    <div className="notice notice--info form-grid__full" role="status"><strong>Dana mengikuti Kebutuhan.</strong> Buat wadah Alokasi terlebih dahulu. Saat Kebutuhan disimpan, total nominalnya otomatis dipisahkan dari Dana Tersedia rekening ini.</div>
     <details className={allocationClass("allocation-advanced form-grid__full")}>
       <summary><span><strong>Periode dan sisa</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
       <div className={allocationClass("allocation-advanced__content")}>
@@ -141,38 +120,14 @@ const CreateEnvelopeForm = ({
         <label className="field"><span>Akhir periode</span><TemporalInput type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
       </div>
     </details>
-    {selectedSource ? <MoneyInput id="envelope-default" label="Dana yang disiapkan (opsional)" value={createForm.default_amount} onChange={(value) => setCreateForm((current) => ({ ...current, default_amount: value }))} helper="Boleh dikosongkan. Alokasi dapat dibuat tanpa memindahkan dana, lalu didanai saat dibutuhkan." /> : null}
-    {selectedSource && availableAmount > 0 && expenseCategories.length ? <button className={allocationClass("allocation-create-assist form-grid__full")} type="button" onClick={onOpenEstimate}>
-      <span className={allocationClass("allocation-create-assist__icon")}><FiList aria-hidden="true" /></span>
-      <span className={allocationClass("allocation-create-assist__copy")}><strong>Belum tahu nominalnya?</strong><small>Susun dari kategori kebutuhan periode ini</small></span>
-      <FiArrowRight aria-hidden="true" />
-    </button> : null}
-    {selectedSource && enteredAmount > 0 ? <div className={allocationClass("allocation-create-impact form-grid__full")} role="status"><span>Tersedia setelah dialokasikan</span><strong>{formatRupiah(Math.max(0, availableAmount - enteredAmount))}</strong></div> : null}
-    {insufficientAmount ? <div className="notice notice--danger form-grid__full" role="alert">Dana tersedia kurang {formatRupiah(enteredAmount - availableAmount)}. Kurangi dana yang disiapkan sebelum membuat alokasi.</div> : null}
     {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
   </form>
 );
 
-const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, users, usersStatus, expenseCategories, createEnvelope, createMutation, message }) => {
-  const [estimateOpen, setEstimateOpen] = useState(false);
-  const [estimateRows, setEstimateRows] = useState(createInitialAllocationEstimate);
+const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
   const assigneeState = envelopeAssigneeOptions(createForm, accounts, users);
   const assigneeOptions = buildAssigneeOptions(assigneeState);
-  const selectedSource = accounts.find((item) => item.account_id === createForm.source_account_id) || null;
-  const availableAmount = Number(selectedSource?.available_balance ?? selectedSource?.balance ?? 0);
-  const enteredAmount = Number(String(createForm.default_amount || "").replace(/\D/g, "")) || 0;
-  const insufficientAmount = Boolean(selectedSource) && enteredAmount > availableAmount;
-  const estimateTotal = allocationEstimateTotal(estimateRows);
-  const estimateInvalid = invalidEstimate(estimateRows, estimateTotal, availableAmount);
   const guard = useUnsavedChangesGuard({ open, value: createForm, onClose: close, blocked: createMutation.busy });
-
-  useEffect(() => {
-    if (!open) {
-      setEstimateOpen(false);
-      setEstimateRows(createInitialAllocationEstimate());
-    }
-  }, [open]);
-
   const changeSource = (sourceAccountId) => {
     const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
     setCreateForm((current) => ({
@@ -180,57 +135,29 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts,
       source_account_id: sourceAccountId,
       assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : current.assignee_user_id,
     }));
-    setEstimateRows(createInitialAllocationEstimate());
   };
-
-  const applyEstimate = () => {
-    if (estimateInvalid) return;
-    setCreateForm((current) => ({ ...current, default_amount: estimateTotal }));
-    setEstimateOpen(false);
-  };
-
-  const backEstimate = () => setEstimateOpen(false);
-
-  return <>
-  <Modal
+  return <Modal
     open={open}
     onClose={guard.requestClose}
     discardGuard={guard}
     discardSubject="alokasi dana"
     dismissible={!createMutation.busy}
-    title={estimateOpen ? "Susun kebutuhan" : "Buat alokasi"}
-    footer={<CreateEnvelopeFooter
-      estimateOpen={estimateOpen}
-      estimateTotal={estimateTotal}
-      estimateInvalid={estimateInvalid}
-      onBackEstimate={backEstimate}
-      onApplyEstimate={applyEstimate}
-      close={guard.discardAndClose}
-      createMutation={createMutation}
-      insufficientAmount={insufficientAmount}
-    />}
+    title="Buat alokasi"
+    description="Buat wadahnya dulu, lalu masukkan Kebutuhan. Dana akan dihitung otomatis."
+    footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} />}
   >
-    {estimateOpen
-      ? <AllocationNeedEstimate categories={expenseCategories} rows={estimateRows} setRows={setEstimateRows} availableAmount={availableAmount} />
-      : <CreateEnvelopeForm
-        createForm={createForm}
-        setCreateForm={setCreateForm}
-        accounts={accounts}
-        usersStatus={usersStatus}
-        expenseCategories={expenseCategories}
-        assigneeState={assigneeState}
-        assigneeOptions={assigneeOptions}
-        selectedSource={selectedSource}
-        availableAmount={availableAmount}
-        enteredAmount={enteredAmount}
-        insufficientAmount={insufficientAmount}
-        onChangeSource={changeSource}
-        onOpenEstimate={() => setEstimateOpen(true)}
-        message={message}
-        createEnvelope={createEnvelope}
-      />}
-  </Modal>
-  </>;
+    <CreateEnvelopeForm
+      createForm={createForm}
+      setCreateForm={setCreateForm}
+      accounts={accounts}
+      usersStatus={usersStatus}
+      assigneeState={assigneeState}
+      assigneeOptions={assigneeOptions}
+      onChangeSource={changeSource}
+      message={message}
+      createEnvelope={createEnvelope}
+    />
+  </Modal>;
 };
 
 const MoveEnvelopeModal = ({ open, close, move, setMove, items, destinations, submitMove, moveMutation, message }) => {
@@ -278,10 +205,10 @@ const ClosePeriodModal = (p) => {
     ? `${target.name} (${target.period_start}–${target.period_end}) akan dikunci. ${carrying ? "Sisa dana akan dibawa ke periode berikutnya." : "Sisa dana akan kembali menjadi dana tersedia."} Periode berikutnya tetap disiapkan agar alokasi tidak terputus.`
     : "";
   return <ConfirmationModal open={Boolean(target)} title="Tutup periode alokasi?" description={description} confirmLabel="Tutup periode" busy={p.closeState.status === "submitting"} error={p.closeState.error} onCancel={close} onConfirm={p.closeEnvelope}>
-    {target ? <div className="notice notice--info" role="status">{carrying ? "Tidak ada dana baru yang ditambahkan otomatis. Hanya sisa periode ini yang dapat diteruskan." : "Periode berikutnya dimulai dengan Rp0. Tambahkan dana nanti saat sudah siap."}</div> : null}
+    {target ? <div className="notice notice--info" role="status">{p.closeReuseNeeds ? "Kebutuhan yang dipakai lagi akan mendanai periode berikutnya otomatis dari Dana Tersedia. Jika dana belum cukup, penutupan dibatalkan tanpa perubahan sebagian." : carrying ? "Tanpa menyalin Kebutuhan, hanya sisa dana periode ini yang diteruskan." : "Tanpa menyalin Kebutuhan, periode berikutnya dimulai dengan Rp0."}</div> : null}
     {p.closeCanReuseNeeds ? <label className="checkbox-field">
       <input type="checkbox" checked={p.closeReuseNeeds} disabled={p.closeState.status === "submitting"} onChange={(event) => p.setCloseReuseNeeds(event.target.checked)} />
-      <span><strong>Pakai lagi {p.closeNeedsCount} kebutuhan di periode berikutnya</strong><small>Hanya kategori dan nominal rencana yang disalin. Transaksi, saldo, serta dana Alokasi tidak ikut dipindahkan.</small></span>
+      <span><strong>Pakai lagi {p.closeNeedsCount} kebutuhan di periode berikutnya</strong><small>Kategori dan nominal disalin, lalu dana yang dibutuhkan dipisahkan otomatis dari Dana Tersedia. Transaksi lama tidak ikut disalin.</small></span>
     </label> : null}
   </ConfirmationModal>;
 };
@@ -290,13 +217,13 @@ const AllocationModals = (p) => <><ClosePeriodModal {...p} /><ConfirmationModal 
 
 
 const AllocationDialogLayer = ({
-  createOpen, closeCreate, createForm, setCreateForm, accounts, activeUsers, usersStatus, expenseCategories, createEnvelope, createMutation, message,
+  createOpen, closeCreate, createForm, setCreateForm, accounts, activeUsers, usersStatus, createEnvelope, createMutation, message,
   moveOpen, closeMove, move, setMove, movableItems, destinations, submitMove, moveMutation,
   adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment, adjustMutation,
   modalProps,
 }) => (
   <>
-    <CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersStatus} expenseCategories={expenseCategories} createEnvelope={createEnvelope} createMutation={createMutation} message={message} />
+    <CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersStatus} createEnvelope={createEnvelope} createMutation={createMutation} message={message} />
     <MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={submitMove} moveMutation={moveMutation} message={message} />
     <AdjustAllocationModal target={adjustTarget} close={closeAdjust} form={adjustForm} setForm={setAdjustForm} submit={submitAdjustment} mutation={adjustMutation} message={message} />
     <AllocationModals {...modalProps} />

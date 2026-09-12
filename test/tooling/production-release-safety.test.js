@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { inspectProductionDatabaseHealth } from "../../scripts/production-database-preflight.mjs";
 import { assertVerifiedProductionBackup } from "../../scripts/production-migration-safety.mjs";
 import { checkProductionReleasePreflight } from "../../scripts/production-release-preflight.mjs";
 import { requiresProductionDatabasePreflight, runPrePushGuard } from "../../scripts/pre-push-verify.mjs";
-import { reportProductionDegradation } from "../../scripts/production-runtime.mjs";
+import { checkProductionRuntime } from "../../scripts/production-runtime.mjs";
 
 const SHA = "1111111111111111111111111111111111111111";
 const REMOTE_SHA = "2222222222222222222222222222222222222222";
@@ -50,21 +47,15 @@ test("scope Production DB guard hanya aktif untuk path yang dapat mengubah compa
   assert.equal(requiresProductionDatabasePreflight(["scripts/db-migrate.mjs"]), true);
 });
 
-test("Production release preflight menolak schema tertinggal tanpa memigrasikan database otomatis", async () => {
+test("Production release preflight menolak remote integrity failure tanpa memigrasikan database otomatis", async () => {
   await assert.rejects(
     checkProductionReleasePreflight({
-      root: "/tmp/saldo-release",
-      environmentChecker: async () => {},
-      databaseChecker: async () => {
-        throw Object.assign(new Error("not ready"), {
-          code: "PRODUCTION_DATABASE_NOT_READY",
-          schema: { version: 13, expectedVersion: 14, databaseEnvironment: "production" },
-        });
+      remoteIntegrityRunner: async () => {
+        throw Object.assign(new Error("schema v17/18"), { code: "DATABASE_SCHEMA_MISMATCH" });
       },
       logger: { log: () => {} },
     }),
     (error) => error?.code === "PRODUCTION_RELEASE_SCHEMA_NOT_READY"
-      && /v13\/14/.test(error.message)
       && /db:migrate -- production/.test(error.message)
       && /git push origin main/.test(error.message),
   );
@@ -99,71 +90,34 @@ test("db:migrate Production menghubungkan backup guard sebelum pending migration
   const source = await readFile(new URL("../../scripts/db-migrate.mjs", import.meta.url), "utf8");
   assert.match(source, /databaseEnvironment === "production" && pending\.length/);
   assert.match(source, /await assertVerifiedProductionBackup/);
-  assert.ok(source.indexOf("await assertVerifiedProductionBackup") < source.indexOf("for (const migration of migrations) {\n  if (appliedByVersion.has"));
+  const guardIndex = source.indexOf("await assertVerifiedProductionBackup");
+  const applyIndex = source.lastIndexOf("for (const migration of migrations)");
+  assert.ok(guardIndex >= 0 && applyIndex > guardIndex);
 });
 
-test("diagnosis Production mengenali heartbeat scheduler lama walau secret jobs tidak ada di profile lokal", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "saldo-prod-health-"));
-  const before = {
-    TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL,
-    TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN,
-    DATABASE_ENVIRONMENT: process.env.DATABASE_ENVIRONMENT,
-    VERCEL_ENV: process.env.VERCEL_ENV,
-    NODE_ENV: process.env.NODE_ENV,
-  };
-  try {
-    await writeFile(path.join(root, ".env.production.local"), [
-      "TURSO_DATABASE_URL=libsql://saldo-bersama.example.turso.io",
-      "TURSO_AUTH_TOKEN=prod-token",
-      "DATABASE_ENVIRONMENT=production",
-      "",
-    ].join("\n"));
-    const now = Date.parse("2026-08-25T08:00:00.000Z");
-    const database = {
-      health: async () => true,
-      one: async () => ({ value: "false" }),
-      all: async () => [
-        { key: "scheduler_last_success_at", value: "2026-08-25T06:00:00.000Z" },
-        { key: "scheduler_last_failure_at", value: "2026-08-25T07:50:00.000Z" },
-        { key: "scheduler_last_error_code", value: "DATABASE_SCHEMA_MISMATCH" },
-      ],
-    };
-    const diagnostics = await inspectProductionDatabaseHealth({
-      root,
-      databaseFactory: () => database,
-      schemaReader: async () => ({ ready: true, version: 14, expectedVersion: 14, databaseEnvironment: "production" }),
-      operationalReader: async () => ({ status: "ok", codes: [] }),
-      now,
-    });
-    assert.equal(diagnostics.schedulerConfigurationSource, "database_history");
-    assert.equal(diagnostics.scheduler.status, "degraded");
-    assert.equal(diagnostics.scheduler.errorCode, "DATABASE_SCHEMA_MISMATCH");
-  } finally {
-    for (const [key, value] of Object.entries(before)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+test("npm run prod melaporkan live health degraded tanpa membutuhkan secret lokal", async () => {
+  const fetchImpl = async (url) => {
+    if (String(url).endsWith("/api/health")) {
+      return {
+        ok: true, status: 200,
+        headers: { get: () => "application/json" },
+        json: async () => ({
+          ok: true,
+          data: {
+            status: "degraded",
+            schema: { ready: true, version: 18, expectedVersion: 18, databaseEnvironment: "production" },
+            maintenanceMode: false,
+            coreOperationsHealthy: false,
+          },
+        }),
+      };
     }
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("npm run prod melaporkan penyebab safe ketika live health degraded dan tidak menyuruh migrate ulang", async () => {
-  const logs = [];
-  await reportProductionDegradation({
-    root: "/tmp/saldo-prod",
-    diagnosticsReader: async () => ({
-      databaseStatus: "ok",
-      schema: { ready: true, version: 14 },
-      maintenanceMode: false,
-      scheduler: { status: "degraded", stale: false, errorCode: "DATABASE_SCHEMA_MISMATCH" },
-      operations: { status: "ok", codes: [] },
-      googleBridge: { enabled: false, complete: false },
-    }),
-    logger: { log: (message) => logs.push(String(message)), error: (message) => logs.push(String(message)) },
-  });
-  const output = logs.join("\n");
-  assert.match(output, /scheduler: degraded/);
-  assert.match(output, /DATABASE_SCHEMA_MISMATCH/);
-  assert.match(output, /setiap 10 menit/);
-  assert.doesNotMatch(output, /TURSO_AUTH_TOKEN|SESSION_SECRET|VAPID_PRIVATE_KEY/);
+    throw new Error("frontend should not be checked when health is degraded");
+  };
+  await assert.rejects(
+    checkProductionRuntime({ fetchImpl }),
+    (error) => error?.code === "PRODUCTION_DEGRADED"
+      && error?.blockers?.includes("CORE_OPERATIONS_DEGRADED")
+      && !/TURSO_AUTH_TOKEN|SESSION_SECRET|VAPID_PRIVATE_KEY/.test(error.message),
+  );
 });

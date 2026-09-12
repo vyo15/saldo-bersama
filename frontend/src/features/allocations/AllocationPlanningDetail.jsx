@@ -87,8 +87,8 @@ const AllocationNeedsFundingSummary = ({ item, linkedBudgets, canAdjustAllocatio
   const summary = allocationNeedsFundingSummary(item, linkedBudgets);
   if (summary.gap <= 0) return null;
   return <div className={allocationClass("allocation-needs-gap")} role="status">
-      <div><strong>Kebutuhan melebihi dana alokasi.</strong><span>Tambahkan <Money value={summary.gap} /> bila Anda memang ingin seluruh Kebutuhan tercakup. Dana tidak berubah otomatis.</span></div>
-      {canAdjustAllocation ? <Button variant="primary" icon={FiSliders} onClick={() => onAdjustAllocation(item, summary.gap)}>Atur dana</Button> : null}
+      <div><strong>Dana Alokasi lama belum mengikuti total Kebutuhan.</strong><span>Kurang <Money value={summary.gap} />. Kebutuhan baru sekarang menyesuaikan dana otomatis; data lama ini dapat dipulihkan sekali.</span></div>
+      {canAdjustAllocation ? <Button variant="primary" icon={FiSliders} onClick={() => onAdjustAllocation(item, summary.gap)}>Pulihkan dana</Button> : null}
     </div>;
 };
 
@@ -142,30 +142,43 @@ const AllocationNeedsPanel = ({
   </section>;
 };
 
-const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleController, canManage, canLifecycle, expenseCategories, users, usersStatus, item, onBudgetReminder }) => {
+const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleController, canManage, canLifecycle, expenseCategories, budgets, users, usersStatus, item, sourceAccount, onAddBalance, onBudgetReminder }) => {
   if (!budgetFormController.formOpen && !budgetLifecycleController.archiveTarget) return null;
   return <Suspense fallback={<LazyActionFallback surface="modal" title="Kebutuhan" label="Menyiapkan form Kebutuhan..." />}><BudgetDialogLayer
     canManage={canManage}
     canLifecycle={canLifecycle}
     categories={expenseCategories}
+    items={budgets}
     users={users}
     usersStatus={usersStatus}
     formController={budgetFormController}
     lifecycleController={budgetLifecycleController}
     lockedEnvelope={item}
+    sourceAccount={sourceAccount}
+    onAddBalance={onAddBalance}
     onReminder={onBudgetReminder}
   /></Suspense>;
 };
 
-const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, period, notify, refreshBudgetPlanning, expenseCategories }) => {
+const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, period, notify, refreshBudgetPlanning, expenseCategories, accounts = [] }) => {
   const { openTransactionComposer } = useTransactionComposer();
   const navigate = useNavigate();
   const today = todayInJakarta();
+  const sourceAccount = accounts.find((account) => account.account_id === item.source_account_id) || null;
   const budgetFormController = useBudgetFormController({ items: budgets, period, notify, refresh: refreshBudgetPlanning, categories: expenseCategories, scheduleAccountId: item.source_account_id || "" });
-  const budgetLifecycleController = useBudgetLifecycleController({ notify, refresh: refreshBudgetPlanning, setForm: budgetFormController.setForm, setFormOpen: budgetFormController.setFormOpen });
+  const budgetLifecycleController = useBudgetLifecycleController({ notify, refresh: refreshBudgetPlanning, setForm: budgetFormController.setForm, setFormOpen: budgetFormController.setFormOpen, envelopePeriodId: item.envelope_period_id || "" });
   const canRecordExpense = canRecordAllocationExpense(item, today);
-  const openBudgetForm = () => budgetFormController.openBudgetForm({ envelope_rule_id: item.envelope_rule_id, scope: item.scope, owner_user_id: item.owner_user_id || "" });
-  const editBudget = (budget) => budgetFormController.editBudget(budget, { envelope_rule_id: item.envelope_rule_id, scope: item.scope, owner_user_id: item.owner_user_id || "" });
+  const openBudgetForm = () => budgetFormController.openBudgetForm({ envelope_rule_id: item.envelope_rule_id, envelope_period_id: item.envelope_period_id, scope: item.scope, owner_user_id: item.owner_user_id || "" });
+  const editBudget = (budget) => budgetFormController.editBudget(budget, { envelope_rule_id: item.envelope_rule_id, envelope_period_id: item.envelope_period_id, scope: item.scope, owner_user_id: item.owner_user_id || "" });
+  const addBalance = (shortageAmount) => openTransactionComposer({
+    initialType: TRANSACTION_TYPES.INCOME,
+    initialDraft: {
+      transaction_type: TRANSACTION_TYPES.INCOME,
+      destination_account_id: item.source_account_id || "",
+      amount: Math.max(0, Number(shortageAmount || 0)),
+      description: `Tambah saldo untuk Alokasi ${item.name}`,
+    },
+  });
   const recordExpense = (budget = null) => {
     if (!canRecordExpense) return;
     openTransactionComposer({
@@ -194,6 +207,8 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
     safeRelatedRecurring: unambiguousRelatedRecurring(relatedRecurring, budgets, item),
     today,
     canRecordExpense,
+    sourceAccount,
+    addBalance,
     budgetFormController,
     budgetLifecycleController,
     openBudgetForm,
@@ -204,11 +219,8 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
 };
 
 const showGlobalExpenseAction = (canRecordExpense, linkedBudgets) => canRecordExpense && linkedBudgets.length === 0;
-const showStandardAdjustAction = (canAdjustAllocation, item, linkedBudgets) => (
-  canAdjustAllocation && allocationNeedsFundingSummary(item, linkedBudgets).gap <= 0
-);
 
-const AllocationPlanningDetailView = ({ item, linkedBudgets, canManage, canLifecycle, expenseCategories, users, usersStatus, onBack, onBudgetReminder, onAllocationReminder, onOpenAllocationActions, canAdjustAllocation, onAdjustAllocation, canMoveAllocation, onMoveAllocation, state }) => <>
+const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage, canLifecycle, expenseCategories, users, usersStatus, onBack, onBudgetReminder, onAllocationReminder, onOpenAllocationActions, canAdjustAllocation, onAdjustAllocation, canMoveAllocation, onMoveAllocation, state }) => <>
   <div className={allocationClass("allocation-planning-detail")}>
     <button type="button" className={allocationClass("allocation-detail-back")} onClick={onBack}><FiArrowLeft aria-hidden="true" />Semua Alokasi Dana</button>
     <Card className={allocationClass("allocation-detail-shell")}>
@@ -242,7 +254,6 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, canManage, canLifec
       <section className={allocationClass("allocation-detail-section allocation-detail-section--management")} aria-labelledby="allocation-management-title">
         <div className={allocationClass("allocation-detail-panel__header")}><div><h3 id="allocation-management-title">Pengaturan alokasi</h3><p>Tindakan yang jarang dipakai dipusatkan di sini agar halaman utama tetap ringkas.</p></div></div>
         <div className="form-actions">
-          {showStandardAdjustAction(canAdjustAllocation, item, linkedBudgets) ? <Button icon={FiSliders} onClick={() => onAdjustAllocation(item)}>Atur dana</Button> : null}
           {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}
           {item.can_set_reminder ? <Button icon={FiBell} onClick={() => onAllocationReminder(item)}>Pengingat</Button> : null}
           {item.can_close || item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Kelola alokasi</Button> : null}
@@ -256,9 +267,12 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, canManage, canLifec
     canManage={canManage}
     canLifecycle={canLifecycle}
     expenseCategories={expenseCategories}
+    budgets={budgets}
     users={users}
     usersStatus={usersStatus}
     item={item}
+    sourceAccount={state.sourceAccount}
+    onAddBalance={state.addBalance}
     onBudgetReminder={onBudgetReminder}
   />
 </>;

@@ -133,6 +133,7 @@ test("Pakai lagi Kebutuhan menyalin rencana aktif tanpa menimpa Kebutuhan period
     const result = await closeEnvelope(db, context({ envelope_period_id: periodId, row_version: 1, reuse_needs: true }));
     assert.equal(result.needs_continuity.copied, 1);
     assert.equal(result.needs_continuity.skipped, 1);
+    assert.equal(result.next_period.allocated_amount, 550_000, "Kebutuhan periode berikutnya harus langsung didanai dari Dana Tersedia.");
 
     const september = await db.all("SELECT * FROM budgets WHERE period_key='2026-09' AND envelope_rule_id=? ORDER BY category_id", [ruleId]);
     assert.equal(september.length, 2);

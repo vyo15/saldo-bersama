@@ -10,6 +10,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "investments.overview": 30_000,
   "investments.instruments.list": 120_000,
   "system.health": 5_000,
+  "sync.state": 0,
   "accounts.list": 120_000,
   "accounts.previewLifecycle": 0,
   "categories.list": 120_000,
@@ -60,6 +61,10 @@ export const stableQueryKey = (action, payload = {}, scope = sessionScope) => {
 
 export const isReadAction = (action) => Object.prototype.hasOwnProperty.call(READ_CACHE_TTL_MS, action);
 
+export const subscribedReadActions = () => [...invalidationListeners.entries()]
+  .filter(([, listeners]) => listeners.size > 0)
+  .map(([action]) => action);
+
 export const subscribeToInvalidation = (action, listener) => {
   if (!action || typeof listener !== "function") return () => {};
   const listeners = invalidationListeners.get(action) || new Set();
@@ -71,12 +76,20 @@ export const subscribeToInvalidation = (action, listener) => {
   };
 };
 
-const notifyInvalidation = (actions) => {
+const notifyInvalidation = (actions, { awaitListeners = false } = {}) => {
+  const pending = [];
   for (const action of actions) {
     for (const listener of [...(invalidationListeners.get(action) || [])]) {
-      try { listener(action); } catch { /* listener failures must not break cache invalidation */ }
+      try {
+        const result = listener(action);
+        if (result && typeof result.then === "function") {
+          if (awaitListeners) pending.push(result);
+          else result.catch(() => {});
+        }
+      } catch { /* listener failures must not break cache invalidation */ }
     }
   }
+  return pending;
 };
 
 const subscribeToRead = (entry, signal) => {
@@ -150,13 +163,22 @@ export const readRequest = (action, payload, options) => {
   return subscribeToRead(entry, options.signal);
 };
 
-export const invalidateActions = (actions = []) => {
+const invalidateActionSet = (actions = [], options = {}) => {
   const targets = new Set(actions);
   targets.forEach((action) => actionVersions.set(action, (actionVersions.get(action) || 0) + 1));
   for (const [key, cached] of readCache.entries()) {
     if (targets.has(cached.action)) readCache.delete(key);
   }
-  notifyInvalidation(targets);
+  return notifyInvalidation(targets, options);
+};
+
+export const invalidateActions = (actions = []) => {
+  invalidateActionSet(actions);
+};
+
+export const invalidateActionsAndWait = async (actions = []) => {
+  const pending = invalidateActionSet(actions, { awaitListeners: true });
+  return Promise.allSettled(pending);
 };
 
 export const seedRead = (action, payload = {}, data, { ttl } = {}) => {

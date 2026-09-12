@@ -214,3 +214,44 @@
   }
   .app-shell--notifications .app-content > .notice { margin: var(--mobile-page-gutter); }
 }
+
+@media (max-width: 820px) {
+  .mobile-pull-refresh {
+    position: fixed;
+    inset-inline: 0;
+    top: calc(env(safe-area-inset-top) + 4px);
+    z-index: 95;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(calc(-44px + var(--pull-refresh-distance, 0px)));
+    transition: opacity var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
+  }
+  .mobile-pull-refresh.is-visible { opacity: 1; }
+  .mobile-pull-refresh__pill {
+    min-height: 34px;
+    padding: 7px 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    border-radius: var(--radius-pill);
+    color: var(--text);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    box-shadow: var(--shadow-sm);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+  }
+  .mobile-pull-refresh__pill svg { width: 15px; height: 15px; flex: 0 0 15px; }
+  .mobile-pull-refresh.is-refreshing .mobile-pull-refresh__pill svg { animation: spin var(--motion-spinner) linear infinite; }
+  .mobile-pull-refresh.is-ready .mobile-pull-refresh__pill { color: var(--primary); }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 820px) {
+  .mobile-pull-refresh { transition: opacity var(--motion-fast) linear; transform: translateY(-2px); }
+  .mobile-pull-refresh.is-refreshing .mobile-pull-refresh__pill svg { animation: none; }
+}

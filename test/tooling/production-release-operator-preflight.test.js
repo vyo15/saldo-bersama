@@ -1,65 +1,34 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import test from "node:test";
 
 import { checkProductionReleasePreflight } from "../../scripts/production-release-preflight.mjs";
 
-const makeRoot = async () => mkdtemp(path.join(os.tmpdir(), "saldo-release-operator-"));
-
-const writeProfiles = async (root, { sameDatabase = false } = {}) => {
-  await writeFile(path.join(root, ".env.local"), [
-    "DATABASE_ENVIRONMENT=development",
-    "TURSO_DATABASE_URL=libsql://saldo-dev.example",
-    "TURSO_AUTH_TOKEN=dev-token",
-    "SESSION_SECRET=dev-session",
-    "",
-  ].join("\n"));
-  await writeFile(path.join(root, ".env.production.local"), [
-    "DATABASE_ENVIRONMENT=production",
-    `TURSO_DATABASE_URL=${sameDatabase ? "libsql://saldo-dev.example" : "libsql://saldo-prod.example"}`,
-    "TURSO_AUTH_TOKEN=prod-readonly-token",
-    "",
-  ].join("\n"));
-};
-
-test("Production release preflight memakai operator Turso read-only tanpa mewajibkan runtime secret lokal", async () => {
-  const root = await makeRoot();
-  await writeProfiles(root);
+test("Production release preflight menjalankan integrity di staged Vercel Production build", async () => {
+  const calls = [];
   const logs = [];
-  let databaseChecks = 0;
-
-  const schema = await checkProductionReleasePreflight({
-    root,
-    databaseChecker: async () => {
-      databaseChecks += 1;
-      return { version: 14, expectedVersion: 14, databaseEnvironment: "production", ready: true };
+  const result = await checkProductionReleasePreflight({
+    remoteIntegrityRunner: async ({ operation }) => {
+      calls.push(operation);
+      return { operation, remote: true };
     },
-    logger: { log: (message) => logs.push(message) },
+    logger: { log: (message) => logs.push(String(message)) },
   });
-
-  assert.equal(databaseChecks, 1);
-  assert.equal(schema.version, 14);
-  assert.equal(schema.databaseEnvironment, "production");
-  assert.equal(logs.some((message) => /read-only PASS/.test(message)), true);
+  assert.deepEqual(calls, ["integrity"]);
+  assert.equal(result.ready, true);
+  assert.equal(result.remote, true);
+  assert.match(logs.join("\n"), /staged Vercel Production integrity PASS/);
 });
 
-test("Production release preflight tetap fail-closed bila operator menunjuk database Development", async () => {
-  const root = await makeRoot();
-  await writeProfiles(root, { sameDatabase: true });
-  let databaseChecks = 0;
-
+test("Production release preflight fail-closed bila remote integrity gagal", async () => {
   await assert.rejects(
     checkProductionReleasePreflight({
-      root,
-      databaseChecker: async () => {
-        databaseChecks += 1;
-        return { version: 14, databaseEnvironment: "production", ready: true };
+      remoteIntegrityRunner: async () => {
+        throw Object.assign(new Error("schema mismatch"), { code: "DATABASE_SCHEMA_MISMATCH" });
       },
       logger: { log() {} },
     }),
-    (error) => error?.code === "DATABASE_ENVIRONMENT_ISOLATION_FAILED",
+    (error) => error?.code === "PRODUCTION_RELEASE_SCHEMA_NOT_READY"
+      && error?.remoteCode === "DATABASE_SCHEMA_MISMATCH"
+      && /db:migrate -- production/.test(error.message),
   );
-  assert.equal(databaseChecks, 0);
 });

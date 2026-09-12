@@ -27,7 +27,7 @@ const serializeValue = (value) => String(value ?? "").replace(/[\r\n]+/g, "");
 export const buildProductionSeed = (development = {}) => {
   const lines = [
     "# Saldo Bersama — Production profile lokal untuk workstation tepercaya",
-    "# File ini wajib tetap gitignored. Isi secret Production dari secret store canonical; jangan generate per komputer.",
+    "# File ini wajib tetap gitignored. Skeleton ini akan dilengkapi otomatis oleh sinkronisasi Vercel Production.",
     "# Jangan menyalin TURSO token, SESSION_SECRET, atau VAPID Development ke Production.",
     "",
   ];
@@ -80,8 +80,8 @@ export const prepareProductionEnvironment = async ({ cwd = projectRoot } = {}) =
   await writeFile(productionPath, buildProductionSeed(development), { encoding: "utf8", mode: 0o600, flag: "wx" });
   console.log(`${PRODUCTION_FILE} dibuat tanpa credential Production yang environment-specific.`);
   console.log("Public config dan Google bridge pusat (bila lengkap) disalin dari Development; DATABASE_ENVIRONMENT di-set ke production.");
-  console.log("Isi credential Production canonical dari secret store yang sama pada setiap workstation tepercaya, lalu jalankan npm run env:check:production.");
-  console.log("Jangan generate SESSION_SECRET, token Turso, OAuth secret, atau VAPID baru per komputer.");
+  console.log("Skeleton Production dibuat; workflow canonical berikutnya menarik nilai Production dari Vercel secara otomatis.");
+  console.log("Jangan menyalin credential Development ke Production.");
   return { path: productionPath };
 };
 

@@ -1,4 +1,4 @@
-import { assertNonNegativeRupiah, assertPositiveRupiah } from "../../domain/money.js";
+import { assertPositiveRupiah } from "../../domain/money.js";
 import {
   adjustEnvelopeAllocation,
   archiveEnvelopeRule,
@@ -13,13 +13,12 @@ import {
 export const runCreateAllocation = async ({ createForm, resetForm, setCreateForm, onCreated, notify, refreshAfterMutation }) => {
   const name = String(createForm.name || "").trim();
   if (!name) throw new Error("Nama alokasi wajib diisi.");
-  const amount = assertNonNegativeRupiah(createForm.default_amount);
   if (!createForm.source_account_id) throw new Error("Rekening sumber wajib dipilih.");
-  const created = await createEnvelope({ ...createForm, name, default_amount: amount, allocated_amount: amount }, {});
+  const created = await createEnvelope({ ...createForm, name, default_amount: 0, allocated_amount: 0 }, {});
   setCreateForm(resetForm());
-  onCreated?.(created);
-  notify({ message: "Alokasi dan periode aktif berhasil dibuat." });
+  notify({ message: "Alokasi berhasil dibuat. Tambahkan Kebutuhan agar dana dipisahkan otomatis." });
   await refreshAfterMutation();
+  onCreated?.(created);
 };
 
 export const runMoveAllocation = async ({ move, lookup, setMove, onMoved, notify, refreshAfterMutation }) => {

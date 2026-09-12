@@ -34,7 +34,7 @@ export const buildProductionProfileTemplate = ({ development = {} } = {}) => `${
   "# Saldo Bersama — trusted workstation Production profile",
   "# Dibuat otomatis sekali. File ini tidak boleh masuk Git/ZIP/chat.",
   "# Nilai Production harus sama pada PC/laptop tepercaya dan Vercel Production.",
-  "# Credential Production tidak dapat dipull kembali dari Vercel Sensitive, jadi isi dari secret store canonical.",
+  "# Skeleton fallback saja; workflow normal mengisi profile otomatis dari Vercel Production.",
   "",
   envLine("VITE_APP_NAME", copyIfPresent(development, "VITE_APP_NAME", "Saldo Bersama")),
   envLine("VITE_GOOGLE_CLIENT_ID", copyIfPresent(development, "VITE_GOOGLE_CLIENT_ID")),

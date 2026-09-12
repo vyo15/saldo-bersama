@@ -11,7 +11,6 @@ const PRODUCTION_DATABASE_GUARD_PATHS = Object.freeze([
   "database/migrations/",
   "api/_lib/db/",
   "scripts/db-migrate.mjs",
-  "scripts/production-database-preflight.mjs",
   "scripts/production-migration-safety.mjs",
   "scripts/production-release-preflight.mjs",
 ]);

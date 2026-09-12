@@ -128,7 +128,7 @@ export const restoreProductionOperatorProfile = async ({
 
   let next = currentSource ?? [
     "# Saldo Bersama — Production operator profile restored for this checkout",
-    "# Runtime Production secrets tetap berada di Vercel/secret store.",
+    "# Cache operator Turso ini hanya fallback perangkat; source canonical tetap Vercel Production.",
     "",
   ].join("\n");
   for (const key of PRODUCTION_OPERATOR_KEYS) next = replaceEnvValue(next, key, stored.values[key]);

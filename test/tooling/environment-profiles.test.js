@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { checkProductionEnvironment, environmentIsolationStatus, environmentSharedConfigStatus } from "../../scripts/check-production-environment.mjs";
-import { checkProductionRuntime, prepareTrustedProductionRuntime, productionCoreReadiness, PRODUCTION_ORIGIN, runProductionRuntime } from "../../scripts/production-runtime.mjs";
+import { checkProductionRuntime, productionCoreReadiness, PRODUCTION_ORIGIN, runProductionRuntime } from "../../scripts/production-runtime.mjs";
 import { assertDatabaseProfileBinding, loadDatabaseProfile, resolveDatabaseProfileTarget } from "../../scripts/database-profile.mjs";
 import { environmentProfileSummary, inspectEnvironmentProfiles, safeFingerprint } from "../../scripts/environment-status.mjs";
 import { buildProductionProfileTemplate, ensureProductionLocalProfile, synchronizeCentralGoogleBridgeProfile } from "../../scripts/production-local-profile.mjs";
@@ -204,36 +204,23 @@ test("Production template hanya menyamakan config aman dan membiarkan secret per
   assert.doesNotMatch(source, /dev-session|dev\.example|dev-token|dev-public|dev-private/);
 });
 
-test("npm run prod tidak menarik/menimpa Development dan hanya memeriksa Production + isolasi", async () => {
-  const calls = [];
-  await prepareTrustedProductionRuntime({
-    root: "/tmp/project",
-    productionProfileEnsurer: async () => { calls.push("profile"); return { created: false, productionPath: "/tmp/project/.env.production.local" }; },
-    centralBridgeSynchronizer: async () => { calls.push("bridge"); },
-    productionEnvironmentChecker: async () => { calls.push("isolation"); },
-    productionDatabaseChecker: async () => { calls.push("database"); },
-  });
-  assert.deepEqual(calls, ["profile", "bridge", "isolation", "database"]);
-});
-
-test("npm run prod meminta setup satu kali bila Production profile baru dibuat", async () => {
-  await assert.rejects(
-    prepareTrustedProductionRuntime({
-      root: "/tmp/project",
-      interactive: true,
-      productionProfileEnsurer: async () => ({ created: true, productionPath: "/tmp/project/.env.production.local" }),
-      productionEnvironmentChecker: async () => { throw new Error("should not run"); },
-      productionDatabaseChecker: async () => { throw new Error("should not run"); },
-    }),
-    (error) => error?.code === "PRODUCTION_PROFILE_SETUP_REQUIRED",
-  );
-});
-
 test("production runtime check memverifikasi health backend dan frontend shell aktual", async () => {
   const requests = [];
   const fetchImpl = async (url) => {
     requests.push(String(url));
-    if (String(url).endsWith("/api/health")) return response({ body: { ok: true, data: { status: "ok" } } });
+    if (String(url).endsWith("/api/health")) {
+      return response({
+        body: {
+          ok: true,
+          data: {
+            status: "ok",
+            schema: { ready: true, version: 18, expectedVersion: 18, databaseEnvironment: "production" },
+            maintenanceMode: false,
+            coreOperationsHealthy: true,
+          },
+        },
+      });
+    }
     return response({ body: null, contentType: "text/html; charset=utf-8" });
   };
   const result = await checkProductionRuntime({ fetchImpl });
@@ -242,16 +229,12 @@ test("production runtime check memverifikasi health backend dan frontend shell a
 });
 
 test("production runtime check fail closed bila Vercel Production degraded", async () => {
-  const fetchImpl = async () => response({ body: { ok: true, data: { status: "degraded" } } });
+  const fetchImpl = async () => response({ body: { ok: true, data: { status: "degraded", schema: { ready: false } } } });
   await assert.rejects(
     checkProductionRuntime({ fetchImpl }),
     (error) => error?.code === "PRODUCTION_DEGRADED" && error?.serviceStatus === "degraded",
   );
 });
-
-
-
-
 
 test("Google bridge pusat dapat diselaraskan DEV ke PROD lokal tanpa menyalin secret environment-specific", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "saldo-bridge-profile-"));
@@ -319,57 +302,35 @@ test("Google bridge pusat fail closed bila DEV/PROD lengkap tetapi drift", async
   }
 });
 
-test("Production core tetap usable saat hanya scheduler/integrasi optional degraded", async () => {
-  const readiness = productionCoreReadiness({
-    databaseStatus: "ok",
+test("Production core readiness hanya memblokir schema, maintenance, dan core operations", () => {
+  const ready = productionCoreReadiness({
     schema: { ready: true },
     maintenanceMode: false,
-    scheduler: { status: "degraded", errorCode: "INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED" },
-    operations: { status: "degraded", codes: ["INTEGRATION_DEAD_LETTER"] },
+    coreOperationsHealthy: true,
   });
-  assert.equal(readiness.ready, true);
-  assert.deepEqual(readiness.blockers, []);
-  assert.deepEqual(readiness.warnings, ["INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED", "INTEGRATION_DEAD_LETTER"]);
+  assert.deepEqual(ready, { ready: true, blockers: [] });
 
   const blocked = productionCoreReadiness({
-    databaseStatus: "ok",
-    schema: { ready: true },
-    maintenanceMode: false,
-    scheduler: { status: "ok" },
-    operations: { status: "degraded", codes: ["INTEGRITY_FAILED"] },
+    schema: { ready: false },
+    maintenanceMode: true,
+    coreOperationsHealthy: false,
   });
   assert.equal(blocked.ready, false);
-  assert.deepEqual(blocked.blockers, ["INTEGRITY_FAILED"]);
+  assert.deepEqual(blocked.blockers, ["SCHEMA_NOT_READY", "MAINTENANCE_MODE", "CORE_OPERATIONS_DEGRADED"]);
 });
 
-test("npm run prod membuka core Production sehat walau aggregate health scheduler masih degraded", async () => {
-  let frontendChecked = 0;
-  const before = console.warn;
-  const beforeLog = console.log;
-  console.warn = () => {};
-  console.log = () => {};
-  try {
-    const result = await runProductionRuntime({
-      root: "/tmp/project",
-      open: false,
-      prepare: async () => {},
-      runtimeCheck: async () => { throw Object.assign(new Error("degraded"), { code: "PRODUCTION_DEGRADED" }); },
-      degradationReporter: async () => ({
-        databaseStatus: "ok",
-        schema: { ready: true, version: 14 },
-        maintenanceMode: false,
-        scheduler: { status: "degraded", errorCode: "INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED" },
-        operations: { status: "ok", codes: [] },
-      }),
-      frontendCheck: async () => { frontendChecked += 1; },
-    });
-    assert.equal(result.coreReady, true);
-    assert.equal(result.serviceStatus, "degraded");
-    assert.equal(frontendChecked, 1);
-  } finally {
-    console.warn = before;
-    console.log = beforeLog;
-  }
+test("npm run prod hanya memeriksa runtime remote dan tidak membutuhkan profile Production lokal", async () => {
+  let checks = 0;
+  const result = await runProductionRuntime({
+    open: false,
+    runtimeCheck: async () => {
+      checks += 1;
+      return { origin: PRODUCTION_ORIGIN, serviceStatus: "ok" };
+    },
+  });
+  assert.equal(checks, 1);
+  assert.equal(result.origin, PRODUCTION_ORIGIN);
+  assert.equal(result.serviceStatus, "ok");
 });
 
 test("Production checker mewajibkan profile Development dan Production pada workstation yang sama", async () => {

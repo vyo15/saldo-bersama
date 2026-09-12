@@ -126,6 +126,15 @@ test("schema helpers memverifikasi version canonical, environment binding, cache
         && /environment yang sesuai/.test(error.message),
     );
 
+    delete process.env.DATABASE_ENVIRONMENT;
+    process.env.VERCEL_ENV = "production";
+    invalidateSchemaCache();
+    const inferredProduction = await readSchemaStatus(dbWith(DATABASE_SCHEMA_VERSION, "production"), { force: true });
+    assert.equal(inferredProduction.ready, true);
+    assert.equal(inferredProduction.expectedEnvironment, "production");
+    assert.equal(inferredProduction.runtimeEnvironment, "production");
+    assert.equal(inferredProduction.environmentReady, true);
+
     process.env.DATABASE_ENVIRONMENT = "development";
     process.env.VERCEL_ENV = "production";
     invalidateSchemaCache();

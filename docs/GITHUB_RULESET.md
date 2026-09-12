@@ -26,7 +26,7 @@ git push origin main
   -> tolak non-fast-forward/force
   -> npm run verify
   -> klasifikasikan diff
-     -> database-compatibility: Production DB read-only
+     -> database-compatibility: staged Vercel Production integrity
      -> non-schema: core Vercel Production health
   -> PASS baru Git mengirim ref main
 ```

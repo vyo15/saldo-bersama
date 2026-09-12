@@ -12,7 +12,7 @@ const args = process.argv.slice(2);
 const input = args[0];
 const environmentOption = args.find((value) => String(value).startsWith("--environment="));
 const databaseEnvironment = resolveDatabaseProfileTarget({ argv: [String(environmentOption || "--environment=development").split("=")[1]] });
-await loadDatabaseProfile({ root, environment: databaseEnvironment });
+await loadDatabaseProfile({ root, environment: databaseEnvironment, refreshRemote: databaseEnvironment === "production" });
 const apply = args.includes("--apply");
 const confirmed = args.includes("--confirm=MIGRATE_LEGACY_TO_TURSO");
 if (!input || input.startsWith("--")) throw new Error("Gunakan: npm run db:import-legacy -- path/export.json [--environment=development|production] [--apply --confirm=MIGRATE_LEGACY_TO_TURSO]");

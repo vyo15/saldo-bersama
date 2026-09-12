@@ -42,7 +42,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.match(investmentsPage, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
 
   assert.match(allocationDetail, /onAdjustAllocation\(item, summary\.gap\)/);
-  assert.match(allocationDetail, /showStandardAdjustAction\(canAdjustAllocation, item, linkedBudgets\)/);
+  assert.doesNotMatch(allocationDetail, /showStandardAdjustAction|>Atur dana<\/Button>/);
   assert.match(allocationDetail, /showGlobalExpenseAction\(state\.canRecordExpense, linkedBudgets\)/);
 
   assert.match(mobileAccounts, /<span>Riwayat<\/span>/);

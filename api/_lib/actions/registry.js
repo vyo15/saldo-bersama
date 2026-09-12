@@ -23,7 +23,7 @@ import {
 } from "../services/investments.js";
 import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
-  adjustEnvelopeAllocation, archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createEnvelope, createGoal, createRecurringRule, deleteUnusedBudget,
+  adjustEnvelopeAllocation, archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createBudgetsBatch, createEnvelope, createGoal, createRecurringRule, deleteUnusedBudget,
   deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence,
   previewBudgetLifecycle, previewEnvelopeRuleLifecycle, previewGoalLifecycle, previewRecurringRuleLifecycle, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
   reverseEnvelopeMovement, reverseGoalMovement, reverseOccurrencePayment, updateGoal, updateRecurringRule, upsertBudget,
@@ -36,6 +36,8 @@ import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../servic
 import { listTransferRequests, requestSharedToPersonalTransfer, reviewTransferRequest } from "../services/transferRequests.js";
 import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
 import { operationalHealthStatement, presentOperationalHealth, presentSchedulerHealth } from "../services/operationalHealth.js";
+
+import { readSyncState } from "../syncRevisions.js";
 
 const systemHealth = async (db) => {
   const configStatement = { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','maintenance_mode','timezone','currency','database_environment','scheduler_last_run_at','scheduler_last_success_at','scheduler_last_failure_at','scheduler_last_error_code')", args: [] };
@@ -83,6 +85,7 @@ const mirrorSync = async (db, context, rebuild) => {
 
 const ACTION_HANDLERS = Object.freeze({
   "system.health": systemHealth,
+  "sync.state": readSyncState,
   "app.initialState": appInitialState,
   "bootstrap.get": bootstrapData,
   "users.list": listUsers,
@@ -154,6 +157,7 @@ const ACTION_HANDLERS = Object.freeze({
   "recurring.reversePayment": reverseOccurrencePayment,
   "recurring.restoreRule": restoreRecurringRule,
   "budgets.list": listBudgets,
+  "budgets.batchCreate": createBudgetsBatch,
   "budgets.upsert": upsertBudget,
   "budgets.previewLifecycle": previewBudgetLifecycle,
   "budgets.archive": archiveBudget,

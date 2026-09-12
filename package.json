@@ -14,7 +14,7 @@
     "diagnose": "node scripts/diagnose-runtime.mjs",
     "env:status": "node scripts/environment-status.mjs",
     "env:pull:development": "node scripts/pull-development-environment.mjs",
-    "env:prepare:production": "node scripts/prepare-production-environment.mjs",
+    "env:prepare:production": "node scripts/pull-production-environment.mjs",
     "env:check:development": "node scripts/check-environment.mjs .env.local",
     "env:check:production": "node scripts/check-production-environment.mjs",
     "build": "npm run build --workspace saldo-bersama-frontend",
@@ -28,12 +28,13 @@
     "db:import-legacy": "node scripts/migrate-legacy-json.mjs",
     "env:check": "node scripts/check-environment.mjs",
     "env:push:development": "node scripts/push-vercel-development-env.mjs",
-    "env:push:production": "npm run env:check:production && node scripts/push-vercel-production-env.mjs",
+    "env:push:production": "node scripts/check-production-environment.mjs --local-provisioning && node scripts/push-vercel-production-env.mjs",
     "env:clean": "node scripts/clean-local-environment.mjs",
     "clean": "node scripts/clean-generated-artifacts.mjs",
     "clean:dependencies": "node scripts/clean-development-dependencies.mjs",
     "postinstall": "node scripts/install-git-hooks.mjs",
-    "test:browser": "node scripts/browser-smoke.mjs"
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "env:pull:production": "node scripts/pull-production-environment.mjs"
   },
   "workspaces": [
     "frontend"

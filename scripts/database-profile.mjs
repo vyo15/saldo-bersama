@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { parseEnvironmentText } from "./runtime-environment.mjs";
+import { ensureProductionEnvironment } from "./bootstrap-production-env.mjs";
 
 export const DATABASE_PROFILE_FILES = Object.freeze({
   development: ".env.local",
@@ -59,13 +60,19 @@ export const assertDatabaseProfileBinding = async ({ database, environment }) =>
   return { environment: target, binding };
 };
 
-export const loadDatabaseProfile = async ({ root, environment }) => {
+export const loadDatabaseProfile = async ({ root, environment, refreshRemote = false }) => {
   const target = String(environment || "").trim().toLowerCase();
   const fileName = DATABASE_PROFILE_FILES[target];
   if (!fileName) {
     throw Object.assign(new Error("Target database harus development atau production."), {
       code: "DATABASE_PROFILE_INVALID",
       target,
+    });
+  }
+  if (target === "production" && refreshRemote) {
+    await ensureProductionEnvironment({
+      projectRoot: root,
+      requiredKeys: PROFILE_ENV_KEYS,
     });
   }
   const filePath = path.join(root, fileName);

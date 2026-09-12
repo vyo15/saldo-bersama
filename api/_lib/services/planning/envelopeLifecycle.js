@@ -6,6 +6,7 @@ import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
 import { addMonths } from "./shared.js";
 import { copyEnvelopeNeedsToPeriod } from "./budgets.js";
+import { adjustEnvelopeForBudgetDelta } from "./budgetFunding.js";
 
 // Envelope lifecycle owns period close/rollover and archive/delete/restore safeguards.
 // Historical periods, movements, budgets, and active reservations block destructive deletion.
@@ -160,7 +161,22 @@ export const closeEnvelope = async (db, context) => {
       sourcePeriodKey: period.period_start.slice(0, 7),
       targetPeriodKey: nextPeriod.period_start.slice(0, 7),
     })
-    : { copied: 0, skipped: 0, source_period_key: period.period_start.slice(0, 7), target_period_key: nextPeriod.period_start.slice(0, 7) };
+    : { copied: 0, skipped: 0, copied_amount: 0, source_period_key: period.period_start.slice(0, 7), target_period_key: nextPeriod.period_start.slice(0, 7) };
+  let fundedNextPeriod = nextPeriod;
+  if (reuseNeeds) {
+    const targetPlan = await db.one("SELECT COALESCE(SUM(amount),0) AS planned FROM budgets WHERE envelope_rule_id=? AND period_key=? AND status='active'", [period.envelope_rule_id, nextPeriod.period_start.slice(0, 7)]);
+    const fundingGap = Math.max(0, Number(targetPlan?.planned || 0) - Number(nextPeriod.allocated_amount || 0));
+    if (fundingGap > 0) {
+      const funding = await adjustEnvelopeForBudgetDelta(db, context, {
+        envelopeRuleId: period.envelope_rule_id,
+        envelopePeriodId: nextPeriod.envelope_period_id,
+        periodKey: nextPeriod.period_start.slice(0, 7),
+        delta: fundingGap,
+        reason: "Pendanaan otomatis Kebutuhan periode berikutnya",
+      });
+      fundedNextPeriod = funding.period || nextPeriod;
+    }
+  }
 
   const timestamp = nowIso();
   const next = {
@@ -175,7 +191,7 @@ export const closeEnvelope = async (db, context) => {
   await cancelScheduledManualRemindersForEntity(db, context, "envelope_period", period.envelope_period_id, "ENTITY_CLOSED");
   const response = {
     period: publicRow(next),
-    next_period: publicRow(nextPeriod),
+    next_period: publicRow(fundedNextPeriod),
     released_amount: period.rollover_policy === "carry" ? 0 : remaining,
     rollover,
     needs_continuity: needsContinuity,

@@ -19,6 +19,7 @@ const memberCollaborationMigrationUrl = new URL("012_member_collaboration.sql", 
 const investmentTrackingMigrationUrl = new URL("013_investment_tracking.sql", migrationDirectory);
 const investmentOpeningPositionMigrationUrl = new URL("014_investment_opening_position.sql", migrationDirectory);
 const investmentAssetCentricMigrationUrl = new URL("015_investment_asset_centric.sql", migrationDirectory);
+const globalSyncRevisionMigrationUrl = new URL("016_global_sync_revisions.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -108,9 +109,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v17 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v18 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "17");
+  assert.equal(result.schema_version, "18");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -408,4 +409,15 @@ test("migration v17 memisahkan pencatatan aset dari cash RDN secara additive dan
   assert.match(sql, /value='17'/);
   assert.doesNotMatch(sql, /ALTER TABLE transactions/);
   assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN/i);
+});
+
+
+test("migration v18 menambah revision sync global tanpa mengubah ledger", async () => {
+  const sql = await readFile(globalSyncRevisionMigrationUrl, "utf8");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS sync_revisions/);
+  assert.match(sql, /resource TEXT PRIMARY KEY/);
+  assert.match(sql, /revision INTEGER NOT NULL DEFAULT 0/);
+  assert.match(sql, /__global__/);
+  assert.match(sql, /value='18'/);
+  assert.doesNotMatch(sql, /ALTER TABLE transactions|ALTER TABLE accounts|ALTER TABLE categories/);
 });

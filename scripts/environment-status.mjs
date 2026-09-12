@@ -127,10 +127,11 @@ export const printEnvironmentProfiles = async ({ cwd = projectRoot } = {}) => {
     printProfile("Development (.env.local)", result.developmentSummary);
   }
 
+  console.log("Production runtime: Vercel-managed; secret Sensitive tidak dipull ke workstation.");
   if (!result.production.exists) {
-    console.log("Production: .env.production.local belum ada (SETUP REQUIRED pada workstation tepercaya). Jalankan npm run prod untuk membuat skeleton aman satu kali.");
+    console.log("Production local provisioning profile: tidak ada (opsional; hanya diperlukan saat seed/rotasi env dengan env:push:production).");
   } else {
-    printProfile("Production (.env.production.local)", result.productionSummary);
+    printProfile("Production provisioning (.env.production.local, opsional)", result.productionSummary);
   }
 
   if (result.isolation) {
@@ -141,7 +142,6 @@ export const printEnvironmentProfiles = async ({ cwd = projectRoot } = {}) => {
   }
 
   const invalid = !result.development.exists
-    || !result.production.exists
     || (result.development.exists && !result.developmentSummary.valid)
     || (result.production.exists && !result.productionSummary.valid)
     || (result.isolation && !result.isolation.valid)

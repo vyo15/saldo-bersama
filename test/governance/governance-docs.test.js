@@ -355,7 +355,7 @@ test("environment policy uses Vercel Development as guarded local bootstrap", ()
     assert.match(source, /Vercel Development/);
     assert.match(source, /npm run dev/);
   }
-  assert.match(environmentDocs, /Production dan Development/);
+  assert.match(environmentDocs, /Development dan Production|Production dan Development/);
   assert.match(environmentDocs, /VERCEL_OIDC_TOKEN/);
   assert.match(bootstrap, /env", "pull"/);
   assert.match(bootstrap, /cleanEnvironmentText/);
@@ -407,7 +407,8 @@ test("current docs track branded desktop/mobile server OAuth production, runtime
   assert.match(matrix, /semantic\/static regression/);
   assert.match(matrix, /real-device coverage pending/);
   assert.doesNotMatch(deployment, /runtime v8 menerima traffic/);
-  assert.ok(deployment.includes(`runtime v${DATABASE_SCHEMA_VERSION} menerima traffic`));
+  assert.match(deployment, new RegExp(`runtime v${DATABASE_SCHEMA_VERSION}.*traffic|schema v${DATABASE_SCHEMA_VERSION}.*Production`, "i"));
+  assert.match(deployment, /staged Vercel Production build/i);
   assert.match(status, /Auth desktop dan mobile:.*tombol Google branded Saldo Bersama/);
   assert.match(status, /Authorization Code flow.*Firebase Identity Toolkit/);
   assert.match(testPlan, /production canonical.*`\/api\/auth\/google\/start`/);

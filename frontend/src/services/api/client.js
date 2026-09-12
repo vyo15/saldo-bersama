@@ -3,15 +3,16 @@
  * idempotency path; feature components must not implement a second write/retry stack.
  */
 import {
-  clearReadState, invalidateActions, isReadAction, readRequest, seedRead, setReadSessionScope,
+  clearReadState, invalidateActions, invalidateActionsAndWait, isReadAction, readRequest, seedRead, setReadSessionScope,
 } from "./cache.js";
 import { createSecureRandomId } from "../../domain/security.js";
 import { ApiError, isOutcomeUnknownError } from "./errors.js";
 import { createServerSession, destroyServerSession, downloadExcel, gatewayFetch, readSession } from "./transport.js";
 import { stableValue } from "./serialization.js";
+import { publishServerStateChanged } from "../sync/syncSignals.js";
 
 export { ApiError, isAbortError, isOutcomeUnknownError, parseResponse, shouldInvalidateSession } from "./errors.js";
-export { stableQueryKey, subscribeToInvalidation } from "./cache.js";
+export { stableQueryKey, subscribeToInvalidation, subscribedReadActions } from "./cache.js";
 
 const SESSION_CACHE_TTL_MS = 2_000;
 let sessionCache = { expiresAt: 0, value: null, promise: null };
@@ -212,6 +213,7 @@ const guardedMutationRequest = (action, payload, options = {}) => {
       clearIntent(fingerprint);
       clearUnresolvedIntent(action, fingerprint);
       settleMutationActivity(activityToken, "success");
+      publishServerStateChanged(action);
       return result;
     })
     .catch((error) => {
@@ -251,6 +253,7 @@ export const apiClient = {
 
   async createSession(firebaseIdToken) {
     const session = await createServerSession(firebaseIdToken);
+    publishServerStateChanged("session.login");
     this.setSessionScope(session?.uid || session?.email || "authenticated");
     sessionCache = { expiresAt: Date.now() + SESSION_CACHE_TTL_MS, value: session, promise: null };
     return session;
@@ -258,6 +261,7 @@ export const apiClient = {
 
   async logout() {
     const result = await destroyServerSession();
+    publishServerStateChanged("session.logout");
     this.setSessionScope("anonymous");
     return result;
   },
@@ -274,6 +278,10 @@ export const apiClient = {
 
   invalidate(actions) {
     invalidateActions(Array.isArray(actions) ? actions : [actions]);
+  },
+
+  invalidateAndWait(actions) {
+    return invalidateActionsAndWait(Array.isArray(actions) ? actions : [actions]);
   },
 
   seed(action, payload = {}, data, options = {}) {

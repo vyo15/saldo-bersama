@@ -17,7 +17,7 @@
 ## Turso/schema gagal
 
 - Hentikan write.
-- Untuk Development jalankan `npm run env:check`, `npm run db:integrity`; untuk Production gunakan `npm run prod:check` terlebih dahulu dan, bila direct integrity read memang disetujui pada komputer tepercaya, `npm run db:integrity -- production`.
+- Untuk Development jalankan `npm run env:check`, `npm run db:integrity`; untuk Production gunakan `npm run prod:check` terlebih dahulu dan `npm run db:integrity -- production` bila perlu verifikasi database. Integrity Production berjalan di staged Vercel Production build sehingga secret Sensitive tidak dibaca ke workstation.
 - Jangan menjalankan migration ulang tanpa review.
 - Bila schema mismatch, ikuti migration/release plan.
 

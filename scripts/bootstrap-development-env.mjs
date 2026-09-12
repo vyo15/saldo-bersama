@@ -43,12 +43,13 @@ const localEnvironmentState = async (envPath) => {
   return { exists: true, source: cleaned.text, removed: cleaned.removed, ...status };
 };
 
-export const runVercelCommand = ({ cwd, args, stdio = "pipe" }) => new Promise((resolve, reject) => {
+export const runVercelCommand = ({ cwd, args, stdio = "pipe", env = process.env }) => new Promise((resolve, reject) => {
   const invocation = buildVercelInvocation(args);
   const child = spawn(invocation.executable, invocation.args, {
     cwd,
     stdio: stdio === "inherit" ? "inherit" : ["ignore", "pipe", "pipe"],
     windowsHide: true,
+    env,
   });
 
   let stdout = "";
@@ -79,7 +80,7 @@ export const ensureVercelLogin = async ({ cwd, runner }) => {
   assertSuccessful(result, "VERCEL_LOGIN_UNAVAILABLE", "Vercel CLI belum memiliki sesi login yang valid.");
 };
 
-export const ensureVercelProject = async ({ cwd, projectName, runner }) => {
+export const ensureVercelProject = async ({ cwd, projectName, runner, environment = "development" }) => {
   console.log(`Memastikan repository terhubung ke project Vercel ${projectName}...`);
   let result = await runner({
     cwd,
@@ -94,11 +95,12 @@ export const ensureVercelProject = async ({ cwd, projectName, runner }) => {
   }
 
   await normalizeVercelGitignore(cwd);
-  result = await runner({ cwd, args: ["env", "ls", "development", "--no-color"] });
+  result = await runner({ cwd, args: ["env", "ls", environment, "--no-color"] });
+  const normalizedEnvironment = String(environment || "development").trim().toUpperCase();
   assertSuccessful(
     result,
-    "VERCEL_DEVELOPMENT_ENV_UNAVAILABLE",
-    "Vercel Development Environment tidak dapat diakses untuk project yang terhubung.",
+    `VERCEL_${normalizedEnvironment}_ENV_UNAVAILABLE`,
+    `Vercel ${String(environment || "development")} Environment tidak dapat diakses untuk project yang terhubung.`,
   );
 };
 

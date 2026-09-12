@@ -10,7 +10,7 @@ Pemilik memilih satu database agar setup lintas perangkat sederhana dan tidak ad
 ## Decision
 Keputusan satu database pada ADR ini **tidak lagi menjadi runtime yang didukung**. Source/test aktual mewajibkan Development dan Production memakai Turso URL/token, `SESSION_SECRET`, VAPID, dan binding `database_environment` yang terpisah; sharing fail-closed. Vercel Preview tetap kosong.
 
-Keputusan bootstrap awal juga sudah digantikan oleh ADR-0010: Vercel Development menjadi sumber bootstrap `.env.local` pada workstation tepercaya, sedangkan Production memakai `.env.production.local` dan tidak pernah dipull dari scope Sensitive.
+Keputusan bootstrap awal juga sudah digantikan: Vercel Development menjadi sumber bootstrap `.env.local` pada workstation tepercaya, sedangkan Production memakai secret langsung di Vercel. `.env.production.local` hanya opsional untuk seed/rotasi karena scope Sensitive tidak dapat dipull kembali.
 
 Riwayat satu database tetap dipertahankan di ADR ini hanya sebagai konteks migrasi. Amandemen fase awal 2026-09-08 mengizinkan **Reset data testing** pada database yang terikat canonical sebagai Development **atau Production**, agar Administrator dapat membersihkan data trial sebelum penggunaan nyata dimulai; `unbound`/marker asing tetap fail-closed. Kebijakan ini tidak mengizinkan sharing database lintas environment dan tidak mengubah isolation Development/Production. Action tetap Administrator-only, preview + fingerprint, typed confirmation, acknowledgement, safety backup, maintenance lock, purge atomik, integrity check, audit, serta rebuild integrasi. Outcome `reset.apply` yang tidak pasti wajib direkonsiliasi melalui read action `reset.status`; retry destructive tidak pernah otomatis, dan maintenance hanya boleh dibuka setelah integrity check lulus.
 
@@ -33,7 +33,7 @@ Plan berikut adalah urutan cutover yang membawa project keluar dari constraint s
 Urutan cutover historis:
 
 1. Buat database Turso Development baru tanpa menyalin credential Production ke source/chat/log.
-2. Terapkan seluruh migration canonical sampai schema v17 pada database Development.
+2. Terapkan seluruh migration canonical sampai schema v18 pada database Development.
 3. Bind database tersebut secara eksplisit dengan `npm run db:bind-environment -- development`; rebind silang wajib ditolak.
 4. Verifikasi `timezone=Asia/Jakarta`, `currency=IDR`, foreign key, dan business integrity.
 5. Isi Vercel Development `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, dan `DATABASE_ENVIRONMENT=development` dengan scope Development. Production tetap memakai credential Production dan `DATABASE_ENVIRONMENT=production`.

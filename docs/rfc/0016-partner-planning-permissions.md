@@ -51,7 +51,7 @@ Alokasi Dana mempertahankan guard `assignee_user_id`: Member hanya dapat memakai
 Broken access control menjadi risiko utama. Setiap perluasan action baru harus mengulang negative authorization test dan tidak boleh mengandalkan `scope` yang dikirim browser tanpa validasi terhadap rekening/entity server.
 ## Amendment 2026-08-25 — planning personal milik Member
 
-Keputusan produk terbaru memperluas operasi harian Member: `envelopes.*` yang non-destruktif, `budgets.upsert`, dan `recurring.*` yang non-destruktif boleh memakai scope personal hanya ketika `owner_user_id` sama dengan actor dan rekening sumber/default memang dapat dioperasikan actor. Rekening/planning personal pasangan tetap read-only bagi Member.
+Keputusan produk terbaru memperluas operasi harian Member: `envelopes.*` yang non-destruktif, `budgets.upsert`, `budgets.batchCreate`, dan `recurring.*` yang non-destruktif boleh memakai scope personal hanya ketika `owner_user_id` sama dengan actor dan rekening sumber/default memang dapat dioperasikan actor. `budgets.batchCreate` hanya membundel create yang sudah diizinkan: semua item mengikuti ownership Alokasi yang sama dan optional recurring di dalam batch wajib memakai source account kompatibel; satu pelanggaran me-rollback seluruh batch. Rekening/planning personal pasangan tetap read-only bagi Member.
 
 Target baru tetap wajib memakai rekening Bersama. Lifecycle destruktif planning tetap Administrator-only. Frontend memakai capability untuk pilihan rekening, sedangkan backend selalu memvalidasi ulang ownership, assignee, row version, idempotency, dan saldo/dana tersedia. Amendment ini menggantikan amendment 2026-08-22 yang hanya membuka Kebutuhan personal.
 

@@ -110,7 +110,7 @@ test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/auth/LoginPage.jsx"),
   ]);
-  assert.match(allocations, /const AllocationSetupLayer = lazy\(\(\) => import\("\.\/AllocationSetupLayer\.jsx"\)\)/);
+  assert.doesNotMatch(allocations, /AllocationSetupLayer|setupCreated/);
   assert.match(allocations, /const loadAllocationActionRunners = \(\) => import\("\.\/allocationActionRunners\.js"\)/);
   assert.doesNotMatch(allocations, /from "\.\/allocationActionRunners\.js"/);
   assert.doesNotMatch(allocations, /from "\.\/allocations\.api\.js"/);
@@ -300,7 +300,8 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
   assert.match(overview, /allocation-card__expand/);
   assert.match(overview, />Buka alokasi/);
   assert.doesNotMatch(overview, /FiSliders|allocation-card__planning-actions|allocationCardActionState/);
-  assert.match(detail, /FiSliders[\s\S]*>Atur dana<\/Button>/);
+  assert.match(detail, /FiSliders[\s\S]*>Pulihkan dana<\/Button>/);
+  assert.doesNotMatch(detail, /showStandardAdjustAction|>Atur dana<\/Button>/);
   assert.match(page, /onAddNeed: \(item\) => openDetail\(item, "add-need"\)/);
   assert.match(detail, /initialAction !== "add-need"/);
   assert.match(detail, /if \(canManage\) openBudgetForm\(\)/);

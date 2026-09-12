@@ -8,10 +8,12 @@ import {
   previewBudgetLifecycle,
   upsertBudget,
 } from "./budgets.api.js";
+import { useBudgetBatchDraft } from "./useBudgetBatchDraft.js";
 
 export const emptyBudgetForm = (overrides = {}) => ({
   category_id: "",
   envelope_rule_id: "",
+  envelope_period_id: "",
   amount: "",
   warning_threshold: 80,
   scope: "shared",
@@ -39,9 +41,10 @@ const findBudgetForForm = (items, form) => items.find((item) => budgetMatchesFor
   || (form.envelope_rule_id ? items.find((item) => budgetMatchesOwnership(item, form) && !item.envelope_rule_id) : null)
   || null;
 
-const formFromBudget = (item, envelopeRuleId = item?.envelope_rule_id || "") => ({
+const formFromBudget = (item, envelopeRuleId = item?.envelope_rule_id || "", envelopePeriodId = "") => ({
   category_id: item?.category_id || "",
   envelope_rule_id: envelopeRuleId || "",
+  envelope_period_id: envelopePeriodId || "",
   amount: String(item?.amount || ""),
   warning_threshold: Number(item?.warning_threshold || 80),
   scope: item?.scope || "shared",
@@ -65,6 +68,7 @@ const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule
       period_key: period,
       amount,
       envelope_rule_id: form.envelope_rule_id || null,
+      envelope_period_id: form.envelope_period_id || null,
       owner_user_id: form.scope === "personal" ? form.owner_user_id : null,
       row_version: existingBudget?.row_version,
     }, { rowVersion: existingBudget?.row_version });
@@ -112,14 +116,14 @@ const budgetSaveFeedback = ({ completingSchedule, existingBudget, recordingMode 
   return { message: "Kebutuhan berhasil dibuat.", dedupeKey: "budgets:create" };
 };
 
-export const useBudgetFormController = ({ items, period, notify, refresh, categories = [], scheduleAccountId = "" }) => {
+const useBudgetFormState = ({ items }) => {
   const [form, setForm] = useState(emptyBudgetForm);
   const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState("create-single");
   const [message, setMessage] = useState(null);
   const [saveState, setSaveState] = useState({ status: "idle", error: null });
   const [pendingSchedule, setPendingSchedule] = useState(null);
-  const existingBudget = findBudgetForForm(items, form);
-
+  const existingBudget = formMode === "edit-single" ? findBudgetForForm(items, form) : null;
   const resetSaveState = () => setSaveState({ status: "idle", error: null });
   const selectCategory = (categoryId) => {
     setMessage(null);
@@ -127,8 +131,7 @@ export const useBudgetFormController = ({ items, period, notify, refresh, catego
     setForm((currentForm) => {
       const nextForm = { ...currentForm, category_id: categoryId };
       const current = findBudgetForForm(items, nextForm);
-      if (!current) return { ...nextForm, amount: "", warning_threshold: 80 };
-      return formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "");
+      return current ? formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "", nextForm.envelope_period_id || "") : { ...nextForm, amount: "", warning_threshold: 80 };
     });
   };
   const selectOwnership = (value) => {
@@ -137,62 +140,112 @@ export const useBudgetFormController = ({ items, period, notify, refresh, catego
     setForm((currentForm) => {
       const nextForm = { ...currentForm, ...budgetOwnershipUpdates(value) };
       const current = findBudgetForForm(items, nextForm);
-      if (!current) return { ...nextForm, amount: "", warning_threshold: 80 };
-      return formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "");
+      return current ? formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "", nextForm.envelope_period_id || "") : { ...nextForm, amount: "", warning_threshold: 80 };
     });
   };
-  const openBudgetForm = (initial = {}) => {
+  const open = (initial) => {
     setPendingSchedule(null);
     setForm(emptyBudgetForm(initial));
+    setFormMode(initial.envelope_rule_id ? "create-batch" : "create-single");
     setMessage(null);
     resetSaveState();
     setFormOpen(true);
   };
-  const closeBudgetForm = () => {
-    if (saveState.status === "submitting") return;
+  const close = () => {
+    if (saveState.status === "submitting") return false;
     setFormOpen(false);
     setForm(emptyBudgetForm());
+    setFormMode("create-single");
     setPendingSchedule(null);
     resetSaveState();
+    return true;
   };
-  const editBudget = (item, overrides = {}) => {
+  const edit = (item, overrides) => {
     setPendingSchedule(null);
-    setForm({ ...formFromBudget(item), ...overrides });
+    setForm({ ...formFromBudget(item, overrides?.envelope_rule_id || item?.envelope_rule_id || "", overrides?.envelope_period_id || ""), ...overrides });
+    setFormMode("edit-single");
     setMessage(null);
     resetSaveState();
     setFormOpen(true);
+  };
+  const finishSave = () => {
+    setForm(emptyBudgetForm());
+    setFormMode("create-single");
+    setFormOpen(false);
+    resetSaveState();
+  };
+  return {
+    form, setForm, formOpen, setFormOpen, formMode, message, setMessage, saveState, setSaveState,
+    pendingSchedule, setPendingSchedule, existingBudget, resetSaveState, selectCategory, selectOwnership,
+    open, close, edit, finishSave,
+  };
+};
+
+export const useBudgetFormController = ({ items, period, notify, refresh, categories = [], scheduleAccountId = "" }) => {
+  const state = useBudgetFormState({ items });
+  const batch = useBudgetBatchDraft({
+    items, period, form: state.form, resetSaveState: state.resetSaveState, setSaveState: state.setSaveState,
+  });
+  const openBudgetForm = (initial = {}) => {
+    state.open(initial);
+    batch.reset(true);
+  };
+  const closeBudgetForm = () => {
+    if (state.close()) batch.reset(false);
+  };
+  const editBudget = (item, overrides = {}) => {
+    state.edit(item, overrides);
+    batch.reset(false);
+  };
+  const saveBatch = async () => {
+    const result = await batch.save();
+    const count = Number(result?.count || batch.rows.length);
+    state.finishSave();
+    batch.reset(false);
+    notify({ message: `${count} kebutuhan berhasil ditambahkan.`, tone: "success", dedupeKey: "budgets:create-batch" });
+    await refresh();
+  };
+  const saveSingle = async () => {
+    const saveContext = await budgetSaveContext({ form: state.form, period, existingBudget: state.existingBudget, pendingSchedule: state.pendingSchedule });
+    if (shouldCreateBudgetSchedule({ pendingSchedule: state.pendingSchedule, existingBudget: state.existingBudget, recordingMode: saveContext.recordingMode })) {
+      const schedule = state.pendingSchedule || budgetScheduleFromForm(state.form, saveContext.amount);
+      try {
+        await createBudgetSchedule({ schedule, categories, scheduleAccountId });
+        state.setPendingSchedule(null);
+      } catch (scheduleError) {
+        state.setPendingSchedule(schedule);
+        state.setSaveState({ status: "error", error: new Error(`Kebutuhan sudah tersimpan, tetapi jadwal belum berhasil dibuat. ${scheduleError.message || "Coba simpan jadwal lagi."}`) });
+        await refresh();
+        return false;
+      }
+    }
+    state.finishSave();
+    notify({ ...budgetSaveFeedback({ ...saveContext, existingBudget: state.existingBudget }), tone: "success" });
+    await refresh();
+    return true;
   };
   const saveBudget = async (event) => {
     event.preventDefault();
-    setSaveState({ status: "submitting", error: null });
-    setMessage(null);
+    state.setSaveState({ status: "submitting", error: null });
+    state.setMessage(null);
     try {
-      const saveContext = await budgetSaveContext({ form, period, existingBudget, pendingSchedule });
-      if (shouldCreateBudgetSchedule({ pendingSchedule, existingBudget, recordingMode: saveContext.recordingMode })) {
-        const schedule = pendingSchedule || budgetScheduleFromForm(form, saveContext.amount);
-        try {
-          await createBudgetSchedule({ schedule, categories, scheduleAccountId });
-          setPendingSchedule(null);
-        } catch (scheduleError) {
-          setPendingSchedule(schedule);
-          setSaveState({ status: "error", error: new Error(`Kebutuhan sudah tersimpan, tetapi jadwal belum berhasil dibuat. ${scheduleError.message || "Coba simpan jadwal lagi."}`) });
-          await refresh();
-          return;
-        }
-      }
-      setForm(emptyBudgetForm());
-      setFormOpen(false);
-      resetSaveState();
-      notify({ ...budgetSaveFeedback({ ...saveContext, existingBudget }), tone: "success" });
-      await refresh();
+      if (state.formMode === "create-batch") await saveBatch();
+      else await saveSingle();
     } catch (error) {
-      setSaveState({ status: "error", error });
+      batch.focusError(error);
+      state.setSaveState({ status: "error", error });
     }
   };
-  return { form, setForm, formOpen, setFormOpen, message, setMessage, saveState, pendingSchedule, existingBudget, selectCategory, selectOwnership, openBudgetForm, closeBudgetForm, editBudget, saveBudget };
+  return {
+    form: state.form, setForm: state.setForm, formOpen: state.formOpen, setFormOpen: state.setFormOpen, formMode: state.formMode,
+    message: state.message, setMessage: state.setMessage, saveState: state.saveState, pendingSchedule: state.pendingSchedule, existingBudget: state.existingBudget,
+    batchRows: batch.rows, activeBatchRowId: batch.activeRowId, batchTotal: batch.total, batchLimit: batch.limit,
+    updateBatchRow: batch.updateRow, addBatchRow: batch.addRow, removeBatchRow: batch.removeRow, selectBatchRow: batch.selectRow,
+    selectCategory: state.selectCategory, selectOwnership: state.selectOwnership, openBudgetForm, closeBudgetForm, editBudget, saveBudget,
+  };
 };
 
-export const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen }) => {
+export const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen, envelopePeriodId = "" }) => {
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
   const openBudgetLifecycle = async (budget) => {
@@ -212,10 +265,10 @@ export const useBudgetLifecycleController = ({ notify, refresh, setForm, setForm
     setArchiveState({ status: "submitting", error: null });
     try {
       if (preview.canDeleteUnused) {
-        await requestDeleteUnusedBudget({ budget_id: budget.budget_id, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
+        await requestDeleteUnusedBudget({ budget_id: budget.budget_id, envelope_period_id: envelopePeriodId || null, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
         notify({ message: "Kebutuhan yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "budgets:delete-unused" });
       } else {
-        await requestArchiveBudget({ budget_id: budget.budget_id, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
+        await requestArchiveBudget({ budget_id: budget.budget_id, envelope_period_id: envelopePeriodId || null, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
         notify({ message: "Kebutuhan berhasil diarsipkan. Transaksi dan laporan historis tetap tersimpan.", tone: "success", dedupeKey: "budgets:archive" });
       }
       setArchiveTarget(null);

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { readSessionCredential, safeEqualText } from "./security.js";
 import { appendAudit } from "./services/audit.js";
 import { nowIso } from "./services/core.js";
+import { bumpSyncRevisions } from "./syncRevisions.js";
 
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
 const LAST_SEEN_WRITE_INTERVAL_MS = 15 * 60_000;
@@ -82,7 +83,17 @@ export const resolveRegisteredSession = async (db, request) => {
   const lastSeen = row.last_seen_at ? new Date(row.last_seen_at).getTime() : 0;
   if (!Number.isFinite(lastSeen) || Date.now() - lastSeen >= LAST_SEEN_WRITE_INTERVAL_MS) {
     const timestamp = nowIso();
-    db.execute("UPDATE user_sessions SET last_seen_at=?,updated_at=? WHERE session_id=? AND revoked_at IS NULL", [timestamp, timestamp, row.session_id]).catch(() => undefined);
+    const updateHeartbeat = async (writer) => {
+      const result = await writer.execute(
+        "UPDATE user_sessions SET last_seen_at=?,updated_at=? WHERE session_id=? AND revoked_at IS NULL AND last_seen_at=?",
+        [timestamp, timestamp, row.session_id, row.last_seen_at],
+      );
+      if (Number(result.rowsAffected || 0) > 0) await bumpSyncRevisions(writer, ["sessions.listOwn"], timestamp);
+    };
+    const heartbeat = typeof db.transaction === "function"
+      ? db.transaction(updateHeartbeat)
+      : updateHeartbeat(db);
+    heartbeat.catch(() => undefined);
   }
   return {
     uid: row.firebase_uid,

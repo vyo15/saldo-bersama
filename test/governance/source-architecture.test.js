@@ -167,7 +167,7 @@ test("action internal kantong tidak diekspos dan health publik hanya mengembalik
   await healthHandler({ method: "GET", headers: { "x-request-id": "health-minimal-test" } }, response);
   assert.equal(response.statusCode, 200);
   const body = JSON.parse(response.body);
-  assert.deepEqual(Object.keys(body.data).sort(), ["requestId", "status", "timestamp"]);
+  assert.deepEqual(Object.keys(body.data).sort(), ["coreOperationsHealthy", "maintenanceMode", "requestId", "schema", "status", "timestamp"]);
   assert.ok(["ok", "degraded"].includes(body.data.status));
   assert.notEqual(body.data.status, "maintenance");
 });

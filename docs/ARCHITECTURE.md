@@ -103,6 +103,11 @@ available_balance = balance - allocated_remaining
 
 `balance` tetap saldo ledger fisik. Membuat Alokasi Dana hanya mengikat dana bebas. Expense yang memakai Alokasi Dana wajib memakai rekening sumber Alokasi Dana yang sama; bagian yang ter-cover oleh Alokasi Dana menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Alokasi Dana dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif.
 
+## Global realtime synchronization
+
+Runtime schema v18 memakai `sync_revisions` sebagai sinyal invalidation lintas perangkat. `api/_lib/syncRevisions.js` adalah sumber canonical dependency mutation → read-resource. Dispatcher menaikkan revision di transaction yang sama dengan mutation; session dan scheduler/job yang berada di luar dispatcher menaikkan revision eksplisit. Frontend `SyncCoordinator` membandingkan `sync.state`, menginvalidasi hanya resource yang berubah, dan menunggu mounted read selesai sebelum memajukan baseline. Foreground, reconnect, BroadcastChannel, push, polling visible, dan pull-to-refresh memakai coordinator yang sama. Local draft/form/modal state tidak ikut di-reset. Revision bukan financial authority dan tidak masuk logical backup.
+
+
 ## Concurrency
 
 - Turso transaction digunakan untuk write atomik.
