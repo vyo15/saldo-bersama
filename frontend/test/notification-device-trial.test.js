@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -26,14 +26,24 @@ test("trial notifikasi perangkat memakai native showNotification dengan asset no
 
   assert.match(presets, /Liburan sebentar lagi! ❤️/);
   assert.match(presets, /Pelan-pelan, pasti bisa 💚/);
-  assert.match(presets, /\/notifications\/trial\/liburan\.png\?v=1/);
-  assert.match(presets, /\/notifications\/trial\/masa-depan\.png\?v=1/);
+  assert.match(presets, /\/notifications\/trial\/liburan\.webp\?v=2/);
+  assert.match(presets, /\/notifications\/trial\/masa-depan\.webp\?v=2/);
   assert.ok((presets.match(/targetPath: "\/target"/g) || []).length >= 2);
 
   assert.match(panel, /Coba notifikasi di HP ini/);
   assert.match(panel, /Tampilkan di perangkat ini/);
   assert.match(panel, /showNotificationTrial\(theme\)/);
   assert.match(page, /<NotificationTrialPanel pushState=\{pushState\} refreshPushState=\{refreshPushState\} \/>/);
-  assert.match(sw, /\/notifications\/trial\/liburan\.png\?v=1/);
-  assert.match(sw, /\/notifications\/trial\/masa-depan\.png\?v=1/);
+  assert.match(sw, /\/notifications\/trial\/liburan\.webp\?v=2/);
+  assert.match(sw, /\/notifications\/trial\/masa-depan\.webp\?v=2/);
+});
+
+
+test("asset trial notifikasi tetap ringan agar clean source archive punya headroom", async () => {
+  const assets = [
+    "public/notifications/trial/liburan.webp",
+    "public/notifications/trial/masa-depan.webp",
+  ];
+  const sizes = await Promise.all(assets.map(async (relative) => (await stat(path.join(root, relative))).size));
+  sizes.forEach((size) => assert.ok(size <= 225 * 1024, `Asset trial terlalu besar: ${size} byte`));
 });
