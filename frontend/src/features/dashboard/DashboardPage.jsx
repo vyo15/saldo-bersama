@@ -1,5 +1,5 @@
 import { APP_MEDIA } from "../../config/layout.js";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useMemo, useState } from "react";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -11,6 +11,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { TRANSACTION_LABELS } from "../../shared/presentation/transaction.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { absoluteAmount } from "./dashboardPresentation.js";
+import { normalizeDashboardBootstrap, normalizeDashboardOverview } from "./dashboardResilience.js";
 
 const DesktopFinanceDashboard = lazy(() => import("./components/DesktopFinanceDashboard.jsx"));
 const MobileFinanceDashboard = lazy(() => import("./components/MobileFinanceDashboard.jsx"));
@@ -18,6 +19,30 @@ const MobileTransactionDetail = lazy(() => import("./components/MobileTransactio
 const FinancialSetupChecklist = lazy(() => import("./FinancialSetupChecklist.jsx"));
 
 const useMobileDashboardLayout = () => useMediaQuery(APP_MEDIA.mobile);
+
+class DashboardRenderBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    // Keep a dashboard-only render failure from replacing the entire authenticated shell.
+    // The message/stack contains code diagnostics only; no financial payload is logged.
+    console.error("Dashboard render failed", error, info?.componentStack || "");
+  }
+
+  render() {
+    if (this.state.error) {
+      return <ErrorState error={{ code: "DASHBOARD_RENDER_ERROR", message: "Ringkasan beranda belum dapat ditampilkan." }} onRetry={() => this.setState({ error: null })} />;
+    }
+    return this.props.children;
+  }
+}
 
 const buildLookups = (overview, bootstrap) => {
   const accountBalances = (overview.accountBalances || []).map((item) => ({ ...item, account_name: item.name, name: accountDisplayLabel(item) }));
@@ -110,19 +135,23 @@ const DashboardSurfaces = ({ mobileLayout, displayOverview, bootstrap, dashboard
   );
 };
 
-const DashboardPage = () => {
+const DashboardPageContent = () => {
   const { overview, bootstrap, status, error, refreshAll } = useFinance(); const { openTransactionComposer } = useTransactionComposer(); const { user } = useAuth(); const mobileLayout = useMobileDashboardLayout();
   const investments = useApiResource("investments.overview");
-  const [balanceVisible, setBalanceVisible] = useState(true); const [searchTerm, setSearchTerm] = useState(""); const [accountFilter, setAccountFilter] = useState("all"); const [categoryFilter, setCategoryFilter] = useState("all"); const [typeFilter, setTypeFilter] = useState("all"); const [selectedTransactionId, setSelectedTransactionId] = useState(""); const [desktopAccountId, setDesktopAccountId] = useDesktopAccountSelection(overview); const [mobileTransactionDetailOpen, setMobileTransactionDetailOpen] = useState(false);
+  const safeOverview = useMemo(() => normalizeDashboardOverview(overview), [overview]);
+  const safeBootstrap = useMemo(() => normalizeDashboardBootstrap(bootstrap), [bootstrap]);
+  const [balanceVisible, setBalanceVisible] = useState(true); const [searchTerm, setSearchTerm] = useState(""); const [accountFilter, setAccountFilter] = useState("all"); const [categoryFilter, setCategoryFilter] = useState("all"); const [typeFilter, setTypeFilter] = useState("all"); const [selectedTransactionId, setSelectedTransactionId] = useState(""); const [desktopAccountId, setDesktopAccountId] = useDesktopAccountSelection(safeOverview); const [mobileTransactionDetailOpen, setMobileTransactionDetailOpen] = useState(false);
   const filters = { searchTerm, accountFilter, categoryFilter, typeFilter, selectedTransactionId }; const setters = { setSearchTerm, setAccountFilter, setCategoryFilter, setTypeFilter, setSelectedTransactionId };
-  const dashboardViewModel = useMemo(() => createDashboardViewModel({ overview, bootstrap, filters: { searchTerm, accountFilter, categoryFilter, typeFilter, selectedTransactionId } }), [accountFilter, bootstrap, categoryFilter, overview, searchTerm, selectedTransactionId, typeFilter]);
-  if (status === "loading" || status === "idle") return <NativePageSkeleton kind="dashboard" label="Memuat ringkasan keuangan…" />; if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />; if (!overview || !dashboardViewModel) return null;
-  const displayOverview = { ...overview, accountBalances: dashboardViewModel.accountBalances }; const displayName = String(user?.name || user?.email || "").trim().split(/\s+/)[0] || "Kamu";
+  const dashboardViewModel = useMemo(() => createDashboardViewModel({ overview: safeOverview, bootstrap: safeBootstrap, filters: { searchTerm, accountFilter, categoryFilter, typeFilter, selectedTransactionId } }), [accountFilter, safeBootstrap, categoryFilter, safeOverview, searchTerm, selectedTransactionId, typeFilter]);
+  if (status === "loading" || status === "idle") return <NativePageSkeleton kind="dashboard" label="Memuat ringkasan keuangan…" />; if (status === "error") return <ErrorState error={error} onRetry={refreshAll} />; if (!safeOverview || !dashboardViewModel) return null;
+  const displayOverview = { ...safeOverview, accountBalances: dashboardViewModel.accountBalances }; const displayName = String(user?.name || user?.email || "").trim().split(/\s+/)[0] || "Kamu";
   const openMobileTransactionDetail = (transactionId) => { setSelectedTransactionId(transactionId); setMobileTransactionDetailOpen(true); };
   const investmentSummary = investments.data?.portfolios?.length ? investments.data.summary : null;
-  const surfaces = { mobileLayout, displayOverview, bootstrap, dashboardViewModel, investmentSummary, user, displayName, balanceVisible, setBalanceVisible, openTransactionComposer, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };
+  const surfaces = { mobileLayout, displayOverview, bootstrap: safeBootstrap, dashboardViewModel, investmentSummary, user, displayName, balanceVisible, setBalanceVisible, openTransactionComposer, openMobileTransactionDetail, desktopAccountId, setDesktopAccountId, filters, setters };
   const overlays = { mobileTransactionDetailOpen, setMobileTransactionDetailOpen, dashboardViewModel, balanceVisible, openTransactionComposer };
   return <div className="dashboard-page"><RefreshWarning error={investments.error || investments.refreshError} onRetry={investments.reload} /><DashboardSurfaces {...surfaces} />{mobileLayout ? <MobileDashboardOverlays {...overlays} /> : null}</div>;
 };
+
+const DashboardPage = () => <DashboardRenderBoundary><DashboardPageContent /></DashboardRenderBoundary>;
 
 export default DashboardPage;

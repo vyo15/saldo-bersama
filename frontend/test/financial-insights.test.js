@@ -247,7 +247,9 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(page, /dashboardViewModel/);
   assert.match(page, /accountDisplayLabel/);
   assert.match(page, /accountBalances = \(overview\.accountBalances \|\| \[\]\)\.map/);
-  assert.match(page, /displayOverview = \{ \.\.\.overview, accountBalances: dashboardViewModel\.accountBalances \}/);
+  assert.match(page, /normalizeDashboardOverview\(overview\)/);
+  assert.match(page, /safeOverview/);
+  assert.match(page, /displayOverview = \{ \.\.\.safeOverview, accountBalances: dashboardViewModel\.accountBalances \}/);
   assert.match(page, /viewModel=\{dashboardViewModel\}/);
   assert.doesNotMatch(page, /MobileDashboardFilters|mobileFiltersOpen/);
   assert.match(page, /selectedTransaction = filteredTransactions\.find/);

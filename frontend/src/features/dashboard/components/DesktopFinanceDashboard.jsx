@@ -239,7 +239,8 @@ const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
   const nonInvestmentBalance = overview.nonInvestmentBalance ?? model.accountBalances
     .filter((item) => item.account_type !== "investment")
     .reduce((sum, item) => sum + Number(item.balance || 0), 0);
-  const netCashFlow = Number(overview.cashFlow.income || 0) - Number(overview.cashFlow.expense || 0);
+  const cashFlow = overview?.cashFlow || {};
+  const netCashFlow = Number(cashFlow.income || 0) - Number(cashFlow.expense || 0);
   const NetCashFlowIcon = netCashFlow > 0 ? FiTrendingUp : netCashFlow < 0 ? FiTrendingDown : FiMinus;
 
   return (
@@ -553,7 +554,7 @@ const StatisticsPanel = ({ overview, model, balanceVisible }) => (
       </div>
       <div className={dashboardClass("shared-statistics__summary")}>
         <span>Total pengeluaran bulan ini</span>
-        <SensitiveMoney visible={balanceVisible} value={overview.cashFlow.expense} tone="negative" />
+        <SensitiveMoney visible={balanceVisible} value={overview?.cashFlow?.expense || 0} tone="negative" />
         <small>{model.expenseByCategory.length} kategori tercatat</small>
       </div>
       <div className={dashboardClass("shared-statistics__content")}>
