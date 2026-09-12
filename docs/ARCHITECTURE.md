@@ -105,7 +105,7 @@ available_balance = balance - allocated_remaining
 
 ## Global realtime synchronization
 
-Runtime schema v18 memakai `sync_revisions` sebagai sinyal invalidation lintas perangkat. `api/_lib/syncRevisions.js` adalah sumber canonical dependency mutation → read-resource. Dispatcher menaikkan revision di transaction yang sama dengan mutation; session dan scheduler/job yang berada di luar dispatcher menaikkan revision eksplisit. Frontend `SyncCoordinator` membandingkan `sync.state`, menginvalidasi hanya resource yang berubah, dan menunggu mounted read selesai sebelum memajukan baseline. Foreground, reconnect, BroadcastChannel, push, polling visible, dan pull-to-refresh memakai coordinator yang sama. Local draft/form/modal state tidak ikut di-reset. Revision bukan financial authority dan tidak masuk logical backup.
+Runtime schema v19 mempertahankan `sync_revisions` yang diperkenalkan pada v18 sebagai sinyal invalidation lintas perangkat. `api/_lib/syncRevisions.js` adalah sumber canonical dependency mutation → read-resource. Dispatcher menaikkan revision di transaction yang sama dengan mutation; session dan scheduler/job yang berada di luar dispatcher menaikkan revision eksplisit. Frontend `SyncCoordinator` membandingkan `sync.state`, menginvalidasi hanya resource yang berubah, dan menunggu mounted read selesai sebelum memajukan baseline. Foreground, reconnect, BroadcastChannel, push, polling visible, dan pull-to-refresh memakai coordinator yang sama. Local draft/form/modal state tidak ikut di-reset. Revision bukan financial authority dan tidak masuk logical backup.
 
 
 ## Concurrency
@@ -141,3 +141,8 @@ Google Sheets mirror hanya memuat rekening, transaksi, anggaran, Alokasi Dana, J
 ## Keputusan arsitektur
 
 Keputusan dan trade-off canonical dicatat di `docs/adr/`. Perubahan guarded/lintas tim harus melalui RFC pada `docs/rfc/` sebelum ADR diperbarui.
+
+
+## Alokasi presentation metadata v20
+
+`envelope_rules.decoration_key` adalah metadata presentasi canonical untuk kartu Alokasi Dana. Field ini ikut read model dan backup/restore tetapi tidak menjadi financial authority; perubahan dekorasi tidak mengubah saldo, Dana Tersedia, ownership, rekonsiliasi, atau transaksi.

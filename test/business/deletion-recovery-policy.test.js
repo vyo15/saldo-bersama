@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { dispatchAction } from "../../api/_lib/actionDispatcher.js";
 import { todayJakarta } from "../../api/_lib/services/core.js";
+import { copyEnvelopeNeedsToPeriod } from "../../api/_lib/services/planning/budgets.js";
+import { monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
 const OWNER_ID = "owner-policy";
@@ -308,6 +310,92 @@ test("reaktivasi anggota dan tutup periode memakai tindakan eksplisit serta konf
       confirmation: preview.confirmation,
     });
     assert.equal(closed.status, "closed");
+  } finally {
+    db.close();
+  }
+});
+
+test("tutup periode memadatkan Kebutuhan tanpa menghilangkan report dan reopen memulihkan row operasional", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedOwner(db);
+    const account = await createAccount(db, "Rekening History Kebutuhan", 2_000_000);
+    const category = await dispatch(db, "categories.create", {
+      name: "Kebutuhan History",
+      transaction_type: "expense",
+      nature: "variable",
+    });
+    const period = previousPeriod();
+    const periodStart = `${period}-01`;
+    const endDate = new Date(`${periodStart}T00:00:00Z`);
+    endDate.setUTCMonth(endDate.getUTCMonth() + 1);
+    endDate.setUTCDate(0);
+    const periodEnd = endDate.toISOString().slice(0, 10);
+    const envelope = await dispatch(db, "envelopes.create", {
+      name: "Alokasi History",
+      source_account_id: account.account_id,
+      period_type: "monthly",
+      period_start: periodStart,
+      period_end: periodEnd,
+      default_amount: 0,
+      allocated_amount: 0,
+    });
+    const budget = await dispatch(db, "budgets.upsert", {
+      period_key: period,
+      category_id: category.category_id,
+      envelope_rule_id: envelope.rule.envelope_rule_id,
+      name: "Kebutuhan History",
+      amount: 400_000,
+      warning_threshold: 80,
+      scope: "shared",
+    });
+
+    const preview = await dispatch(db, "periods.previewClose", { period_key: period }, { write: false });
+    assert.equal(preview.canClose, true);
+    const closed = await dispatch(db, "periods.close", {
+      period_key: period,
+      reason: "Finalisasi histori kebutuhan",
+      confirmation: preview.confirmation,
+    });
+    assert.equal(closed.status, "closed");
+    assert.equal(closed.compacted_budgets, 1);
+    assert.equal(await db.one("SELECT budget_id FROM budgets WHERE budget_id=?", [budget.budget_id]), null);
+
+    const compacted = await db.one("SELECT * FROM budget_history WHERE budget_id=?", [budget.budget_id]);
+    assert.ok(compacted);
+    assert.equal(compacted.name, "Kebutuhan History");
+    assert.equal(Number(compacted.amount), 400_000);
+    assert.equal(compacted.final_status, "closed");
+
+    const report = await monthlyReport(db, {
+      actor: { user_id: OWNER_ID, email: OWNER_EMAIL, name: "Owner Policy", role: "owner" },
+      payload: { period, trend_months: 1 },
+    });
+    const reportedBudget = report.budgets.find((item) => item.budget_id === budget.budget_id);
+    assert.ok(reportedBudget, "Kebutuhan yang sudah dipadatkan tetap wajib tampil pada report periode lama.");
+    assert.equal(Number(reportedBudget.amount), 400_000);
+
+    const copied = await copyEnvelopeNeedsToPeriod(db, {
+      actor: { user_id: OWNER_ID, email: OWNER_EMAIL, name: "Owner Policy", role: "owner" },
+      action: "budgets.copyFromPreviousPeriod",
+      requestId: "policy:copy-history-needs",
+      enqueueMirror: async () => {},
+    }, {
+      envelopeRuleId: envelope.rule.envelope_rule_id,
+      sourcePeriodKey: period,
+      targetPeriodKey: todayJakarta().slice(0, 7),
+    });
+    assert.equal(copied.copied, 1, "Kebutuhan compact tetap dapat menjadi sumber continuity periode berikutnya.");
+
+    const reopened = await dispatch(db, "periods.reopen", {
+      closure_id: closed.closure_id,
+      row_version: closed.row_version,
+      reason: "Perlu koreksi bulan lama",
+    }, { rowVersion: closed.row_version });
+    assert.equal(reopened.status, "reopened");
+    assert.equal(reopened.restored_budgets, 1);
+    assert.ok(await db.one("SELECT budget_id FROM budgets WHERE budget_id=?", [budget.budget_id]));
+    assert.equal(await db.one("SELECT budget_id FROM budget_history WHERE budget_id=?", [budget.budget_id]), null);
   } finally {
     db.close();
   }

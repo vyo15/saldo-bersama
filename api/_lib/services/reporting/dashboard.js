@@ -2,6 +2,7 @@ import { readBatchRows, readBatchRowsChunked } from "../../db/readBatchRows.js";
 import { presentSyncRevisionRows, syncRevisionStatement } from "../../syncRevisions.js";
 import { appError, boundedInteger, monthBounds, nowIso, periodKey, sanitizeText, todayJakarta } from "../core.js";
 import { transactionCapabilities } from "../transactionPolicy.js";
+import { budgetReportStatement, mapBudgetReportRows } from "../planning/budgets.js";
 import { buildFinancialAlerts } from "./dashboard/alerts.js";
 import {
   bootstrapReadStatements,
@@ -184,21 +185,26 @@ export const monthlyReport = async (db, context) => {
   const cutoffDate = period === currentPeriod ? todayJakarta() : bounds.end;
   const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate);
   const trendPlan = trendMonths === 1 ? dailyTrendPlan(context.actor, period, { accountId }) : monthlyTrendPlan(context.actor, period, trendMonths, { accountId });
+  const reportBudgetStatement = budgetReportStatement(scoped);
   const combinedRows = await readBatchRowsChunked(db, [
     ...dashboardPlan.statements,
+    reportBudgetStatement,
     ...breakdownStatements,
     ...trendPlan.statements,
   ]);
   const dashboardEnd = dashboardPlan.statements.length;
-  const breakdownEnd = dashboardEnd + breakdownStatements.length;
+  const reportBudgetIndex = dashboardEnd;
+  const breakdownStart = reportBudgetIndex + 1;
+  const breakdownEnd = breakdownStart + breakdownStatements.length;
   const dashboardRows = combinedRows.slice(0, dashboardEnd);
   const readState = mapDashboardReadRows(dashboardRows, dashboardPlan, scoped, periodContext, null);
   const overview = dashboardResult(scoped, periodContext, readState);
-  const breakdowns = mapReportBreakdowns(combinedRows.slice(dashboardEnd, breakdownEnd));
+  const budgets = mapBudgetReportRows(combinedRows[reportBudgetIndex] || []).items;
+  const breakdowns = mapReportBreakdowns(combinedRows.slice(breakdownStart, breakdownEnd));
   const trend = trendMonths === 1 ? mapDailyTrendRows(trendPlan, combinedRows.slice(breakdownEnd)) : mapMonthlyTrendRows(trendPlan, combinedRows.slice(breakdownEnd));
   return {
     overview,
-    budgets: overview.budgets,
+    budgets,
     categoryExpenses: overview.categoryExpenses,
     ...breakdowns,
     trend: { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.items },

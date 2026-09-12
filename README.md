@@ -36,7 +36,7 @@ Repository/source aktual selalu lebih tinggi prioritasnya daripada memory atau p
 - Google Sheets tidak menulis balik ke Turso.
 - Excel bukan backup recovery.
 - Write offline ditolak; browser tidak mengantre transaksi finansial.
-- Dana yang dipisahkan ke Alokasi Dana tidak membuat transaksi bank palsu: saldo rekening tetap aktual, sedangkan `Dana tersedia` mengurangi bagian yang sudah terikat. Alokasi baru dimulai Rp0; menambah/mengubah/mengarsipkan/menghapus/memulihkan Kebutuhan menyesuaikan dana Alokasi otomatis sebesar delta yang aman. Penyesuaian manual hanya dipertahankan untuk compatibility/pemulihan data lama.
+- Dana yang dipisahkan ke Alokasi Dana tidak membuat transaksi bank palsu: saldo rekening tetap aktual, sedangkan `Dana tersedia` mengurangi bagian yang sudah terikat; Tambah/Kembalikan dana tetap tercatat sebagai aktivitas Alokasi.
 - Rekonsiliasi Investasi bersifat manual. Notification Center memprioritaskan kondisi operasional aktif; rekonsiliasi saldo yang baru dikonfirmasi menjadi checkpoint sehingga selisih tetap berada di histori tanpa terus menjadi notifikasi aktif.
 
 ## Menjalankan lokal
@@ -53,7 +53,7 @@ npm run dev
 
 Untuk troubleshooting/setup komputer baru tanpa menyalakan server, gunakan `npm run env:pull:development`, lalu `npm run env:status`. Status hanya menampilkan marker, host database, kelengkapan, dan fingerprint publik Web Push—bukan token/private key. Setelah seed Development pusat selesai, komputer tepercaya lain tidak perlu membuat `.env.local` atau VAPID baru secara manual.
 
-Untuk mode **Production**, gunakan `npm run prod`. Runtime Production memakai environment **langsung di Vercel**; secret Sensitive tidak dipull ke workstation. Command hanya memeriksa `/api/health` dan frontend shell canonical `https://saldo-bersama.vercel.app`, lalu membuka deployment bila core sehat. Operasi database Production (`db:migrate`, `db:integrity`, `db:bind-environment`) menjalankan staged Vercel Production build dengan `--skip-domain`, sehingga `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` tetap berada di Vercel dan tidak memerlukan `.env.production.local`. `VERCEL_ENV=production` menjadi marker environment canonical bila `DATABASE_ENVIRONMENT` tidak diset; marker eksplisit yang bertentangan tetap ditolak.
+Untuk mode **Production**, gunakan `npm run prod`. Command ini sekarang **Vercel-first**: repository dipastikan terhubung ke project `saldo-bersama`, environment `production` ditarik otomatis ke mirror `.env.production.local`, dan `vercel env run -e production` dicoba untuk nilai runtime yang tidak tersedia melalui export biasa. Saat runtime capture, mirror dotenv lokal disembunyikan sementara dan key aplikasi Development dibuang dari child environment agar scope Production Vercel tidak dapat dikalahkan `.env.local`; sesudahnya `.env.local` dipulihkan byte-for-byte dan hanya dipakai untuk membuktikan isolasi. Turso Production, core `/api/health`, dan frontend shell deployment canonical `https://saldo-bersama.vercel.app` diperiksa sebelum URL dibuka. Scheduler, Google integration, backup, atau notification degradation ditampilkan sebagai operational warning tetapi tidak mematikan login/ledger bila database/schema/binding, maintenance, integrity, dan frontend core sehat.
 
 Jangan commit `.env.local`, `.env.production.local`, `.vercel`, token, private key, atau secret.
 
@@ -71,7 +71,7 @@ Command harian sengaja dibuat ringkas:
 
 ```bash
 npm run dev   # hanya Development lokal → auto-pull Vercel Development + Turso Development
-npm run prod  # cek deployment Vercel Production langsung; tidak menarik secret Sensitive ke lokal
+npm run prod  # Vercel Production auto-sync → mirror lokal aman + Turso Production + live health, tanpa menulis DEV
 ```
 
 Untuk pemakaian harian cukup dua command di atas. Command `verify`, `zip`, database, environment sync, dan diagnosis tetap tersedia untuk quality gate/maintenance, tetapi tidak perlu dihafal untuk penggunaan rutin.
@@ -88,7 +88,7 @@ git commit -m "fix: deskripsi perubahan"
 git push origin main
 ```
 
-Managed pre-push hook memverifikasi bahwa branch aktif/ref/SHA yang benar-benar dikirim semuanya `main`, working tree bersih, push fast-forward, lalu menjalankan full `npm run verify`. Untuk perubahan yang menyentuh database-compatibility guard (`database/migrations/`, `api/_lib/db/`, dan tooling migration/release terkait), hook menjalankan **staged Vercel Production integrity build** agar schema/binding kompatibel sebelum ref dikirim tanpa mengekspor secret database ke workstation. Untuk perubahan non-schema seperti frontend, hook tidak membutuhkan credential Turso Production lokal dan cukup memverifikasi core Vercel Production melalui health publik. Jika satu gate gagal, push dibatalkan; push tidak pernah auto-migrate. GitHub **Quality** tetap berjalan setelah push sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify` atau force push.
+Managed pre-push hook memverifikasi bahwa branch aktif/ref/SHA yang benar-benar dikirim semuanya `main`, working tree bersih, push fast-forward, lalu menjalankan full `npm run verify`. Untuk perubahan yang menyentuh database-compatibility guard (`database/migrations/`, `api/_lib/db/`, dan tooling migration/release terkait), hook tetap mewajibkan Turso Production **secara read-only** agar schema/binding kompatibel sebelum ref dikirim. Untuk perubahan non-schema seperti frontend, hook tidak membutuhkan credential Turso Production lokal dan cukup memverifikasi core Vercel Production melalui health publik. Jika satu gate gagal, push dibatalkan; push tidak pernah auto-migrate. GitHub **Quality** tetap berjalan setelah push sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify` atau force push.
 
 ## Database
 
@@ -101,7 +101,7 @@ npm run db:integrity
 npm run db:import-legacy -- path/to/legacy-export.json
 ```
 
-Production wajib eksplisit; credential database tetap berada di Vercel dan operasi berjalan melalui staged Production build:
+Production wajib eksplisit dan memakai `.env.production.local`:
 
 ```bash
 npm run db:migrate -- production

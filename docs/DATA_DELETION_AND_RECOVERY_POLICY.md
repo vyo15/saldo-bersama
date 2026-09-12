@@ -24,7 +24,7 @@ Kebijakan ini mencegah kehilangan histori, saldo tidak konsisten, dan kesalahan 
 | Alokasi Dana (`envelope` rule) | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `envelopes.deleteUnusedRule` bila hanya ada satu initial empty period dan tidak ada transaksi/movement/budget/closed history |
 | Tagihan rutin/recurring rule | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `recurring.deleteUnusedRule` bila semua child hanyalah future generated projections yang belum pernah materialized/paid/skipped/cancelled |
 | Target tabungan | Arsipkan bila pernah dipakai | Administrator dapat memulihkan goal | Hanya `goals.deleteUnused` bila saldo progres = 0 dan tidak ada movement/transaksi semua status |
-| Anggaran | Arsipkan bila pernah menjadi histori planning | Administrator dapat memulihkan budget | Hanya `budgets.deleteUnused` bila tidak ada transaksi terkait dan tidak ada histori period closure |
+| Kebutuhan | `budgets.remove` menghapus permanen hanya bila benar-benar history-free; selain itu status menjadi dihentikan/archived, transaksi dan report tetap utuh, serta hanya sisa dana Alokasi yang aman yang dilepas | Compatibility restore tetap Administrator-only; periode yang dibuka kembali merehidrasi row operasional dari `budget_history` | `budgets.deleteUnused` tetap Administrator-only untuk compatibility; setelah period close row operasional dipadatkan ke `budget_history` + snapshot `period_closures` |
 | Member | Nonaktifkan | Reaktivasi eksplisit oleh Administrator dengan row version + alasan + audit | Dilarang dari UI harian |
 | Periode | Tutup | Buka kembali berurutan dengan alasan | Dilarang |
 | Audit dan rekonsiliasi | Tambah record koreksi baru | Tidak berlaku | Dilarang |

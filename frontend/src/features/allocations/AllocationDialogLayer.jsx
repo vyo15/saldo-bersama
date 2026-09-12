@@ -1,4 +1,4 @@
-import { FiArrowLeft, FiArrowRight, FiChevronDown, FiPlus } from "react-icons/fi";
+import { FiArrowLeft, FiArrowRight, FiChevronDown, FiGrid, FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
@@ -14,6 +14,7 @@ import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 import { allocationClass } from "./allocationStyles.js";
+import { ALLOCATION_DECORATIONS, allocationDecoration } from "./allocationDecorations.js";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 const envelopeAssigneeOptions = (form, accounts, users) => {
@@ -63,6 +64,24 @@ const buildAssigneeOptions = (assigneeState) => [
   })),
 ];
 
+const AllocationDecorationPicker = ({ name, value, onChange }) => {
+  const automatic = allocationDecoration({ decorationKey: "auto", name, id: name });
+  return <fieldset className={allocationClass("allocation-decoration form-grid__full")}>
+    <legend>Pemanis kartu</legend>
+    <div className={allocationClass("allocation-decoration__grid")}>
+      {ALLOCATION_DECORATIONS.map((option) => {
+        const selected = value === option.key;
+        const asset = option.key === "auto" ? automatic.asset : option.asset;
+        return <button key={option.key} type="button" className={allocationClass(`allocation-decoration__choice${selected ? " is-active" : ""}`)} aria-pressed={selected} onClick={() => onChange(option.key)}>
+          <span className={allocationClass("allocation-decoration__visual")}>{asset ? <img src={asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /> : <FiGrid aria-hidden="true" />}</span>
+          <span>{option.label}</span>
+        </button>;
+      })}
+    </div>
+    <small>Pemanis hanya membedakan kartu secara visual. Warna, saldo, dan tema aplikasi tidak berubah.</small>
+  </fieldset>;
+};
+
 const CreateEnvelopeFooter = ({ close, createMutation }) => <>
   <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
   <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Buat alokasi</Button>
@@ -81,6 +100,7 @@ const CreateEnvelopeForm = ({
 }) => (
   <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
     <label className="field form-grid__full"><span>Nama alokasi *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
+    <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
     <InlineSelectionPicker
       className="form-grid__full"
       label="Ambil dana dari"

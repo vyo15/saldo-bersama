@@ -1,11 +1,11 @@
 # Deployment
 
-## Cutover schema v18 + Global realtime sync
+## Cutover schema v20 + lifecycle Kebutuhan + dekorasi Alokasi
 
 1. Buat/konfirmasi database Turso Development dan Production yang berbeda sebelum memindahkan data nyata.
-2. Ambil backup teknis terverifikasi masing-masing database. Development memakai `npm run db:migrate` + `npm run db:bind-environment -- development`; Production memakai target eksplisit `npm run db:migrate -- production` + `npm run db:bind-environment -- production`; keduanya berjalan di staged Vercel Production build dengan secret tetap di Vercel. Rebind silang ditolak; jangan mengubah binding database Production menjadi Development atau sebaliknya.
-3. Untuk release yang mengubah schema/migration, jalankan integrity Production sampai schema/binding cocok dengan runtime source **sebelum** `git push origin main`. Managed pre-push mendeteksi diff database-compatibility, menjalankan staged Vercel Production integrity build, dan menolak deploy bila Production tertinggal. Diff non-schema hanya memerlukan core Vercel Production health.
-4. Development tetap memakai `DATABASE_ENVIRONMENT=development`. Production dapat memakai marker eksplisit `production`, tetapi bila tidak ada runtime menginfer dari `VERCEL_ENV=production`; nilai eksplisit yang bertentangan tetap ditolak. Preview tidak diberi credential database aktif.
+2. Ambil backup teknis terverifikasi masing-masing database. Development memakai `npm run db:migrate` + `npm run db:bind-environment -- development`; Production memakai `.env.production.local` dan target eksplisit `npm run db:migrate -- production` + `npm run db:bind-environment -- production`. Rebind silang ditolak; jangan mengubah binding database Production menjadi Development atau sebaliknya.
+3. Untuk release yang mengubah schema/migration, jalankan integrity Production sampai schema/binding cocok dengan runtime source **sebelum** `git push origin main`. Operasi database Production dijalankan dari **staged Vercel Production build** agar secret tetap berada pada scope Production. Managed pre-push mendeteksi diff database-compatibility, mengecek Production DB secara read-only, dan menolak deploy bila Production tertinggal. Diff non-schema hanya memerlukan core Vercel Production health.
+4. Set `DATABASE_ENVIRONMENT` pada Vercel Development/Production sesuai scope. Preview tidak diberi credential database aktif.
 5. Deploy runtime melalui `git push origin main`. Session v1 tidak kompatibel dengan registry v2 sehingga semua perangkat login ulang satu kali.
 6. Jalankan health, login Administrator/Member, session list/revoke, mutation retry outcome-unknown, scheduler heartbeat, backup/restore drill, lalu baru buka traffic normal.
 
@@ -22,11 +22,11 @@ Gunakan `docs/ENVIRONMENT_VARIABLES.md` sebagai satu-satunya daftar nama variabl
 
 Variable `VITE_*` bersifat publik. Secret tidak boleh memakai prefix `VITE_`. Setelah environment berubah, deployment Production wajib dijalankan ulang. Development adalah source bootstrap lokal dan direfresh pada setiap `npm run dev` interaktif. Seed Development tetap operasi terpisah dari release gate rutin.
 
-Mode operator dibedakan tegas: `npm run dev` = localhost + Vercel Development + Turso Development; `npm run prod` = health check deployment Vercel Production aktual. Production tidak dijalankan sebagai localhost; auth canonical tetap HTTPS/Secure cookie. Secret Sensitive tidak ditarik kembali ke workstation. Operasi DB Production dijalankan di staged Vercel Production build sehingga credential Turso digunakan langsung di tempat secret tersedia.
+Mode operator dibedakan tegas: `npm run dev` = localhost + Vercel Development + Turso Development; `npm run prod` = **auto-sync Vercel Production** + Turso Production read-only + health check deployment aktual. Production tidak dijalankan sebagai localhost; auth canonical tetap HTTPS/Secure cookie. Export Vercel yang mengembalikan placeholder Sensitive tidak dipercaya sebagai credential—tooling mencoba jalur `vercel env run -e production` dengan dotenv lokal disembunyikan dan inherited application env dibersihkan. Marker explicit Production pull menjadi authority; runtime capture yang masih menunjukkan marker non-production ditolak sebagai kontaminasi. Operasi tetap fail-closed bila key wajib tidak tersedia.
 
 ## 2. Database Turso: isolation fail-closed
 
-Source v17 tetap tidak mengizinkan Development/Production memakai database yang sama secara normal. `DATABASE_ENVIRONMENT` harus cocok dengan `VERCEL_ENV` dan binding `system_config.database_environment`. Database baru dimulai `unbound` dan harus di-bind eksplisit. Rebind silang ditolak. Live cutover baru dianggap selesai setelah Vercel/Turso membuktikan database/token Development dan Production berbeda.
+Source v19 tetap tidak mengizinkan Development/Production memakai database yang sama secara normal. `DATABASE_ENVIRONMENT` harus cocok dengan `VERCEL_ENV` dan binding `system_config.database_environment`. Database baru dimulai `unbound` dan harus di-bind eksplisit. Rebind silang ditolak. Live cutover baru dianggap selesai setelah Vercel/Turso membuktikan database/token Development dan Production berbeda.
 
 Development (`.env.local`):
 
@@ -36,7 +36,7 @@ npm run db:bind-environment -- development
 npm run db:integrity
 ```
 
-Production (operasi mutation hanya setelah backup terverifikasi; secret tetap di Vercel):
+Production (`.env.production.local` pada workstation tepercaya; operasi mutation hanya setelah backup terverifikasi):
 
 ```bash
 npm run env:check:production
@@ -56,7 +56,7 @@ Pada Google Auth Platform → Clients → OAuth Web Client yang sama dengan `VIT
 1. Authorized JavaScript origins tetap memuat `http://localhost:5173` dan `https://saldo-bersama.vercel.app` untuk Firebase popup development dan konfigurasi OAuth Web Client.
 2. Authorized redirect URIs **wajib** memuat `https://saldo-bersama.vercel.app/api/auth/google/callback` persis.
 3. URI lama `https://saldo-bersama.vercel.app/__/auth/handler` tidak lagi dipakai source canonical. Boleh dibiarkan sementara selama rollout, lalu dibersihkan setelah production desktop/mobile terbukti stabil.
-4. Simpan client secret Web Client sebagai `GOOGLE_OAUTH_CLIENT_SECRET` Vercel **Production Sensitive**. `.env.production.local` hanya boleh dipakai sementara saat seed/rotasi dari secret store tepercaya. Jangan memakai prefix `VITE_`, jangan menaruh nilai secret di Git, ZIP, screenshot, log, issue, atau chat.
+4. Simpan client secret Web Client hanya sebagai `GOOGLE_OAUTH_CLIENT_SECRET` pada `.env.production.local` komputer tepercaya dan Vercel **Production Sensitive**. Jangan memakai prefix `VITE_`, jangan menaruh nilai secret di Git, ZIP, screenshot, log, issue, atau chat.
 
 `VITE_FIREBASE_AUTH_DOMAIN=saldo-bersama.firebaseapp.com` tetap public Firebase config untuk fallback popup lokal dan compatibility, bukan secret. Server OAuth production tidak menyimpan Google access token/refresh token. Signed OAuth transaction cookie berumur 5 menit, `HttpOnly`, `SameSite=Lax`, dan hanya berlaku pada callback; session aplikasi existing tetap `HttpOnly` + `SameSite=Strict`.
 
@@ -76,13 +76,13 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 ## 5. Web Push Production
 
 1. Pastikan backup teknis terbaru berstatus terverifikasi. Jangan melanjutkan migration atau perubahan environment tanpa titik pemulihan.
-2. **Jangan generate key jika Production Web Push sudah aktif.** Periksa source secret yang sah pada password manager/secret store dan status deployment Production. Generate pasangan baru hanya untuk initial provisioning atau rotasi Production yang disetujui:
+2. **Jangan generate key jika Production Web Push sudah aktif.** Periksa source secret yang sah pada `.env.production.local`/password manager dan jalankan `npm run env:check:production`. Generate pasangan baru hanya untuk initial provisioning atau rotasi Production yang disetujui:
 
    ```bash
    npx web-push generate-vapid-keys --json
    ```
 
-   Untuk seed/rotasi, simpan sementara hanya di secret store tepercaya atau `.env.production.local` gitignored sebelum `env:push:production`. Jangan menaruh private key di chat, issue, screenshot, GitHub, ZIP, `.env.local`, atau variable `VITE_*`. Production dan Development wajib memakai pasangan berbeda setelah database terisolasi.
+   Salin hasil hanya ke `.env.production.local` pada komputer tepercaya. Jangan menaruh private key di chat, issue, screenshot, GitHub, ZIP, `.env.local`, atau variable `VITE_*`. Production dan Development wajib memakai pasangan berbeda setelah database terisolasi.
 3. Isi satu grup lengkap pada profile Production:
 
    ```text
@@ -98,7 +98,7 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
    npm run env:status
    ```
 
-5. Pastikan database Production sudah memakai schema v18, binding `production`, dan integrity check lulus. Migration hanya dijalankan bila memang ada migration pending dan backup telah terverifikasi:
+5. Pastikan database Production sudah memakai schema v20, binding `production`, dan integrity check lulus. Migration hanya dijalankan bila memang ada migration pending dan backup telah terverifikasi:
 
    ```bash
    npm run db:migrate -- production
@@ -120,11 +120,11 @@ ID Spreadsheet, Calendar, folder Drive, dan `JOBS_ENDPOINT_URL` hanya berada di 
 10. Desktop dan Android dapat diuji dari browser yang mendukung. Pada iPhone/iPad, tambahkan aplikasi ke Home Screen dan buka dari ikon aplikasi sebelum meminta izin.
 11. Verifikasi `/api/jobs`, queue, delivery per perangkat, audit register/test/unregister, subscription 404/410, retry, serta backup terjadwal ketika tahap Push gagal.
 
-## 6. Migration schema v18
+## 6. Migration schema v20
 
-Migration terbaru adalah `database/migrations/016_global_sync_revisions.sql`. Migration v18 bersifat additive: menambah metadata runtime `sync_revisions` untuk global realtime tanpa mengubah ledger maupun tabel domain finansial. `sync.state` hanya menjadi invalidation signal; financial authority tetap read-model backend canonical. Migration v17 `015_investment_asset_centric.sql` tetap menjadi dasar Investasi asset-centric. Migration v17 bersifat additive di atas v16: menambah `accounts.is_system_hidden`, `investment_trades.cash_effect_enabled`, dan `investment_corrections.cash_effect_enabled`, lalu membangun ulang view `investment_account_events` agar hanya row dengan `cash_effect_enabled=1` yang memengaruhi saldo rekening. Existing row mendapat default kompatibel (`is_system_hidden=0`, `cash_effect_enabled=1`), sehingga histori v16 tidak ditulis ulang. Runtime v17 menulis direct asset opening-position dan Buy/Sell baru dengan `cash_effect_enabled=0`; compatibility account baru ditandai hidden dan tidak masuk picker user-facing.
+Migration berurutan terbaru adalah `database/migrations/017_budget_lifecycle_history.sql` (v19), lalu `database/migrations/018_envelope_decoration.sql` (v20). Migration v19 bersifat additive: menambah relasi `budget_id` pada transaksi/Jadwal Rutin, metadata lifecycle pada `budgets`, serta tabel compact `budget_history`. Financial facts tetap berada pada transaksi canonical; history Kebutuhan dipakai untuk report/periode tertutup dan dapat direhidrasi saat reopen. Migration v18 `016_global_sync_revisions.sql` tetap menjadi dasar realtime global dan `sync.state` tetap hanya invalidation signal, bukan financial authority. Migration v17 `015_investment_asset_centric.sql` tetap menjadi dasar Investasi asset-centric.
 
-Sebelum migration Production, buat backup teknis **verified pada schema v17**. Jalankan target Production secara eksplisit; tooling membuat staged Vercel Production build sehingga secret Turso tidak perlu tersedia di lokal:
+Sebelum migration Production, buat backup teknis **verified pada schema v18** untuk v19, kemudian backup **verified pada schema v19** sebelum menjalankan v20 dan pastikan `.env.production.local` lolos pemeriksaan. Jalankan target Production secara eksplisit sebelum runtime v20 menerima traffic:
 
 ```bash
 npm run env:check:production
@@ -135,7 +135,7 @@ npm run db:integrity -- production
 
 Migration v16 `014_investment_opening_position.sql` tetap menjadi dasar semantic opening position/trade notes; v15 `013_investment_tracking.sql` tetap menjadi dasar enam tabel Investment authoritative. Migration v11 cost-sharing, v10 manual reminder, v9 envelope assignee, dan v8 provider E-wallet tetap historis additive.
 
-Backup schema v18 menyertakan enam tabel Investment authoritative beserta `is_system_hidden` dan `cash_effect_enabled`, tetapi tetap mengecualikan `user_sessions`, `rate_limit_buckets`, binding environment, maintenance flag, dan scheduler heartbeat. Runtime v18 dapat membaca backup v3-v18, termasuk backup **v16**. Setelah restore, verifikasi hidden-account visibility, holding, cost basis, P/L, chronology, flag cash effect, foreign key, dan ledger parity sebelum success dianggap definitive. Rollback aman dilakukan melalui restore backup schema v17 pra-migration ke database terpisah, integrity check, lalu repoint environment; jangan menghapus tabel/kolom langsung pada database aktif.
+Backup schema v20 menyertakan enam tabel Investment authoritative beserta `is_system_hidden`, `cash_effect_enabled`, dan `budget_history`, tetapi tetap mengecualikan `user_sessions`, `rate_limit_buckets`, binding environment, maintenance flag, dan scheduler heartbeat. Runtime v20 dapat membaca backup v3-v20, termasuk backup **v16**. Setelah restore, verifikasi hidden-account visibility, holding, cost basis, P/L, chronology, flag cash effect, foreign key, dan ledger parity sebelum success dianggap definitive. Rollback aman mengikuti boundary migration: restore backup schema v19 pra-v20 untuk dekorasi, atau backup schema v18 pra-v19 untuk lifecycle ke database terpisah, integrity check, lalu repoint environment; jangan menghapus tabel/kolom langsung pada database aktif.
 
 ## 7. Release gate
 
@@ -151,6 +151,6 @@ npm run prod:check
 `npm run env:push:production` hanya dijalankan ketika perubahan environment memang menjadi bagian release yang sudah direview; jangan menjadikannya efek samping setiap release. Lanjutkan smoke test login Administrator/Member, create/update/cancel transaksi, transfer, conflict, Excel, status/register/test/unregister Web Push, retry dua perangkat, mirror, Calendar, backup, restore drill, dan PWA iOS/Android. Untuk fitur Investasi yang diperkenalkan pada schema v17, tambahkan smoke read-only `investments.overview`, pastikan `investments.assets.create` membuat posisi asset-centric tanpa mengekspos compatibility account, dan verifikasi Buy/Sell baru tidak mengubah saldo rekening. Mutation Investment pada Production hanya dilakukan dengan data/test intent yang memang disetujui. Histori v16 tetap harus mempertahankan cash effect, dan Buy/Sell tetap tidak boleh muncul sebagai income/expense.
 
 
-### Smoke realtime v18
+### Smoke realtime v19
 
 Setelah deploy, lakukan smoke dua perangkat untuk realtime global: mutation pada beberapa domain berbeda harus terdeteksi tanpa hard refresh; foreground/reconnect dan pull-to-refresh harus memicu sync; draft form tidak boleh hilang. Pastikan `sync.state` tersedia untuk Administrator/Member dan `sync_revisions` tidak dianggap sebagai data recovery authoritative.

@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTransaction } from "../../api/_lib/services/finance.js";
 import { accountAllocatedRemaining, accountBalanceAsOf } from "../../api/_lib/services/readModels.js";
 import { createEnvelope } from "../../api/_lib/services/planning/envelopes.js";
-import { archiveBudget, listBudgets, restoreBudget, upsertBudget } from "../../api/_lib/services/planning/budgets.js";
+import { archiveBudget, listBudgets, removeBudget, restoreBudget, upsertBudget } from "../../api/_lib/services/planning/budgets.js";
 import { createGoal, listGoals, moveGoal } from "../../api/_lib/services/planning/goals.js";
 import { dashboardOverview } from "../../api/_lib/services/reporting/dashboard.js";
 import { createReconciliation } from "../../api/_lib/services/reporting/reconciliations.js";
@@ -174,6 +174,102 @@ test("journey uang masuk sampai rekonsiliasi menjaga ledger, Alokasi Dana, Kebut
     for (const action of ["transactions.create", "envelopes.create", "budgets.upsert", "budgets.archive", "goals.create", "goals.move", "reconciliations.create"]) {
       assert.equal(actionSet.has(action), true, `Audit ${action} wajib tersedia.`);
     }
+  } finally {
+    db.close();
+  }
+});
+
+
+test("hapus Kebutuhan menjaga transaksi dan hanya melepas sisa dana tanpa menyapu buffer Alokasi", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedUser(db, owner);
+    await seedAccount(db, "rekening-budget-remove", 3_000_000);
+    await seedCategory(db, "arisan-remove", "expense");
+    await seedCategory(db, "belanja-remove", "expense");
+    await seedCategory(db, "opsional-remove", "expense");
+    const today = todayJakarta();
+    const month = today.slice(0, 7);
+    const monthStart = `${month}-01`;
+    const monthEndDate = new Date(`${monthStart}T00:00:00Z`);
+    monthEndDate.setUTCMonth(monthEndDate.getUTCMonth() + 1);
+    monthEndDate.setUTCDate(0);
+    const monthEnd = monthEndDate.toISOString().slice(0, 10);
+
+    const envelope = await createEnvelope(db, context(owner, "envelopes.create", {
+      name: "Rumah dengan buffer",
+      source_account_id: "rekening-budget-remove",
+      period_type: "monthly",
+      period_start: monthStart,
+      period_end: monthEnd,
+      default_amount: 300_000,
+      allocated_amount: 300_000,
+    }));
+    const arisan = await upsertBudget(db, context(owner, "budgets.upsert", {
+      period_key: month,
+      category_id: "arisan-remove",
+      envelope_rule_id: envelope.rule.envelope_rule_id,
+      amount: 500_000,
+      scope: "shared",
+    }));
+    await upsertBudget(db, context(owner, "budgets.upsert", {
+      period_key: month,
+      category_id: "belanja-remove",
+      envelope_rule_id: envelope.rule.envelope_rule_id,
+      amount: 1_000_000,
+      scope: "shared",
+    }));
+    const funded = await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_period_id=?", [envelope.period.envelope_period_id]);
+    assert.equal(Number(funded.allocated_amount), 1_800_000, "Rp300 ribu buffer harus tetap terpisah dari total Kebutuhan Rp1,5 juta.");
+
+    const payment = await createTransaction(db, context(owner, "transactions.create", {
+      transaction_type: "expense",
+      transaction_date: today,
+      source_account_id: "rekening-budget-remove",
+      category_id: "arisan-remove",
+      envelope_period_id: envelope.period.envelope_period_id,
+      budget_id: arisan.budget_id,
+      amount: 300_000,
+      description: "Pembayaran arisan",
+    }));
+    assert.equal(payment.budget_id, arisan.budget_id);
+
+    const removed = await removeBudget(db, context(owner, "budgets.remove", {
+      budget_id: arisan.budget_id,
+      row_version: arisan.row_version,
+      envelope_period_id: envelope.period.envelope_period_id,
+      reason: "Arisan tidak dilanjutkan",
+    }, arisan.row_version));
+    assert.equal(removed.outcome, "ended");
+    assert.equal(removed.status, "archived");
+    assert.equal(Number(removed.released_amount_this_action), 200_000, "Hanya bagian Kebutuhan yang belum terpakai boleh dilepas.");
+
+    const keptTransaction = await db.one("SELECT status,budget_id,amount FROM transactions WHERE transaction_id=?", [payment.transaction_id]);
+    assert.equal(keptTransaction.status, "active");
+    assert.equal(keptTransaction.budget_id, arisan.budget_id, "Relasi histori transaksi ke Kebutuhan harus tetap eksplisit.");
+    assert.equal(Number(keptTransaction.amount), 300_000);
+    const afterEnded = await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_period_id=?", [envelope.period.envelope_period_id]);
+    assert.equal(Number(afterEnded.allocated_amount), 1_600_000, "Rp300 ribu buffer dan Rp1 juta kebutuhan lain tidak boleh ikut terlepas.");
+
+    const optional = await upsertBudget(db, context(owner, "budgets.upsert", {
+      period_key: month,
+      category_id: "opsional-remove",
+      envelope_rule_id: envelope.rule.envelope_rule_id,
+      amount: 100_000,
+      scope: "shared",
+    }));
+    const deleted = await removeBudget(db, context(owner, "budgets.remove", {
+      budget_id: optional.budget_id,
+      row_version: optional.row_version,
+      envelope_period_id: envelope.period.envelope_period_id,
+      reason: "Salah input dan belum pernah digunakan",
+    }, optional.row_version));
+    assert.equal(deleted.outcome, "deleted_unused");
+    assert.equal(deleted.deleted, true);
+    assert.equal(Number(deleted.released_amount), 100_000);
+    assert.equal(await db.one("SELECT budget_id FROM budgets WHERE budget_id=?", [optional.budget_id]), null);
+    const afterUnusedDelete = await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_period_id=?", [envelope.period.envelope_period_id]);
+    assert.equal(Number(afterUnusedDelete.allocated_amount), 1_600_000);
   } finally {
     db.close();
   }

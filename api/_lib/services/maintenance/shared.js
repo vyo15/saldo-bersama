@@ -12,11 +12,11 @@ const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "investment_instruments", "investment_portfolios", "master_data_requests", "transfer_requests", "envelope_rules", "envelope_periods",
   "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections", "envelope_movements",
-  "budgets", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "manual_reminders", "audit_log", "idempotency_keys",
+  "budgets", "budget_history", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "manual_reminders", "audit_log", "idempotency_keys",
 ];
 
 export const RESTORE_DELETE_ORDER = [
-  "notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces", "rate_limit_buckets", "goal_movements", "budgets", "envelope_movements",
+  "notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces", "rate_limit_buckets", "goal_movements", "budget_history", "budgets", "envelope_movements",
   "investment_reconciliations", "investment_valuations", "investment_corrections", "investment_trades", "transactions", "recurring_occurrences", "recurring_rules", "envelope_periods", "envelope_rules", "savings_goals",
   "reconciliations", "period_closures", "transfer_requests", "master_data_requests", "investment_portfolios", "investment_instruments", "categories", "accounts", "manual_reminders", "notification_preferences", "push_subscriptions", "idempotency_keys",
 ];
@@ -179,6 +179,7 @@ const isLegacyOptionalBackupTable = (schemaVersion, table) => (
   || (schemaVersion < 10 && table === "manual_reminders")
   || (schemaVersion < 14 && ["master_data_requests", "transfer_requests"].includes(table))
   || (schemaVersion < 15 && ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"].includes(table))
+  || (schemaVersion < 19 && table === "budget_history")
 );
 
 export const validateSnapshot = (snapshot) => {
@@ -247,6 +248,7 @@ export const normalizeRestoredRows = (table, rows) => {
       assignee_user_id: Object.hasOwn(row, "assignee_user_id")
         ? row.assignee_user_id || null
         : row.scope === "personal" ? row.owner_user_id || null : null,
+      decoration_key: Object.hasOwn(row, "decoration_key") ? String(row.decoration_key || "auto") : "auto",
     }));
   }
   if (table === "investment_trades") {

@@ -6,13 +6,15 @@ import { publishServerStateChanged, subscribeToServerStateChanged } from "../src
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("global sync coordinator memakai revision server untuk foreground reconnect polling dan manual refresh", async () => {
+test("global sync coordinator memakai revision server untuk foreground polling dan manual refresh", async () => {
   const source = await read("src/app/FinanceContext.jsx");
   assert.match(source, /apiClient\.request\("sync\.state", \{\}, \{ force: true \}\)/);
   assert.match(source, /document\.visibilityState !== "visible"/);
   assert.match(source, /15_000/);
   assert.match(source, /reason: "foreground"/);
-  assert.match(source, /reason: "reconnect"/);
+  assert.doesNotMatch(source, /addEventListener\("online"/);
+  assert.doesNotMatch(source, /hiddenFor >= 2 \* 60_000/);
+  assert.match(source, /failureStreakRef\.current >= 3/);
   assert.match(source, /subscribedReadActions\(\)/);
   assert.match(source, /apiClient\.invalidateAndWait\(passiveTargets\)/);
   assert.match(source, /if \(failedRefresh\) throw new Error/);
@@ -26,10 +28,13 @@ test("pull-to-refresh mobile memakai coordinator tanpa hard reload dan menjaga i
   ]);
   assert.match(shell, /<MobilePullToRefresh onRefresh=\{manualRefresh\}/);
   assert.match(shell, /composerOpen \|\| modalActivity\.modalOpen \|\| mutationActivity\.activeCount > 0/);
+  assert.match(shell, /reason: "network-recovery"/);
+  assert.doesNotMatch(shell, /manual: true, reason: "network-recovery"/);
   assert.match(pull, /window\.scrollY > 0/);
   assert.match(pull, /nestedScrollable\(event\.target\)/);
   assert.match(pull, /if \(offline\)/);
   assert.match(pull, /const onTouchCancel/);
+  assert.match(pull, /if \(!blocked\) return;[\s\S]*setState\(\{ phase: "idle", distance: 0 \}\)/);
   assert.doesNotMatch(`${shell}\n${pull}`, /window\.location\.reload|location\.reload/);
 });
 

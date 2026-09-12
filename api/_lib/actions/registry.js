@@ -25,7 +25,7 @@ import { cancelManualReminder, getManualReminder, upsertManualReminder } from ".
 import {
   adjustEnvelopeAllocation, archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createBudgetsBatch, createEnvelope, createGoal, createRecurringRule, deleteUnusedBudget,
   deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence,
-  previewBudgetLifecycle, previewEnvelopeRuleLifecycle, previewGoalLifecycle, previewRecurringRuleLifecycle, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
+  previewBudgetLifecycle, previewEnvelopeRuleLifecycle, previewGoalLifecycle, previewRecurringRuleLifecycle, removeBudget, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
   reverseEnvelopeMovement, reverseGoalMovement, reverseOccurrencePayment, updateGoal, updateRecurringRule, upsertBudget,
 } from "../services/planning/index.js";
 import {
@@ -160,6 +160,7 @@ const ACTION_HANDLERS = Object.freeze({
   "budgets.batchCreate": createBudgetsBatch,
   "budgets.upsert": upsertBudget,
   "budgets.previewLifecycle": previewBudgetLifecycle,
+  "budgets.remove": removeBudget,
   "budgets.archive": archiveBudget,
   "budgets.deleteUnused": deleteUnusedBudget,
   "budgets.restore": restoreBudget,

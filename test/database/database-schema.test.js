@@ -20,6 +20,8 @@ const investmentTrackingMigrationUrl = new URL("013_investment_tracking.sql", mi
 const investmentOpeningPositionMigrationUrl = new URL("014_investment_opening_position.sql", migrationDirectory);
 const investmentAssetCentricMigrationUrl = new URL("015_investment_asset_centric.sql", migrationDirectory);
 const globalSyncRevisionMigrationUrl = new URL("016_global_sync_revisions.sql", migrationDirectory);
+const budgetLifecycleHistoryMigrationUrl = new URL("017_budget_lifecycle_history.sql", migrationDirectory);
+const envelopeDecorationMigrationUrl = new URL("018_envelope_decoration.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -109,9 +111,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v18 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v20 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "18");
+  assert.equal(result.schema_version, "20");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -420,4 +422,25 @@ test("migration v18 menambah revision sync global tanpa mengubah ledger", async 
   assert.match(sql, /__global__/);
   assert.match(sql, /value='18'/);
   assert.doesNotMatch(sql, /ALTER TABLE transactions|ALTER TABLE accounts|ALTER TABLE categories/);
+});
+
+
+test("migration v19 menambah lifecycle Kebutuhan compact dan relasi eksplisit tanpa menghapus histori finansial", async () => {
+  const sql = await readFile(budgetLifecycleHistoryMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE budgets[\s\S]*ADD COLUMN released_amount/);
+  assert.match(sql, /ALTER TABLE transactions[\s\S]*ADD COLUMN budget_id/);
+  assert.match(sql, /ALTER TABLE recurring_rules[\s\S]*ADD COLUMN budget_id/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS budget_history/);
+  assert.match(sql, /final_status TEXT NOT NULL CHECK \(final_status IN \('closed','ended'\)\)/);
+  assert.match(sql, /value='19'/);
+  assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN/i);
+});
+
+test("migration v20 menambah pemanis Alokasi Dana secara additive tanpa mengubah ledger", async () => {
+  const sql = await readFile(envelopeDecorationMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE envelope_rules[\s\S]*ADD COLUMN decoration_key/);
+  assert.match(sql, /decoration_key IN \('auto','home','shopping','love','education','travel','gift','pet','food','car','plant'\)/);
+  assert.match(sql, /DEFAULT 'auto'/);
+  assert.match(sql, /value='20'/);
+  assert.doesNotMatch(sql, /UPDATE envelope_periods|UPDATE transactions|UPDATE accounts/);
 });

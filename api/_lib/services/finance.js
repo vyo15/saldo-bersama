@@ -96,6 +96,26 @@ const validateEnvelope = async (db, context, transaction, { excludeTransactionId
   return { row, remaining };
 };
 
+const validateBudgetLink = async (db, transaction, envelopeState, current = null) => {
+  if (!transaction.budget_id) return null;
+  if (transaction.transaction_type !== "expense") throw appError("BUDGET_TRANSACTION_TYPE_MISMATCH", "Kebutuhan hanya dapat ditautkan ke transaksi pengeluaran.", 409);
+  const budget = await db.one("SELECT * FROM budgets WHERE budget_id=?", [transaction.budget_id]);
+  if (!budget) throw appError("INVALID_BUDGET", "Kebutuhan transaksi tidak ditemukan.", 409);
+  const unchangedArchivedLink = current?.budget_id === budget.budget_id && budget.status === "archived";
+  if (budget.status !== "active" && !unchangedArchivedLink) throw appError("BUDGET_INACTIVE", "Kebutuhan sudah tidak aktif dan tidak dapat dipakai untuk transaksi baru.", 409);
+  if (budget.period_key !== String(transaction.transaction_date).slice(0, 7)) throw appError("BUDGET_DATE_MISMATCH", "Tanggal transaksi berada di luar periode Kebutuhan.", 409);
+  if (budget.category_id !== transaction.category_id) throw appError("BUDGET_CATEGORY_MISMATCH", "Kategori transaksi harus sama dengan Kebutuhan.", 409);
+  if (budget.scope !== transaction.scope || String(budget.owner_user_id || "") !== String(transaction.owner_user_id || "")) {
+    throw appError("BUDGET_SCOPE_MISMATCH", "Kebutuhan dan transaksi harus memiliki kepemilikan yang sama.", 409);
+  }
+  if (budget.envelope_rule_id) {
+    if (!envelopeState?.row || envelopeState.row.envelope_rule_id !== budget.envelope_rule_id) {
+      throw appError("BUDGET_ENVELOPE_MISMATCH", "Transaksi Kebutuhan harus menggunakan Alokasi Dana yang terkait.", 409);
+    }
+  }
+  return budget;
+};
+
 const duplicateTransaction = async (db, transaction, excludeTransactionId = null) => db.one(`SELECT transaction_id FROM transactions
   WHERE status='active' AND transaction_date=? AND transaction_type=? AND COALESCE(source_account_id,'')=COALESCE(?,'')
     AND COALESCE(destination_account_id,'')=COALESCE(?,'') AND amount=? AND lower(description)=lower(?)
@@ -274,6 +294,7 @@ const buildNormalizedTransactionRecord = ({
   destination_account_id: accountIdOrNull(destination),
   category_id: categoryId,
   envelope_period_id: envelopePeriodId(payload, current, type),
+  budget_id: type === "expense" ? optionalTransactionId(transactionField(payload, current, "budget_id", "")) : null,
   recurring_occurrence_id: internalLinkId(payload, current, "recurring_occurrence_id", allowInternalLinks),
   goal_id: internalLinkId(payload, current, "goal_id", allowInternalLinks),
   amount,
@@ -327,6 +348,7 @@ export const normalizeTransaction = async (db, context, payload, { current = nul
   const record = { ...baseRecord, ...costShare };
   const excludeTransactionId = currentTransactionId(current);
   const envelopeState = await validateEnvelope(db, context, record, { excludeTransactionId });
+  await validateBudgetLink(db, record, envelopeState, current);
   await assertUnallocatedFunds(db, accounts.source, record, envelopeState, excludeTransactionId);
   await assertSufficientBalance(db, accounts.source, { ...record, status: "active" }, excludeTransactionId);
   await assertNoUnconfirmedDuplicate(db, payload, record, excludeTransactionId);
@@ -341,8 +363,8 @@ export const createTransactionInternal = async (db, context, payload, { allowInt
     created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp,
     cancelled_by: null, cancelled_at: null, cancellation_reason: "",
   };
-  await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,cost_share_mode,cost_share_json,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,budget_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,cost_share_mode,cost_share_json,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   if (audit) await appendAudit(db, context, { entityType: "transaction", entityId: record.transaction_id, next: { ...publicRow(record), ...transactionCostSharePresentation(record) } });
   await context.enqueueMirror?.(db, "transaction", record.transaction_id);
   return { ...publicRow(record), ...transactionCostSharePresentation(record) };
@@ -361,8 +383,8 @@ export const updateTransaction = async (db, context) => {
   const normalized = await normalizeTransaction(db, context, payload, { current });
   await assertAffectedBalances(db, current, normalized);
   const next = { ...current, ...normalized, row_version: Number(current.row_version)+1, updated_by: context.actor.user_id, updated_at: nowIso() };
-  const result = await db.execute(`UPDATE transactions SET transaction_date=?,transaction_type=?,source_account_id=?,destination_account_id=?,category_id=?,envelope_period_id=?,amount=?,description=?,overspend_reason=?,merchant=?,payment_method=?,scope=?,owner_user_id=?,cost_share_mode=?,cost_share_json=?,row_version=?,updated_by=?,updated_at=?
-    WHERE transaction_id=? AND row_version=? AND status='active'`, [next.transaction_date,next.transaction_type,next.source_account_id,next.destination_account_id,next.category_id,next.envelope_period_id,next.amount,next.description,next.overspend_reason,next.merchant,next.payment_method,next.scope,next.owner_user_id,next.cost_share_mode,next.cost_share_json,next.row_version,next.updated_by,next.updated_at,current.transaction_id,current.row_version]);
+  const result = await db.execute(`UPDATE transactions SET transaction_date=?,transaction_type=?,source_account_id=?,destination_account_id=?,category_id=?,envelope_period_id=?,budget_id=?,amount=?,description=?,overspend_reason=?,merchant=?,payment_method=?,scope=?,owner_user_id=?,cost_share_mode=?,cost_share_json=?,row_version=?,updated_by=?,updated_at=?
+    WHERE transaction_id=? AND row_version=? AND status='active'`, [next.transaction_date,next.transaction_type,next.source_account_id,next.destination_account_id,next.category_id,next.envelope_period_id,next.budget_id,next.amount,next.description,next.overspend_reason,next.merchant,next.payment_method,next.scope,next.owner_user_id,next.cost_share_mode,next.cost_share_json,next.row_version,next.updated_by,next.updated_at,current.transaction_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Transaksi berubah di perangkat lain.", 409);
   await appendAudit(db, context, {
     entityType: "transaction",

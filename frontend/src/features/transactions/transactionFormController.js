@@ -14,7 +14,7 @@ import { isInvestmentAccount } from "../../shared/presentation/account.js";
 
 export const createTransactionIntentKey = () => createIdempotencyKey();
 
-export const emptyForm = () => ({ transaction_type: TRANSACTION_TYPES.EXPENSE, transaction_date: todayInJakarta(), amount: "", source_account_id: "", destination_account_id: "", category_id: "", envelope_period_id: "", payment_method: "", merchant: "", description: "", overspend_reason: "", cost_share_mode: "unspecified", cost_share_percentages: [] });
+export const emptyForm = () => ({ transaction_type: TRANSACTION_TYPES.EXPENSE, transaction_date: todayInJakarta(), amount: "", source_account_id: "", destination_account_id: "", category_id: "", envelope_period_id: "", budget_id: "", payment_method: "", merchant: "", description: "", overspend_reason: "", cost_share_mode: "unspecified", cost_share_percentages: [] });
 const TRANSACTION_ERROR_SELECTORS = Object.freeze([
   ["amount", "#transaction-amount"],
   ["transaction_date", "#transaction-date"],
@@ -57,6 +57,7 @@ const initialTransactionForm = ({ initialType, initialSourceAccountId, initialDr
     destination_account_id: String(source.destination_account_id || ""),
     category_id: String(source.category_id || ""),
     envelope_period_id: String(source.envelope_period_id || ""),
+    budget_id: String(source.budget_id || ""),
     payment_method: String(source.payment_method || ""),
     merchant: String(source.merchant || ""),
     description: String(source.description || ""),
@@ -250,6 +251,7 @@ export const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransf
       source_account_id: nextId,
       destination_account_id: invalidDestination ? "" : current.destination_account_id,
       envelope_period_id: envelope && envelope.source_account_id !== nextId ? "" : current.envelope_period_id,
+      budget_id: "",
       cost_share_mode: sharedExpense ? current.cost_share_mode : "unspecified",
       cost_share_percentages: sharedExpense ? current.cost_share_percentages : [],
     };

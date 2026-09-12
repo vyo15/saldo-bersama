@@ -46,7 +46,7 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   ]).then((parts) => parts.join("\n"));
   assert.match(budgets, /useApiResource\("budgets\.list"/);
   assert.match(budgets, /upsertBudget/);
-  assert.match(budgets, /requestArchiveBudget/);
+  assert.match(budgets, /requestRemoveBudget/);
   assert.match(budgets, /Berlaku untuk/);
   assert.match(budgets, /scope: "personal"/);
   assert.match(budgets, /InlineOwnershipPicker/);

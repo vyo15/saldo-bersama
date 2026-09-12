@@ -99,13 +99,18 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
     [allocations, allocationsApi, "envelopes.previewRuleLifecycle", "envelopes.deleteUnusedRule"],
     [recurring, recurringApi, "recurring.previewRuleLifecycle", "recurring.deleteUnusedRule"],
     [goals, goalsApi, "goals.previewLifecycle", "goals.deleteUnused"],
-    [budgets, budgetsApi, "budgets.previewLifecycle", "budgets.deleteUnused"],
   ]) {
     assert.match(api, new RegExp(previewAction.replace(".", "\\.")));
     assert.match(api, new RegExp(deleteAction.replace(".", "\\.")));
     assert.match(page, /preview\.canDeleteUnused/);
     assert.match(page, /Hapus permanen/);
   }
+  assert.match(budgetsApi, /budgets\.previewLifecycle/);
+  assert.match(budgetsApi, /budgets\.remove/);
+  assert.match(budgets, /preview\.canDeleteUnused/);
+  assert.match(budgets, /Hapus kebutuhan/);
+  assert.doesNotMatch(budgets, /requestDeleteUnusedBudget|requestArchiveBudget/);
+
   assert.match(allocations, /acknowledgementLabel=\{(?:p\.)?archiveTarget\?\.preview\.canDeleteUnused/);
   assert.match(recurring, /acknowledgementLabel=\{(?:p\.)?archiveRuleTarget\?\.preview\.canDeleteUnused/);
   assert.match(goals, /last_movement_row_version/);

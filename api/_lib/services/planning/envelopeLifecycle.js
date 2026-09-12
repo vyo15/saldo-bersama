@@ -109,9 +109,9 @@ const envelopeRuleDependencyStatement = (ruleId) => ({
     SUM(CASE WHEN reserved_amount>0 THEN 1 ELSE 0 END) AS reserved_periods,
     (SELECT COUNT(*) FROM transactions WHERE envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)) AS transactions,
     (SELECT COUNT(*) FROM envelope_movements WHERE from_envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?) OR to_envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)) AS movements,
-    (SELECT COUNT(*) FROM budgets WHERE envelope_rule_id=?) AS budgets
+    ((SELECT COUNT(*) FROM budgets WHERE envelope_rule_id=?) + (SELECT COUNT(*) FROM budget_history WHERE envelope_rule_id=?)) AS budgets
     FROM envelope_periods WHERE envelope_rule_id=?`,
-  args: [ruleId, ruleId, ruleId, ruleId, ruleId],
+  args: [ruleId, ruleId, ruleId, ruleId, ruleId, ruleId],
 });
 
 const envelopeRuleLifecycleResult = (current, row) => {

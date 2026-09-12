@@ -106,7 +106,7 @@ Line count bukan Definition of Done.
 - Lazy action yang dipicu user wajib membuka shell/fallback aksesibel segera. Registry prefetch hanya boleh memuat leaf module yang tidak menciptakan cycle dari `app/` kembali ke consumer feature; source-architecture regression tetap authority.
 - Prefetch idle harus menghormati `Save-Data`/2G dan failure harus silent. Prefetch tidak boleh menjalankan API mutation, membuat state finansial, atau menjadi dependency agar action berhasil.
 - Modal/history/update lifecycle harus fail-safe: Back tidak boleh melewati modal non-dismissible, service-worker update tidak boleh reload selama modal/composer/mutation aktif, dan browser `beforeunload` guard hanya melindungi draft in-memory tanpa menyimpan payload finansial baru ke persistent storage.
-- Resume/reconnect refresh hanya melakukan read refresh dan wajib menahan diri saat mutation aktif. Tidak ada offline financial write atau cached API response baru; ADR-0006 tetap berlaku.
+- Resume/reconnect refresh hanya melakukan read refresh dan wajib menahan diri saat mutation aktif. Reconnect harus memiliki satu owner melalui network recovery; `FinanceContext` tidak boleh memasang trigger `online` kedua. Foreground menggunakan revision coordinator saja dan tidak boleh menambah refresh overview fallback terpisah. Tidak ada offline financial write atau cached API response baru; ADR-0006 tetap berlaku.
 
 ## Testing sebelum dan sesudah refactor
 

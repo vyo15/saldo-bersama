@@ -8,7 +8,7 @@ import { enqueueRecurringOccurrenceSync } from "./recurringSchedule.js";
 
 // Occurrence mutations bridge planning state to canonical transaction writes. The
 // transaction service remains authoritative for ledger/balance validation.
-const recurringOccurrenceWithRule = (db, occurrenceId) => db.one(`SELECT o.*,r.status AS rule_status,r.scope,r.owner_user_id,r.recurring_rule_id
+const recurringOccurrenceWithRule = (db, occurrenceId) => db.one(`SELECT o.*,r.status AS rule_status,r.scope,r.owner_user_id,r.recurring_rule_id,r.budget_id
   FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
   WHERE o.occurrence_id=?`, [occurrenceId]);
 
@@ -33,6 +33,7 @@ const buildOccurrencePaymentTransaction = (rule, occurrence, account, payload, a
   destination_account_id: rule.kind === "income" ? account.account_id : null,
   category_id: rule.category_id,
   envelope_period_id: rule.kind === "expense" ? payload.envelope_period_id || null : null,
+  budget_id: rule.kind === "expense" ? rule.budget_id || null : null,
   amount,
   description: rule.name,
   overspend_reason: rule.kind === "expense" ? payload.overspend_reason || "" : "",
@@ -131,8 +132,11 @@ export const payOccurrence = async (db, context) => {
   const amount = positiveInteger(p.amount, "Nominal aktual");
   const remaining = Math.max(0, Number(occurrence.expected_amount) - Number(occurrence.actual_amount));
   if (!remaining) throw appError("OCCURRENCE_ALREADY_COMPLETE", "Occurrence sudah selesai dibayar.", 409);
+  const activeBudget = rule.budget_id
+    ? await db.one("SELECT budget_id FROM budgets WHERE budget_id=? AND status='active' AND period_key=?", [rule.budget_id, occurrence.period_key])
+    : null;
   const transaction = await createTransactionInternal(db, { ...context, action: "recurring.payOccurrence" },
-    buildOccurrencePaymentTransaction(rule, occurrence, account, p, amount),
+    buildOccurrencePaymentTransaction({ ...rule, budget_id: activeBudget?.budget_id || null }, occurrence, account, p, amount),
     { allowInternalLinks: true, audit: false });
   const { next, status } = buildPaidOccurrence(occurrence, transaction.transaction_id, amount);
   const result = await db.execute("UPDATE recurring_occurrences SET actual_amount=?,status=?,transaction_ids_json=?,row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=?", [next.actual_amount, next.status, next.transaction_ids_json, next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);

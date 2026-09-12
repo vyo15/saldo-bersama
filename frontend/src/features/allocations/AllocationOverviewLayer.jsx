@@ -7,6 +7,7 @@ import ProgressBar from "../../components/common/ProgressBar.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import { allocationAssigneeLabel, allocationSourceLabel, allocationUsage } from "./allocationPresentation.js";
 import { allocationClass } from "./allocationStyles.js";
+import { allocationDecoration } from "./allocationDecorations.js";
 
 const ALLOCATION_FILTERS = Object.freeze([
   { value: "all", label: "Semua" },
@@ -31,17 +32,21 @@ const AllocationSummary = ({ items }) => {
 
 const AllocationCard = ({ item, onAddNeed, attention = false, onOpenDetail, needs = [], scheduleCount = 0 }) => {
   const usage = allocationUsage(item);
+  const decoration = allocationDecoration({ decorationKey: item.decoration_key, name: item.name, id: item.envelope_rule_id });
   const needNames = needs.slice(0, 4).map((budget) => budget.name).filter(Boolean);
   const extraNeeds = Math.max(0, needs.length - needNames.length);
   const needPreview = needNames.length ? `${needNames.join(" · ")}${extraNeeds ? ` · +${extraNeeds}` : ""}` : "Belum ada kebutuhan";
 
-  return <Card className={allocationClass(`allocation-card${attention ? " allocation-card--attention" : ""}`)} data-envelope-period-id={item.envelope_period_id} data-native-enter>
-    <div className={allocationClass("allocation-card__header")}><span className={allocationClass("allocation-card__icon")}><FiPieChart aria-hidden="true" /></span><div className={allocationClass("allocation-card__heading")}><h2>{item.name}</h2><p>{allocationAssigneeLabel(item)} · {allocationSourceLabel(item)}</p></div></div>
-    <div className={allocationClass("allocation-card__balance")}><span className={allocationClass("allocation-card__balance-label")}><i aria-hidden="true" />Tersisa</span><Money className={allocationClass("allocation-card__remaining")} value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /><div className={allocationClass("allocation-card__progress-meta")}><span>Terpakai + dipesan <strong><Money value={usage.committed} /></strong></span><strong>{usage.percentage}%</strong></div><div className={allocationClass("allocation-card__progress")}><ProgressBar value={usage.committed} max={usage.allocated} label={item.name} /></div></div>
-    <div className={allocationClass("allocation-card__quick")}><div><span>Dialokasikan</span><strong><Money value={usage.allocated} /></strong></div><div><span>Struktur</span><strong>{needs.length} kebutuhan · {scheduleCount} jadwal</strong></div></div>
-    {needs.length ? <p className={allocationClass("allocation-card__needs-preview")} title={needPreview}>{needPreview}</p> : null}
-    {!needs.length && item.can_manage_needs ? <div className={allocationClass("allocation-card__next-step")}><p><strong>Belum ada kebutuhan.</strong> Tambahkan kebutuhan pertama agar tujuan dana jelas.</p><Button variant="primary" icon={FiPlus} onClick={() => onAddNeed(item)}>Tambah kebutuhan</Button></div> : null}
-    <button type="button" className={allocationClass("allocation-card__expand")} onClick={() => onOpenDetail(item)}>Buka alokasi<FiArrowRight aria-hidden="true" /></button>
+  return <Card className={allocationClass(`allocation-card allocation-card--decoration-${decoration.key}${attention ? " allocation-card--attention" : ""}`)} data-envelope-period-id={item.envelope_period_id} data-native-enter>
+    <div className={allocationClass("allocation-card__content")}>
+      <div className={allocationClass("allocation-card__header")}><span className={allocationClass("allocation-card__icon")}><img src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /></span><div className={allocationClass("allocation-card__heading")}><h2>{item.name}</h2><p>{allocationAssigneeLabel(item)} · {allocationSourceLabel(item)}</p></div></div>
+      <div className={allocationClass("allocation-card__balance")}><span className={allocationClass("allocation-card__balance-label")}><i aria-hidden="true" />Tersisa</span><Money className={allocationClass("allocation-card__remaining")} value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /><div className={allocationClass("allocation-card__progress-meta")}><span>Terpakai + dipesan <strong><Money value={usage.committed} /></strong></span><strong>{usage.percentage}%</strong></div><div className={allocationClass("allocation-card__progress")}><ProgressBar value={usage.committed} max={usage.allocated} label={item.name} /></div></div>
+      <div className={allocationClass("allocation-card__quick")}><div><span>Dialokasikan</span><strong><Money value={usage.allocated} /></strong></div><div><span>Struktur</span><strong>{needs.length} kebutuhan · {scheduleCount} jadwal</strong></div></div>
+      {needs.length ? <p className={allocationClass("allocation-card__needs-preview")} title={needPreview}>{needPreview}</p> : null}
+      {!needs.length && item.can_manage_needs ? <div className={allocationClass("allocation-card__next-step")}><p><strong>Belum ada kebutuhan.</strong> Tambahkan kebutuhan pertama agar tujuan dana jelas.</p><Button variant="primary" icon={FiPlus} onClick={() => onAddNeed(item)}>Tambah kebutuhan</Button></div> : null}
+      <button type="button" className={allocationClass("allocation-card__expand")} onClick={() => onOpenDetail(item)}>Buka alokasi<FiArrowRight aria-hidden="true" /></button>
+    </div>
+    <img className={allocationClass("allocation-card__watermark")} src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" />
   </Card>;
 };
 

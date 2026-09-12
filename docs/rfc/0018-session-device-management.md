@@ -106,9 +106,9 @@ Tidak ada token/session secret pada response.
 
 ## `last_seen_at` policy
 
-Tidak perlu write database pada setiap request. Update `last_seen_at` bersifat best-effort dan dibatasi, misalnya maksimal sekali per 15 menit per session. Failure update last-seen tidak boleh membuat request finansial gagal jika session sendiri valid. Pada serverless, heartbeat **tidak boleh** membuka transaction lalu dilepas fire-and-forget: write metadata harus berupa autocommit bounded yang ditunggu sebelum handler selesai, lalu error-nya boleh diabaikan. Ini mencegah function yang dibekukan meninggalkan writer Turso/SQLite yang menahan mutation lain.
+Tidak perlu write database pada setiap request. Update `last_seen_at` bersifat best-effort dan dibatasi, misalnya maksimal sekali per 15 menit per session. Failure update last-seen tidak boleh membuat request finansial gagal jika session sendiri valid.
 
-`last_seen_at` bukan authorization input dan perubahan heartbeat tidak perlu menaikkan global realtime revision; lifecycle session create/revoke tetap menginvalidasi `sessions.listOwn`.
+`last_seen_at` bukan authorization input.
 
 ## Actions
 

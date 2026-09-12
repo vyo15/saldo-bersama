@@ -5,6 +5,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient, getMutationActivitySnapshot, subscribedReadActions } from "../services/api/client.js";
 import { subscribeToServerStateChanged } from "../services/sync/syncSignals.js";
+import { createSyncRefreshPlan } from "../services/sync/syncCoordinator.js";
 import { useAuth } from "../features/auth/AuthContext.jsx";
 import { beginFinanceRequest, createFinanceRequestEpoch, finishFinanceResource, hasPendingFinanceRequest, invalidateFinanceSession, requestOwnsAnyFinanceResource, requestOwnsFinanceResource } from "./financeRequestEpoch.js";
 
@@ -201,17 +202,30 @@ const useFinanceRefreshers = (authStatus, user, controls, loadInitialState) => {
   return useMemo(() => ({ refreshOverview, refreshBootstrap, refreshAll }), [refreshAll, refreshBootstrap, refreshOverview]);
 };
 
-const changedSyncResources = (previous, current) => {
-  if (!previous || !current) return [];
-  const keys = new Set([...Object.keys(previous.resources || {}), ...Object.keys(current.resources || {})]);
-  return [...keys].filter((key) => Number(previous.resources?.[key] || 0) !== Number(current.resources?.[key] || 0));
+const runSyncRefreshCycle = async ({ manual, controls, refreshers }) => {
+  const current = await apiClient.request("sync.state", {}, { force: true });
+  const plan = createSyncRefreshPlan({
+    previous: controls.syncBaselineRef.current,
+    current,
+    manual,
+    subscribedActions: manual ? subscribedReadActions() : [],
+  });
+  const { changedResources, bootstrapChanged, overviewChanged, passiveTargets } = plan;
+  const passiveResults = passiveTargets.length ? await apiClient.invalidateAndWait(passiveTargets) : [];
+  const refreshTasks = [];
+  if (bootstrapChanged) refreshTasks.push(refreshers.refreshBootstrap({ invalidate: false }));
+  if (overviewChanged) refreshTasks.push(refreshers.refreshOverview({ invalidate: false }));
+  const coreResults = refreshTasks.length ? await Promise.allSettled(refreshTasks) : [];
+  const failedRefresh = [...passiveResults, ...coreResults].some((result) => result.status === "rejected");
+  if (failedRefresh) throw new Error("Sebagian data belum berhasil diperbarui.");
+  return { current, changedResources };
 };
 
 const useGlobalFinanceSync = ({ authStatus, user, controls, refreshers }) => {
   const [syncState, setSyncState] = useState({ status: "idle", error: null, lastSyncedAt: null });
   const inFlightSyncRef = useRef(null);
   const lastCheckAtRef = useRef(0);
-  const backgroundedAtRef = useRef(0);
+  const failureStreakRef = useRef(0);
 
   const syncNow = useCallback(async ({ manual = false, reason = "automatic" } = {}) => {
     if (!authenticated(authStatus, user)) return { changed: false, resources: [] };
@@ -225,31 +239,23 @@ const useGlobalFinanceSync = ({ authStatus, user, controls, refreshers }) => {
 
     const promise = (async () => {
       if (manual) setSyncState((current) => ({ ...current, status: "syncing", error: null }));
-      const current = await apiClient.request("sync.state", {}, { force: true });
-      const previous = controls.syncBaselineRef.current;
+      const { current, changedResources: changed } = await runSyncRefreshCycle({ manual, controls, refreshers });
       lastCheckAtRef.current = Date.now();
-
-      const revisionChanged = previous && Number(previous.globalRevision || 0) !== Number(current.globalRevision || 0);
-      const changed = revisionChanged ? changedSyncResources(previous, current) : [];
-      const manualTargets = manual ? subscribedReadActions().filter((action) => action !== "sync.state") : [];
-      const targets = [...new Set([...changed, ...manualTargets])];
-      const bootstrapChanged = manual || targets.includes("bootstrap.get");
-      const overviewChanged = manual || targets.includes("dashboard.overview");
-      const passiveTargets = targets.filter((action) => !["bootstrap.get", "dashboard.overview"].includes(action));
-
-      const passiveResults = passiveTargets.length ? await apiClient.invalidateAndWait(passiveTargets) : [];
-      const refreshTasks = [];
-      if (bootstrapChanged) refreshTasks.push(refreshers.refreshBootstrap({ invalidate: false }));
-      if (overviewChanged) refreshTasks.push(refreshers.refreshOverview({ invalidate: false }));
-      const coreResults = refreshTasks.length ? await Promise.allSettled(refreshTasks) : [];
-      const failedRefresh = [...passiveResults, ...coreResults].some((result) => result.status === "rejected");
-      if (failedRefresh) throw new Error("Sebagian data belum berhasil diperbarui.");
-
       controls.syncBaselineRef.current = current;
-      setSyncState({ status: "idle", error: null, lastSyncedAt: new Date().toISOString() });
+      failureStreakRef.current = 0;
+      setSyncState({ status: "idle", error: null, lastSyncedAt: new Date().toISOString(), failureStreak: 0 });
       return { changed: Boolean(changed.length), resources: changed, reason };
     })().catch((error) => {
-      if (manual) setSyncState((current) => ({ ...current, status: "error", error }));
+      failureStreakRef.current += 1;
+      const exposeError = manual || failureStreakRef.current >= 3;
+      if (exposeError) {
+        setSyncState((current) => ({
+          ...current,
+          status: manual ? "error" : "stale",
+          error,
+          failureStreak: failureStreakRef.current,
+        }));
+      }
       throw error;
     }).finally(() => {
       inFlightSyncRef.current = null;
@@ -272,31 +278,19 @@ const useGlobalFinanceSync = ({ authStatus, user, controls, refreshers }) => {
   useEffect(() => {
     if (!authenticated(authStatus, user)) return undefined;
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        backgroundedAtRef.current = Date.now();
-        return;
-      }
-      const hiddenFor = backgroundedAtRef.current ? Date.now() - backgroundedAtRef.current : 0;
-      backgroundedAtRef.current = 0;
-      syncNow({ reason: "foreground" }).then(() => {
-        if (hiddenFor >= 2 * 60_000 && getMutationActivitySnapshot().activeCount === 0) {
-          refreshers.refreshOverview().catch(() => {});
-        }
-      }).catch(() => {});
+      if (document.visibilityState !== "visible") return;
+      syncNow({ reason: "foreground" }).catch(() => {});
     };
     const onPageShow = (event) => {
       if (event.persisted) syncNow({ reason: "pageshow" }).catch(() => {});
     };
-    const onOnline = () => syncNow({ manual: true, reason: "reconnect" }).catch(() => {});
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pageshow", onPageShow);
-    window.addEventListener("online", onOnline);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pageshow", onPageShow);
-      window.removeEventListener("online", onOnline);
     };
-  }, [authStatus, refreshers, syncNow, user]);
+  }, [authStatus, syncNow, user]);
 
   useEffect(() => {
     if (!authenticated(authStatus, user)) return undefined;
@@ -313,6 +307,9 @@ const useGlobalFinanceSync = ({ authStatus, user, controls, refreshers }) => {
     manualRefresh,
     isSyncing: syncState.status === "syncing",
     syncError: syncState.error,
+    syncStatus: syncState.status,
+    syncFailureStreak: Number(syncState.failureStreak || 0),
+    syncWarning: syncState.status === "stale" ? syncState.error : null,
     lastSyncedAt: syncState.lastSyncedAt,
   };
 };

@@ -1,6 +1,6 @@
 # Turso Schema
 
-Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, `database/migrations/009_transaction_cost_sharing.sql`, `database/migrations/010_environment_sessions.sql`, `database/migrations/011_distributed_rate_limits.sql`, `database/migrations/012_member_collaboration.sql`, `database/migrations/013_investment_tracking.sql`, `database/migrations/014_investment_opening_position.sql`, `database/migrations/015_investment_asset_centric.sql`, dan `database/migrations/016_global_sync_revisions.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
+Schema canonical merupakan hasil berurutan `database/migrations/001_initial_schema.sql`, `database/migrations/002_account_number.sql`, `database/migrations/003_account_bank_template.sql`, `database/migrations/004_notification_deliveries.sql`, `database/migrations/005_notification_preferences.sql`, `database/migrations/006_account_ewallet_template.sql`, `database/migrations/007_envelope_assignee.sql`, `database/migrations/008_manual_reminders.sql`, `database/migrations/009_transaction_cost_sharing.sql`, `database/migrations/010_environment_sessions.sql`, `database/migrations/011_distributed_rate_limits.sql`, `database/migrations/012_member_collaboration.sql`, `database/migrations/013_investment_tracking.sql`, `database/migrations/014_investment_opening_position.sql`, `database/migrations/015_investment_asset_centric.sql`, `database/migrations/016_global_sync_revisions.sql`, `database/migrations/017_budget_lifecycle_history.sql`, dan `database/migrations/018_envelope_decoration.sql`, lalu dicatat pada `schema_migrations`. Migration production dijalankan eksplisit, bukan otomatis pada setiap request.
 
 ## Kelompok tabel
 
@@ -20,7 +20,8 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - `envelope_movements`
 - `recurring_rules`
 - `recurring_occurrences`
-- `budgets`
+- `budgets` — Kebutuhan operasional periode terbuka.
+- `budget_history` — representasi compact Kebutuhan setelah periode ditutup; dipakai report/reopen tanpa mempertahankan row operasional aktif.
 - `savings_goals`
 - `goal_movements`
 - `reconciliations`
@@ -62,7 +63,7 @@ Schema canonical merupakan hasil berurutan `database/migrations/001_initial_sche
 - Tabel bisnis memakai `STRICT`.
 - Foreign key diaktifkan pada setiap koneksi dan diverifikasi oleh integrity check.
 - `system_config.timezone` wajib tetap `Asia/Jakarta` dan `system_config.currency` wajib tetap `IDR`; business integrity melaporkan drift kedua nilai canonical tersebut.
-- Ownership ledger shared wajib tanpa `owner_user_id`; personal wajib memiliki `owner_user_id`. `envelope_rules.assignee_user_id` adalah penerima jatah dan terpisah dari ownership ledger.
+- Ownership ledger shared wajib tanpa `owner_user_id`; personal wajib memiliki `owner_user_id`. `envelope_rules.assignee_user_id` adalah penerima jatah dan terpisah dari ownership ledger. `envelope_rules.decoration_key` hanya metadata presentasi kartu dan tidak memengaruhi nominal, ownership, status, atau ledger.
 - Bentuk transaksi ditegakkan database: income/refund hanya rekening tujuan, expense hanya rekening sumber, transfer sumber/tujuan berbeda, adjustment hanya rekening sumber; link envelope/goal dibatasi pada tipe yang benar.
 - Metadata cancellation harus konsisten dengan status transaksi.
 - Saldo awal negatif hanya diizinkan ketika `allow_negative=1`.
@@ -106,22 +107,36 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `18`
+Versi aktif: `20`
+
+### Schema v20 — pemanis visual Alokasi Dana
+
+- `018_envelope_decoration.sql` menambah `envelope_rules.decoration_key` secara additive dengan default `auto`. Nilai valid: `auto`, `home`, `shopping`, `love`, `education`, `travel`, `gift`, `pet`, `food`, `car`, dan `plant`.
+- Field ini presentation-only: tidak mengubah saldo, Dana Tersedia, ownership, status, rekonsiliasi, atau transaksi. Backup lama dinormalisasi ke `auto` saat restore.
+- Cutover aktif adalah v19→v20 setelah backup schema v19 verified dan integrity lulus sebelum runtime v20 menerima traffic.
+
+### Schema v19 — lifecycle Kebutuhan dan histori compact
+
+- `017_budget_lifecycle_history.sql` menambah `transactions.budget_id` dan `recurring_rules.budget_id` sebagai relasi eksplisit ke Kebutuhan, metadata penghentian/released amount pada `budgets`, serta tabel `budget_history`. `budget_id` pada transaksi/jadwal sengaja tidak memakai FK ke row operasional karena `budgets` boleh dipadatkan setelah tutup buku.
+- `budgets.remove` adalah lifecycle user-facing: Kebutuhan history-free dapat hard-delete oleh Administrator, sedangkan Kebutuhan yang sudah mempunyai transaksi/jadwal historis dihentikan dan tetap terbaca pada report. Dana Alokasi yang dilepas dihitung server dari dana removable aktual dan dibatasi sisa Kebutuhan; saldo fisik rekening tidak bertambah.
+- Saat `periods.close`, seluruh Kebutuhan periode dipadatkan ke `budget_history` setelah snapshot final dibuat, reminder terjadwal dibatalkan, lalu row operasional periode tersebut dibersihkan. `periods.reopen` merehidrasi row operasional dan menghapus copy compact agar tidak ada dua authority aktif.
+- Logical backup schema v19 memasukkan `budget_history`; restore backup < v19 memperlakukannya sebagai tabel additive optional. Runtime v19 tetap mempertahankan `sync_revisions` v18 sebagai metadata realtime non-authoritative.
+- Cutover Production v18→v19 wajib memakai backup v18 verified, migration eksplisit, integrity check, lalu runtime v19 menerima traffic.
 
 ### Schema v18 — global realtime synchronization
 
 - `016_global_sync_revisions.sql` menambah `sync_revisions(resource, revision, updated_at)` dan baseline `__global__`. Tabel ini hanya metadata koordinasi runtime; saldo, ledger, Alokasi, Kebutuhan, Investasi, dan read-model bisnis tetap authoritative di tabel domain canonical.
 - Setiap mutation yang melalui action dispatcher menaikkan revision resource terdampak di transaction database yang sama. Jalur write di luar dispatcher yang memengaruhi UI (session dan scheduler/job) menaikkan revision secara eksplisit.
 - `sync.state` mengembalikan revision global dan per-resource agar client menginvalidasi hanya read yang berubah. Runtime client mengecek saat foreground, reconnect, BroadcastChannel/push signal, polling ringan ketika visible, dan pull-to-refresh.
-- `sync_revisions` tidak masuk logical backup/restore karena dapat diregenerasi dan tidak boleh menjadi financial authority. Runtime v18 menerima logical backup schema v3-v18; cutover production dari v17 wajib memiliki backup v17 verified.
-. API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
+- `sync_revisions` tidak masuk logical backup/restore karena dapat diregenerasi dan tidak boleh menjadi financial authority. Pada runtime v18, logical backup schema v3-v18 diterima dan cutover v17→v18 wajib memakai backup v17 verified. Runtime aktif v19 mengikuti kontrak v19 di atas.
+API menolak operasi ketika schema belum dimigrasikan atau version tidak cocok. Setiap perubahan schema berikutnya wajib memiliki migration baru, backup, rollback plan, dan parity test.
 
 ### Migration v17 dan rollback
 
 - `015_investment_asset_centric.sql` bersifat additive: menambah `accounts.is_system_hidden`, `investment_trades.cash_effect_enabled`, dan `investment_corrections.cash_effect_enabled`, lalu membangun ulang view `investment_account_events` agar hanya event dengan cash effect aktif yang memengaruhi saldo. `schema_version` dinaikkan ke 17.
 - Existing account/trade/correction mendapat default `is_system_hidden=0` / `cash_effect_enabled=1`, sehingga data dan saldo historis v16 tidak ditulis ulang. Runtime v17 menulis direct asset opening-position dan Buy/Sell baru dengan `cash_effect_enabled=0`; compatibility account baru ditandai `is_system_hidden=1`.
-- Logical backup yang diperkenalkan pada schema v17 memuat kolom additive tersebut. Runtime v18 tetap menerima backup schema v3-v18, termasuk **v16/v17**; row backup lama yang tidak membawa kolom baru memperoleh default migration saat restore.
-- Untuk cutover historis v16→v17, backup teknis **verified pada schema v16** wajib tersedia. Pada cutover aktif v17→v18 ikuti prosedur deployment v18 dan gunakan backup verified schema v17 sebelum migration.
+- Logical backup yang diperkenalkan pada schema v17 memuat kolom additive tersebut. Runtime aktif v19 menerima backup schema v3-v19, termasuk **v16/v17/v18**; row backup lama yang tidak membawa kolom baru memperoleh default migration saat restore.
+- Untuk cutover historis v16→v17, backup teknis **verified pada schema v16** wajib tersedia. Cutover v17→v18 tetap terdokumentasi sebagai histori; untuk cutover aktif v18→v19 ikuti prosedur deployment v19 dan gunakan backup verified schema v18 sebelum migration.
 - Rollback tidak dilakukan dengan DROP column/table. Gunakan forward-fix atau restore backup schema v16 pra-migration ke database terisolasi, jalankan integrity/parity verification, lalu repoint environment setelah approval.
 
 ### Migration v16 dan rollback (historis)
@@ -170,7 +185,7 @@ Versi aktif: `18`
 
 - `009_transaction_cost_sharing.sql` bersifat additive. Migration menambah `transactions.cost_share_mode` dengan default `unspecified`, menambah `transactions.cost_share_json` dengan default `[]`, lalu menaikkan `schema_version` ke 11. Tidak ada backfill 50:50 dan tidak ada perubahan nilai saldo/ledger historis.
 - Runtime v17 tetap menerima backup schema v3-v16 melalui normalisasi additive. Backup v10 dan lebih lama mendapat `cost_share_mode=unspecified` dan `cost_share_json=[]` saat restore; backup v11 menyimpan snapshot split canonical. Field v12/v13 yang bersifat runtime/security tidak diambil dari backup lama.
-- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila perilaku cost-sharing dari migration v11 bermasalah pada runtime v18, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
+- Sebelum migration production wajib ada backup teknis terverifikasi. Setelah migration jalankan integrity check. Bila perilaku cost-sharing dari migration v11 bermasalah pada runtime v19, prioritaskan forward-fix; rollback data dilakukan melalui restore backup pra-migration ke database terpisah, integrity check, lalu repoint environment setelah approval. Jangan `DROP COLUMN`, `DROP TABLE`, atau mengedit data produksi langsung sebagai rollback cepat.
 
 ### Migration v10 dan rollback
 

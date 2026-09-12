@@ -24,6 +24,10 @@ const samePlanningOwnership = (left, right) => String(left?.scope || "") === Str
   && String(left?.owner_user_id || "") === String(right?.owner_user_id || "");
 
 const unambiguousRelatedRecurring = (relatedRecurring, budgets, item) => (relatedRecurring || []).filter((entry) => {
+  if (entry.budget_id) {
+    const linkedBudget = (budgets || []).find((budget) => budget.budget_id === entry.budget_id);
+    return linkedBudget?.envelope_rule_id === item.envelope_rule_id;
+  }
   const candidates = (budgets || []).filter((budget) => budget.envelope_rule_id
     && budget.envelope_source_account_id
     && budget.category_id === entry.category_id
@@ -33,7 +37,9 @@ const unambiguousRelatedRecurring = (relatedRecurring, budgets, item) => (relate
 });
 
 const recurringScheduleForBudget = (budget, relatedRecurring, today) => {
-  const items = (relatedRecurring || []).filter((entry) => entry.category_id === budget.category_id);
+  const items = (relatedRecurring || []).filter((entry) => entry.budget_id
+    ? entry.budget_id === budget.budget_id
+    : entry.category_id === budget.category_id);
   if (!items.length) return null;
   const openItems = items
     .filter((entry) => !COMPLETED_RECURRING_STATUSES.has(entry.status) && !INACTIVE_RECURRING_STATUSES.has(entry.status))
@@ -146,7 +152,7 @@ const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleControlle
   if (!budgetFormController.formOpen && !budgetLifecycleController.archiveTarget) return null;
   return <Suspense fallback={<LazyActionFallback surface="modal" title="Kebutuhan" label="Menyiapkan form Kebutuhan..." />}><BudgetDialogLayer
     canManage={canManage}
-    canLifecycle={canLifecycle}
+    canLifecycle={canLifecycle || canManage}
     categories={expenseCategories}
     items={budgets}
     users={users}
@@ -189,6 +195,7 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
         source_account_id: item.source_account_id,
         category_id: budget?.category_id || "",
         envelope_period_id: item.envelope_period_id,
+        budget_id: budget?.budget_id || "",
       },
     });
   };

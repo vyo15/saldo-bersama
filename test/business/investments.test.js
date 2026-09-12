@@ -483,7 +483,7 @@ test("backup canonical mencakup authoritative investment history dan integrity c
     const { portfolio, instrument } = await setupPortfolio(db);
     await buy(db, owner, portfolio, instrument);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 18);
+    assert.equal(snapshot.manifest.schemaVersion, 20);
     for (const table of ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
       assert.ok(Array.isArray(snapshot.tables[table]));
     }

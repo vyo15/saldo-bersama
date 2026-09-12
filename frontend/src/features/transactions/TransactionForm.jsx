@@ -163,6 +163,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
     if (!transaction && ["transaction_type", "category_id", "transaction_date"].includes(field)) state.setAllocationMode("auto");
     setDirtyForm((current) => {
       const next = { ...current, [field]: value };
+      if (["transaction_type", "category_id", "envelope_period_id"].includes(field)) next.budget_id = "";
       if (field === "transaction_type" && value !== TRANSACTION_TYPES.EXPENSE) {
         next.envelope_period_id = "";
         next.cost_share_mode = "unspecified";
@@ -188,7 +189,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
     state.setConfirmation(null);
     state.setSubmitState({ status: "idle", error: null });
     state.setErrors((current) => clearTransactionFieldErrors(current, "envelope_period_id"));
-    setDirtyForm((current) => ({ ...current, envelope_period_id: nextId }));
+    setDirtyForm((current) => ({ ...current, envelope_period_id: nextId, budget_id: "" }));
   };
 
   return { update, onSourceAccountChange, onEnvelopeChange };

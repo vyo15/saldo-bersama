@@ -27,7 +27,7 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
     "categories.archive", "categories.restore", "categories.deleteUnused", "users.deactivate", "users.reactivate",
     "envelopes.move", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
     "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.restoreRule",
-    "budgets.deleteUnused", "budgets.restore", "goals.archive", "goals.deleteUnused", "goals.move", "goals.restore", "periods.close",
+    "budgets.deleteUnused", "budgets.remove", "budgets.restore", "goals.archive", "goals.deleteUnused", "goals.move", "goals.restore", "periods.close",
     "notifications.updatePreference", "reminders.upsert", "reminders.cancel", "import.preview", "backup.create", "import.apply", "restore.preview", "restore.apply", "reset.apply", "fullReset.apply",
   ]) assert.equal(requiresIdempotencyKey(action), true, action);
   assert.equal(requiresIdempotencyKey("integrity.run"), true);
@@ -39,12 +39,16 @@ test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", 
     "categories.previewArchive", "categories.restore", "categories.deleteUnused", "transactions.restore", "users.reactivate", "periods.previewClose",
     "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule",
     "recurring.previewRuleLifecycle", "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.restoreRule",
-    "budgets.previewLifecycle", "budgets.deleteUnused", "budgets.restore", "goals.previewLifecycle", "goals.archive", "goals.deleteUnused", "goals.restore",
+    "budgets.deleteUnused", "budgets.restore", "goals.previewLifecycle", "goals.archive", "goals.deleteUnused", "goals.restore",
     "reset.preview", "reset.status", "reset.apply", "fullReset.preview", "fullReset.status", "fullReset.apply",
   ];
   for (const action of ownerOnly) {
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
     assert.equal(ACTION_PERMISSIONS.member.has(action), false, `${action} tidak boleh tersedia untuk member`);
+  }
+  for (const action of ["budgets.previewLifecycle", "budgets.remove"]) {
+    assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
+    assert.equal(ACTION_PERMISSIONS.member.has(action), true, `${action} tersedia untuk Member dan tetap dibatasi scope/assignee di service`);
   }
   for (const forbidden of ["purge", "data.purge", "accounts.delete", "transactions.delete", "categories.delete"]) {
     assert.equal(ACTION_POLICIES[forbidden], undefined, `${forbidden} tidak boleh terdaftar`);

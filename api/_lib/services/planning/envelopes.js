@@ -10,6 +10,12 @@ import { assertAllocationAvailable, envelopeRuleLifecycleImpact } from "./envelo
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
 const OVERSPEND_POLICIES = new Set(["block", "confirm", "allow"]);
+const ENVELOPE_DECORATIONS = new Set(["auto", "home", "shopping", "love", "education", "travel", "gift", "pet", "food", "car", "plant"]);
+
+const validEnvelopeRuleOptions = ({ periodType, rollover, overspend, decorationKey }) => PERIOD_TYPES.has(periodType)
+  && ROLLOVER_POLICIES.has(rollover)
+  && OVERSPEND_POLICIES.has(overspend)
+  && ENVELOPE_DECORATIONS.has(decorationKey);
 
 const envelopeLegacyAssignee = (owned) => owned.scope === "personal" ? owned.owner_user_id : null;
 
@@ -89,8 +95,9 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
   const periodType = String(payload.period_type || "monthly");
   const rollover = String(payload.rollover_policy || "unallocated");
   const overspend = String(payload.overspend_policy || "confirm");
+  const decorationKey = String(payload.decoration_key || "auto");
   if (!name) throw appError("NAME_REQUIRED", "Nama alokasi wajib diisi.", 400);
-  if (!PERIOD_TYPES.has(periodType) || !ROLLOVER_POLICIES.has(rollover) || !OVERSPEND_POLICIES.has(overspend)) throw appError("INVALID_ENVELOPE_RULE", "Aturan alokasi tidak valid.", 400);
+  if (!validEnvelopeRuleOptions({ periodType, rollover, overspend, decorationKey })) throw appError("INVALID_ENVELOPE_RULE", "Aturan alokasi tidak valid.", 400);
   const sourceAccountId = sanitizeText(payload.source_account_id, 100);
   if (!sourceAccountId) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Rekening sumber wajib dipilih agar dana alokasi memiliki asal yang jelas.", 400);
   const account = await accountWithAccess(db, context.actor, sourceAccountId);
@@ -116,11 +123,12 @@ export const createEnvelopeRule = async (db, context, payload = context.payload 
     source_account_id: account?.account_id || null,
     rollover_policy: rollover,
     overspend_policy: overspend,
+    decoration_key: decorationKey,
     status: "active",
     ...newVersionStamp(context.actor.user_id, timestamp)
   };
   assertEnvelopeAssigneeAccess(context.actor, record);
-  await db.execute(`INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await db.execute(`INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,decoration_key,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   return record;
 };
 export const createEnvelopePeriod = async (db, context, payload = context.payload || {}) => {

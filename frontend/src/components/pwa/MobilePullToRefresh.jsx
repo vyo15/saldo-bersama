@@ -39,6 +39,14 @@ const MobilePullToRefresh = ({ onRefresh, blocked = false, offline = false }) =>
   useEffect(() => () => window.clearTimeout(resetTimer.current), []);
 
   useEffect(() => {
+    if (!blocked) return;
+    gesture.current = { active: false, startX: 0, startY: 0, raw: 0 };
+    refreshingRef.current = false;
+    window.clearTimeout(resetTimer.current);
+    setState({ phase: "idle", distance: 0 });
+  }, [blocked]);
+
+  useEffect(() => {
     const mobile = () => window.matchMedia?.("(max-width: 820px)").matches !== false;
     const resetGesture = () => { gesture.current = { active: false, startX: 0, startY: 0, raw: 0 }; };
     const settle = (phase) => {

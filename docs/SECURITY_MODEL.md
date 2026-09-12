@@ -7,7 +7,7 @@ Cookie session canonical adalah signed/HttpOnly/SameSite credential opaque (`ses
 
 ## Trust boundary
 
-Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel Functions memverifikasi session, origin, rate limit, action, payload reserved field, role, ownership, idempotency, dan version. Semua gateway action melewati limiter process-local; mutation/external path tetap memakai bucket durable Turso lintas instance, sedangkan authenticated read tidak boleh bergantung pada write bucket agar writer database yang sedang terblokir tidak mengubah outage write menjadi outage read. Turso hanya diakses backend.
+Browser, payload, URL, local storage, dan frontend state tidak tepercaya. Vercel Functions memverifikasi session, origin, rate limit, action, payload reserved field, role, ownership, idempotency, dan version. Turso hanya diakses backend.
 
 ## Identity
 

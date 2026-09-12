@@ -3,9 +3,8 @@ import { assertPositiveRupiah } from "../../domain/money.js";
 import { todayInJakarta } from "../../domain/dates.js";
 import { createPlanningPaymentSchedule } from "../../shared/workflows/planningSchedules.js";
 import {
-  archiveBudget as requestArchiveBudget,
-  deleteUnusedBudget as requestDeleteUnusedBudget,
   previewBudgetLifecycle,
+  removeBudget as requestRemoveBudget,
   upsertBudget,
 } from "./budgets.api.js";
 import { useBudgetBatchDraft } from "./useBudgetBatchDraft.js";
@@ -60,8 +59,9 @@ const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule
   const completingSchedule = Boolean(pendingSchedule);
   const amount = pendingSchedule?.amount ?? assertPositiveRupiah(form.amount);
   const recordingMode = pendingSchedule ? "scheduled" : form.recording_mode;
+  let savedBudget = existingBudget || (pendingSchedule?.budget_id ? { budget_id: pendingSchedule.budget_id } : null);
   if (!pendingSchedule) {
-    await upsertBudget({
+    savedBudget = await upsertBudget({
       category_id: form.category_id,
       warning_threshold: form.warning_threshold,
       scope: form.scope,
@@ -73,7 +73,7 @@ const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule
       row_version: existingBudget?.row_version,
     }, { rowVersion: existingBudget?.row_version });
   }
-  return { completingSchedule, amount, recordingMode };
+  return { completingSchedule, amount, recordingMode, savedBudget };
 };
 
 const budgetScheduleFromForm = (form, amount) => {
@@ -91,7 +91,7 @@ const budgetScheduleFromForm = (form, amount) => {
 
 const shouldCreateBudgetSchedule = ({ pendingSchedule, existingBudget, recordingMode }) => Boolean(pendingSchedule || !existingBudget) && recordingMode === "scheduled";
 
-const createBudgetSchedule = async ({ schedule, categories, scheduleAccountId }) => {
+const createBudgetSchedule = async ({ schedule, categories, scheduleAccountId, budgetId }) => {
   if (!scheduleAccountId) throw new Error("Rekening sumber Alokasi Dana belum tersedia untuk membuat jadwal.");
   const category = categories.find((item) => item.category_id === schedule.category_id);
   await createPlanningPaymentSchedule({
@@ -105,6 +105,7 @@ const createBudgetSchedule = async ({ schedule, categories, scheduleAccountId })
     frequency: schedule.frequency,
     start_date: schedule.start_date,
     auto_debit: false,
+    budget_id: budgetId || null,
   }, {});
 };
 
@@ -210,10 +211,10 @@ export const useBudgetFormController = ({ items, period, notify, refresh, catego
     if (shouldCreateBudgetSchedule({ pendingSchedule: state.pendingSchedule, existingBudget: state.existingBudget, recordingMode: saveContext.recordingMode })) {
       const schedule = state.pendingSchedule || budgetScheduleFromForm(state.form, saveContext.amount);
       try {
-        await createBudgetSchedule({ schedule, categories, scheduleAccountId });
+        await createBudgetSchedule({ schedule, categories, scheduleAccountId, budgetId: saveContext.savedBudget?.budget_id || schedule.budget_id });
         state.setPendingSchedule(null);
       } catch (scheduleError) {
-        state.setPendingSchedule(schedule);
+        state.setPendingSchedule({ ...schedule, budget_id: saveContext.savedBudget?.budget_id || schedule.budget_id || "" });
         state.setSaveState({ status: "error", error: new Error(`Kebutuhan sudah tersimpan, tetapi jadwal belum berhasil dibuat. ${scheduleError.message || "Coba simpan jadwal lagi."}`) });
         await refresh();
         return false;
@@ -264,13 +265,15 @@ export const useBudgetLifecycleController = ({ notify, refresh, setForm, setForm
     const { budget, preview } = archiveTarget;
     setArchiveState({ status: "submitting", error: null });
     try {
-      if (preview.canDeleteUnused) {
-        await requestDeleteUnusedBudget({ budget_id: budget.budget_id, envelope_period_id: envelopePeriodId || null, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
-        notify({ message: "Kebutuhan yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "budgets:delete-unused" });
-      } else {
-        await requestArchiveBudget({ budget_id: budget.budget_id, envelope_period_id: envelopePeriodId || null, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
-        notify({ message: "Kebutuhan berhasil diarsipkan. Transaksi dan laporan historis tetap tersimpan.", tone: "success", dedupeKey: "budgets:archive" });
-      }
+      const result = await requestRemoveBudget({ budget_id: budget.budget_id, envelope_period_id: envelopePeriodId || null, row_version: budget.row_version, reason }, { rowVersion: budget.row_version });
+      const released = Number(result?.released_amount_this_action ?? result?.released_amount ?? preview.releasable_amount ?? 0);
+      notify({
+        message: result?.outcome === "deleted_unused"
+          ? "Kebutuhan yang belum pernah digunakan berhasil dihapus."
+          : `Kebutuhan dihapus dari daftar aktif. Histori tetap tersimpan${released > 0 ? ` dan Rp ${released.toLocaleString("id-ID")} kembali menjadi Dana Tersedia` : ""}.`,
+        tone: "success",
+        dedupeKey: "budgets:remove",
+      });
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
       setForm((current) => budgetMatchesForm(budget, current) ? emptyBudgetForm() : current);

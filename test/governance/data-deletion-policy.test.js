@@ -30,7 +30,7 @@ const APPROVED_SQL_DELETES = new Map([
   ["api/_lib/services/planning/envelopes.js", new Set(["envelope_periods", "envelope_rules"])],
   ["api/_lib/services/planning/recurring.js", new Set(["recurring_occurrences", "recurring_rules"])],
   ["api/_lib/services/planning/goals.js", new Set(["savings_goals"])],
-  ["api/_lib/services/planning/budgets.js", new Set(["budgets"])],
+  ["api/_lib/services/planning/budgets.js", new Set(["budget_history", "budgets"])],
   ["api/_lib/services/maintenance/import.js", new Set(["import_previews"])],
   ["api/_lib/services/maintenance/restore.js", new Set(["restore_previews", "user_sessions", "__RESTORE_DELETE_ORDER__"])],
   ["api/_lib/services/maintenance/reset.js", new Set(["__RESTORE_DELETE_ORDER__", "integration_outbox"])],
@@ -77,8 +77,13 @@ test("delete-unused selalu owner-only, idempotent write, dan preview lifecycle t
     assert.equal(policy?.mode, "read", `${action} harus read`);
     assert.equal(policy?.idempotencyRequired, false, `${action} tidak memerlukan idempotency`);
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
-    assert.equal(ACTION_PERMISSIONS.member.has(action), false, `${action} tidak boleh tersedia untuk member`);
+    const memberAllowed = action === "budgets.previewLifecycle";
+    assert.equal(ACTION_PERMISSIONS.member.has(action), memberAllowed, `${action} permission Member harus sesuai lifecycle Kebutuhan`);
   }
+  const removePolicy = getActionPolicy("budgets.remove");
+  assert.equal(removePolicy?.mode, "write");
+  assert.equal(removePolicy?.idempotencyRequired, true);
+  assert.equal(ACTION_PERMISSIONS.member.has("budgets.remove"), true);
 });
 
 test("semua hard DELETE production wajib berada pada allowlist deletion policy", async () => {

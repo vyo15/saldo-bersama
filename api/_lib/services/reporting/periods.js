@@ -3,6 +3,7 @@ import { DATABASE_SCHEMA_VERSION } from "../../db/schema.js";
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, canonicalJson, monthBounds, nowIso, periodKey, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { monthlyReport } from "./dashboard.js";
+import { compactBudgetsForClosedPeriod, restoreCompactedBudgetsForPeriod } from "../planning/budgets.js";
 import { integrityBaseStatements, integrityIssuesFromBaseRows } from "./integrity.js";
 import { hash } from "./shared.js";
 const compactSnapshot = async (db, context, period) => {
@@ -230,6 +231,7 @@ export const closePeriod = async (db, context) => {
     };
     await db.execute("INSERT INTO period_closures(closure_id,period_key,scope,status,snapshot_json,snapshot_hash,reason,row_version,closed_by,closed_at,reopened_by,reopened_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", Object.values(next));
   }
+  const budgetCompaction = await compactBudgetsForClosedPeriod(db, context, period);
   await appendAudit(db, context, {
     entityType: "period_closure",
     entityId: next.closure_id,
@@ -241,7 +243,8 @@ export const closePeriod = async (db, context) => {
       status: next.status,
       row_version: next.row_version,
       snapshot_checksum: next.snapshot_hash,
-      snapshot_length: snapshotJson.length
+      snapshot_length: snapshotJson.length,
+      compacted_budgets: budgetCompaction.compacted
     }
   });
   const output = publicRow(next);
@@ -249,7 +252,8 @@ export const closePeriod = async (db, context) => {
   return {
     ...output,
     snapshot_length: snapshotJson.length,
-    snapshot_checksum: next.snapshot_hash
+    snapshot_checksum: next.snapshot_hash,
+    compacted_budgets: budgetCompaction.compacted
   };
 };
 export const reopenPeriod = async (db, context) => {
@@ -274,6 +278,7 @@ export const reopenPeriod = async (db, context) => {
     reopened_by: context.actor.user_id,
     reopened_at: timestamp
   };
+  const budgetRestore = await restoreCompactedBudgetsForPeriod(db, context, current.period_key);
   const result = await db.execute("UPDATE period_closures SET status='reopened',reason=?,row_version=?,reopened_by=?,reopened_at=? WHERE closure_id=? AND row_version=?", [reason, next.row_version, next.reopened_by, next.reopened_at, current.closure_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Status periode berubah di perangkat lain.", 409);
   await appendAudit(db, context, {
@@ -286,10 +291,11 @@ export const reopenPeriod = async (db, context) => {
     next: {
       status: next.status,
       row_version: next.row_version,
-      reason
+      reason,
+      restored_budgets: budgetRestore.restored
     }
   });
   const output = publicRow(next);
   delete output.snapshot_json;
-  return output;
+  return { ...output, restored_budgets: budgetRestore.restored };
 };

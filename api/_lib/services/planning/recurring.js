@@ -39,7 +39,7 @@ const validateRecurringIdentity = (category, kind, frequency) => {
   }
 };
 
-const buildUpdatedRecurringRule = (current, payload, account, owned, category, actorId) => {
+const buildUpdatedRecurringRule = (current, payload, account, owned, category, budgetId, actorId) => {
   const kind = String(recurringPayloadValue(payload, current, "kind"));
   const frequency = String(recurringPayloadValue(payload, current, "frequency"));
   validateRecurringIdentity(category, kind, frequency);
@@ -51,6 +51,7 @@ const buildUpdatedRecurringRule = (current, payload, account, owned, category, a
     name: sanitizeText(recurringPayloadValue(payload, current, "name"), 100),
     kind,
     category_id: category.category_id,
+    budget_id: budgetId,
     expected_amount: payload.expected_amount === undefined ? current.expected_amount : positiveInteger(payload.expected_amount, "Nominal rutin"),
     frequency,
     due_day: payload.due_day === undefined ? current.due_day : dueDayValue(payload.due_day),
@@ -83,6 +84,22 @@ const assertRecurringIdentityChangeAllowed = async (db, current, next) => {
   }
 };
 
+const resolveRecurringBudgetLink = async (db, p, { category, account, owned }) => {
+  const budgetId = sanitizeText(p.budget_id, 100) || null;
+  if (!budgetId) return null;
+  const budget = await db.one(`SELECT b.*,er.source_account_id AS envelope_source_account_id
+    FROM budgets b LEFT JOIN envelope_rules er ON er.envelope_rule_id=b.envelope_rule_id
+    WHERE b.budget_id=? AND b.status='active'`, [budgetId]);
+  if (!budget) throw appError("INVALID_BUDGET", "Kebutuhan untuk jadwal pembayaran tidak ditemukan atau sudah tidak aktif.", 409);
+  if (budget.category_id !== category.category_id || budget.scope !== owned.scope || String(budget.owner_user_id || "") !== String(owned.owner_user_id || "")) {
+    throw appError("BUDGET_SCHEDULE_SCOPE_MISMATCH", "Jadwal pembayaran harus memiliki kategori dan kepemilikan yang sama dengan Kebutuhan.", 409);
+  }
+  if (budget.envelope_rule_id && budget.envelope_source_account_id !== account.account_id) {
+    throw appError("BUDGET_SCHEDULE_ACCOUNT_MISMATCH", "Rekening jadwal pembayaran harus sama dengan rekening sumber Alokasi Dana Kebutuhan.", 409);
+  }
+  return budget.budget_id;
+};
+
 export const createRecurringRule = async (db, context) => {
   const p = context.payload || {};
   const name = sanitizeText(p.name, 100);
@@ -95,6 +112,7 @@ export const createRecurringRule = async (db, context) => {
   assertOperationalPlanningAccount(account, "Jadwal Rutin");
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
+  const budgetId = await resolveRecurringBudgetLink(db, p, { category, account, owned });
   const start = dateValue(p.start_date || todayJakarta(), "Tanggal mulai");
   const end = p.end_date ? dateValue(p.end_date, "Tanggal akhir") : null;
   if (end && end < start) throw appError("INVALID_DATE_RANGE", "Tanggal akhir sebelum tanggal mulai.", 400);
@@ -104,6 +122,7 @@ export const createRecurringRule = async (db, context) => {
     name,
     kind,
     category_id: category.category_id,
+    budget_id: budgetId,
     expected_amount: positiveInteger(p.expected_amount, "Nominal rutin"),
     frequency,
     due_day: dueDayValue(p.due_day ?? 1),
@@ -118,7 +137,7 @@ export const createRecurringRule = async (db, context) => {
     scope: owned.scope,
     owner_user_id: owned.owner_user_id
   };
-  await db.execute(`INSERT INTO recurring_rules(recurring_rule_id,name,kind,category_id,expected_amount,frequency,due_day,default_account_id,payment_method,auto_debit,start_date,end_date,priority,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(rule));
+  await db.execute(`INSERT INTO recurring_rules(recurring_rule_id,name,kind,category_id,budget_id,expected_amount,frequency,due_day,default_account_id,payment_method,auto_debit,start_date,end_date,priority,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(rule));
   await ensureRuleOccurrences(db, rule);
   await appendAudit(db, context, {
     entityType: "recurring_rule",
@@ -146,10 +165,11 @@ export const updateRecurringRule = async (db, context) => {
   assertOperationalPlanningAccount(account, "Jadwal Rutin");
   const owned = ruleScopeFromAccount(account);
   assertPlanningManageScope(context.actor, owned, { allowOwnedPersonal: true });
-  const next = buildUpdatedRecurringRule(current, p, account, owned, category, context.actor.user_id);
+  const budgetId = await resolveRecurringBudgetLink(db, { ...p, budget_id: recurringPayloadValue(p, current, "budget_id") }, { category, account, owned });
+  const next = buildUpdatedRecurringRule(current, p, account, owned, category, budgetId, context.actor.user_id);
   assertRecurringUpdateShape(next);
   await assertRecurringIdentityChangeAllowed(db, current, next);
-  const result = await db.execute(`UPDATE recurring_rules SET name=?,kind=?,category_id=?,expected_amount=?,frequency=?,due_day=?,default_account_id=?,payment_method=?,auto_debit=?,start_date=?,end_date=?,priority=?,status=?,scope=?,owner_user_id=?,row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=?`, [next.name, next.kind, next.category_id, next.expected_amount, next.frequency, next.due_day, next.default_account_id, next.payment_method, next.auto_debit, next.start_date, next.end_date, next.priority, next.status, next.scope, next.owner_user_id, next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
+  const result = await db.execute(`UPDATE recurring_rules SET name=?,kind=?,category_id=?,budget_id=?,expected_amount=?,frequency=?,due_day=?,default_account_id=?,payment_method=?,auto_debit=?,start_date=?,end_date=?,priority=?,status=?,scope=?,owner_user_id=?,row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=?`, [next.name, next.kind, next.category_id, next.budget_id, next.expected_amount, next.frequency, next.due_day, next.default_account_id, next.payment_method, next.auto_debit, next.start_date, next.end_date, next.priority, next.status, next.scope, next.owner_user_id, next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
   if (recurringScheduleChanged(current, next)) await removeUnpaidFutureOccurrences(db, current.recurring_rule_id);
   await ensureRuleOccurrences(db, next);
@@ -165,7 +185,7 @@ export const recurringListStatement = (context) => {
     ? { sql: "1=1", args: [] }
     : { sql: "t.created_by=?", args: [context.actor.user_id] };
   return {
-    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,a.account_type AS default_account_type,
+    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.budget_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,a.account_type AS default_account_type,
       (SELECT t.transaction_id FROM transactions t
         WHERE t.recurring_occurrence_id=o.occurrence_id AND t.status='active' AND ${reverseAccess.sql}
         ORDER BY t.created_at DESC,t.transaction_id DESC LIMIT 1) AS reverse_transaction_id
@@ -261,6 +281,38 @@ export const deleteUnusedRecurringRule = async (db, context) => {
   if (deleted.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
   await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
   return { recurring_rule_id: current.recurring_rule_id, deleted: true, audit_preserved: true };
+};
+
+export const retireRecurringRulesForBudget = async (db, context, budgetId, reason = "Kebutuhan dihentikan") => {
+  const rules = await db.all("SELECT * FROM recurring_rules WHERE budget_id=? AND status='active' ORDER BY recurring_rule_id", [budgetId]);
+  let deleted = 0;
+  let archived = 0;
+  let removedFutureOccurrences = 0;
+  for (const current of rules) {
+    const impact = await recurringRuleLifecycleImpact(db, current);
+    await cancelScheduledManualRemindersForRecurringRule(db, context, current.recurring_rule_id, "BUDGET_ENDED");
+    removedFutureOccurrences += await removeUnpaidFutureOccurrences(db, current.recurring_rule_id);
+    if (impact.canDeleteUnused) {
+      await appendAudit(db, context, {
+        entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]),
+        next: { deleted: true, deletion_type: "unused_budget_schedule", reason, audit_preserved: true },
+      });
+      const result = await db.execute("DELETE FROM recurring_rules WHERE recurring_rule_id=? AND row_version=? AND status='active'", [current.recurring_rule_id, current.row_version]);
+      if (result.rowsAffected !== 1) throw appError("CONFLICT", "Jadwal pembayaran berubah di perangkat lain.", 409);
+      deleted += 1;
+    } else {
+      const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
+      const result = await db.execute("UPDATE recurring_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
+      if (result.rowsAffected !== 1) throw appError("CONFLICT", "Jadwal pembayaran berubah di perangkat lain.", 409);
+      await appendAudit(db, context, {
+        entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]),
+        next: { ...publicRow(next, ["auto_debit"]), archive_reason: reason, source: "budget_lifecycle" },
+      });
+      archived += 1;
+    }
+    await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
+  }
+  return { affected: rules.length, deleted, archived, removed_future_occurrences: removedFutureOccurrences };
 };
 
 export const archiveRecurringRule = (db, context) => archiveRecurringRuleInternal(db, context, { removeUnpaidFutureOccurrences });

@@ -136,11 +136,12 @@ const DesktopFloatingTransactionAdd = ({ visible, offline, onClick }) => visible
   <button type="button" className="floating-add" data-preload-action="transaction" disabled={offline} onClick={onClick} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button>
 ) : null;
 
-const AppContentNotices = ({ dashboardRoute, installPrompt, logoutError, refreshError, refreshAll }) => (
+const AppContentNotices = ({ dashboardRoute, installPrompt, logoutError, refreshError, syncWarning, refreshAll, manualRefresh }) => (
   <>
     {dashboardRoute ? <InstallAppCard {...installPrompt} onInstall={installPrompt.install} onDismiss={installPrompt.dismiss} /> : null}
     {logoutError ? <div className="notice notice--danger" role="alert">{logoutError}</div> : null}
     {refreshError ? <div className="notice notice--warning refresh-notice" role="status"><span>Data lama tetap ditampilkan. Pembaruan terakhir belum berhasil.</span><Button icon={FiRefreshCw} onClick={refreshAll}>Coba lagi</Button></div> : null}
+    {!refreshError && syncWarning ? <div className="notice notice--warning refresh-notice" role="status"><span>Data belum berhasil disinkronkan. Data terakhir tetap ditampilkan dan aplikasi akan mencoba lagi otomatis.</span><Button icon={FiRefreshCw} onClick={manualRefresh}>Perbarui</Button></div> : null}
   </>
 );
 
@@ -168,7 +169,7 @@ const useAppShellRuntime = ({ overview, user, composerOpen, syncNow }) => {
 
   useEffect(() => {
     if (!network.recoveryRevision || mutationActivity.activeCount > 0) return;
-    syncNow({ manual: true, reason: "network-recovery" }).catch(() => {});
+    syncNow({ reason: "network-recovery" }).catch(() => {});
   }, [mutationActivity.activeCount, network.recoveryRevision, syncNow]);
 
   useEffect(() => {
@@ -200,7 +201,7 @@ const useAppShellRuntime = ({ overview, user, composerOpen, syncNow }) => {
 
 const AppShell = () => {
   const { user, logout } = useAuth();
-  const { isRefreshing, refreshError, refreshAll, manualRefresh, syncNow, overview } = useFinance();
+  const { isRefreshing, refreshError, refreshAll, manualRefresh, syncNow, syncWarning, overview } = useFinance();
   const { openTransactionComposer, composerOpen } = useTransactionComposer();
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -241,7 +242,7 @@ const AppShell = () => {
 
         <div className="app-shell__main">
           <main className={`app-content ${wideContentRoute ? "app-content--wide" : "app-content--standard"}`}>
-            <AppContentNotices dashboardRoute={dashboardRoute} installPrompt={installPrompt} logoutError={logoutError} refreshError={refreshError} refreshAll={refreshAll} />
+            <AppContentNotices dashboardRoute={dashboardRoute} installPrompt={installPrompt} logoutError={logoutError} refreshError={refreshError} syncWarning={syncWarning} refreshAll={refreshAll} manualRefresh={manualRefresh} />
             <Outlet />
           </main>
         </div>

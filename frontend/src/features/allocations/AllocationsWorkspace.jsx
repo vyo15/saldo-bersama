@@ -22,7 +22,7 @@ const loadAllocationActionRunners = () => import("./allocationActionRunners.js")
 
 const defaultCreateForm = () => {
   const { start, end } = currentMonthBoundsInJakarta();
-  return { name: "", source_account_id: "", assignee_user_id: "", period_type: "monthly", period_start: start, period_end: end, rollover_policy: "unallocated", overspend_policy: "confirm" };
+  return { name: "", decoration_key: "auto", source_account_id: "", assignee_user_id: "", period_type: "monthly", period_start: start, period_end: end, rollover_policy: "unallocated", overspend_policy: "confirm" };
 };
 
 const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, setCreateForm, move, setMove, lookup, notify, setMessage, onCreated, onMoved }) => {
@@ -105,11 +105,13 @@ const sameOwnership = (left, right) => String(left?.scope || "") === String(righ
 const linkedBudgetsForEnvelope = (budgets, item) => (budgets || []).filter((budget) => budget.envelope_rule_id === item.envelope_rule_id);
 
 const relatedRecurringForEnvelope = (recurringItems, budgets, item) => {
-  const categoryIds = new Set(linkedBudgetsForEnvelope(budgets, item).map((budget) => budget.category_id));
+  const linkedBudgets = linkedBudgetsForEnvelope(budgets, item);
+  const budgetIds = new Set(linkedBudgets.map((budget) => budget.budget_id));
+  const categoryIds = new Set(linkedBudgets.map((budget) => budget.category_id));
   return (recurringItems || []).filter((entry) => entry.kind === "expense"
     && entry.default_account_id === item.source_account_id
-    && categoryIds.has(entry.category_id)
-    && sameOwnership(entry, item));
+    && sameOwnership(entry, item)
+    && (entry.budget_id ? budgetIds.has(entry.budget_id) : categoryIds.has(entry.category_id)));
 };
 
 const nextAllocationPeriodKey = (item) => {

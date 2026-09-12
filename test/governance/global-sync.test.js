@@ -49,3 +49,17 @@ test("revision global dan resource naik atomik pada storage sync", async () => {
     assert.deepEqual(presentSyncRevisionRows([]), { globalRevision: 0, resources: {}, updatedAt: null });
   } finally { raw.close(); }
 });
+
+const assertIncludes = (action, expected) => {
+  const dependencies = new Set(syncDependenciesForAction(action));
+  for (const resource of expected) assert.equal(dependencies.has(resource), true, `${action} wajib mengubah revision ${resource}`);
+};
+
+test("mutation kritis mempertahankan semantic dependency realtime", () => {
+  assertIncludes("masterDataRequests.review", ["categories.list", "bootstrap.get", "app.initialState", "dashboard.overview", "masterDataRequests.list"]);
+  assertIncludes("transactions.create", ["accounts.list", "transactions.list", "dashboard.overview", "envelopes.list", "budgets.list", "reports.monthly"]);
+  assertIncludes("budgets.batchCreate", ["accounts.list", "accounts.previewLifecycle", "budgets.list", "envelopes.list", "recurring.list", "dashboard.overview", "reports.monthly"]);
+  assertIncludes("budgets.upsert", ["accounts.list", "budgets.list", "envelopes.list", "dashboard.overview", "reports.monthly"]);
+  assertIncludes("budgets.archive", ["accounts.list", "budgets.list", "envelopes.list", "dashboard.overview", "archive.list"]);
+  assertIncludes("envelopes.adjustAllocation", ["accounts.list", "envelopes.list", "budgets.list", "dashboard.overview", "reports.monthly"]);
+});

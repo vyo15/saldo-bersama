@@ -135,6 +135,7 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
 
   "budgets.batchCreate": unique(BUDGET_DEPENDENCIES, RECURRING_DEPENDENCIES),
   "budgets.upsert": BUDGET_DEPENDENCIES,
+  "budgets.remove": unique(BUDGET_DEPENDENCIES, RECURRING_DEPENDENCIES),
   "budgets.archive": BUDGET_DEPENDENCIES,
   "budgets.deleteUnused": BUDGET_DEPENDENCIES,
   "budgets.restore": BUDGET_DEPENDENCIES,

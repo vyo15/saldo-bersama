@@ -26,8 +26,8 @@ const categoryDependencyCounts = async (db, categoryId) => numericCounts(await d
   (SELECT COUNT(*) FROM transactions WHERE status='active' AND category_id=?) AS active_transactions,
   (SELECT COUNT(*) FROM recurring_rules WHERE category_id=?) AS recurring,
   (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND category_id=?) AS active_recurring,
-  (SELECT COUNT(*) FROM budgets WHERE category_id=?) AS budgets,
-  (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS active_budgets`, [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId]));
+  ((SELECT COUNT(*) FROM budgets WHERE category_id=?) + (SELECT COUNT(*) FROM budget_history WHERE category_id=?)) AS budgets,
+  (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS active_budgets`, [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId, categoryId]));
 
 const categoryLifecycleResult = (current, dependencies) => {
   const archiveBlockers = [];
@@ -65,9 +65,9 @@ const categoryLifecyclePreviewStatements = (categoryId) => [{
     (SELECT COUNT(*) FROM transactions WHERE status='active' AND category_id=?) AS active_transactions,
     (SELECT COUNT(*) FROM recurring_rules WHERE category_id=?) AS recurring,
     (SELECT COUNT(*) FROM recurring_rules WHERE status='active' AND category_id=?) AS active_recurring,
-    (SELECT COUNT(*) FROM budgets WHERE category_id=?) AS budgets,
+    ((SELECT COUNT(*) FROM budgets WHERE category_id=?) + (SELECT COUNT(*) FROM budget_history WHERE category_id=?)) AS budgets,
     (SELECT COUNT(*) FROM budgets WHERE status='active' AND category_id=?) AS active_budgets`,
-  args: [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId],
+  args: [categoryId, categoryId, categoryId, categoryId, categoryId, categoryId, categoryId],
 }];
 
 const resolveCategoryNature = (payload, current, nextType) => {

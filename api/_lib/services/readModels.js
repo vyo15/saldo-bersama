@@ -191,7 +191,7 @@ export const envelopeItemsStatement = (actor, { period = null, includeClosed = t
     usageArgs.push(bounds.start, bounds.end);
   }
   return {
-    sql: `SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.row_version AS rule_row_version,
+    sql: `SELECT p.*,r.name AS rule_name,r.period_type,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id,r.rollover_policy,r.overspend_policy,r.decoration_key,r.row_version AS rule_row_version,
       sa.name AS source_account_name,sa.account_type AS source_account_type,
       COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'') AS assignee_name,au.role AS assignee_role,
       COALESCE(usage.used_amount,0) AS used_amount

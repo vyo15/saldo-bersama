@@ -96,6 +96,7 @@ export const ACTION_POLICIES = Object.freeze({
   "budgets.batchCreate": write(),
   "budgets.upsert": write(),
   "budgets.previewLifecycle": snapshotRead(),
+  "budgets.remove": write(),
   "budgets.archive": write(),
   "budgets.deleteUnused": write(),
   "budgets.restore": write(),

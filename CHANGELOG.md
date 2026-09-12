@@ -1,14 +1,19 @@
-## 12 September 2026 - Production DB via staged Vercel build + Kebutuhan-driven funding
-- Memperkeras Beranda terhadap payload read-model parsial/transisional di Production: koleksi dan `cashFlow` dinormalisasi sebelum render, dereference desktop dibuat null-safe, dan error render Beranda ditahan oleh boundary route lokal agar kegagalan satu widget tidak mengganti seluruh authenticated shell.
-- Menutup akar outage Production yang tidak muncul di Development: heartbeat sesi tidak lagi melepas `BEGIN IMMEDIATE` secara fire-and-forget pada Vercel serverless. Heartbeat sekarang satu autocommit write bounded yang ditunggu dan kegagalannya tidak menggugurkan sesi; read action gateway tidak lagi bergantung pada durable rate-limit write, sementara mutation tetap fail-closed. Log gateway sekarang membawa `stage` agar timeout schema/session/rate-limit/dispatch dapat dibedakan.
-- Memperkuat read path Production terhadap `DATABASE_TIMEOUT`: initial state, dashboard overview, dan laporan bulanan kini tetap memakai snapshot canonical tetapi memecah query besar menjadi beberapa pipeline Turso yang lebih kecil; deadline transport dinaikkan secara terbatas di bawah `maxDuration` Vercel, dan frontend memiliki fallback `bootstrap.get` + `dashboard.overview` bila combined initial read terkena timeout/unavailable sementara.
+# Changelog
 
-- Menghentikan percobaan menarik kembali secret Vercel Production Sensitive ke workstation. `db:migrate -- production`, `db:integrity -- production`, dan `db:bind-environment -- production` sekarang menjalankan operasi di staged Vercel Production build (`--prod --skip-domain`) sehingga credential Turso tetap berada di Vercel. `npm run prod` hanya memeriksa deployment Production aktual.
-- Runtime database menginfer environment `production` dari `VERCEL_ENV=production` bila `DATABASE_ENVIRONMENT` tidak diset, tetapi tetap fail-closed bila marker eksplisit bertentangan atau database terikat ke environment lain. Pre-push database compatibility memakai staged Production integrity build dari source yang akan dipush.
-- Merge patch Alokasi–Kebutuhan otomatis: Alokasi baru mulai Rp0; create/edit/archive/delete/restore Kebutuhan menyesuaikan `allocated_amount` secara atomic dari Dana Tersedia tanpa mengubah saldo ledger; reuse-needs periode berikutnya ikut didanai setelah carry dan shortage me-rollback seluruh mutation.
-- Membersihkan UI estimator Alokasi lama dan helper Production DB lokal yang tidak lagi dipakai, serta menyelaraskan regression dan dokumentasi.
-- Memperkeras staged database operation: source/frontend wajib berhasil build **sebelum** migration/binding/integrity menyentuh Production, dan tooling memulihkan `.env.local` serta `.gitignore` byte-for-byte setelah `vercel link` agar command DB tidak meninggalkan drift working tree.
-- Membuat script frontend lint/build memanggil entrypoint Node secara platform-agnostic sehingga quality gate tidak bergantung pada executable bit wrapper `.bin` hasil instalasi OS lain.
+## 12 September 2026 — Merge schema v20: lifecycle Kebutuhan, dekorasi Alokasi, realtime hardening
+
+- Menggabungkan lifecycle Kebutuhan compact v19 (`017_budget_lifecycle_history.sql`) dengan dekorasi Alokasi presentation-only v20 (`018_envelope_decoration.sql`) tanpa menimpa dashboard resilience/performance pada project utama.
+- Menjaga transaksi/report historis saat Kebutuhan dihapus, menghubungkan transaksi/Jadwal melalui `budget_id`, memadatkan Kebutuhan periode tertutup ke `budget_history`, dan mengembalikan dana hanya sebesar sisa yang aman.
+- Menambahkan `decoration_key` Alokasi beserta asset/helper UI, backup/restore fallback `auto`, dan regression backend/frontend.
+- Memperkeras global realtime: satu revision coordinator untuk foreground, satu owner reconnect, stale warning berbasis failure streak, serta reset pull-to-refresh ketika blok modal/mutation berubah.
+
+## 12 September 2026 - Kebutuhan lifecycle compact schema v19
+
+- Menambah lifecycle user-facing `budgets.remove`: Kebutuhan tanpa histori dapat hard-delete oleh Administrator, sedangkan Kebutuhan yang sudah berdampak finansial dihentikan dari daftar aktif tanpa menghapus transaksi/report. Member dapat menjalankan remove pada scope planning yang memang boleh dikelola, tetapi tidak mendapat hak hard-delete recovery-sensitive.
+- Menambah `transactions.budget_id` dan `recurring_rules.budget_id` agar pemakaian/jadwal Kebutuhan terhubung eksplisit; single-create dan batch-create membawa relasi yang sama. Future schedule terkait dihentikan saat Kebutuhan dihapus, sementara occurrence/transaksi historis tetap dipertahankan.
+- Pelepasan dana Alokasi dihitung server berdasarkan dana removable aktual setelah reserved, used, dan Kebutuhan aktif lain; nominal release dibatasi sisa Kebutuhan sehingga buffer/cadangan tidak ikut tersapu dan saldo rekening fisik tidak berubah.
+- Menambah `budget_history` compact pada schema v19. Tutup periode menyimpan history ringkas lalu membersihkan row `budgets` operasional; reopen merehidrasi row dan menghapus copy compact agar tidak ada dual authority. Continuity Kebutuhan bulan berikutnya dapat membaca source period yang sudah compact.
+- Menyelaraskan backup/restore/reset, dependency category/Alokasi, authorization, realtime invalidation, API/schema/deployment/recovery/test docs, serta regression untuk remove, compaction, reopen, dan migration v19.
 
 ## 12 September 2026 - Vercel-first Production environment bootstrap
 

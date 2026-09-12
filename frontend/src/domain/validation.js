@@ -87,6 +87,7 @@ const normalizedTransactionValue = (input, type, amount, costShare) => ({
   destination_account_id: input.destination_account_id || "",
   category_id: input.category_id || "",
   envelope_period_id: input.envelope_period_id || "",
+  budget_id: input.budget_id || "",
   payment_method: String(input.payment_method || "").slice(0, 40),
   description: neutralizeSpreadsheetFormula(input.description).slice(0, 250),
   merchant: neutralizeSpreadsheetFormula(input.merchant).slice(0, 120),

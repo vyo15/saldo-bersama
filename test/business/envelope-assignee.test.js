@@ -88,6 +88,25 @@ const createAssignedEnvelope = (db, name, assigneeUserId, sourceAccountId) => cr
   adminContext("envelopes.create", envelopePayload(name, assigneeUserId, sourceAccountId)),
 );
 
+test("Alokasi menyimpan pemanis kartu di rule dan read model mengembalikannya", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const payload = { ...envelopePayload("Rumah Tangga", member.user_id), decoration_key: "home" };
+    const created = await createEnvelope(db, adminContext("envelopes.create", payload));
+    assert.equal(created.rule.decoration_key, "home");
+    const listed = await listEnvelopes(db, { actor: administrator, payload: {} });
+    const item = listed.items.find((row) => row.envelope_rule_id === created.rule.envelope_rule_id);
+    assert.equal(item?.decoration_key, "home");
+    await assert.rejects(
+      createEnvelope(db, adminContext("envelopes.create", { ...envelopePayload("Tidak valid", member.user_id), decoration_key: "neon-random" })),
+      (error) => error.code === "INVALID_ENVELOPE_RULE" && error.status === 400,
+    );
+  } finally {
+    db.close();
+  }
+});
+
 test("Alokasi menyimpan penerima terpisah dari ownership ledger dan read model mengembalikan identitasnya", async () => {
   const db = await createSqliteTestDatabase();
   try {
