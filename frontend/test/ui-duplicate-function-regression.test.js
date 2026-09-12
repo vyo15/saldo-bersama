@@ -14,6 +14,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     mobileAccounts,
     accountStyles,
     dashboard,
+    dashboardQuickActions,
     settingsNavigation,
     settingsLayout,
   ] = await Promise.all([
@@ -25,6 +26,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     read("src/features/accounts/components/MobileAccountsExperience.jsx"),
     read("src/features/accounts/components/MobileAccountsExperience.module.css"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/DashboardQuickActions.jsx"),
     read("src/features/settings/settingsNavigation.js"),
     read("src/features/settings/SettingsLayout.jsx"),
   ]);
@@ -53,15 +55,15 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.match(accountStyles, /\.mobileQuickActions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
 
   for (const [path, label] of [
+    ["/perencanaan", "Alokasi"],
     ["/rekening", "Rekening"],
     ["/target", "Target"],
-    ["/kategori", "Kategori"],
-    ["/rekonsiliasi", "Cocokkan Saldo"],
+    ["/rekonsiliasi", "Cocokkan"],
   ]) {
-    assert.match(dashboard, new RegExp(`to: "${path.replaceAll("/", "\\/")}", label: "${label}"`));
+    assert.match(dashboardQuickActions, new RegExp(`to: "${path.replaceAll("/", "\\/")}", label: "${label}"`));
   }
-  assert.doesNotMatch(dashboard, /to: "\/perencanaan\/kantong", label: "Alokasi Dana"/);
-  assert.doesNotMatch(dashboard, /to: "\/perencanaan\/jadwal", label: "Jadwal Rutin"/);
+  assert.doesNotMatch(dashboardQuickActions, /label: "Kategori"|label: "Jadwal Rutin"/);
+  assert.match(dashboard, /<DashboardQuickActions \/>/);
 
   assert.match(settingsNavigation, /label: "Notifikasi perangkat"/);
   assert.match(settingsLayout, /title: "Notifikasi perangkat"/);

@@ -15,6 +15,7 @@ import {
   updateNotificationPreference,
 } from "../../services/notifications.js";
 import SettingsNotice from "./SettingsNotice.jsx";
+import NotificationTrialPanel from "./NotificationTrialPanel.jsx";
 import { pushFailurePresentation, pushPresentation } from "./settingsPresentation.js";
 import styles from "./Settings.module.css";
 
@@ -42,11 +43,12 @@ const PreferenceSection = ({ preferenceState, preferenceMutation, refreshPrefere
   })}</div> : null}
 </section>;
 
-const DeviceNotificationView = ({ pushState, view, tileAction, tileInteractive, busy, result, preferenceState, preferenceMutation, refreshPreferences, togglePreference, runPushAction, disableOpen, setDisableOpen }) => <section className={styles.pageContent} aria-labelledby="notification-settings-title">
+const DeviceNotificationView = ({ pushState, view, tileAction, tileInteractive, busy, result, preferenceState, preferenceMutation, refreshPushState, refreshPreferences, togglePreference, runPushAction, disableOpen, setDisableOpen }) => <section className={styles.pageContent} aria-labelledby="notification-settings-title">
   <div className={styles.pageHeading}><h2 id="notification-settings-title">Notifikasi perangkat</h2></div>
   <SettingsNotice result={result} />
   <button type="button" className={styles.serviceTile} disabled={!tileInteractive} onClick={() => tileAction && runPushAction(tileAction)} aria-label={tileAction === "enable" ? "Aktifkan notifikasi pada perangkat ini" : tileAction === "verify" ? "Verifikasi ulang notifikasi pada perangkat ini" : "Status notifikasi perangkat"}><span className={styles.serviceIcon}><FiBell aria-hidden="true" /></span><span className={styles.serviceCopy}><h3>Notifikasi perangkat</h3><p role="status" aria-live="polite">{view.text}</p>{pushState.activeDeviceCount ? <small>{pushState.activeDeviceCount} perangkat aktif</small> : null}</span><span className={`status-badge status-badge--${view.tone}`}>{busy ? "Memproses" : view.label}</span></button>
   {pushState.browserSubscribed ? <div className={styles.serviceActions}><Button type="button" disabled={busy} onClick={() => setDisableOpen(true)}>Nonaktifkan perangkat ini</Button></div> : null}
+  <NotificationTrialPanel pushState={pushState} refreshPushState={refreshPushState} />
   <PreferenceSection preferenceState={preferenceState} preferenceMutation={preferenceMutation} refreshPreferences={refreshPreferences} togglePreference={togglePreference} />
   <CompactNotice tone="info">iPhone/iPad: buka Saldo Bersama dari Home Screen agar Web Push tersedia.</CompactNotice>
   <ConfirmationModal open={disableOpen} title="Nonaktifkan notifikasi?" description="Notifikasi pada perangkat ini akan dinonaktifkan. Perangkat lain tetap aktif." confirmLabel="Nonaktifkan" busy={busy} onCancel={() => !busy && setDisableOpen(false)} onConfirm={() => runPushAction("disable")} />
@@ -137,7 +139,7 @@ const DeviceNotificationsPage = () => {
   const tileAction = view.canEnable ? "enable" : pushState.reason === "ready_unverified" ? "verify" : null;
   const tileInteractive = Boolean(tileAction) && !busy;
 
-  return <DeviceNotificationView pushState={pushState} view={view} tileAction={tileAction} tileInteractive={tileInteractive} busy={busy} result={result} preferenceState={preferenceState} preferenceMutation={preferenceMutation} refreshPreferences={refreshPreferences} togglePreference={togglePreference} runPushAction={runPushAction} disableOpen={disableOpen} setDisableOpen={setDisableOpen} />;
+  return <DeviceNotificationView pushState={pushState} view={view} tileAction={tileAction} tileInteractive={tileInteractive} busy={busy} result={result} preferenceState={preferenceState} preferenceMutation={preferenceMutation} refreshPushState={refreshPushState} refreshPreferences={refreshPreferences} togglePreference={togglePreference} runPushAction={runPushAction} disableOpen={disableOpen} setDisableOpen={setDisableOpen} />;
 };
 
 export default DeviceNotificationsPage;

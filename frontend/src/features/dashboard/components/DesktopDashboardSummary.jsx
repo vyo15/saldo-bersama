@@ -1,4 +1,4 @@
-import { FiAlertCircle, FiEye, FiEyeOff, FiMinus, FiPieChart, FiPlus, FiShield, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
+import { FiAlertCircle, FiEye, FiEyeOff, FiPlus, FiShield } from "react-icons/fi";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
@@ -42,8 +42,6 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
     .filter((item) => item.account_type !== "investment")
     .reduce((sum, item) => sum + Number(item.balance || 0), 0);
   const cashFlow = overview?.cashFlow || {};
-  const netCashFlow = Number(cashFlow.income || 0) - Number(cashFlow.expense || 0);
-  const NetCashFlowIcon = netCashFlow > 0 ? FiTrendingUp : netCashFlow < 0 ? FiTrendingDown : FiMinus;
 
   return (
     <section className={dashboardClass("desktop-balance-card shared-panel")} aria-label="Ringkasan keuangan utama">
@@ -65,23 +63,19 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
           <SensitiveMoney visible={balanceVisible} value={nonInvestmentBalance} />
         </div>
         <div>
-          <span>Batas harian</span>
+          <span>Aman dipakai / hari</span>
           <SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} />
         </div>
       </div>
 
-      <div className={dashboardClass("desktop-balance-card__secondary")}>
+      <div className={dashboardClass("desktop-balance-card__secondary")} aria-label="Arus uang bulan ini">
         <div>
-          <span><NetCashFlowIcon aria-hidden="true" />Arus kas bersih</span>
-          <SensitiveMoney
-            visible={balanceVisible}
-            value={netCashFlow}
-            tone={netCashFlow < 0 ? "negative" : "positive"}
-          />
+          <span>Masuk bulan ini</span>
+          <SensitiveMoney visible={balanceVisible} value={cashFlow.income || 0} tone="positive" />
         </div>
         <div>
-          <span><FiPieChart aria-hidden="true" />Sisa kebutuhan</span>
-          <SensitiveMoney visible={balanceVisible} value={model.remainingBudget} />
+          <span>Keluar bulan ini</span>
+          <SensitiveMoney visible={balanceVisible} value={cashFlow.expense || 0} tone="negative" />
         </div>
       </div>
     </section>

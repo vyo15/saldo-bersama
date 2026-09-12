@@ -66,6 +66,7 @@ Smoke auth dilakukan pada staged/Production host yang benar, bukan dengan auth b
 - VAPID configuration harus lengkap dan valid agar Push aktif.
 - In-app Notification Center tetap berfungsi bila Push tidak tersedia.
 - Real Android/iOS smoke dilakukan bila release menyentuh Push/PWA/notification delivery.
+- Untuk smoke visual, buka `/pengaturan/notifikasi` pada perangkat yang dipakai lalu jalankan **Coba notifikasi di HP ini** untuk tema Liburan dan Masa Depan. Verifikasi compact/expanded OS, rich image bila platform mendukung, serta tap notifikasi menuju `/target`. Preview lokal ini melengkapi—not replace—`notifications.test` server-side.
 
 ## 7. Quality dan staged deploy
 

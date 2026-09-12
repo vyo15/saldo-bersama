@@ -13,6 +13,7 @@ export const readDesktopDashboardSource = () => readCombined([
   "features/dashboard/components/DesktopDashboardTransactions.jsx",
   "features/dashboard/components/DesktopDashboardInsights.jsx",
   "features/dashboard/components/DesktopDashboardPlanning.jsx",
+  "features/dashboard/components/DashboardQuickActions.jsx",
 ]);
 
 export const readCategoryFeatureSource = () => readCombined([

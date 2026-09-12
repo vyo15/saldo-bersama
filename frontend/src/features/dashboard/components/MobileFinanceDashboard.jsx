@@ -2,15 +2,12 @@ import {
   FiAlertTriangle,
   FiBell,
   FiCalendar,
-  FiCheckCircle,
   FiChevronRight,
   FiEye,
   FiEyeOff,
   FiInfo,
   FiPieChart,
   FiPlus,
-  FiTag,
-  FiTarget,
 } from "react-icons/fi";
 import { Link } from "react-router";
 import { AccountIcon, InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
@@ -22,15 +19,9 @@ import { financialAlertGuidance } from "../../../shared/workflows/financialAlert
 import { financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
 import { dashboardDueLabel, dashboardInsightState, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
+import DashboardQuickActions from "./DashboardQuickActions.jsx";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
-
-const FEATURE_QUICK_ACTIONS = Object.freeze([
-  { to: "/rekening", label: "Rekening", icon: AccountIcon, tone: "account" },
-  { to: "/target", label: "Target", icon: FiTarget, tone: "goal" },
-  { to: "/kategori", label: "Kategori", icon: FiTag, tone: "category" },
-  { to: "/rekonsiliasi", label: "Cocokkan Saldo", icon: FiCheckCircle, tone: "reconciliation" },
-]);
 
 const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
   return (
@@ -69,22 +60,27 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
 
       <div className={dashboardClass("mobile-finance-summary")} aria-label="Ringkasan dana tersedia">
         <div><span>Saldo rekening</span><SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} /></div>
-        <div><span>Batas harian</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
+        <div><span>Aman dipakai / hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
       </div>
     </header>
   );
 };
 
-const MobileQuickActions = () => (
-  <nav className={dashboardClass("mobile-quick-grid")} aria-label="Akses cepat keuangan">
-    {FEATURE_QUICK_ACTIONS.map(({ to, label, icon: Icon, tone }) => (
-      <Link key={to} to={to} className={dashboardClass(`mobile-quick-action mobile-quick-action--${tone}`)} aria-label={`Buka ${label}`}>
-        <span><Icon aria-hidden="true" /></span>
-        <strong>{label}</strong>
-      </Link>
-    ))}
-  </nav>
-);
+const MobileCashFlow = ({ overview, balanceVisible }) => {
+  const cashFlow = overview?.cashFlow || {};
+  return (
+    <section className={dashboardClass("mobile-cash-flow")} aria-labelledby="mobile-cash-flow-title">
+      <div className={dashboardClass("mobile-cash-flow__heading")}>
+        <h2 id="mobile-cash-flow-title">Bulan ini</h2>
+        <span>{formatPeriod(overview.periodKey)}</span>
+      </div>
+      <div className={dashboardClass("mobile-cash-flow__values")}>
+        <div><span>Masuk</span><SensitiveMoney visible={balanceVisible} value={cashFlow.income || 0} tone="positive" /></div>
+        <div><span>Keluar</span><SensitiveMoney visible={balanceVisible} value={cashFlow.expense || 0} tone="negative" /></div>
+      </div>
+    </section>
+  );
+};
 
 const MobileFinancialInsight = ({ overview, balanceVisible }) => {
   const insight = dashboardInsightState(overview);
@@ -244,13 +240,14 @@ const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, 
     <h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1>
     <MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} notificationCount={notificationState.unreadCount} />
     <div className={dashboardClass("mobile-finance-content")}>
-      <MobileNextAction alerts={overview.alerts} />
       {setupContent}
-      <MobileQuickActions />
-      <MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} />
+      <DashboardQuickActions />
+      <MobileCashFlow overview={overview} balanceVisible={balanceVisible} />
+      <MobileNextAction alerts={overview.alerts} />
       <MobileFinancialInsight overview={overview} balanceVisible={balanceVisible} />
       <MobileBudgetPlan overview={overview} balanceVisible={balanceVisible} />
       <MobileUpcomingSchedule overview={overview} balanceVisible={balanceVisible} />
+      <MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} />
       <MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} onOpenTransaction={onOpenTransaction} />
     </div>
   </section>;

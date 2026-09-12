@@ -450,21 +450,21 @@ test("login desktop dan mobile memakai tombol branded dengan server OAuth produc
 });
 
 test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas, dan privacy menyeluruh", async () => {
-  const [dashboard, presentation, mobile] = await Promise.all([
+  const [dashboard, presentation, mobile, quickActions] = await Promise.all([
     read("src/features/dashboard/DashboardPage.jsx"),
     read("src/features/dashboard/dashboardPresentation.js"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/DashboardQuickActions.jsx"),
   ]);
 
   assert.doesNotMatch(presentation, /QUICK_ACTIONS/);
-  assert.match(mobile, /FEATURE_QUICK_ACTIONS/);
-  assert.match(mobile, /to: "\/rekening", label: "Rekening"/);
-  assert.match(mobile, /to: "\/target", label: "Target"/);
-  assert.match(mobile, /to: "\/kategori", label: "Kategori"/);
-  assert.match(mobile, /to: "\/rekonsiliasi", label: "Cocokkan Saldo"/);
-  assert.doesNotMatch(mobile, /to: "\/perencanaan\/kantong", label: "Alokasi Dana"/);
-  assert.doesNotMatch(mobile, /to: "\/perencanaan\/jadwal", label: "Jadwal Rutin"/);
-  assert.match(mobile, /<Link key=\{to\} to=\{to\} className=\{dashboardClass\(`mobile-quick-action/);
+  assert.match(quickActions, /DASHBOARD_QUICK_ACTIONS/);
+  assert.match(quickActions, /to: "\/perencanaan", label: "Alokasi"/);
+  assert.match(quickActions, /to: "\/rekening", label: "Rekening"/);
+  assert.match(quickActions, /to: "\/target", label: "Target"/);
+  assert.match(quickActions, /to: "\/rekonsiliasi", label: "Cocokkan"/);
+  assert.doesNotMatch(quickActions, /label: "Kategori"|label: "Jadwal Rutin"/);
+  assert.match(quickActions, /mobile-quick-action/);
   assert.doesNotMatch(mobile, /TRANSACTION_QUICK_ACTIONS|TRANSACTION_TYPES|onOpenTransaction\(type\)/);
   assert.doesNotMatch(dashboard, /presentation: initialType === TRANSACTION_TYPES\.TRANSFER/);
   assert.match(dashboard, /lazy\(\(\) => import\("\.\/components\/MobileFinanceDashboard\.jsx"\)\)/);
@@ -476,10 +476,13 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
-  const order = ["<MobileNextAction", "<MobileQuickActions", "<MobileInvestment", "<MobileFinancialInsight", "<MobileBudgetPlan", "<MobileUpcomingSchedule", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
+  const order = ["<DashboardQuickActions", "<MobileCashFlow", "<MobileNextAction", "<MobileFinancialInsight", "<MobileBudgetPlan", "<MobileUpcomingSchedule", "<MobileInvestment", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile ringkas harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan perhatian → akses cepat → investasi → insight → rencana → jadwal → aktivitas.");
-  assert.doesNotMatch(mobile, /MobileAccounts|MobileAllocation|MobileCashFlow|AccountVisual/, "Dashboard mobile tidak boleh kembali menumpuk detail rekening, alokasi, atau arus kas yang sudah punya route khusus.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan akses cepat → arus uang → perhatian → insight → rencana → jadwal → investasi → aktivitas.");
+  assert.match(mobile, /Aman dipakai \/ hari/);
+  assert.match(mobile, />Masuk<\/span>/);
+  assert.match(mobile, />Keluar<\/span>/);
+  assert.doesNotMatch(mobile, /MobileAccounts|MobileAllocation|AccountVisual/, "Dashboard mobile tidak boleh kembali menumpuk detail rekening atau alokasi yang sudah punya route khusus.");
 });
 
 test("stylesheet global tidak menghidupkan kembali selector legacy tanpa pemilik runtime", async () => {

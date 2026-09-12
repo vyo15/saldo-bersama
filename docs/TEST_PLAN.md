@@ -127,6 +127,9 @@ Minimum contract:
 
 ## Notification dan Web Push
 
+- Pengaturan Notifikasi perangkat menyediakan preview native lokal bertema **Liburan** dan **Masa Depan**; tombol dijalankan dari user gesture, meminta permission bila perlu, dan menggunakan service worker canonical.
+- Preview lokal tidak mengubah subscription/backend queue. Tap notifikasi harus deep-link ke `/target`; rich image adalah best-effort dan boleh diabaikan OS tanpa dianggap gagal selama title/body native tetap tampil.
+
 - Notification Center menggunakan feed/action canonical yang sama untuk mobile/desktop.
 - Lock-screen Push tidak memuat nominal, rekening, merchant, atau nama objek finansial sensitif.
 - Preference user dihormati; VAPID incomplete menonaktifkan Push fail-closed tanpa merusak in-app notifications.

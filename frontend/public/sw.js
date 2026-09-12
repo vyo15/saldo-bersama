@@ -7,7 +7,9 @@ const STATIC_ASSETS = [
   "/icons/favicon-64.png?v=4",
   "/icons/icon-192.png?v=4",
   "/icons/icon-512.png?v=4",
-  "/icons/notification-badge-96.png?v=1"
+  "/icons/notification-badge-96.png?v=1",
+  "/notifications/trial/liburan.png?v=1",
+  "/notifications/trial/masa-depan.png?v=1"
 ];
 
 const cacheResponse = (event, cacheName, request, response) => {

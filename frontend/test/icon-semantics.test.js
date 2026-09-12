@@ -77,6 +77,7 @@ test("trend icon hanya mewakili arah data sedangkan aksi dan status memakai sema
   assert.match(overview, /if \(amount < 0\) return FiTrendingDown;/);
   assert.match(overview, /return FiMinus;/);
   assert.match(holdingDetail, /icon=\{FiEdit3\}[\s\S]*>Perbarui nilai<\/Button>/);
-  assert.match(dashboard, /NetCashFlowIcon = netCashFlow > 0 \? FiTrendingUp : netCashFlow < 0 \? FiTrendingDown : FiMinus/);
+  assert.match(dashboard, /Masuk bulan ini/);
+  assert.match(dashboard, /Keluar bulan ini/);
   assert.doesNotMatch(holdingDetail, /FiTrendingUp|FiTrendingDown|FiDollarSign/);
 });

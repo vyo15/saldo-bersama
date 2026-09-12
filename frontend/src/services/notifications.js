@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { apiClient } from "./api/client.js";
 import { registerServiceWorker } from "./serviceWorker.js";
+import { notificationTrialPreset } from "./notificationTrials.js";
 
 const urlBase64ToUint8Array = (value) => {
   const candidate = String(value || "").trim();
@@ -227,6 +228,46 @@ export const enablePushNotifications = async () => {
     if (created) await subscription.unsubscribe().catch(() => {});
     throw error;
   }
+};
+
+
+const localNotificationTrialBlocker = () => {
+  const capability = notificationCapability();
+  if (!capability.supported) return "Browser ini belum mendukung notifikasi perangkat.";
+  if (!capability.secureContext) return "Notifikasi perangkat memerlukan HTTPS.";
+  if (capability.iosInstallRequired) return "Pada iPhone atau iPad, pasang Saldo Bersama ke Home Screen lalu buka dari ikon aplikasi.";
+  if (capability.permission === "denied") return "Izin notifikasi diblokir. Aktifkan kembali melalui pengaturan perangkat.";
+  return null;
+};
+
+export const showNotificationTrial = async (theme = "vacation") => {
+  const blocked = localNotificationTrialBlocker();
+  if (blocked) throw new Error(blocked);
+
+  const permission = Notification.permission === "granted"
+    ? "granted"
+    : await Notification.requestPermission();
+  if (permission !== "granted") throw new Error("Izin notifikasi belum diberikan.");
+
+  const registration = await registerServiceWorker();
+  if (!registration) throw new Error("Service worker notifikasi belum tersedia pada perangkat ini.");
+  await navigator.serviceWorker.ready;
+
+  const preset = notificationTrialPreset(theme);
+  const maxActions = Number(Notification.maxActions || 0);
+  const options = {
+    body: preset.body,
+    icon: "/icons/icon-192.png?v=4",
+    badge: "/icons/notification-badge-96.png?v=1",
+    image: preset.image,
+    tag: `notification-trial:${preset.id}:${Date.now()}`,
+    renotify: false,
+    data: { targetPath: preset.targetPath, trialTheme: preset.id },
+  };
+  if (maxActions > 0) options.actions = [{ action: "open", title: preset.actionLabel }];
+
+  await registration.showNotification(preset.title, options);
+  return { displayed: true, theme: preset.id, targetPath: preset.targetPath };
 };
 
 export const testPushNotification = async () => {

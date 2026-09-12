@@ -4,6 +4,7 @@ import { DashboardAttention, DashboardHeader, AccountSelector, PrimaryMetrics } 
 import { AccountTransactions } from "./DesktopDashboardTransactions.jsx";
 import { InvestmentWidget, StatisticsPanel } from "./DesktopDashboardInsights.jsx";
 import { DashboardPlanning } from "./DesktopDashboardPlanning.jsx";
+import DashboardQuickActions from "./DashboardQuickActions.jsx";
 
 const DesktopFinanceDashboard = ({
   overview,
@@ -50,6 +51,7 @@ const DesktopFinanceDashboard = ({
         <DashboardAttention alerts={model.alerts} />
       </div>
       {setupContent}
+      <DashboardQuickActions variant="desktop" />
       <AccountSelector
         accountBalances={model.accountBalances}
         selectedAccount={model.selectedAccount}

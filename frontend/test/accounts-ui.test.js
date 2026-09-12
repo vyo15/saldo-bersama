@@ -600,9 +600,10 @@ test("logo compact rekening bank dan e-wallet memakai asset persegi transparan t
 });
 
 test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile memakai shortcut ringkas", async () => {
-  const [dashboard, mobileDashboard, dashboardStyles] = await Promise.all([
+  const [dashboard, mobileDashboard, quickActions, dashboardStyles] = await Promise.all([
     readDesktopDashboardSource(),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/DashboardQuickActions.jsx"),
     read("src/features/dashboard/DashboardPage.module.css"),
   ]);
   assert.match(dashboardStyles, /\.shared-account-carousel \{[^}]*display:\s*grid;[^}]*grid-auto-flow:\s*column;[^}]*grid-auto-columns:\s*calc\(\(100% - 24px\) \/ 3\);[^}]*overflow-x:\s*auto;/s);
@@ -614,7 +615,7 @@ test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile 
   assert.match(dashboard, /<AccountVisual account=\{cleanAccount\} carousel \/>/);
   assert.match(dashboard, /scrollIntoViewWithMotionPreference/);
   assert.match(dashboard, /inline:\s*"nearest"/);
-  assert.match(mobileDashboard, /\{ to: "\/rekening", label: "Rekening", icon: AccountIcon, tone: "account" \}/);
+  assert.match(quickActions, /\{ to: "\/rekening", label: "Rekening"[^\n]*icon: AccountIcon, tone: "account" \}/);
   assert.doesNotMatch(mobileDashboard, /AccountVisual|mobile-account-preview|mobile-account-scroller/);
   assert.doesNotMatch(dashboardStyles, /\.mobile-account-preview|\.mobile-account-scroller/);
 });
