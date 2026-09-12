@@ -116,7 +116,7 @@ Import Production, bila benar-benar bagian cutover yang disetujui, memakai `--en
 
 - `/api/session` — login/logout session HttpOnly
 - `/api/gateway` — API bisnis
-- `/api/export` — download Excel
+- `/api/export` — export lengkap Excel Administrator + laporan PDF/Excel terolah sesuai periode/scope Alokasi
 - `/api/health` — health sanitised
 - `/api/jobs` — scheduled integration worker bertanda tangan
 

@@ -3,7 +3,8 @@ import test from "node:test";
 import { listTransactions } from "../../api/_lib/services/finance.js";
 import { listGoals } from "../../api/_lib/services/planning/goals.js";
 import { listBudgets } from "../../api/_lib/services/planning/budgets.js";
-import { monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
+import { createRecurringRule } from "../../api/_lib/services/planning/recurring.js";
+import { dashboardOverview, monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
 import { notificationPreferences, queueActionableNotifications, updateNotificationPreference } from "../../api/_lib/services/notifications.js";
 import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
@@ -191,6 +192,74 @@ test("Kebutuhan yang terhubung Alokasi Dana hanya menghitung transaksi dari Alok
     assert.equal(linked?.envelope_rule_id, "rule-tagihan");
     assert.equal(linked?.envelope_name, "Tagihan Rumah");
     assert.equal(linked?.envelope_source_account_id, "account-bank");
+  } finally {
+    db.close();
+  }
+});
+
+test("Dana Tersedia tidak menghitung ulang Jadwal Rutin yang sudah didanai melalui Alokasi Kebutuhan", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const today = todayJakarta();
+    const period = today.slice(0, 7);
+    const [year, month] = period.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const dueDay = Number(today.slice(-2));
+
+    await db.execute(
+      "INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["rule-house", "Rumah", "monthly", "shared", null, null, 1_000_000, "account-bank", "unallocated", "confirm", "active", 1, owner.user_id, now, owner.user_id, now],
+    );
+    await db.execute(
+      "INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["period-house", "rule-house", "Rumah", `${period}-01`, `${period}-${String(lastDay).padStart(2, "0")}`, 1_000_000, 0, "active", 1, owner.user_id, now, owner.user_id, now, null, null],
+    );
+    await db.execute(
+      "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["budget-internet", period, "category-food", "rule-house", "Internet", 1_000_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
+    );
+
+    const recurringContext = (requestId, payload) => ({
+      actor: owner,
+      action: "recurring.create",
+      payload,
+      requestId,
+      enqueueCalendar: async () => {},
+      enqueueMirror: async () => {},
+    });
+    await createRecurringRule(db, recurringContext("recurring:allocated", {
+      name: "Internet",
+      kind: "expense",
+      category_id: "category-food",
+      budget_id: "budget-internet",
+      expected_amount: 600_000,
+      frequency: "monthly",
+      due_day: dueDay,
+      default_account_id: "account-bank",
+      start_date: today,
+    }));
+
+    let overview = await dashboardOverview(db, { actor: owner, payload: { period } });
+    assert.equal(overview.nonInvestmentBalance, 5_500_000);
+    assert.equal(overview.allocatedRemaining, 1_000_000);
+    assert.equal(overview.reservedBills, 0, "Komitmen yang sudah berada di dalam Alokasi tidak boleh dicadangkan dua kali.");
+    assert.equal(overview.safeToSpend, 4_500_000);
+
+    await createRecurringRule(db, recurringContext("recurring:outside-allocation", {
+      name: "Iuran di luar alokasi",
+      kind: "expense",
+      category_id: "category-food",
+      expected_amount: 200_000,
+      frequency: "monthly",
+      due_day: dueDay,
+      default_account_id: "account-bank",
+      start_date: today,
+    }));
+
+    overview = await dashboardOverview(db, { actor: owner, payload: { period } });
+    assert.equal(overview.reservedBills, 200_000, "Komitmen yang belum dicakup Alokasi tetap mengurangi Dana Tersedia.");
+    assert.equal(overview.safeToSpend, 4_300_000);
   } finally {
     db.close();
   }
@@ -430,4 +499,61 @@ test("notifikasi recurring memberi detail actionable untuk dana kurang H-2 dan s
       assert.match(item.body, /Rp6[.]000[.]000/);
     }
   } finally { db.close(); }
+});
+
+test("laporan dapat di-scope per Alokasi dan seluruh ringkasan, breakdown, tren, Kebutuhan, serta transaksi mengikuti scope yang sama", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const period = todayJakarta().slice(0, 7);
+    const date = `${period}-01`;
+    const [year, month] = period.split("-").map(Number);
+    const periodStart = `${period}-01`;
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const periodEnd = `${period}-${String(lastDay).padStart(2, "0")}`;
+    for (const [ruleId, periodId, name, allocation] of [
+      ["rule-rumah", "period-rumah", "Rumah", 500_000],
+      ["rule-makan", "period-makan", "Makan", 300_000],
+    ]) {
+      await db.execute(
+        "INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [ruleId, name, "monthly", "shared", null, null, allocation, "account-bank", "unallocated", "confirm", "active", 1, owner.user_id, now, owner.user_id, now],
+      );
+      await db.execute(
+        "INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [periodId, ruleId, name, periodStart, periodEnd, allocation, 0, "active", 1, owner.user_id, now, owner.user_id, now, null, null],
+      );
+    }
+    await insertTransaction(db, { id: "rumah-expense", date, type: "expense", amount: 60_000, source: "account-bank", category: "category-food", envelope: "period-rumah" });
+    await insertTransaction(db, { id: "makan-expense", date, type: "expense", amount: 40_000, source: "account-bank", category: "category-food", envelope: "period-makan" });
+    await db.execute(
+      "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["budget-rumah", period, "category-food", "rule-rumah", "Belanja Rumah", 200_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
+    );
+    await db.execute(
+      "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["budget-makan", period, "category-food", "rule-makan", "Makan Bersama", 150_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
+    );
+
+    const scoped = await monthlyReport(db, { actor: owner, payload: { period, trend_months: 1, allocation_rule_id: "rule-rumah" } });
+    assert.equal(scoped.reportScope.mode, "allocation");
+    assert.equal(scoped.reportScope.allocationRuleId, "rule-rumah");
+    assert.equal(scoped.reportSummary.allocated, 500_000);
+    assert.equal(scoped.reportSummary.used, 60_000);
+    assert.equal(scoped.reportSummary.remaining, 440_000);
+    assert.deepEqual(scoped.budgets.map((item) => item.budget_id), ["budget-rumah"]);
+    assert.equal(scoped.categoryExpenses.length, 1);
+    assert.equal(scoped.categoryExpenses[0].amount, 60_000);
+    assert.deepEqual(scoped.reportTransactions.map((item) => item.transaction_id), ["rumah-expense"]);
+    assert.equal(scoped.reportTransactions[0].allocation_name, "Rumah");
+    assert.equal(scoped.trend.items.reduce((sum, item) => sum + Number(item.expense || 0), 0), 60_000);
+    assert.deepEqual(scoped.allocationOptions.map((item) => item.envelope_rule_id).sort(), ["rule-makan", "rule-rumah"]);
+
+    const global = await monthlyReport(db, { actor: owner, payload: { period, trend_months: 1 } });
+    assert.equal(global.reportScope.mode, "all");
+    assert.equal(global.categoryExpenses[0].amount, 100_000);
+    assert.equal(global.reportTransactions.length, 2);
+  } finally {
+    db.close();
+  }
 });

@@ -86,11 +86,15 @@ Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contra
 
 Urutan validation patch:
 
-1. jalankan test regression/area yang terdampak;
-2. jalankan lint/build relevan;
-3. setelah seluruh edit dan docs final, jalankan full gate dari tree yang sama;
-4. bila edit dilakukan lagi setelah PASS, PASS lama gugur dan gate relevan harus diulang;
-5. handoff patch hanya boleh diberi status final bila full gate tree final PASS pada Node `22.15.0+` (22.x) atau `24.x`; environment di luar rentang dukungan hanya boleh menghasilkan candidate yang diberi label unverified.
+1. setelah edit source stabil, jalankan `npm run lint` sebagai preflight wajib;
+2. bila lint gagal, perbaiki error source lalu ulangi `npm run lint` sampai PASS. Jangan menonaktifkan rule atau menambah ignore hanya untuk melewati gate;
+3. jalankan test regression/area yang terdampak;
+4. jalankan build/diagnosis relevan bila area perubahan memerlukannya;
+5. setelah seluruh edit dan docs final, jalankan full gate `npm run verify` dari tree yang sama;
+6. bila edit dilakukan lagi setelah PASS, PASS lama gugur dan lint + gate relevan harus diulang;
+7. handoff patch hanya boleh diberi status final bila full gate tree final PASS pada Node `22.15.0+` (22.x) atau `24.x`; environment di luar rentang dukungan hanya boleh menghasilkan candidate yang diberi label unverified. Candidate **tidak boleh** membawa known lint/test/build failure yang sudah berhasil direproduksi.
+
+Untuk patch yang dibuat agent/ChatGPT, `npm run zip` bukan mekanisme pertama untuk mengetahui kualitas patch. Lint repair-loop dan regression harus diselesaikan **sebelum handoff**; `npm run zip` hanya menjadi fail-closed archive gate terakhir. Jika command dapat berjalan dan menemukan error, error tersebut wajib diperbaiki pada patch yang sama.
 
 Default full local gate setelah setiap patch:
 

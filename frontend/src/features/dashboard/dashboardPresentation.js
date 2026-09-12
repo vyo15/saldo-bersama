@@ -52,9 +52,9 @@ export const dashboardInsightState = (overview = {}) => {
     ? Number(cashFlow.net)
     : Number(cashFlow.income || 0) + Number(cashFlow.refund || 0) - Number(cashFlow.expense || 0);
 
-  if (safeToSpend <= 0) return { kind: "limited", tone: "warning", title: "Ruang aman perlu ditinjau" };
+  if (safeToSpend <= 0) return { kind: "limited", tone: "warning", title: "Dana tersedia perlu ditinjau" };
   if (net < 0) return { kind: "cashflow", tone: "warning", title: "Pengeluaran perlu dipantau" };
-  return { kind: "safe", tone: "positive", title: "Kondisi keuangan masih aman" };
+  return { kind: "safe", tone: "positive", title: "Dana tersedia masih terjaga" };
 };
 
 const operablePlanningAccounts = (overview = {}) => (overview.accountBalances || [])

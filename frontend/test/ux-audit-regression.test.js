@@ -186,8 +186,8 @@ test("permukaan swipe mobile tidak menampilkan scrollbar browser", async () => {
     read("src/features/approvals/ApprovalCenterPage.module.css"),
     read("src/features/dashboard/DashboardPage.module.css"),
   ]);
-  assert.match(reports, /\.trendChartDaily \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
-  assert.match(reports, /\.trendChartDaily::-webkit-scrollbar \{ display:\s*none; \}/);
+  assert.match(reports, /\.trendChart \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
+  assert.match(reports, /\.trendChart::-webkit-scrollbar \{ display:\s*none; \}/);
   assert.match(approvals, /\.tabs \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
   assert.match(dashboard, /\.shared-account-carousel \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
 });
@@ -273,8 +273,9 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
   assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleKindTabs/);
 
   assert.match(goals, /\{items\.length \? <GoalSummary items=\{items\} \/> : null\}/);
-  assert.match(budgets, /Saya punya jadwal pembayaran/);
-  assert.match(budgets, /Jadwal dibuat bersama Kebutuhan/);
+  assert.match(budgets, /Sekali bayar/);
+  assert.match(budgets, /Berulang/);
+  assert.match(budgets, /Nominal menjadi bawaan pada jadwal pembayaran/);
   assert.match(investments, /const assetCount = useMemo/);
   assert.match(investments, /assetCount === 0 \? <EmptyInvestmentState/);
   assert.match(investments, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);

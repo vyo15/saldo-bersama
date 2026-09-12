@@ -212,6 +212,11 @@ button.selected:focus-visible,
   scrollbar-gutter: stable;
 }
 
+.listFooter {
+  padding: 6px 10px 9px;
+  border-top: 1px solid var(--border);
+}
+
 .optionGroup {
   display: grid;
 }

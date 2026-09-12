@@ -295,11 +295,15 @@ export const useMobileTransferDestination = ({ open, enabled, destinationAccount
 
 export const useSmartAllocationSelection = ({ open, transaction, allocationMode, candidates, form, setForm, setErrors }) => {
   useEffect(() => {
-    if (!open || transaction || allocationMode !== "auto" || form.transaction_type !== TRANSACTION_TYPES.EXPENSE) return;
-    const nextEnvelopeId = candidates.length === 1 ? candidates[0].envelope.envelope_period_id : "";
+    if (!open || transaction || allocationMode !== "auto" || form.transaction_type !== TRANSACTION_TYPES.EXPENSE || form.budget_id) return;
+    const candidate = candidates.length === 1 ? candidates[0] : null;
+    const nextEnvelopeId = candidate?.envelope.envelope_period_id || "";
+    const nextBudgetId = candidate?.need.budget_id || "";
     setErrors((current) => clearTransactionFieldErrors(current, "envelope_period_id"));
-    setForm((current) => current.envelope_period_id === nextEnvelopeId ? current : { ...current, envelope_period_id: nextEnvelopeId });
-  }, [allocationMode, candidates, form.transaction_type, open, setErrors, setForm, transaction]);
+    setForm((current) => current.envelope_period_id === nextEnvelopeId && current.budget_id === nextBudgetId
+      ? current
+      : { ...current, envelope_period_id: nextEnvelopeId, budget_id: nextBudgetId });
+  }, [allocationMode, candidates, form.budget_id, form.transaction_type, open, setErrors, setForm, transaction]);
 };
 
 const canReuseSourceAccount = (account, transactionType) => {

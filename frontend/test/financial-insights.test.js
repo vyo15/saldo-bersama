@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { readDesktopDashboardSource } from "./sourceBundles.js";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,7 +26,7 @@ test("halaman transaksi mengekspos filter rekening, kategori, dan pencatat", asy
 test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan actionable", async () => {
   const [reports, desktop, mobile, notifications, notificationState, app] = await Promise.all([
     source("src/features/reports/ReportsPage.jsx"),
-    source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     source("src/features/notifications/NotificationsPage.jsx"),
     source("src/shared/workflows/financialNotifications.js"),
@@ -71,24 +72,26 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(app, /path="notifikasi"/);
 });
 
-test("laporan mobile memakai hierarchy analitik compact tanpa mengubah kontrak report", async () => {
-  const [reports, reportStyles, layout] = await Promise.all([
+test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export terolah", async () => {
+  const [reports, reportStyles] = await Promise.all([
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/reports/ReportsPage.module.css"),
-    source("src/config/layout.js"),
   ]);
-  for (const label of ["Ringkasan", "Per kategori", "Pengeluaran periode ini", "Bandingkan", "Pengeluaran terbesar", "Kebutuhan vs aktual", "Rincian lainnya"]) {
+  for (const label of ["Penggunaan Alokasi", "Kebutuhan vs Aktual", "Pengeluaran per kategori", "Transaksi terbaru", "Dokumen laporan", "Rincian lainnya"]) {
     assert.match(reports, new RegExp(label));
   }
-  assert.match(reports, /useMediaQuery\(APP_MEDIA\.mobile\)/);
-  assert.match(layout, /mobileMax:\s*820/);
+  assert.match(reports, /allocation_rule_id/);
+  assert.match(reports, /reportScope/);
+  assert.match(reports, /downloadFinancialReport/);
+  assert.match(reports, /PDF rekening koran/);
+  assert.match(reports, /Excel terolah/);
   assert.match(reports, /TREND_OPTIONS = \[1, 3, 6, 12\]/);
-  assert.match(reports, /categoryIcon\(category\?\.icon, "expense"\)/);
-  assert.doesNotMatch(reports, /FinancialAlertList|MobileSummaryAlerts|ReportAlerts|overview\?\.alerts/);
   assert.match(reports, /to="\/perencanaan\/kantong"/);
+  assert.doesNotMatch(reports, /FinancialAlertList|MobileSummaryAlerts|ReportAlerts|overview\?\.alerts/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|transactions\.create/);
   assert.match(reportStyles, /@media \(max-width: 820px\)/);
-  assert.match(reportStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(reportStyles, /\.summaryItem\.summaryPrimary/);
+  assert.match(reportStyles, /\.allocationRow/);
   assert.match(reportStyles, /prefers-reduced-motion: reduce/);
 });
 
@@ -238,7 +241,7 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
 test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap tetap canonical di desktop/transaksi", async () => {
   const [page, desktop, mobile, detail, setupChecklist] = await Promise.all([
     source("src/features/dashboard/DashboardPage.jsx"),
-    source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     source("src/features/dashboard/components/MobileTransactionDetail.jsx"),
     source("src/features/dashboard/FinancialSetupChecklist.jsx"),
@@ -292,10 +295,10 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.doesNotMatch(desktop, /shared-quick-actions/);
   assert.match(desktop, /Arus kas bersih/);
   assert.equal((desktop.match(/>Tambah transaksi<\/Button>/g) || []).length, 1);
-  assert.match(mobile, /Aman digunakan/);
+  assert.match(mobile, /Dana Tersedia/);
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
-  assert.match(mobile, /Batas aman per hari/);
+  assert.match(mobile, /Batas harian/);
   assert.match(mobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
   assert.match(mobile, /dashboardInsightState/);
   assert.doesNotMatch(mobile, /mobile-accounts-title|MobileAccounts|AccountVisual/);
@@ -355,7 +358,7 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
 test("dashboard empty state tampil sebagai aksi tambah dan membuka workflow canonical", async () => {
   const [mobile, desktop, page, allocations, recurring, goals, css] = await Promise.all([
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
-    source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
     source("src/features/dashboard/DashboardPage.jsx"),
     Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/allocationDashboardWorkflow.js")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringPage.jsx"),

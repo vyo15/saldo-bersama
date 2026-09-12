@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { readDesktopDashboardSource } from "./sourceBundles.js";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -42,7 +43,7 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
 test("dashboard hanya menampilkan next action utama dan desktop/mobile mengarah ke notification center", async () => {
   const [mobile, desktop, css] = await Promise.all([
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
-    source("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
     source("src/features/dashboard/DashboardPage.module.css"),
   ]);
 

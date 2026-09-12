@@ -240,7 +240,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
     read("src/features/reports/ReportsPage.jsx"),
     Promise.all([read("src/features/allocations/AllocationOverview.module.css"), read("src/features/allocations/AllocationDetail.module.css")]).then((parts) => parts.join("\n")),
     read("src/features/goals/components/GoalCards.module.css"),
-    read("src/features/reports/ReportsDesktop.module.css"),
+    read("src/features/reports/ReportsPage.module.css"),
     read("src/features/allocations/AllocationDetail.module.css"),
   ]);
 
@@ -262,18 +262,18 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
   assert.match(goals, /goalClass\("goal-action-menu"\)/);
   assert.match(goals, /FiMoreHorizontal/);
-  assert.match(reports, /reportClass\("report-details"\)/);
-  assert.match(reports, /const MobileReportsView/);
-  assert.match(reports, /useMediaQuery\(APP_MEDIA\.mobile\)/);
-  assert.doesNotMatch(reports, /BudgetMobileList|report-details__summary/);
+  assert.match(reports, /const ReportsContent/);
+  assert.match(reports, /allocation_rule_id/);
+  assert.match(reports, /ReportDownloadMenu/);
+  assert.doesNotMatch(reports, /BudgetMobileList|report-details__summary|useMediaQuery\(APP_MEDIA\.mobile\)/);
   assert.match(goalStyles, /\.goal-action-menu__items/);
   assert.match(goalStyles, /\.goal-action-menu:only-child\s*\{[\s\S]*?grid-column:\s*2;/);
   assert.doesNotMatch(allocationStyles, /allocation-refresh-action/);
   assert.doesNotMatch(allocationStyles, /allocation-header-actions--with-move|allocation-move-action/);
   assert.match(allocationStyles, /\.allocation-filters button\s*\{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.doesNotMatch(allocationStyles, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
-  assert.match(reportStyles, /Desktop-only report presentation/);
-  assert.doesNotMatch(reportStyles, /@media\s*\(max-width|budget-mobile-card|report-details__summary/);
+  assert.match(reportStyles, /@media \(max-width: 820px\)/);
+  assert.doesNotMatch(reportStyles, /font-size:\s*9px/);
   assert.doesNotMatch(budgets, /font-size:\s*9px/);
 
   const [accountStyles, financialSuccessStyles] = await Promise.all([
@@ -305,10 +305,9 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
     read("src/features/settings/Settings.module.css"),
   ]);
 
-  assert.match(reports, /\.segmentedControl button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(reports, /\.periodArrow \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
-  assert.match(reports, /\.rangeChips button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(reports, /\.sectionHeading > button,[\s\S]*?\.sectionHeading > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(reports, /\.downloadMenu > summary \{[^}]*min-height:\s*var\(--control-height-md\);/s);
+  assert.match(reports, /@media \(max-width: 820px\)[\s\S]*?\.downloadMenu > summary \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(reports, /\.headingLink \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(budgets, /\.allocation-detail-back \{[^}]*min-height:\s*44px;/s);
   assert.match(budgetCard, /@media \(max-width: 820px\)[\s\S]*?\.allocation-card__expand \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
   assert.match(dashboard, /\.mobile-quick-action \{[^}]*min-height:\s*64px;/s);

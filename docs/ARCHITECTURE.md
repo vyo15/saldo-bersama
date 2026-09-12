@@ -56,6 +56,8 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 - Lima endpoint di `api/` hanya melakukan HTTP/session orchestration.
 - Handler action canonical berada di `api/_lib/actions/registry.js`; operational metadata berada di `api/_lib/actions/policy.js`; authorization role/scope tetap canonical di `api/_lib/security.js`.
 - Business service besar dibagi ke `services/planning/`, `services/reporting/`, dan `services/maintenance/`; `index.js` pada masing-masing area menjadi stable public barrel untuk import lintas service.
+- Service yang sebelumnya monolitik memakai **stable facade → responsibility modules**: `finance.js` → `finance/{transactionValidation,transactionMutations,transactionQueries}.js`; `investments.js` → `investments/{investmentState,investmentQueries,investmentSetup,investmentTrading,investmentCorrections}.js`; `reminders.js` → `reminders/{reminderEntity,reminderState,reminderCommands,reminderQueue}.js`; `planning/budgets.js` → `planning/budget{Shared,Queries,Mutations,Lifecycle,History}.js`. Consumer tetap mengimpor facade publik; child module tidak boleh mengimpor facade induknya.
+- Scheduler mempertahankan `api/jobs.js` sebagai HTTP/orchestration endpoint, sedangkan Google bridge/outbox dimiliki `api/_lib/jobs/integrationWorker.js` dan Web Push delivery dimiliki `api/_lib/jobs/pushWorker.js`.
 - Frontend feature memakai `*.api.js`; transport/cache/error hanya berada di `frontend/src/services/api/`.
 - Dependency frontend mengalir `app -> feature/layout`, lalu `feature -> app context/shared/services`. `shared` dan `domain` tidak boleh mengimpor implementation `feature`.
 - Presentation murni yang dipakai lintas feature berada di `frontend/src/shared/presentation/`. Wrapper presentation lama di feature telah dipensiunkan dan harus tetap tidak ada; governance test menjaga agar helper lintas feature tidak kembali terduplikasi.
@@ -63,7 +65,7 @@ Runtime lokal memakai `.env.local` yang dapat di-bootstrap secara guarded dari V
 - Quick transaction composer dimiliki application context (`TransactionComposerContext`) sehingga layout dan dashboard tidak mengimpor `TransactionForm` secara langsung.
 - Feature yang memerlukan action domain feature lain membuat adapter lokal ke `services/api/client.js`, bukan mengimpor `*.api.js` milik feature lain. Reuse komponen visual lintas feature harus eksplisit dan tidak boleh membawa business rule atau write API.
 - Feature/page tidak boleh mengimpor transport global untuk write dan tidak boleh mengimpor toolkit UI langsung.
-- `test/governance/source-architecture.test.js` menjaga relative-import cycle, dependency direction, dan canonical helper yang rawan copy-paste.
+- `test/governance/source-architecture.test.js` menjaga relative-import cycle, dependency direction, dan canonical helper yang rawan copy-paste. `test/governance/maintainability-boundaries.test.js` menjaga file-growth threshold, reviewed exception ceiling, facade thickness, dan frontend shell ceiling.
 - `test/governance/data-deletion-policy.test.js` menjaga inventaris exact seluruh hard-delete production. DELETE baru di luar allowlist gagal CI; ledger normal, audit, movement, rekonsiliasi, dan period closure tidak boleh memperoleh business hard-delete. Master/config hanya dapat hard-delete melalui server-proven `deleteUnused`, sedangkan histori memakai archive/cancel/reverse.
 
 ## Read model

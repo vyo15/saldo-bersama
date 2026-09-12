@@ -11,7 +11,7 @@
 | `/api/auth/google/start` | GET | Alias rewrite ke session handler untuk memulai Google OAuth production desktop/mobile; membuat signed state/nonce + PKCE S256 dan 302 ke Google. |
 | `/api/auth/google/callback` | GET | Alias rewrite ke session handler untuk callback Google OAuth; validasi state/nonce, memakai PKCE `code_verifier` untuk Google→Firebase token exchange, resolve registry `users`/role, membuat registered session, lalu 303 ke route internal yang ditandatangani. |
 | `/api/gateway` | POST | Seluruh action bisnis. |
-| `/api/export` | POST | XLSX Administrator-only. |
+| `/api/export` | POST | Export lengkap XLSX Administrator-only; `kind: "report"` menyediakan laporan PDF/XLSX untuk user terautentikasi sesuai scope read laporan. |
 | `/api/health` | GET | Health teredaksi. |
 | `/api/jobs` | POST | Worker terjadwal dengan signature. |
 
@@ -273,7 +273,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - Read model rekening juga mengembalikan `balance`, `allocated_remaining`, dan `available_balance`. `balance` tetap saldo ledger fisik. Untuk rekening non-investasi, `allocated_remaining` adalah bagian saldo yang masih terikat pada Alokasi Dana aktif dan `available_balance = balance - allocated_remaining`. Untuk RDN/investment, alokasi legacy diperlakukan non-operasional sehingga `allocated_remaining=0` dan Cash RDN tidak tertahan oleh Alokasi Dana lama. Nilai-nilai ini tidak disimpan sebagai angka bebas edit.
 - Nomor rekening lengkap hanya dikirim setelah authentication dan binding user berhasil. Transparansi baca kepada pasangan tidak memperluas write: member tetap tidak dapat bertransaksi atau merekonsiliasi rekening personal pasangan.
 - `transactions.list`, dashboard, laporan, serta `reconciliations.list` memakai ledger readable yang sama agar saldo dapat ditelusuri. Capability edit/cancel transaksi tetap memperhitungkan creator dan scope operable. Label rekening pada filter, breakdown, alert, dan rekonsiliasi menyertakan kepemilikan agar rekening personal pasangan tidak ambigu.
-- `dashboard.overview.totalBalance` tetap backward-compatible sebagai jumlah saldo seluruh rekening readable, termasuk RDN. Field additive `nonInvestmentBalance` dan `nonInvestmentOpeningBalance` menjumlahkan rekening readable non-investasi dan menjadi sumber UI **Saldo rekening**. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, `allocatedRemaining`, serta reserved recurring operasional hanya memakai rekening non-investasi yang dapat dioperasikan actor; Cash RDN tidak boleh menaikkan dana aman/harian atau dana belum dialokasikan. `unallocatedCount` tetap menghitung transaksi expense tanpa Alokasi Dana sesuai ledger/scope operable existing.
+- `dashboard.overview.totalBalance` tetap backward-compatible sebagai jumlah saldo seluruh rekening readable, termasuk RDN. Field additive `nonInvestmentBalance` dan `nonInvestmentOpeningBalance` menjumlahkan rekening readable non-investasi dan menjadi sumber UI **Saldo rekening** sekunder. `safeToSpend` menjadi sumber angka utama **Dana Tersedia** Beranda, sedangkan `dailySafeToSpend` menjadi **Batas harian**. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, `allocatedRemaining`, serta reserved recurring operasional hanya memakai rekening non-investasi yang dapat dioperasikan actor; Cash RDN tidak boleh menaikkan Dana Tersedia/Batas harian atau dana belum dialokasikan. Jadwal Rutin yang sudah tertaut ke Kebutuhan di dalam Alokasi Dana tidak dicadangkan kedua kali pada `reservedBills`; hanya komitmen rutin di luar Alokasi yang mengurangi Dana Tersedia tambahan. `unallocatedCount` tetap menghitung transaksi expense tanpa Alokasi Dana sesuai ledger/scope operable existing.
 - Tren saldo harian/bulanan laporan menyediakan `totalBalance` (seluruh rekening, termasuk RDN) dan `nonInvestmentBalance` (Saldo utama/non-investasi). `totalBalance` tetap merekonsiliasi `investment_account_events` untuk compatibility, tetapi presentation Saldo utama wajib memakai `nonInvestmentBalance`. Snapshot **Total kekayaan tercatat · saat ini** dihitung sebagai `nonInvestmentBalance + investments.overview.summary.portfolio_value`; `totalBalance + portfolio_value` dilarang karena akan double-count RDN. Historical market-value/net-worth tidak disintesis sebelum tersedia histori valuasi authoritative.
 - Audit create/update hanya mencatat bentuk bertopeng empat digit terakhir. Nomor rekening tidak ditambahkan ke Sheets mirror atau export baca. Backup teknis tetap memuat kolom tersebut untuk recovery terjaga.
 - Field ini adalah nomor rekening transfer, bukan nomor kartu debit. PIN, CVV, masa berlaku, serta nomor kartu debit tidak diterima.
@@ -348,20 +348,21 @@ Payload:
 ```json
 {
   "period": "YYYY-MM",
-  "trend_months": 3
+  "trend_months": 6,
+  "allocation_rule_id": "opsional-envelope-rule-id"
 }
 ```
 
-`trend_months` hanya menerima 3, 6, atau 12 dan default-nya 6. Response menambah:
+`trend_months` menerima 1, 3, 6, atau 12 dan default-nya 6. `allocation_rule_id` kosong berarti seluruh keuangan; jika terisi, backend men-scope seluruh report ke satu Alokasi yang visible pada periode tersebut. Response canonical memuat:
 
-- `trend.items`: income, expense, refund, net, dan totalBalance per bulan;
-- `accountExpenses`: expense menurut rekening sumber;
-- `creatorExpenses`: expense menurut actor pencatat, **bukan** kontribusi/penanggung biaya;
-- `costShareExpenses`: response compatibility untuk expense shared historis yang memiliki snapshot `equal` atau `percentage`; UI canonical baru tidak lagi menawarkan split atau menampilkan panel ini sebagai analitik utama;
-- `natureExpenses`: expense menurut `categories.nature`;
-- `overview.alerts`: peringatan actionable dari Kebutuhan, Alokasi Dana, Jadwal Rutin, Target, transaksi belum dialokasikan, dan rekonsiliasi.
+- `reportSummary`: global memakai saldo awal/kredit/debit/saldo akhir; scope Alokasi memakai dialokasikan/terpakai/sisa/persentase;
+- `reportScope` dan `allocationOptions`: scope efektif serta pilihan Alokasi periode tersebut;
+- `trend.items`: 1 bulan menghasilkan seri harian, 3/6/12 menghasilkan seri bulanan; expense mengikuti scope Alokasi bila dipilih;
+- `budgets`, `categoryExpenses`, `accountExpenses`, `creatorExpenses`, `natureExpenses`, dan compatibility `costShareExpenses` yang mengikuti scope backend yang sama;
+- `reportTransactions`: transaksi periode terurut dengan debit/kredit dan saldo berjalan untuk template layar/PDF/Excel;
+- `overview.alerts`: compatibility data overview; alert operasional tetap tidak dirender di halaman Laporan.
 
-Field tambahan tersebut backward-compatible; transfer internal tetap tidak masuk income/expense/net.
+`POST /api/export` dengan `{ "kind":"report", "period":"YYYY-MM", "trend_months":6, "allocation_rule_id":"...", "format":"pdf|xlsx" }` memakai `reports.monthly` sebagai source angka. PDF adalah dokumen siap baca multipage; XLSX berisi sheet Ringkasan, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening. Export lengkap tanpa `kind:"report"` tetap Administrator-only. Transfer internal tetap tidak masuk income/expense/net.
 
 ## Version/conflict
 

@@ -154,6 +154,25 @@ test("quality docs memakai routing perubahan, regression behavior, dan checklist
   assert.match(prTemplate, /Docs canonical yang diperbarui/);
 });
 
+
+test("patch handoff agent wajib menjalankan lint repair-loop sebelum full verification", async () => {
+  const [agents, workflow, contributing, checklist, done] = await Promise.all([
+    source("AGENTS.md"),
+    source("docs/WORKFLOW.md"),
+    source("CONTRIBUTING.md"),
+    source("docs/QA_CHECKLIST.md"),
+    source("docs/DEFINITION_OF_DONE.md"),
+  ]);
+  const combined = [agents, workflow, contributing, checklist, done].join("\n");
+  assert.match(agents, /Quality loop wajib sebelum handoff agent\/ChatGPT/i);
+  assert.match(agents, /npm run lint[\s\S]*perbaiki[\s\S]*npm run lint[\s\S]*npm run verify/i);
+  assert.match(workflow, /npm run zip[^\n]*bukan mekanisme pertama/i);
+  assert.match(contributing, /Patch\/ZIP final tidak boleh diserahkan dengan known lint\/test\/build failure/i);
+  assert.match(checklist, /npm run lint.*PASS pada tree final/i);
+  assert.match(done, /npm run lint.*PASS pada tree final/i);
+  assert.match(combined, /edit setelah PASS|bila edit dilakukan lagi setelah PASS|bila source\/test\/docs berubah setelah PASS/i);
+});
+
 test("maintainability convention menjadi dokumentasi canonical dan terhubung dari governance", async () => {
   const [guide, agents, contributing, index, done] = await Promise.all([
     source("docs/CODE_MAINTAINABILITY.md"),

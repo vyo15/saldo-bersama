@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { readCategoryFeatureSource } from "./sourceBundles.js";
 
 const read = (path) => readFile(new URL(`../src/${path}`, import.meta.url), "utf8");
 
@@ -48,7 +49,7 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
     Promise.all([read("features/allocations/AllocationsPage.jsx"), read("features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("features/recurring/RecurringDialogs.jsx"),
     Promise.all([read("features/goals/GoalsPage.jsx"), read("features/goals/components/GoalDialogs.jsx")]).then((parts) => parts.join("\n")),
-    read("features/categories/CategoriesPage.jsx"),
+    readCategoryFeatureSource(),
     read("features/settings/MembersSettingsPage.jsx"),
   ]);
   for (const source of sources) assert.match(source, /VisualChoiceGroup/);
@@ -74,7 +75,8 @@ test("descriptive fixed choices keep explanatory decisions calm and consistent",
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/allocations/AllocationDialogLayer.jsx"),
   ]);
-  assert.match(budgets, /legend="Cara mencatat kebutuhan"[\s\S]*descriptive[\s\S]*helperPanel/);
+  assert.match(budgets, /legend="Pola kebutuhan"[\s\S]*columns=\{3\}[\s\S]*mobileColumns=\{3\}/);
+  assert.match(budgets, /Nominal otomatis terisi saat kebutuhan dicatat/);
   assert.match(budgets, /<InlineOwnershipPicker[\s\S]*legend="Berlaku untuk"/);
   assert.match(recurring, /legend="Jenis"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
   assert.match(allocations, /legend="Aksi"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
@@ -170,7 +172,7 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(funding, /label="Ke Alokasi Dana"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
   assert.match(recurring, /const CategoryField[\s\S]*<SelectionField/);
   assert.match(recurring, /const PaymentEnvelopeField[\s\S]*<InlineSelectionPicker/);
-  assert.match(budgets, /<SelectionField label="Kategori"/);
+  assert.match(budgets, /<InlineSelectionPicker[^>]*label="Kategori"/);
 });
 
 test("SelectionField keeps app-owned selection accessible without native browser dropdowns", async () => {

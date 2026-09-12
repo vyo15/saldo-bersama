@@ -53,7 +53,7 @@ test("Batal eksplisit membuang draft langsung sedangkan dismiss tidak sengaja te
 
   const guardedForms = [
     "src/features/accounts/components/AccountEditorDialogs.jsx",
-    "src/features/categories/CategoriesPage.jsx",
+    "src/features/categories/CategoryDialogs.jsx",
     "src/features/goals/components/GoalDialogs.jsx",
     "src/features/recurring/RecurringDialogs.jsx",
     "src/features/budgets/BudgetDialogLayer.jsx",
@@ -71,7 +71,7 @@ test("Batal eksplisit membuang draft langsung sedangkan dismiss tidak sengaja te
 test("form besar memakai dirty guard canonical dalam Modal yang sama tanpa nested focus trap", async () => {
   const files = [
     "src/features/accounts/components/AccountEditorDialogs.jsx",
-    "src/features/categories/CategoriesPage.jsx",
+    "src/features/categories/CategoryDialogs.jsx",
     "src/features/goals/components/GoalDialogs.jsx",
     "src/features/recurring/RecurringDialogs.jsx",
     "src/features/budgets/BudgetDialogLayer.jsx",

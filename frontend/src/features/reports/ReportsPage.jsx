@@ -1,330 +1,209 @@
-import { APP_MEDIA } from "../../config/layout.js";
-import { useMemo, useState } from "react";
-import {
-  FiArrowDownRight,
-  FiArrowUpRight,
-  FiCalendar,
-  FiChevronDown,
-  FiChevronLeft,
-  FiChevronRight,
-  FiLayers,
-  FiMinus,
-  FiShield,
-} from "react-icons/fi";
-import { Link } from "react-router";
-import { useFinance } from "../../app/FinanceContext.jsx";
-import { BalanceIcon } from "../../components/common/FinanceChoiceIcons.jsx";
-import ButtonLink from "../../components/common/ButtonLink.jsx";
-import Card from "../../components/common/Card.jsx";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FiChevronRight, FiDownload, FiFileText, FiLayers } from "react-icons/fi";
+import { Link, useSearchParams } from "react-router";
+import Button from "../../components/common/Button.jsx";
 import Money from "../../components/common/Money.jsx";
-import ProgressBar from "../../components/common/ProgressBar.jsx";
-import PageHeader from "../../components/common/PageHeader.jsx";
-import PageInfoButton from "../../components/common/PageInfoButton.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
-import BarChart from "../../components/charts/BarChart.jsx";
-import LineChart from "../../components/charts/LineChart.jsx";
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { formatCompactRupiah, formatRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { categoryIcon } from "../../shared/presentation/transaction.js";
+import { downloadFinancialReport } from "./reports.api.js";
+import { allocationDecoration } from "../allocations/allocationDecorations.js";
 import styles from "./ReportsPage.module.css";
-import { reportClass } from "./reportStyles.js";
 
-import TemporalInput from "../../components/common/TemporalInput.jsx";
 const TREND_OPTIONS = [1, 3, 6, 12];
+const trendOptions = TREND_OPTIONS.map((months) => ({ value: String(months), label: months === 1 ? "1 bulan · harian" : `${months} bulan` }));
 
-const ReportHeader = ({ period, trendMonths, setPeriod, setTrendMonths }) => (
-  <PageHeader
-    title="Laporan"
-    help="Laporan merangkum transaksi sesuai periode. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran total."
-    actions={<div className={reportClass("report-period-controls")}><label className="field field--compact"><span>Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label><SelectionField className="field--compact" label="Rentang tren" value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} compact options={[{ value: "1", label: "1 bulan (harian)" }, { value: "3", label: "3 bulan" }, { value: "6", label: "6 bulan" }, { value: "12", label: "12 bulan" }]} /></div>}
-  />
-);
+const monthLabel = (period) => {
+  const [year, month] = String(period).split("-").map(Number);
+  return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date(Date.UTC(year, month - 1, 1)));
+};
 
-const OverviewMetrics = ({ overview, currentWealth }) => (
-  <section className={reportClass("metric-grid")}>
-    <Card className="metric-card"><span>Arus kas bersih</span><Money value={overview?.cashFlow?.net || 0} tone={(overview?.cashFlow?.net || 0) >= 0 ? "positive" : "negative"} /></Card>
-    <Card className="metric-card"><span>Saldo rekening</span><Money value={overview?.nonInvestmentBalance ?? overview?.totalBalance ?? 0} /></Card>
-    {currentWealth != null ? <Card className="metric-card"><span>Total kekayaan tercatat · saat ini</span><Money value={currentWealth} /></Card> : null}
-    <Card className="metric-card"><span>Kewajiban tersisa</span><Money value={overview?.reservedBills || 0} /></Card>
-    <Card className="metric-card"><span>Aman digunakan</span><Money value={overview?.safeToSpend || 0} /></Card>
-  </section>
-);
+const usageStatus = (budget) => {
+  const planned = Number(budget.amount || 0);
+  const used = Number(budget.used_amount || 0);
+  if (used > planned) return { label: "Melebihi", tone: "danger" };
+  if (planned > 0 && used >= planned) return { label: "Lunas", tone: "done" };
+  if (planned > 0 && used / planned >= .8) return { label: "Hampir habis", tone: "warning" };
+  return { label: "Aman", tone: "safe" };
+};
 
-const PrimaryTrendPanels = ({ trend, balanceComparison, cashFlowTrend }) => <>
-  <Card className="panel"><div className="panel__header"><h2>Saldo utama awal vs akhir</h2></div><LineChart data={balanceComparison} /></Card>
-  <Card className="panel"><div className="panel__header"><h2>{trend.granularity === "day" ? "Arus kas harian" : `Arus kas ${trend.months} bulan`}</h2></div>{cashFlowTrend.length ? <LineChart data={cashFlowTrend} label="Tren arus kas bersih" /> : <EmptyState title="Belum ada tren" description="Tren arus kas muncul setelah tersedia transaksi pada lebih dari satu periode." />}</Card>
-</>;
-
-const useMobileReportLayout = () => useMediaQuery(APP_MEDIA.mobile);
-
-const ReportDetails = ({ balanceTrend, categoryExpenses, accountExpenses, creatorExpenses, budgets }) => (
-  <div className={reportClass("report-details")}>
-    <div className={reportClass("report-details__content")}>
-      <Card className="panel"><div className="panel__header"><h2>Tren saldo utama</h2></div>{balanceTrend.length ? <LineChart data={balanceTrend} label="Tren saldo utama" /> : <EmptyState title="Belum ada tren saldo" description="Tren saldo muncul setelah tersedia riwayat saldo pada lebih dari satu periode." />}</Card>
-      <BreakdownPanels categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} />
-      <BudgetPerformance budgets={budgets} />
+const ReportDownloadMenu = ({ period, trendMonths, allocationRuleId }) => {
+  const { notify } = useFeedback();
+  const detailsRef = useRef(null);
+  const [exporting, setExporting] = useState("");
+  const download = async (format) => {
+    setExporting(format);
+    try {
+      const result = await downloadFinancialReport({ period, trendMonths, allocationRuleId, format });
+      notify({ message: `${result.fileName} berhasil diunduh.`, tone: "success", dedupeKey: `report:${format}` });
+      detailsRef.current?.removeAttribute("open");
+    } catch (error) {
+      notify({ message: error.message || "Laporan gagal diunduh.", tone: "danger", dedupeKey: `report:${format}:error` });
+    } finally {
+      setExporting("");
+    }
+  };
+  return <details className={styles.downloadMenu} ref={detailsRef}>
+    <summary><FiDownload aria-hidden="true" /><span>Unduh</span></summary>
+    <div className={styles.downloadPopover}>
+      <button type="button" disabled={Boolean(exporting)} onClick={() => download("pdf")}><FiFileText aria-hidden="true" /><span><strong>PDF</strong><small>Laporan siap baca seperti rekening koran</small></span>{exporting === "pdf" ? "…" : <FiDownload aria-hidden="true" />}</button>
+      <button type="button" disabled={Boolean(exporting)} onClick={() => download("xlsx")}><FiLayers aria-hidden="true" /><span><strong>Excel</strong><small>Data terolah dengan sheet yang rapi</small></span>{exporting === "xlsx" ? "…" : <FiDownload aria-hidden="true" />}</button>
     </div>
-  </div>
-);
-
-const BreakdownPanels = ({ categoryExpenses, accountExpenses, creatorExpenses }) => <>
-  <Card className="panel"><div className="panel__header"><h2>Pengeluaran per kategori</h2></div><BarChart data={categoryExpenses} /></Card>
-  <Card className="panel"><div className="panel__header"><h2>Pengeluaran per rekening</h2></div>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState title="Belum ada pengeluaran" description="Pengeluaran akan muncul setelah transaksi expense tercatat pada periode ini." />}</Card>
-  <Card className="panel"><div className="panel__header"><div><h2>Aktivitas pencatatan</h2><p className="panel__description">Menunjukkan pencatat, bukan penanggung biaya.</p></div></div>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState title="Belum ada aktivitas" description="Aktivitas pencatatan akan muncul setelah ada pengeluaran pada periode ini." />}</Card>
-</>;
-
-const BudgetDesktopTable = ({ budgets }) => <div className="data-table-wrap"><table className="data-table"><thead><tr><th>Kebutuhan</th><th className="align-right">Rencana</th><th className="align-right">Aktual</th><th className="align-right">Sisa</th></tr></thead><tbody>{budgets.map((item) => <tr key={item.budget_id}><td>{item.name || item.category_id}</td><td className="align-right"><Money value={item.amount} /></td><td className="align-right"><Money value={item.used_amount} /></td><td className="align-right"><Money value={item.amount - item.used_amount} tone={item.amount - item.used_amount < 0 ? "negative" : "default"} /></td></tr>)}</tbody></table></div>;
-
-const BudgetPerformance = ({ budgets }) => <Card className={reportClass("panel panel--wide")}>
-  <div className="panel__header"><h2>Kebutuhan vs aktual</h2><ButtonLink to="/perencanaan/kantong">Lihat alokasi</ButtonLink></div>
-  {budgets.length ? <BudgetDesktopTable budgets={budgets} /> : <EmptyState title="Belum ada kebutuhan" description="Kebutuhan akan muncul setelah dibuat dari detail Alokasi Dana." />}
-</Card>;
-
-const shiftMonth = (period, delta) => {
-  const [year, month] = String(period).split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1 + delta, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  </details>;
 };
 
-const longMonthLabel = (period) => {
-  const [year, month] = String(period).split("-").map(Number);
-  return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "Asia/Jakarta" })
-    .format(new Date(Date.UTC(year, month - 1, 1)));
-};
-
-const percentChange = (current, previous) => {
-  const currentValue = Number(current || 0);
-  const previousValue = Number(previous || 0);
-  if (!previousValue) return null;
-  return Math.round(((currentValue - previousValue) / Math.abs(previousValue)) * 100);
-};
-
-const signedPercent = (value) => value === null ? "Belum ada pembanding" : `${value > 0 ? "+" : ""}${value}%`;
-
-const MobileTrendChart = ({ items = [], period }) => {
-  const maxExpense = Math.max(1, ...items.map((item) => Number(item.expense || 0)));
-  const daily = items.some((item) => /^\d{4}-\d{2}-\d{2}$/.test(String(item.periodKey || "")));
-  return <div className={`${styles.trendChart}${daily ? ` ${styles.trendChartDaily}` : ""}`} style={daily ? { "--report-trend-count": items.length } : undefined} role="img" aria-label={`Tren pengeluaran ${items.map((item) => `${item.label} ${formatRupiah(item.expense)}`).join(", ")}`}>
-    {items.map((item, index) => {
-      const value = Number(item.expense || 0);
-      const height = Math.max(7, Math.round((value / maxExpense) * 100));
-      const active = daily ? index === items.length - 1 : item.periodKey === period;
-      const showDetail = !daily || index === 0 || index === items.length - 1 || index % 5 === 0;
-      return <div className={styles.trendColumn} key={item.periodKey} aria-hidden="true">
-        <div className={styles.trendPlot}>{showDetail ? <span className={styles.trendValue} style={{ "--report-bar-height": `${height}%` }}>{formatCompactRupiah(value)}</span> : null}<i className={`${styles.trendBar}${active ? ` ${styles.trendBarActive}` : ""}`} style={{ "--report-bar-scale": height / 100 }} /></div>
-        <span className={`${styles.trendLabel}${active ? ` ${styles.trendLabelActive}` : ""}`}>{showDetail ? item.label : ""}</span>
-      </div>;
-    })}
+const ReportHeader = ({ period, setPeriod, trendMonths, allocationRuleId, setAllocationRuleId, allocationOptions }) => {
+  const scopeOptions = useMemo(() => [
+    { value: "", label: "Semua Alokasi" },
+    ...allocationOptions.map((item) => ({ value: item.envelope_rule_id, label: item.name, meta: `${formatCompactRupiah(item.used_amount)} terpakai` })),
+  ], [allocationOptions]);
+  return <div className={styles.headerArea}>
+    <header className={styles.header}>
+      <div><h1>Laporan</h1><p>Ringkasan keuangan dan penggunaan Alokasi dalam satu tampilan.</p></div>
+    </header>
+    <div className={styles.toolbar}>
+      <div className={styles.filters}>
+        <div className={styles.periodControl}><span className="sr-only">Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} compact aria-label="Pilih periode laporan" /></div>
+        <SelectionField className={styles.scopeControl} label="Alokasi" hideLabel compact value={allocationRuleId} onChange={setAllocationRuleId} options={scopeOptions} ariaLabel="Pilih scope Alokasi" searchable={scopeOptions.length > 7} />
+      </div>
+      <ReportDownloadMenu period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} />
+    </div>
   </div>;
 };
 
-const MobileMetricCard = ({ icon: Icon, label, value, tone = "default" }) => <article className={styles.metricCard}>
-  <span className={styles.metricIcon}><Icon aria-hidden="true" /></span>
-  <Money value={value} tone={tone} />
-  <span>{label}</span>
-</article>;
+const SummaryStrip = ({ summary }) => {
+  const allocation = summary?.mode === "allocation";
+  const items = allocation ? [
+    ["Dialokasikan", summary.allocated, ""], ["Terpakai", summary.used, "negative"], ["Sisa", summary.remaining, summary.remaining < 0 ? "negative" : ""], ["Penggunaan", `${Number(summary.usagePercent || 0)}%`, "text"],
+  ] : [
+    ["Saldo awal", summary?.openingBalance, ""], ["Kredit", summary?.credit, "positive"], ["Debit", summary?.debit, "negative"], ["Saldo akhir", summary?.closingBalance, ""],
+  ];
+  return <section className={styles.summaryStrip} aria-label="Ringkasan laporan">
+    {items.map(([label, value, tone]) => <div className={`${styles.summaryItem}${["Saldo akhir", "Sisa"].includes(label) ? ` ${styles.summaryPrimary}` : ""}`} key={label}><span>{label}</span>{tone === "text" ? <strong>{value}</strong> : <Money value={value || 0} tone={tone || "default"} />}</div>)}
+  </section>;
+};
 
-const MobileCategoryList = ({ items = [], categoryLookup, limit }) => {
-  const visibleItems = typeof limit === "number" ? items.slice(0, limit) : items;
+const AllocationRows = ({ items, onSelect }) => {
+  if (!items.length) return <EmptyState variant="inline" title="Belum ada Alokasi" description="Alokasi periode ini akan tampil di sini setelah memiliki dana atau Kebutuhan." />;
+  return <div className={styles.allocationRows}>{items.map((item) => {
+    const decoration = allocationDecoration({ decorationKey: item.decoration_key, name: item.name, id: item.envelope_rule_id });
+    const percent = Math.max(0, Number(item.usage_percent || 0));
+    return <button className={styles.allocationRow} type="button" key={item.envelope_rule_id} onClick={() => onSelect(item.envelope_rule_id)}>
+      <span className={styles.allocationArt}>{decoration.asset ? <img src={decoration.asset} alt="" width="36" height="36" loading="lazy" decoding="async" /> : null}</span>
+      <span className={styles.allocationCopy}><span><strong>{item.name}</strong><em>{percent}%</em></span><span>{formatRupiah(item.used_amount)} <small>/ {formatRupiah(item.allocated_amount)}</small></span><i><b style={{ width: `${Math.min(100, percent)}%` }} /></i></span>
+      <span className={styles.allocationRemaining}><small>Sisa</small><strong>{formatCompactRupiah(item.remaining_amount)}</strong></span>
+      <FiChevronRight aria-hidden="true" />
+    </button>;
+  })}</div>;
+};
+
+const TrendView = ({ trend = { items: [] }, period }) => {
+  const values = trend.items || [];
+  const max = Math.max(1, ...values.map((item) => Number(item.expense || 0)));
+  if (!values.length) return <EmptyState variant="inline" title="Belum ada tren" description="Tren muncul setelah terdapat transaksi pada periode laporan." />;
+  return <div className={styles.trendChart} role="img" aria-label="Tren pengeluaran">
+    {values.map((item) => <div className={styles.trendColumn} key={item.periodKey}><span>{formatCompactRupiah(item.expense)}</span><i className={item.periodKey === period ? styles.activeBar : ""} style={{ height: `${Math.max(8, Math.round((Number(item.expense || 0) / max) * 100))}%` }} /><small>{item.label}</small></div>)}
+  </div>;
+};
+
+const CategoryRows = ({ items = [] }) => {
   const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  if (!visibleItems.length) return <EmptyState variant="inline" title="Belum ada pengeluaran" description="Kategori pengeluaran akan muncul setelah transaksi tercatat." />;
-  return <div className={styles.categoryList}>{visibleItems.map((item) => {
-    const category = categoryLookup[item.category_id];
-    const Icon = categoryIcon(category?.icon, "expense");
-    const amount = Number(item.amount || 0);
-    const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
-    return <article className={styles.categoryRow} key={item.category_id || item.name}>
-      <span className={styles.categoryIcon}><Icon aria-hidden="true" /></span>
-      <div className={styles.categoryMain}>
-        <div className={styles.categoryMeta}><strong>{item.name || "Tanpa kategori"}</strong><Money value={amount} /></div>
-        <div className={styles.categoryTrack} aria-hidden="true"><i style={{ width: `${Math.max(2, percentage)}%` }} /></div>
-      </div>
-      <span className={styles.categoryPercent}>{percentage}%</span>
-    </article>;
+  if (!items.length) return <EmptyState variant="inline" title="Belum ada pengeluaran" description="Kategori akan muncul setelah transaksi pengeluaran tercatat." />;
+  return <div className={styles.categoryRows}>{items.slice(0, 6).map((item) => <div className={styles.categoryRow} key={item.category_id || item.label}><span><strong>{item.label}</strong><small>{Number(item.transaction_count || 0)} transaksi</small></span><span><strong>{formatCompactRupiah(item.amount)}</strong><small>{total ? Math.round(Number(item.amount || 0) / total * 100) : 0}%</small></span></div>)}</div>;
+};
+
+const BudgetRows = ({ budgets }) => {
+  if (!budgets.length) return <EmptyState variant="inline" title="Belum ada Kebutuhan" description="Kebutuhan pada scope ini akan tampil setelah dibuat dari Alokasi." />;
+  return <div className={styles.budgetRows}>{budgets.map((budget) => {
+    const status = usageStatus(budget);
+    return <div className={styles.budgetRow} key={budget.budget_id}><span><strong>{budget.name}</strong>{budget.envelope_name ? <small>{budget.envelope_name}</small> : null}</span><span><small>Rencana</small><strong>{formatCompactRupiah(budget.amount)}</strong></span><span><small>Aktual</small><strong>{formatCompactRupiah(budget.used_amount)}</strong></span><em data-tone={status.tone}>{status.label}</em></div>;
   })}</div>;
 };
 
-const MobileBudgetList = ({ budgets = [] }) => {
-  if (!budgets.length) return <EmptyState variant="inline" title="Belum ada kebutuhan" description="Batas aktif akan dibandingkan dengan realisasi pengeluaran di sini." />;
-  return <div className={styles.budgetList}>{budgets.map((item) => {
-    const planned = Number(item.amount || 0);
-    const used = Number(item.used_amount || 0);
-    const percentage = planned > 0 ? Math.round((used / planned) * 100) : 0;
-    return <article className={styles.budgetRow} key={item.budget_id}>
-      <div className={styles.budgetMeta}><strong>{item.name || item.category_id}</strong><span>{percentage}% terpakai</span></div>
-      <ProgressBar value={used} max={planned} label={`Pemakaian kebutuhan ${item.name || item.category_id}`} />
-      <div className={styles.budgetAmounts}><span>Aktual <Money value={used} /></span><span>Sisa <Money value={planned - used} tone={planned - used < 0 ? "negative" : "default"} /></span></div>
-    </article>;
-  })}</div>;
+const TransactionRows = ({ items, expanded, onToggle }) => {
+  const visible = expanded ? items : items.slice(0, 6);
+  if (!items.length) return <EmptyState variant="inline" title="Belum ada transaksi" description="Aktivitas pada scope dan periode ini belum tersedia." />;
+  return <><div className={styles.transactionRows}>{visible.map((item) => <div className={styles.transactionRow} key={item.transaction_id}>
+    <span><strong>{item.description}</strong><small>{[item.allocation_name, item.account_name, item.transaction_date].filter(Boolean).join(" · ")}</small></span>
+    <span className={styles.transactionAmount}><strong data-tone={item.debit ? "negative" : item.credit ? "positive" : "default"}>{item.debit ? `- ${formatRupiah(item.debit)}` : item.credit ? `+ ${formatRupiah(item.credit)}` : "Transfer"}</strong><small>Saldo {formatCompactRupiah(item.running_balance)}</small></span>
+  </div>)}</div>{items.length > 6 ? <button className={styles.textAction} type="button" onClick={onToggle}>{expanded ? "Tampilkan ringkas" : `Lihat semua ${items.length} transaksi`}</button> : null}</>;
 };
 
-const MobileBreakdownDetails = ({ accountExpenses, creatorExpenses }) => <details className={styles.detailsCard}>
-  <summary><span><strong>Rincian lainnya</strong><small>Rekening dan aktivitas pencatatan keluarga</small></span><FiChevronDown aria-hidden="true" /></summary>
-  <div className={styles.detailsContent}>
-    <section><h3>Pengeluaran per rekening</h3>{accountExpenses.length ? <BarChart data={accountExpenses} label="Pengeluaran per rekening" /> : <EmptyState variant="inline" title="Belum ada pengeluaran" description="Pengeluaran akan muncul setelah transaksi expense tercatat pada periode ini." />}</section>
-    <section><h3>Aktivitas pencatatan</h3><p>Menunjukkan pencatat, bukan penanggung biaya.</p>{creatorExpenses.length ? <BarChart data={creatorExpenses} label="Pengeluaran berdasarkan pencatat" /> : <EmptyState variant="inline" title="Belum ada aktivitas" description="Aktivitas pencatatan akan muncul setelah ada pengeluaran pada periode ini." />}</section>
+const BreakdownDetails = ({ accountExpenses, creatorExpenses }) => <details className={styles.breakdownDetails}>
+  <summary>Rincian lainnya <span>Rekening & pencatat</span></summary>
+  <div className={styles.breakdownGrid}>
+    <div><h3>Pengeluaran per rekening</h3>{accountExpenses.length ? accountExpenses.map((item) => <p key={item.account_id}><span>{item.label}</span><strong>{formatCompactRupiah(item.amount)}</strong></p>) : <small>Belum ada data.</small>}</div>
+    <div><h3>Aktivitas pencatatan</h3>{creatorExpenses.length ? creatorExpenses.map((item) => <p key={item.user_id}><span>{item.label}</span><strong>{formatCompactRupiah(item.amount)}</strong></p>) : <small>Belum ada data.</small>}<small>Menunjukkan pencatat, bukan penanggung biaya.</small></div>
   </div>
 </details>;
 
-const MobileComparison = ({ current, previous }) => {
-  if (!previous) return <section className={styles.comparisonCard}><div className={styles.sectionHeading}><div><span>Perbandingan</span><h2>Belum ada bulan pembanding</h2></div></div><p className={styles.emptyCopy}>Pilih periode yang memiliki data bulan sebelumnya untuk melihat perubahan.</p></section>;
-  const expenseChange = percentChange(current?.expense, previous.expense);
-  const balanceChange = percentChange(current?.nonInvestmentBalance ?? current?.totalBalance, previous.nonInvestmentBalance ?? previous.totalBalance);
-  const netChange = percentChange(current?.net, previous.net);
-  const rows = [
-    { label: "Pengeluaran", current: current?.expense, previous: previous.expense, change: expenseChange, goodWhenDown: true },
-    { label: "Saldo utama", current: current?.nonInvestmentBalance ?? current?.totalBalance, previous: previous.nonInvestmentBalance ?? previous.totalBalance, change: balanceChange },
-    { label: "Arus kas bersih", current: current?.net, previous: previous.net, change: netChange },
-  ];
-  return <section className={styles.comparisonCard}>
-    <div className={styles.sectionHeading}><div><span>Bandingkan</span><h2>{current?.label || "Periode ini"} vs {previous.label}</h2></div></div>
-    <div className={styles.comparisonRows}>{rows.map((row) => {
-      const improving = row.change !== null && (row.goodWhenDown ? row.change <= 0 : row.change >= 0);
-      const TrendIcon = row.change !== null && row.change < 0 ? FiArrowDownRight : FiArrowUpRight;
-      return <article className={styles.comparisonRow} key={row.label}>
-        <div><span>{row.label}</span><strong>{formatCompactRupiah(row.current)}</strong></div>
-        <div className={`${styles.comparisonDelta}${row.change === null ? "" : improving ? ` ${styles.comparisonDeltaPositive}` : ` ${styles.comparisonDeltaWarning}`}`}><TrendIcon aria-hidden="true" /><span>{signedPercent(row.change)}</span></div>
-        <small>Sebelumnya {formatCompactRupiah(row.previous)}</small>
-      </article>;
-    })}</div>
-  </section>;
-};
+const Documents = ({ period, scopeLabel, trendMonths, allocationRuleId }) => <section className={styles.documentsSection}>
+  <div className={styles.sectionHeading}><div><h2>Dokumen laporan</h2><p>{monthLabel(period)} · {scopeLabel}</p></div></div>
+  <div className={styles.documentRows}>
+    <div><FiFileText aria-hidden="true" /><span><strong>PDF rekening koran</strong><small>Ringkasan, Kebutuhan, dan rincian transaksi siap baca.</small></span><ReportFileButton format="pdf" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+    <div><FiLayers aria-hidden="true" /><span><strong>Excel terolah</strong><small>Sheet Ringkasan, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening.</small></span><ReportFileButton format="xlsx" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+  </div>
+</section>;
 
-const mobileReportModel = (data, period, trendMonths) => {
-  const { overview, budgets = [], categoryExpenses = [], accountExpenses = [], creatorExpenses = [], trend = { months: trendMonths, granularity: "month", items: [] } } = data || {};
-  const trendItems = trend.items || [];
-  const daily = trend.granularity === "day";
-  const matchedIndex = daily ? -1 : trendItems.findIndex((item) => item.periodKey === period);
-  const currentIndex = matchedIndex >= 0 ? matchedIndex : trendItems.length - 1;
-  const currentTrend = currentIndex >= 0 ? trendItems[currentIndex] : null;
-  const previousTrend = !daily && currentIndex > 0 ? trendItems[currentIndex - 1] : null;
-  return {
-    overview,
-    budgets,
-    categoryExpenses,
-    accountExpenses,
-    creatorExpenses,
-    trendItems,
-    currentTrend,
-    previousTrend,
-    expenseChange: previousTrend ? percentChange(currentTrend?.expense, previousTrend.expense) : null,
-    totalExpense: Number(overview?.cashFlow?.expense || 0),
+const ReportFileButton = ({ format, period, trendMonths, allocationRuleId }) => {
+  const { notify } = useFeedback();
+  const [loading, setLoading] = useState(false);
+  const run = async () => {
+    setLoading(true);
+    try {
+      const result = await downloadFinancialReport({ format, period, trendMonths, allocationRuleId });
+      notify({ message: `${result.fileName} berhasil diunduh.`, tone: "success", dedupeKey: `report-doc:${format}` });
+    } catch (error) {
+      notify({ message: error.message || "Laporan gagal diunduh.", tone: "danger", dedupeKey: `report-doc:${format}:error` });
+    } finally { setLoading(false); }
   };
+  return <Button variant="secondary" icon={FiDownload} loading={loading} onClick={run}>{format === "pdf" ? "PDF" : "Excel"}</Button>;
 };
 
-const MobileReportControls = ({ mode, setMode, period, setPeriod, trendMonths, setTrendMonths, historical }) => {
-  const canMoveForward = period < currentMonthInJakarta();
-  return <>
-    <header className={styles.mobileHeader}>
-      <div className={styles.mobileTitle}><p>Analitik keuangan</p><div className={styles.mobileTitleRow}><h1>Laporan</h1><PageInfoButton title="Tentang Laporan">Laporan merangkum transaksi sesuai periode. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran total.</PageInfoButton></div></div>
-      <label className={styles.calendarControl} aria-label="Pilih periode laporan"><FiCalendar aria-hidden="true" /><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label>
-    </header>
-    <div className={styles.segmentedControl} role="group" aria-label="Tampilan laporan">
-      <button type="button" className={mode === "summary" ? styles.segmentActive : ""} onClick={() => setMode("summary")} aria-pressed={mode === "summary"}>Ringkasan</button>
-      <button type="button" className={mode === "category" ? styles.segmentActive : ""} onClick={() => setMode("category")} aria-pressed={mode === "category"}>Per kategori</button>
-    </div>
-    <section className={styles.periodCard} aria-label="Periode laporan">
-      <button className={styles.periodArrow} type="button" onClick={() => setPeriod(shiftMonth(period, -1))} aria-label="Bulan sebelumnya"><FiChevronLeft aria-hidden="true" /></button>
-      <div><strong>{longMonthLabel(period)}</strong><span>{historical ? "Periode historis" : "Periode berjalan"}</span></div>
-      <button className={styles.periodArrow} type="button" onClick={() => setPeriod(shiftMonth(period, 1))} disabled={!canMoveForward} aria-label="Bulan berikutnya"><FiChevronRight aria-hidden="true" /></button>
-    </section>
-    <div className={styles.rangeChips} role="group" aria-label="Rentang tren">
-      {TREND_OPTIONS.map((months) => <button type="button" key={months} className={trendMonths === months ? styles.rangeActive : ""} onClick={() => setTrendMonths(months)} aria-pressed={trendMonths === months}>{months === 1 ? "1 bulan · harian" : `${months} bulan`}</button>)}
-    </div>
-  </>;
-};
-
-const MobileSummaryHero = ({ model, period }) => {
-  const { trendItems, previousTrend, expenseChange, totalExpense } = model;
-  const comparisonLabel = expenseChange === null
-    ? "Belum ada pembanding"
-    : `${expenseChange <= 0 ? "↓" : "↑"} ${Math.abs(expenseChange)}% vs ${previousTrend?.label || "bulan lalu"}`;
-  const improvementClass = expenseChange !== null && expenseChange <= 0 ? ` ${styles.heroChangePositive}` : "";
-  return <section className={styles.heroCard}>
-    <div className={styles.heroTop}>
-      <div><span>Pengeluaran periode ini</span><Money value={totalExpense} /></div>
-      <span className={`${styles.heroChange}${improvementClass}`}>{comparisonLabel}</span>
-    </div>
-    {trendItems.length ? <MobileTrendChart items={trendItems} period={period} /> : <EmptyState variant="inline" title="Belum ada tren" description="Tren muncul setelah tersedia data pada lebih dari satu periode." />}
-  </section>;
-};
-
-const MobileSummaryView = ({ model, period, categoryLookup, setMode, currentWealth }) => {
-  const { overview, categoryExpenses, currentTrend, previousTrend } = model;
-  const net = Number(overview?.cashFlow?.net || 0);
-  const NetIcon = net > 0 ? FiArrowUpRight : net < 0 ? FiArrowDownRight : FiMinus;
-  return <>
-    <MobileSummaryHero model={model} period={period} />
-    <section className={styles.metricsGrid} aria-label="Ringkasan keuangan">
-      <MobileMetricCard icon={NetIcon} label="Arus kas bersih" value={net} tone={net >= 0 ? "positive" : "negative"} />
-      <MobileMetricCard icon={BalanceIcon} label="Saldo rekening" value={overview?.nonInvestmentBalance ?? overview?.totalBalance ?? 0} />
-      {currentWealth != null ? <MobileMetricCard icon={BalanceIcon} label="Total kekayaan tercatat · saat ini" value={currentWealth} /> : null}
-      <MobileMetricCard icon={FiShield} label="Aman digunakan" value={overview?.safeToSpend || 0} />
-    </section>
-    <MobileComparison current={currentTrend} previous={previousTrend} />
-    <section className={styles.contentCard}>
-      <div className={styles.sectionHeading}><div><span>Distribusi</span><h2>Pengeluaran terbesar</h2></div>{categoryExpenses.length > 4 ? <button type="button" onClick={() => setMode("category")}>Lihat semua</button> : null}</div>
-      <MobileCategoryList items={categoryExpenses} categoryLookup={categoryLookup} limit={4} />
-    </section>
-  </>;
-};
-
-const MobileCategoryView = ({ model, categoryLookup }) => <>
-  <section className={styles.contentCard}>
-    <div className={styles.sectionHeading}><div><span>Total {formatCompactRupiah(model.totalExpense)}</span><h2>Pengeluaran per kategori</h2></div><FiLayers aria-hidden="true" /></div>
-    <MobileCategoryList items={model.categoryExpenses} categoryLookup={categoryLookup} />
-  </section>
-  <section className={styles.contentCard}>
-    <div className={styles.sectionHeading}><div><span>Rencana bulan ini</span><h2>Kebutuhan vs aktual</h2></div><Link to="/perencanaan">Lihat alokasi</Link></div>
-    <MobileBudgetList budgets={model.budgets} />
-  </section>
-  <MobileBreakdownDetails accountExpenses={model.accountExpenses} creatorExpenses={model.creatorExpenses} />
-</>;
-
-const MobileReportsView = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload, categoryLookup, currentWealth }) => {
-  const [mode, setMode] = useState("summary");
-  const model = mobileReportModel(data, period, trendMonths);
-  return <div className={styles.mobilePage}>
+const ReportsContent = ({ data, period, setPeriod, trendMonths, setTrendMonths, allocationRuleId, setAllocationRuleId, refreshError, reload }) => {
+  const [transactionsExpanded, setTransactionsExpanded] = useState(false);
+  const scope = data.reportScope || { mode: "all", label: "Semua Alokasi" };
+  return <div className={styles.page}>
     <RefreshWarning error={refreshError} onRetry={reload} />
-    <MobileReportControls mode={mode} setMode={setMode} period={period} setPeriod={setPeriod} trendMonths={trendMonths} setTrendMonths={setTrendMonths} historical={model.overview?.isHistoricalPeriod} />
-    {mode === "summary"
-      ? <MobileSummaryView model={model} period={period} categoryLookup={categoryLookup} setMode={setMode} currentWealth={currentWealth} />
-      : <MobileCategoryView model={model} categoryLookup={categoryLookup} />}
-    <p className={styles.dataNote}><FiLayers aria-hidden="true" /> Laporan hanya membaca ledger yang dapat Anda lihat. Tidak ada data yang diubah dari halaman ini.</p>
+    <ReportHeader period={period} setPeriod={setPeriod} trendMonths={trendMonths} allocationRuleId={allocationRuleId} setAllocationRuleId={setAllocationRuleId} allocationOptions={data.allocationOptions || []} />
+    <SummaryStrip summary={data.reportSummary} />
+    <div className={styles.primaryGrid}>
+      {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Kelola</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan di {scope.label}</h2><p>Rencana dibanding realisasi pengeluaran.</p></div></div><BudgetRows budgets={data.budgets || []} /></section>}
+      <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Tren pengeluaran</h2><p>{trendMonths === 1 ? "Harian pada bulan terpilih" : `${trendMonths} bulan terakhir`}</p></div><SelectionField className={styles.inlineTrend} label="Rentang tren" hideLabel compact value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} options={trendOptions} ariaLabel="Pilih rentang tren" /></div><TrendView trend={data.trend} period={period} /></section>
+    </div>
+    {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan vs Aktual</h2><p>Rencana pengeluaran dan realisasinya.</p></div></div><BudgetRows budgets={data.budgets || []} /></section> : null}
+    <div className={styles.secondaryGrid}>
+      <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada scope aktif.</p></div></div><CategoryRows items={data.categoryExpenses || []} /></section>
+      <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Transaksi terbaru</h2><p>Rincian debit, kredit, dan saldo berjalan.</p></div></div><TransactionRows items={data.reportTransactions || []} expanded={transactionsExpanded} onToggle={() => setTransactionsExpanded((value) => !value)} /></section>
+    </div>
+    <BreakdownDetails accountExpenses={data.accountExpenses || []} creatorExpenses={data.creatorExpenses || []} />
+    <Documents period={period} scopeLabel={scope.label} trendMonths={trendMonths} allocationRuleId={allocationRuleId} />
   </div>;
 };
 
-const DesktopReportsContent = ({ data, period, trendMonths, setPeriod, setTrendMonths, refreshError, reload, currentWealth }) => {
-  const { overview, budgets = [], categoryExpenses = [], accountExpenses = [], creatorExpenses = [], trend = { months: trendMonths, granularity: "month", items: [] } } = data || {};
-  const cashFlowTrend = trend.items.map((item) => ({ label: item.label, value: item.net }));
-  const balanceTrend = trend.items.map((item) => ({ label: item.label, value: item.nonInvestmentBalance ?? item.totalBalance }));
-  const balanceComparison = [{ label: "Awal periode", value: overview?.nonInvestmentOpeningBalance ?? overview?.openingBalance ?? 0 }, { label: overview?.isHistoricalPeriod ? "Akhir periode" : "Saat ini", value: overview?.nonInvestmentBalance ?? overview?.totalBalance ?? 0 }];
-  return <div className={reportClass("page-stack reports-page")}><RefreshWarning error={refreshError} onRetry={reload} /><ReportHeader period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} /><OverviewMetrics overview={overview} currentWealth={currentWealth} /><section className={reportClass("two-column-grid")}><PrimaryTrendPanels trend={trend} balanceComparison={balanceComparison} cashFlowTrend={cashFlowTrend} /><ReportDetails balanceTrend={balanceTrend} categoryExpenses={categoryExpenses} accountExpenses={accountExpenses} creatorExpenses={creatorExpenses} budgets={budgets} /></section></div>;
-};
-
-const ReportsContent = (props) => {
-  const mobile = useMobileReportLayout();
-  const { bootstrap, overview: currentOverview } = useFinance();
-  const categoryLookup = useMemo(() => Object.fromEntries((bootstrap?.categories || []).map((item) => [item.category_id, item])), [bootstrap?.categories]);
-  const currentWealth = props.investmentSummary && currentOverview
-    ? Number(currentOverview.nonInvestmentBalance ?? currentOverview.totalBalance ?? 0) + Number(props.investmentSummary.portfolio_value || 0)
-    : null;
-  return mobile ? <MobileReportsView {...props} categoryLookup={categoryLookup} currentWealth={currentWealth} /> : <DesktopReportsContent {...props} currentWealth={currentWealth} />;
-};
-
 const ReportsPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [trendMonths, setTrendMonths] = useState(6);
-  const resource = useApiResource("reports.monthly", { period, trend_months: trendMonths });
-  const investments = useApiResource("investments.overview");
+  const allocationRuleId = searchParams.get("allocation") || "";
+  const setAllocationRuleId = useCallback((value) => setSearchParams((current) => {
+    const next = new URLSearchParams(current);
+    if (value) next.set("allocation", value); else next.delete("allocation");
+    return next;
+  }, { replace: true }), [setSearchParams]);
+  const resource = useApiResource("reports.monthly", { period, trend_months: trendMonths, allocation_rule_id: allocationRuleId });
+  useEffect(() => {
+    if (allocationRuleId && resource.data?.reportScope?.scopeUnavailable) setAllocationRuleId("");
+  }, [allocationRuleId, resource.data?.reportScope?.scopeUnavailable, setAllocationRuleId]);
   if (resource.status === "loading") return <NativePageSkeleton kind="reports" label="Menyusun laporan…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
-  return <ReportsContent data={resource.data} period={period} trendMonths={trendMonths} setPeriod={setPeriod} setTrendMonths={setTrendMonths} refreshError={resource.refreshError} reload={resource.reload} investmentSummary={investments.status === "ready" ? investments.data?.summary : null} />;
+  return <ReportsContent data={resource.data} period={period} setPeriod={setPeriod} trendMonths={trendMonths} setTrendMonths={setTrendMonths} allocationRuleId={allocationRuleId} setAllocationRuleId={setAllocationRuleId} refreshError={resource.refreshError} reload={resource.reload} />;
 };
 
 export default ReportsPage;

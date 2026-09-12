@@ -51,7 +51,7 @@ test("semua temporal field feature memakai adapter canonical", async () => {
     "src/features/settings/components/MemberActivityPanel.jsx",
   ].map(read));
   const joined = sources.join("\n");
-  assert.equal((joined.match(/<TemporalInput\b/g) || []).length, 24);
+  assert.equal((joined.match(/<TemporalInput\b/g) || []).length, 23);
   assert.doesNotMatch(joined, /<input\b[^>]*\btype=["'](?:date|month|time)["']/s);
 });
 

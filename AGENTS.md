@@ -213,6 +213,19 @@ Review teknis resmi menggunakan urutan berikut:
 
 ## Format patch default
 
+### Quality loop wajib sebelum handoff agent/ChatGPT
+
+Setiap patch source yang dibuat agent/ChatGPT **belum selesai** hanya karena implementasi sudah ditulis. Sebelum patch/ZIP diserahkan sebagai hasil final, agent wajib menjalankan loop berikut pada tree final yang sama:
+
+1. jalankan `npm run lint`;
+2. bila lint gagal, **perbaiki error source**, jangan disable rule/menambah ignore sebagai shortcut, lalu jalankan `npm run lint` lagi sampai PASS;
+3. jalankan targeted regression yang relevan dengan area perubahan;
+4. jalankan full canonical gate `npm run verify`;
+5. bila ada edit source/test/docs setelah PASS, PASS sebelumnya gugur dan lint + gate relevan wajib diulang;
+6. baru setelah seluruh gate yang dapat dijalankan PASS, lakukan handoff patch/ZIP final.
+
+Known lint/test/build failure tidak boleh dibawa ke artifact final atau disebut selesai. Keterbatasan environment hanya boleh dilaporkan bila command memang tidak dapat dijalankan karena runtime/dependency eksternal; **failure yang sudah berhasil direproduksi wajib diperbaiki lebih dulu**. `npm run zip` tetap fail-closed sebagai gerbang archive terakhir, bukan tempat pertama kali menemukan lint error dari patch.
+
 - Jalankan setelah plan disetujui, implementasi eksplisit diminta, atau execution-first sudah sah untuk scope tersebut.
 - Ubah hanya file dalam plan. Temuan baru in-scope boleh ikut diperbaiki; guarded area baru tetap membutuhkan approval.
 - Jika user meminta ZIP patch, isi **changed-files-only** dengan path asli.

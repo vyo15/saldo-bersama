@@ -4,6 +4,7 @@ import test from "node:test";
 import { todayJakarta } from "../../api/_lib/services/core.js";
 
 const source = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
+const bundleSource = (...paths) => Promise.all(paths.map(source)).then((parts) => parts.join("\n"));
 
 test("initial state dan read identik dikoaleskan serta cache frontend tetap private-memory", async () => {
   const [client, cache, finance, gateway] = await Promise.all([
@@ -27,7 +28,7 @@ test("initial state dan read identik dikoaleskan serta cache frontend tetap priv
 
 test("list transaksi memakai filter, index, LIMIT/OFFSET, bukan membaca seluruh storage", async () => {
   const [finance, migration] = await Promise.all([
-    source("api/_lib/services/finance.js"),
+    bundleSource("api/_lib/services/finance.js", "api/_lib/services/finance/transactionQueries.js"),
     source("database/migrations/001_initial_schema.sql"),
   ]);
   assert.match(finance, /LIMIT \? OFFSET \?/);
@@ -52,7 +53,7 @@ test("Turso client memakai batch dan transaction pipeline dengan timeout serta f
 });
 
 test("outbox membatasi claim, merebut kembali worker macet, dan mengelompokkan rebuild Google", async () => {
-  const jobs = await source("api/jobs.js");
+  const jobs = await bundleSource("api/jobs.js", "api/_lib/jobs/integrationWorker.js");
   assert.match(jobs, /LIMIT 25/);
   assert.match(jobs, /status='processing' AND locked_at<\?/);
   assert.match(jobs, /for \(const provider of \["sheets", "calendar"\]\)/);
@@ -65,7 +66,7 @@ test("outbox membatasi claim, merebut kembali worker macet, dan mengelompokkan r
 });
 
 test("push notification diklaim atomik sebelum network untuk mencegah kirim ganda", async () => {
-  const jobs = await source("api/jobs.js");
+  const jobs = await bundleSource("api/jobs.js", "api/_lib/jobs/pushWorker.js");
   assert.match(jobs, /status='processing'[\s\S]*notification_id=\?[\s\S]*status IN \('pending','failed'\)/);
   assert.match(jobs, /return claim\.rowsAffected === 1/);
   assert.match(jobs, /status='processing' AND last_attempt_at<\?/);
@@ -113,7 +114,7 @@ test("single-query read menghindari snapshot overhead dan multi-query finansial 
 
 test("list transaksi menggabungkan filter, rows, dan period lock dalam satu batch; target tetap bulk", async () => {
   const [finance, goals, batchReader] = await Promise.all([
-    source("api/_lib/services/finance.js"),
+    bundleSource("api/_lib/services/finance.js", "api/_lib/services/finance/transactionQueries.js"),
     source("api/_lib/services/planning/goals.js"),
     source("api/_lib/db/readBatchRows.js"),
   ]);
@@ -229,7 +230,7 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
   const reportDb = makeDashboardDb();
   const { monthlyReport } = await import("../../api/_lib/services/reporting/dashboard.js");
   await monthlyReport(reportDb, { actor, payload: { period: currentPeriod, trend_months: 12 } });
-  assert.equal(reportDb.metrics.network, 4, "laporan bulanan memecah dashboard, breakdown, dan trend agar tiap pipeline Turso tetap bounded");
+  assert.equal(reportDb.metrics.network, 5, "laporan bulanan menjaga dashboard, scope Alokasi, breakdown/transaksi, dan trend pada pipeline Turso yang tetap bounded");
 });
 
 

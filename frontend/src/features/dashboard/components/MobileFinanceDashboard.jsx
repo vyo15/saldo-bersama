@@ -33,7 +33,6 @@ const FEATURE_QUICK_ACTIONS = Object.freeze([
 ]);
 
 const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
-  const operatingAccountCount = (overview.accountBalances || []).filter((account) => account.account_type !== "investment").length;
   return (
     <header className={dashboardClass("mobile-finance-hero")}>
       <div className={dashboardClass("mobile-finance-hero__bar")}>
@@ -54,23 +53,23 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
 
       <div className={dashboardClass("mobile-finance-identity")}>
         <div className={dashboardClass("mobile-finance-balance-label")}>
-          <span>Saldo rekening</span>
+          <span>Dana Tersedia</span>
           <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}>
             {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
           </button>
         </div>
         <div className={dashboardClass(`mobile-finance-balance${balanceVisible ? "" : " mobile-finance-balance--hidden"}`)} aria-live="polite">
-          <SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} />
+          <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
         </div>
         <div className={dashboardClass("mobile-finance-meta")}>
-          <span>{operatingAccountCount} rekening aktif</span>
+          <span>Setelah Alokasi Dana dan komitmen lain</span>
           <span aria-live="polite"><i aria-hidden="true" />{dashboardSyncLabel(overview.lastSyncedAt)}</span>
         </div>
       </div>
 
-      <div className={dashboardClass("mobile-finance-summary")} aria-label="Ringkasan saldo aman">
-        <div><span>Aman digunakan</span><SensitiveMoney visible={balanceVisible} value={overview.safeToSpend} /></div>
-        <div><span>Batas aman per hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
+      <div className={dashboardClass("mobile-finance-summary")} aria-label="Ringkasan dana tersedia">
+        <div><span>Saldo rekening</span><SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} /></div>
+        <div><span>Batas harian</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
       </div>
     </header>
   );
@@ -90,10 +89,10 @@ const MobileQuickActions = () => (
 const MobileFinancialInsight = ({ overview, balanceVisible }) => {
   const insight = dashboardInsightState(overview);
   const copy = insight.kind === "safe"
-    ? <><SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} /> masih aman digunakan setelah komitmen keuangan bulan ini.</>
+    ? <><SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} /> masih tersedia setelah Alokasi Dana dan komitmen lain bulan ini.</>
     : insight.kind === "cashflow"
       ? <>Arus kas bersih bulan ini negatif. Jaga pengeluaran harian sekitar <SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /> agar tetap terkendali.</>
-      : <>Dana aman digunakan sedang terbatas. Periksa Alokasi Dana dan Jadwal Rutin sebelum menambah pengeluaran baru.</>;
+      : <>Dana Tersedia sedang terbatas. Periksa Alokasi Dana dan Jadwal Rutin sebelum menambah pengeluaran baru.</>;
 
   return (
     <aside className={dashboardClass("mobile-financial-insight")} data-tone={insight.tone} aria-label="Insight keuangan">

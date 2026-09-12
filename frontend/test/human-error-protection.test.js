@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { readCategoryFeatureSource } from "./sourceBundles.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 const readMany = (paths) => Promise.all(paths.map(read)).then((parts) => parts.join("\n"));
@@ -61,7 +62,7 @@ test("rekening memakai preview server dan hanya menghapus permanen rekening belu
 
 test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap memakai cancel/restore", async () => {
   const [categories, categoryApi, transactions, transactionApi] = await Promise.all([
-    read("src/features/categories/CategoriesPage.jsx"),
+    readCategoryFeatureSource(),
     read("src/features/categories/categories.api.js"),
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/transactions/transactions.api.js"),
@@ -254,7 +255,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
     Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     goalsSource(),
     read("src/features/recurring/RecurringDialogs.jsx"),
-    read("src/features/categories/CategoriesPage.jsx"),
+    readCategoryFeatureSource(),
     read("src/features/accounts/components/AccountEditorDialogs.jsx"),
     read("src/features/settings/MembersSettingsPage.jsx"),
   ]);
@@ -414,7 +415,7 @@ test("feedback transient konsisten tanpa mengganti notice persisten untuk operas
   const transientPages = await Promise.all([
     read("src/features/goals/GoalsPage.jsx"),
     Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/budgets/useBudgetActions.js")]).then((parts) => parts.join("\n")),
-    read("src/features/categories/CategoriesPage.jsx"),
+    readCategoryFeatureSource(),
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/settings/ExportDataPage.jsx"),
   ]);

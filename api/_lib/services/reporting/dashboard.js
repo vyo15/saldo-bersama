@@ -2,6 +2,7 @@ import { readBatchRows, readBatchRowsChunked } from "../../db/readBatchRows.js";
 import { presentSyncRevisionRows, syncRevisionStatement } from "../../syncRevisions.js";
 import { appError, boundedInteger, monthBounds, nowIso, periodKey, sanitizeText, todayJakarta } from "../core.js";
 import { transactionCapabilities } from "../transactionPolicy.js";
+import { aggregateCostShareRows } from "../costSharing.js";
 import { budgetReportStatement, mapBudgetReportRows } from "../planning/budgets.js";
 import { buildFinancialAlerts } from "./dashboard/alerts.js";
 import {
@@ -13,10 +14,16 @@ import {
   mapDailyTrendRows,
   mapDashboardReadRows,
   mapMonthlyTrendRows,
-  mapReportBreakdowns,
   monthlyTrendPlan,
-  reportBreakdownStatements,
 } from "./dashboard/readModel.js";
+import {
+  mapReportAllocations,
+  mapReportBreakdowns,
+  mapReportTransactions,
+  reportAllocationStatement,
+  reportBreakdownStatements,
+  reportTransactionsStatement,
+} from "./reportReadModel.js";
 
 // Dashboard is an orchestration facade over batched read models. Saldo and planning
 // mutations remain authoritative in their domain services; this module only presents them.
@@ -38,7 +45,11 @@ const allocationSummary = (accounts, items) => {
   };
 };
 
-const dashboardBalanceMetrics = (accounts, openingAccounts, recurring) => {
+const allocatedBudgetIds = (budgets) => new Set(
+  budgets.filter((budget) => budget.envelope_rule_id).map((budget) => budget.budget_id),
+);
+
+const dashboardBalanceMetrics = (accounts, openingAccounts, recurring, budgets) => {
   const protectedTypes = new Set(["emergency_fund", "savings", "sinking_fund"]);
   const isInvestment = (account) => account.account_type === "investment";
   const nonInvestmentAccounts = accounts.filter((account) => !isInvestment(account));
@@ -54,8 +65,10 @@ const dashboardBalanceMetrics = (accounts, openingAccounts, recurring) => {
   const protectedBalance = nonInvestmentAccounts.filter((row) => protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const liquidBalance = nonInvestmentAccounts.filter((row) => !protectedTypes.has(row.account_type)).reduce((sum, row) => sum + Number(row.balance || 0), 0);
   const operableLiquidAvailable = operatingLiquidAccounts.reduce((sum, row) => sum + Math.max(0, Number(row.available_balance ?? row.balance ?? 0)), 0);
+  const fundedBudgetIds = allocatedBudgetIds(budgets);
   const reservedBills = recurring.filter((row) => row.kind === "expense"
     && operatingAccountIds.has(row.default_account_id)
+    && !fundedBudgetIds.has(row.budget_id)
     && !["paid", "cancelled"].includes(row.status))
     .reduce((sum, row) => sum + Math.max(0, Number(row.expected_amount) - Number(row.actual_amount)), 0);
   return {
@@ -87,7 +100,7 @@ const dashboardDaysRemaining = ({ historical, period, currentPeriod, today, boun
 const dashboardResult = (context, periodContext, readState) => {
   const { period, bounds, today, currentPeriod, historical, cutoffDate } = periodContext;
   const { accounts, openingAccounts, cashFlowRow, recentTransactionRows, transactionPeriodLocked, categoryExpenses, recurring, goals, budgets, dashboardEnvelopes, reconciliationRows, investmentReconciliationRows } = readState;
-  const balance = dashboardBalanceMetrics(accounts, openingAccounts, recurring);
+  const balance = dashboardBalanceMetrics(accounts, openingAccounts, recurring, budgets);
   const allocation = allocationSummary(balance.operableAccounts, dashboardEnvelopes);
   const safeToSpend = Math.max(0, balance.safeToSpend - allocation.unboundRemaining);
   const income = Number(cashFlowRow.income || 0);
@@ -172,42 +185,112 @@ export const appInitialState = async (db, context) => {
   return { bootstrap, overview, sync };
 };
 
-export const monthlyReport = async (db, context) => {
+const reportRequest = (context) => {
   const period = periodKey(context.payload?.period);
   const trendMonths = boundedInteger(context.payload?.trend_months, 6, 1, 12, "Rentang tren");
-  const accountId = sanitizeText(context.payload?.account_id, 100);
   if (![1, 3, 6, 12].includes(trendMonths)) throw appError("INVALID_TREND_RANGE", "Rentang tren harus 1, 3, 6, atau 12 bulan.", 400);
+  return {
+    period,
+    trendMonths,
+    accountId: sanitizeText(context.payload?.account_id, 100),
+    allocationRuleId: sanitizeText(context.payload?.allocation_rule_id, 100),
+  };
+};
+
+const reportRowSlices = (rows, { dashboardCount, breakdownCount }) => {
+  const reportBudgetIndex = dashboardCount;
+  const allocationIndex = reportBudgetIndex + 1;
+  const breakdownStart = allocationIndex + 1;
+  const breakdownEnd = breakdownStart + breakdownCount;
+  const transactionIndex = breakdownEnd;
+  return {
+    dashboardRows: rows.slice(0, dashboardCount),
+    budgetRows: rows[reportBudgetIndex] || [],
+    allocationRows: rows[allocationIndex] || [],
+    breakdownRows: rows.slice(breakdownStart, breakdownEnd),
+    transactionRows: rows[transactionIndex] || [],
+    trendRows: rows.slice(transactionIndex + 1),
+  };
+};
+
+const reportSummaryFor = (overview, selectedAllocation) => {
+  if (selectedAllocation) return {
+    mode: "allocation",
+    label: selectedAllocation.name,
+    allocated: selectedAllocation.allocated_amount,
+    used: selectedAllocation.used_amount,
+    remaining: selectedAllocation.remaining_amount,
+    usagePercent: selectedAllocation.usage_percent,
+  };
+  return {
+    mode: "all",
+    label: "Semua Alokasi",
+    openingBalance: Number(overview.nonInvestmentOpeningBalance ?? overview.openingBalance ?? 0),
+    credit: Number(overview.cashFlow?.income || 0) + Number(overview.cashFlow?.refund || 0),
+    debit: Number(overview.cashFlow?.expense || 0),
+    closingBalance: Number(overview.nonInvestmentBalance ?? overview.totalBalance ?? 0),
+  };
+};
+
+const reportTrendFor = (trendMonths, trendPlan, rows) => trendMonths === 1
+  ? mapDailyTrendRows(trendPlan, rows)
+  : mapMonthlyTrendRows(trendPlan, rows);
+
+const reportTrendPlanFor = (actor, { period, trendMonths, accountId, allocationRuleId }) => trendMonths === 1
+  ? dailyTrendPlan(actor, period, { accountId, allocationRuleId })
+  : monthlyTrendPlan(actor, period, trendMonths, { accountId, allocationRuleId });
+
+export const monthlyReport = async (db, context) => {
+  const request = reportRequest(context);
+  const { period, trendMonths, accountId, allocationRuleId } = request;
   const scoped = { ...context, payload: { period } };
   const periodContext = dashboardPeriodContext(scoped, null);
   const dashboardPlan = dashboardReadPlan(scoped, periodContext);
   const bounds = monthBounds(period);
   const currentPeriod = todayJakarta().slice(0, 7);
   const cutoffDate = period === currentPeriod ? todayJakarta() : bounds.end;
-  const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate);
-  const trendPlan = trendMonths === 1 ? dailyTrendPlan(context.actor, period, { accountId }) : monthlyTrendPlan(context.actor, period, trendMonths, { accountId });
-  const reportBudgetStatement = budgetReportStatement(scoped);
-  const combinedRows = await readBatchRowsChunked(db, [
+  const allocationStatement = reportAllocationStatement(context.actor, period, { usageEndDate: cutoffDate });
+  const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate, { allocationRuleId });
+  const transactionStatement = reportTransactionsStatement(context.actor, bounds.start, cutoffDate, { allocationRuleId });
+  const trendPlan = reportTrendPlanFor(context.actor, request);
+  const rows = await readBatchRowsChunked(db, [
     ...dashboardPlan.statements,
-    reportBudgetStatement,
+    budgetReportStatement(scoped),
+    allocationStatement,
     ...breakdownStatements,
+    transactionStatement,
     ...trendPlan.statements,
   ]);
-  const dashboardEnd = dashboardPlan.statements.length;
-  const reportBudgetIndex = dashboardEnd;
-  const breakdownStart = reportBudgetIndex + 1;
-  const breakdownEnd = breakdownStart + breakdownStatements.length;
-  const dashboardRows = combinedRows.slice(0, dashboardEnd);
-  const readState = mapDashboardReadRows(dashboardRows, dashboardPlan, scoped, periodContext, null);
+  const slices = reportRowSlices(rows, { dashboardCount: dashboardPlan.statements.length, breakdownCount: breakdownStatements.length });
+  const readState = mapDashboardReadRows(slices.dashboardRows, dashboardPlan, scoped, periodContext, null);
   const overview = dashboardResult(scoped, periodContext, readState);
-  const budgets = mapBudgetReportRows(combinedRows[reportBudgetIndex] || []).items;
-  const breakdowns = mapReportBreakdowns(combinedRows.slice(breakdownStart, breakdownEnd));
-  const trend = trendMonths === 1 ? mapDailyTrendRows(trendPlan, combinedRows.slice(breakdownEnd)) : mapMonthlyTrendRows(trendPlan, combinedRows.slice(breakdownEnd));
-  return {
+  const allocations = mapReportAllocations(slices.allocationRows);
+  const selectedAllocation = allocationRuleId ? allocations.find((item) => item.envelope_rule_id === allocationRuleId) : null;
+  const allBudgets = mapBudgetReportRows(slices.budgetRows).items;
+  const budgets = selectedAllocation ? allBudgets.filter((item) => item.envelope_rule_id === allocationRuleId) : allBudgets;
+  const breakdowns = mapReportBreakdowns(slices.breakdownRows, aggregateCostShareRows);
+  const trend = reportTrendFor(trendMonths, trendPlan, slices.trendRows);
+  const reportSummary = reportSummaryFor(overview, selectedAllocation);
+  const reportTransactions = mapReportTransactions(slices.transactionRows, {
+    openingBalance: selectedAllocation ? selectedAllocation.allocated_amount : reportSummary.openingBalance,
+    allocationScoped: Boolean(selectedAllocation),
+  });
+  const result = {
     overview,
+    reportSummary,
+    reportScope: selectedAllocation
+      ? { mode: "allocation", allocationRuleId, label: selectedAllocation.name }
+      : { mode: "all", allocationRuleId: "", label: "Semua Alokasi", scopeUnavailable: Boolean(allocationRuleId) },
+    allocationOptions: allocations,
     budgets,
-    categoryExpenses: overview.categoryExpenses,
-    ...breakdowns,
+    categoryExpenses: breakdowns.categoryExpenses,
+    accountExpenses: breakdowns.accountExpenses,
+    creatorExpenses: breakdowns.creatorExpenses,
+    natureExpenses: breakdowns.natureExpenses,
+    costShareExpenses: breakdowns.costShareExpenses,
+    reportTransactions,
     trend: { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.items },
-    ...(accountId ? { accountExpenseTrend: { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.accountExpenseItems } } : {}),
   };
+  if (accountId) result.accountExpenseTrend = { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.accountExpenseItems };
+  return result;
 };

@@ -10,6 +10,8 @@ import {
 import { useBudgetBatchDraft } from "./useBudgetBatchDraft.js";
 
 export const emptyBudgetForm = (overrides = {}) => ({
+  budget_id: "",
+  name: "",
   category_id: "",
   envelope_rule_id: "",
   envelope_period_id: "",
@@ -29,40 +31,52 @@ const budgetOwnershipUpdates = (value) => value === "shared"
   ? { scope: "shared", owner_user_id: "" }
   : { scope: "personal", owner_user_id: String(value).replace(/^user:/, "") };
 
-const budgetMatchesOwnership = (item, form) => item.category_id === form.category_id
-  && item.scope === form.scope
+const budgetMatchesOwnership = (item, form) => item.scope === form.scope
   && String(item.owner_user_id || "") === String(form.owner_user_id || "");
 
-export const budgetMatchesForm = (item, form) => budgetMatchesOwnership(item, form)
-  && String(item.envelope_rule_id || "") === String(form.envelope_rule_id || "");
+export const budgetMatchesForm = (item, form) => form.budget_id
+  ? item.budget_id === form.budget_id
+  : budgetMatchesOwnership(item, form)
+    && String(item.envelope_rule_id || "") === String(form.envelope_rule_id || "")
+    && String(item.name || "").trim().toLocaleLowerCase("id-ID") === String(form.name || "").trim().toLocaleLowerCase("id-ID");
 
-const findBudgetForForm = (items, form) => items.find((item) => budgetMatchesForm(item, form))
-  || (form.envelope_rule_id ? items.find((item) => budgetMatchesOwnership(item, form) && !item.envelope_rule_id) : null)
-  || null;
+const findBudgetForForm = (items, form) => form.budget_id
+  ? items.find((item) => item.budget_id === form.budget_id) || null
+  : null;
 
-const formFromBudget = (item, envelopeRuleId = item?.envelope_rule_id || "", envelopePeriodId = "") => ({
-  category_id: item?.category_id || "",
-  envelope_rule_id: envelopeRuleId || "",
-  envelope_period_id: envelopePeriodId || "",
-  amount: String(item?.amount || ""),
-  warning_threshold: Number(item?.warning_threshold || 80),
-  scope: item?.scope || "shared",
-  owner_user_id: item?.owner_user_id || "",
-  recording_mode: "flexible",
-  schedule_frequency: "monthly",
-  schedule_due_day: 20,
-  schedule_start_date: todayInJakarta(),
-  schedule_payment_method: "transfer",
-});
+const valueOr = (value, fallback) => value || fallback;
+
+const formFromBudget = (item, envelopeRuleId = valueOr(item?.envelope_rule_id, ""), envelopePeriodId = "") => {
+  const source = item || {};
+  return {
+    budget_id: valueOr(source.budget_id, ""),
+    name: valueOr(source.name, ""),
+    category_id: valueOr(source.category_id, ""),
+    envelope_rule_id: valueOr(envelopeRuleId, ""),
+    envelope_period_id: valueOr(envelopePeriodId, ""),
+    amount: String(valueOr(source.amount, "")),
+    warning_threshold: Number(valueOr(source.warning_threshold, 80)),
+    scope: valueOr(source.scope, "shared"),
+    owner_user_id: valueOr(source.owner_user_id, ""),
+    recording_mode: valueOr(source.recording_mode, "flexible"),
+    schedule_frequency: "monthly",
+    schedule_due_day: 20,
+    schedule_start_date: todayInJakarta(),
+    schedule_payment_method: "transfer",
+  };
+};
 
 const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule }) => {
   const completingSchedule = Boolean(pendingSchedule);
   const amount = pendingSchedule?.amount ?? assertPositiveRupiah(form.amount);
-  const recordingMode = pendingSchedule ? "scheduled" : form.recording_mode;
+  const recordingMode = pendingSchedule ? "recurring" : form.recording_mode;
   let savedBudget = existingBudget || (pendingSchedule?.budget_id ? { budget_id: pendingSchedule.budget_id } : null);
   if (!pendingSchedule) {
     savedBudget = await upsertBudget({
+      budget_id: existingBudget?.budget_id || form.budget_id || null,
+      name: String(form.name || "").trim(),
       category_id: form.category_id,
+      recording_mode: recordingMode,
       warning_threshold: form.warning_threshold,
       scope: form.scope,
       period_key: period,
@@ -80,6 +94,7 @@ const budgetScheduleFromForm = (form, amount) => {
   const dueDay = Number(form.schedule_due_day);
   if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) throw new Error("Tanggal jatuh tempo harus antara 1–31.");
   return {
+    name: String(form.name || "").trim(),
     amount,
     category_id: form.category_id,
     frequency: form.schedule_frequency || "monthly",
@@ -89,13 +104,13 @@ const budgetScheduleFromForm = (form, amount) => {
   };
 };
 
-const shouldCreateBudgetSchedule = ({ pendingSchedule, existingBudget, recordingMode }) => Boolean(pendingSchedule || !existingBudget) && recordingMode === "scheduled";
+const shouldCreateBudgetSchedule = ({ pendingSchedule, existingBudget, recordingMode }) => Boolean(pendingSchedule || !existingBudget) && recordingMode === "recurring";
 
 const createBudgetSchedule = async ({ schedule, categories, scheduleAccountId, budgetId }) => {
   if (!scheduleAccountId) throw new Error("Rekening sumber Alokasi Dana belum tersedia untuk membuat jadwal.");
   const category = categories.find((item) => item.category_id === schedule.category_id);
   await createPlanningPaymentSchedule({
-    name: category?.name || "Pembayaran rutin",
+    name: schedule.name || category?.name || "Pembayaran rutin",
     kind: "expense",
     expected_amount: schedule.amount,
     due_day: schedule.due_day,
@@ -110,7 +125,7 @@ const createBudgetSchedule = async ({ schedule, categories, scheduleAccountId, b
 };
 
 const budgetSaveFeedback = ({ completingSchedule, existingBudget, recordingMode }) => {
-  if (completingSchedule || (!existingBudget && recordingMode === "scheduled")) {
+  if (completingSchedule || (!existingBudget && recordingMode === "recurring")) {
     return { message: "Kebutuhan dan jadwal pembayaran berhasil dibuat.", dedupeKey: "budgets:create-scheduled" };
   }
   if (existingBudget) return { message: "Kebutuhan berhasil diperbarui.", dedupeKey: "budgets:update" };
@@ -129,20 +144,12 @@ const useBudgetFormState = ({ items }) => {
   const selectCategory = (categoryId) => {
     setMessage(null);
     resetSaveState();
-    setForm((currentForm) => {
-      const nextForm = { ...currentForm, category_id: categoryId };
-      const current = findBudgetForForm(items, nextForm);
-      return current ? formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "", nextForm.envelope_period_id || "") : { ...nextForm, amount: "", warning_threshold: 80 };
-    });
+    setForm((currentForm) => ({ ...currentForm, category_id: categoryId }));
   };
   const selectOwnership = (value) => {
     setMessage(null);
     resetSaveState();
-    setForm((currentForm) => {
-      const nextForm = { ...currentForm, ...budgetOwnershipUpdates(value) };
-      const current = findBudgetForForm(items, nextForm);
-      return current ? formFromBudget(current, nextForm.envelope_rule_id || current.envelope_rule_id || "", nextForm.envelope_period_id || "") : { ...nextForm, amount: "", warning_threshold: 80 };
-    });
+    setForm((currentForm) => ({ ...currentForm, ...budgetOwnershipUpdates(value) }));
   };
   const open = (initial) => {
     setPendingSchedule(null);

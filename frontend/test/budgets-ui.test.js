@@ -7,10 +7,10 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compatibility redirect", async () => {
   const [app, allocationPage, api, reports, dashboard, navigation] = await Promise.all([
     read("src/app/App.jsx"),
-    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js"), read("src/shared/workflows/categoryCreation.js")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
     read("src/features/reports/ReportsPage.jsx"),
-    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    Promise.all([read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"), read("src/features/dashboard/components/DesktopDashboardPlanning.jsx")]).then((parts) => parts.join("\n")),
     read("src/config/navigation.js"),
   ]);
   assert.match(app, /path="perencanaan\/kantong"/);
@@ -20,7 +20,8 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compa
   assert.match(allocationPage, /useApiResource\("budgets\.list", \{ period \}\)/);
   assert.match(allocationPage, /lockedEnvelope=\{item\}/);
   assert.match(allocationPage, /Kebutuhan/);
-  assert.match(allocationPage, /Saya punya jadwal pembayaran/);
+  assert.match(allocationPage, /Sekali bayar · nominal otomatis saat dicatat/);
+  assert.match(allocationPage, /Berulang · mengikuti jadwal pembayaran/);
   assert.match(allocationPage, /createPlanningPaymentSchedule/);
   assert.match(allocationPage, /recurring\.createRule/);
   assert.match(api, /budgets\.upsert/);
@@ -33,16 +34,22 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compa
   const mobileSecondary = navigation.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   assert.doesNotMatch(mobileSecondary, /to: "\/notifikasi"/);
 });
-test("form Kebutuhan mempertahankan validasi nominal dan kategori aktif tanpa membuat master data baru", async () => {
+test("form Kebutuhan memisahkan nama kebutuhan, kategori master, pola pencatatan, dan pembuatan kategori berikon", async () => {
   const [page, moneyInput] = await Promise.all([
-    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js"), read("src/shared/workflows/categoryCreation.js")]).then((parts) => parts.join("\n")),
     read("src/components/common/MoneyInput.jsx"),
   ]);
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
   assert.match(page, /item\.status === "active" && item\.transaction_type === "expense"/);
-  assert.match(page, /SelectionField label="Kategori" required/);
-  assert.match(page, /label="Nominal kebutuhan"/);
-  assert.match(page, /Saya punya jadwal pembayaran/);
+  assert.match(page, /Nama kebutuhan \*/);
+  assert.match(page, /<InlineSelectionPicker[^>]*label="Kategori"/);
+  assert.match(page, /label="Nominal"/);
+  assert.match(page, /legend="Pola kebutuhan"/);
+  assert.match(page, /fixed_once/);
+  assert.match(page, /recurring/);
+  assert.match(page, /CategoryIconPicker/);
+  assert.match(page, /createSharedCategory/);
+  assert.match(page, /requestSharedCategoryCreation/);
   assert.match(page, /label="Frekuensi"/);
   assert.match(page, /Tanggal jatuh tempo/);
   assert.match(page, /schedule_start_date/);
@@ -50,7 +57,7 @@ test("form Kebutuhan mempertahankan validasi nominal dan kategori aktif tanpa me
   assert.match(page, /recurring\.createRule/);
   assert.doesNotMatch(page, /<select\b/);
   assert.match(page, /budgetOwnershipUpdates/);
-  assert.match(page, /kategori yang sudah ada/);
+  assert.match(page, /kategori master/);
   assert.match(page, /envelope_rule_id/);
   assert.match(moneyInput, /required=\{required\}/);
 });
@@ -83,7 +90,7 @@ test("Alokasi baru menjadi wadah Rp0 dan Kebutuhan mendanai Alokasi otomatis", a
     read("src/features/budgets/BudgetBatchEditor.jsx"),
     read("src/features/allocations/allocationPresentation.js"),
     read("src/features/allocations/allocationActionRunners.js"),
-    readFile(new URL("../../api/_lib/services/planning/budgets.js", import.meta.url), "utf8"),
+    Promise.all(["budgets.js", "budgetShared.js", "budgetQueries.js", "budgetMutations.js", "budgetLifecycle.js", "budgetHistory.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
   assert.doesNotMatch(dialogs, /Dana yang disiapkan|AllocationNeedEstimate|Susun kebutuhan/);
   assert.match(dialogs, /Dana mengikuti Kebutuhan/);
@@ -97,7 +104,7 @@ test("Alokasi baru menjadi wadah Rp0 dan Kebutuhan mendanai Alokasi otomatis", a
   assert.doesNotMatch(detail, /showStandardAdjustAction|>Atur dana</);
   assert.match(batchEditor, /Dana belum mencukupi/);
   assert.match(batchEditor, /Tambah saldo/);
-  assert.match(batchEditor, /Setelah dialokasikan/);
+  assert.match(batchEditor, /setelah dialokasikan/);
   assert.match(presentation, /allocationNeedsFundingSummary/);
   assert.match(backend, /adjustEnvelopeForBudgetDelta/);
   assert.doesNotMatch(detail, /requestAdjustEnvelopeAllocation|adjustEnvelopeAllocation/);
@@ -117,12 +124,13 @@ test("detail Alokasi Dana dan dialog Kebutuhan tetap lazy agar route planning me
 test("kategori yang sama dapat dipakai pada beberapa Alokasi Dana tanpa menduplikasi master kategori", async () => {
   const [controller, backend] = await Promise.all([
     read("src/features/budgets/useBudgetActions.js"),
-    readFile(new URL("../../api/_lib/services/planning/budgets.js", import.meta.url), "utf8"),
+    Promise.all(["budgets.js", "budgetShared.js", "budgetQueries.js", "budgetMutations.js", "budgetLifecycle.js", "budgetHistory.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
 
   assert.match(controller, /String\(item\.envelope_rule_id \|\| ""\) === String\(form\.envelope_rule_id \|\| ""\)/);
+  assert.match(controller, /String\(item\.name \|\| ""\)/);
   assert.match(controller, /findBudgetForForm/);
-  assert.match(controller, /!item\.envelope_rule_id/);
+  assert.match(controller, /item\.budget_id === form\.budget_id/);
   assert.match(backend, /COALESCE\(envelope_rule_id,'?'?\)\s*=\s*COALESCE\(\?,'?'?\)/);
   assert.match(backend, /envelope_rule_id IS NULL/);
   assert.doesNotMatch(backend, /SELECT \* FROM budgets WHERE period_key=\? AND category_id=\? AND scope=\? AND COALESCE\(owner_user_id,'?'?\)=COALESCE\(\?,'?'?\)"/);
@@ -168,17 +176,22 @@ test("Tambah Kebutuhan pada detail Alokasi memakai batch compact tanpa mengganda
   assert.match(dialog, /formController\.formMode === "create-batch"/);
   assert.match(batchEditor, /Tambah kebutuhan lain/);
   assert.match(batchEditor, /budget-batch-form/);
-  assert.match(batchEditor, /Pengaturan/);
+  assert.match(batchEditor, /Pola kebutuhan/);
+  assert.match(batchEditor, /Nama kebutuhan/);
+  assert.match(batchEditor, /<InlineSelectionPicker/);
+  assert.match(batchEditor, /fixed_once/);
+  assert.match(batchEditor, /recurring/);
   assert.match(batchEditor, /rows: controller\.batchRows\.map\(\(row\) => \(\{/);
   assert.doesNotMatch(batchEditor, /guardValue = \{ context: controller\.form, rows: controller\.batchRows \}/);
-  assert.match(batchEditor, /availableCategoryCount/);
+  assert.doesNotMatch(batchEditor, /availableCategoryCount/);
   assert.match(batchEditor, /disabled=\{addDisabled\}/);
   assert.match(batchEditor, /Alokasi Dana ·/);
-  assert.match(batchStyles, /grid-template-columns: minmax\(0, 1fr\) 2\.75rem/);
+  assert.match(batchStyles, /grid-template-columns: minmax\(0,1fr\) 2\.6rem/);
   assert.match(batchStyles, /border-bottom: 1px solid var\(--border\)/);
-  assert.doesNotMatch(batchStyles, /shadow-floating|shadow-control/);
+  assert.match(batchStyles, /shadow-control/);
   assert.match(model, /validateBudgetBatchRows/);
-  assert.match(model, /Kategori yang sama tidak dapat ditambahkan dua kali/);
+  assert.match(model, /Nama kebutuhan yang sama tidak dapat ditambahkan dua kali/);
+  assert.doesNotMatch(model, /Kategori yang sama tidak dapat ditambahkan dua kali/);
   assert.match(api, /budgets\.batchCreate/);
   assert.match(backendRegistry, /"budgets\.batchCreate": createBudgetsBatch/);
   assert.match(backendPolicy, /"budgets\.batchCreate": write\(\)/);

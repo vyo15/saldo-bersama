@@ -25,7 +25,7 @@ test("transaksi memakai icon kategori terkontrol dengan fallback jenis transaksi
     ]).then((parts) => parts.join("\n")),
     read("src/features/dashboard/DashboardPage.jsx"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
-    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    read("src/features/dashboard/components/DesktopDashboardTransactions.jsx"),
   ]);
 
   assert.match(presentation, /CATEGORY_ICON_OPTIONS/);

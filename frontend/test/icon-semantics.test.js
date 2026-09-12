@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { readDesktopDashboardSource } from "./sourceBundles.js";
 
 const srcRoot = new URL("../src/", import.meta.url);
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
@@ -68,7 +69,7 @@ test("source UI tidak memakai simbol dolar dan CreditCard dibatasi ke metode pem
 test("trend icon hanya mewakili arah data sedangkan aksi dan status memakai semantic action", async () => {
   const [overview, dashboard, holdingDetail] = await Promise.all([
     read("src/features/investments/InvestmentOverview.jsx"),
-    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
     read("src/features/investments/InvestmentHoldingDetail.jsx"),
   ]);
 

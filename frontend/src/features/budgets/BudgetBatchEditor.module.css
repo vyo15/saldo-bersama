@@ -1,348 +1,44 @@
-.form {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.rows {
-  display: grid;
-  border-top: 1px solid var(--border);
-}
-
-.compactRow {
-  min-width: 0;
-  min-height: 3.5rem;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 2.75rem;
-  align-items: stretch;
-  border-bottom: 1px solid var(--border);
-}
-
-.compactMain {
-  min-width: 0;
-  padding: 0.65rem 0.15rem;
-  border: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.compactCopy {
-  min-width: 0;
-  display: grid;
-  gap: 0.15rem;
-}
-
-.compactCopy strong {
-  overflow: hidden;
-  font-size: var(--font-size-sm);
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.compactCopy small,
-.summary span,
-.editorTopline,
-.disclosure {
-  color: var(--text-soft);
-  font-size: var(--font-size-xs);
-}
-
-.compactAmount {
-  font-size: var(--font-size-sm);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.compactRemove,
-.trashButton {
-  width: 2.75rem;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  padding: 0;
-  border: 0;
-  display: inline-grid;
-  place-items: center;
-  align-self: center;
-  border-radius: 0.65rem;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.compactRemove:focus-visible,
-.trashButton:focus-visible,
-.compactMain:focus-visible,
-.disclosure:focus-visible,
-.addButton:focus-visible,
-.recordingMode button:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.editor {
-  padding: 0.7rem 0;
-  display: grid;
-  gap: 0.65rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.editorTopline {
-  min-height: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-weight: var(--font-weight-semibold);
-}
-
-.primaryFields {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(8.75rem, 0.65fr);
-  gap: 0.6rem;
-  align-items: start;
-}
-
-.categoryField {
-  min-width: 0;
-}
-
-.amountField {
-  min-width: 0;
-  height: var(--control-height-md);
-  padding: 0 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--control-radius);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0.35rem;
-  background: var(--input);
-  color: var(--text);
-}
-
-.amountField:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-
-.currency {
-  color: var(--text-soft);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
-.amountField input {
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-weight: var(--font-weight-semibold);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.disclosure {
-  min-height: 2.5rem;
-  padding: 0;
-  border: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-}
-
-.disclosure > span:last-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--primary-strong);
-  font-weight: var(--font-weight-semibold);
-}
-
-.details {
-  padding: 0.65rem;
-  display: grid;
-  gap: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-soft);
-}
-
-.recordingMode {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.4rem;
-}
-
-.recordingMode button {
-  min-height: 2.5rem;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  background: var(--surface);
-  color: var(--text-soft);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.recordingMode button.recordingActive {
-  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
-  background: var(--primary-soft);
-  color: var(--primary-strong);
-}
-
-.scheduleGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
-}
-
-.addButton {
-  min-height: 2.75rem;
-  width: fit-content;
-  padding: 0 0.1rem;
-  border: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  background: transparent;
-  color: var(--primary-strong);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.addButton:disabled {
-  color: var(--text-muted);
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-.footer {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.summary {
-  min-width: 0;
-  display: grid;
-  gap: 0.15rem;
-}
-
-.summary strong {
-  font-size: var(--font-size-body);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.footerActions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .compactMain:hover,
-  .compactRemove:hover,
-  .trashButton:hover,
-  .disclosure:hover,
-  .addButton:hover {
-    color: var(--primary-strong);
-  }
-
-  .compactMain:hover {
-    background: color-mix(in srgb, var(--primary-soft) 32%, transparent);
-  }
-}
-
-@media (max-width: 520px) {
-  .primaryFields {
-    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 0.7fr);
-    gap: 0.45rem;
-  }
-
-  .scheduleGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .footer {
-    gap: 0.65rem;
-  }
-
-  .footerActions > button {
-    padding-inline: 0.8rem;
-  }
-}
-
-.fundingWarning,
-.fundingReady {
-  min-width: 0;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.75rem;
-  display: grid;
-  gap: 0.2rem;
-}
-
-.fundingWarning {
-  border: 1px solid color-mix(in srgb, var(--negative) 24%, var(--border));
-  background: color-mix(in srgb, var(--negative-soft) 68%, var(--surface));
-}
-
-.fundingWarning strong {
-  color: var(--negative);
-  font-size: var(--font-size-sm);
-}
-
-.fundingWarning small {
-  color: var(--text-soft);
-  font-size: var(--font-size-xs);
-  line-height: 1.45;
-}
-
-.fundingReady {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  color: var(--text-soft);
-  font-size: var(--font-size-xs);
-}
-
-.fundingReady strong {
-  color: var(--primary-strong);
-  font-size: var(--font-size-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 520px) {
-  .footerActions {
-    flex: 1;
-    justify-content: flex-end;
-  }
-
-  .footerActions > button:last-child {
-    max-width: 12.5rem;
-  }
-}
+.form { display: grid; gap: 0.65rem; }
+.rows { display: grid; border-top: 1px solid var(--border); }
+.editor { padding: 0.6rem 0; display: grid; gap: 0.55rem; border-bottom: 1px solid var(--border); }
+.editorTopline { min-height: 1.35rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+.trashButton,.compactRemove { width: 2.6rem; min-width: 2.6rem; min-height: 2.6rem; padding: 0; border: 0; display: inline-grid; place-items: center; border-radius: 0.65rem; background: transparent; color: var(--text-muted); cursor: pointer; }
+.primaryFields { min-width: 0; display: grid; grid-template-columns: minmax(0,1.45fr) minmax(8rem,.72fr); gap: .5rem; align-items: end; }
+.fieldBlock { min-width: 0; display: grid; gap: .3rem; }
+.fieldBlock > span:first-child,.fieldLabel { color: var(--text); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.nameInput,.amountField { width: 100%; min-width: 0; height: var(--control-height-md); border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--input); color: var(--text); box-shadow: var(--shadow-control); }
+.nameInput { padding: 0 .75rem; outline: 0; }
+.nameInput:focus,.amountField:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
+.amountField { padding: 0 .7rem; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: .4rem; }
+.currency { padding-right: .45rem; border-right: 1px solid var(--border); color: var(--text-soft); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.amountField input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; text-align: right; }
+.categoryBlock { display: grid; gap: .15rem; }
+.categoryCreate { min-height: 2rem; width: fit-content; padding: 0 .15rem; border: 0; display: inline-flex; align-items: center; gap: .35rem; background: transparent; color: var(--primary-strong); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.categoryCreate svg { width: .9rem; height: .9rem; }
+.modeBlock { display: grid; gap: .35rem; }
+.recordingMode { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .35rem; }
+.recordingMode button { min-height: 2.5rem; padding: .4rem .55rem; border: 1px solid var(--border); border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; background: var(--surface); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.recordingMode button.recordingActive { border-color: color-mix(in srgb,var(--primary) 58%,var(--border)); background: var(--primary-soft); color: var(--primary-strong); }
+.modeHelper { min-height: 1.1rem; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
+.scheduleGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .55rem; padding-top: .1rem; }
+.compactRow { min-width: 0; min-height: 3.5rem; display: grid; grid-template-columns: minmax(0,1fr) 2.6rem; align-items: stretch; border-bottom: 1px solid var(--border); }
+.compactMain { min-width: 0; padding: .6rem .1rem; border: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .7rem; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.compactCopy { min-width: 0; display: grid; gap: .12rem; }
+.compactCopy strong { overflow: hidden; font-size: var(--font-size-sm); line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.compactCopy small,.summary span { color: var(--text-soft); font-size: var(--font-size-xs); }
+.compactAmount { font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.addButton { min-height: 2.5rem; width: fit-content; padding: 0 .1rem; border: 0; display: inline-flex; align-items: center; gap: .45rem; background: transparent; color: var(--primary-strong); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.addButton:disabled { color: var(--text-muted); cursor: not-allowed; opacity: .65; }
+.trashButton:focus-visible,.compactRemove:focus-visible,.compactMain:focus-visible,.addButton:focus-visible,.recordingMode button:focus-visible,.categoryCreate:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.footer { width: 100%; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+.summary { min-width: 0; display: grid; gap: .1rem; }
+.summary strong { font-size: var(--font-size-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.footerActions { display: flex; align-items: center; gap: .45rem; }
+.fundingWarning,.fundingReady { min-width: 0; padding: .55rem .7rem; border-radius: .75rem; display: grid; gap: .18rem; }
+.fundingWarning { border: 1px solid color-mix(in srgb,var(--negative) 24%,var(--border)); background: color-mix(in srgb,var(--negative-soft) 68%,var(--surface)); }
+.fundingWarning strong { color: var(--negative); font-size: var(--font-size-sm); }
+.fundingWarning small { color: var(--text-soft); font-size: var(--font-size-xs); line-height: 1.4; }
+.fundingReady { grid-template-columns: minmax(0,1fr) auto; align-items: center; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); border-radius: 0; color: var(--text-soft); font-size: var(--font-size-xs); }
+.fundingReady strong { color: var(--primary-strong); font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; }
+@media (hover:hover) and (pointer:fine) { .compactMain:hover,.compactRemove:hover,.trashButton:hover,.addButton:hover,.categoryCreate:hover { color: var(--primary-strong); } .compactMain:hover { background: color-mix(in srgb,var(--primary-soft) 32%,transparent); } }
+@media (max-width:520px) { .primaryFields { grid-template-columns: minmax(0,1.35fr) minmax(7.25rem,.75fr); gap: .4rem; } .recordingMode button { padding-inline: .35rem; } .scheduleGrid { grid-template-columns: 1fr; } .footer { gap: .55rem; } .footerActions { flex: 1; justify-content: flex-end; } .footerActions > button { padding-inline: .75rem; } }

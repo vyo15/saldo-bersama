@@ -216,6 +216,7 @@ const PickerList = ({
   placeholder,
   emptyText,
   onChoose,
+  footer,
 }) => {
   const hasOptions = grouped ? filteredGroups.length > 0 : filteredOptions.length > 0;
   return <div className={`${styles.list}${expanded ? ` ${styles.listOpen}` : ""}`} aria-hidden={!expanded}>
@@ -228,6 +229,7 @@ const PickerList = ({
             : <PickerOptions options={filteredOptions} expanded={expanded} placeholder={placeholder} onChoose={onChoose} />
           : <p className={styles.empty}>{emptyText}</p>}
       </div>
+      {footer ? <div className={styles.listFooter}>{footer}</div> : null}
     </div>
   </div>;
 };
@@ -236,14 +238,14 @@ const groupClassName = (className) => `${styles.group}${className ? ` ${classNam
 const shellClassName = ({ expanded, locked, error }) => `${styles.shell}${expanded ? ` ${styles.expanded}` : ""}${locked ? ` ${styles.locked}` : ""}${error ? ` ${styles.invalid}` : ""}`;
 const describedByIds = ({ helper, helperId, error, errorId }) => [helper ? helperId : "", error ? errorId : ""].filter(Boolean).join(" ") || undefined;
 
-const usePickerController = ({ value, onChange, options, groups, helper, error, disabled, locked, searchable }) => {
+const usePickerController = ({ value, onChange, options, groups, helper, error, disabled, locked, searchable, hasFooter }) => {
   const listId = useId();
   const helperId = useId();
   const errorId = useId();
   const disclosure = usePickerDisclosure({ value, disabled, locked, searchable });
   const optionState = usePickerOptions({ options, groups, value, query: disclosure.query });
   const enabledAlternative = optionState.alternatives.some((option) => !option.disabled);
-  const canExpand = !disabled && !locked && enabledAlternative;
+  const canExpand = !disabled && !locked && (enabledAlternative || hasFooter);
   const describedBy = describedByIds({ helper, helperId, error, errorId });
 
   const choose = (option) => {
@@ -289,6 +291,7 @@ const PickerField = ({
   searchPlaceholder,
   emptyText,
   className,
+  footer,
   controller,
 }) => {
   const { disclosure, optionState } = controller;
@@ -296,7 +299,7 @@ const PickerField = ({
     <legend>{label}{required ? <span aria-hidden="true"> *</span> : null}</legend>
     <div className={shellClassName({ expanded: disclosure.expanded, locked, error })}>
       <PickerTrigger canExpand={controller.canExpand} triggerRef={disclosure.triggerRef} expanded={disclosure.expanded} listId={controller.listId} required={required} error={error} describedBy={controller.describedBy} disabled={disabled} locked={locked} selectedOption={optionState.selectedOption} placeholderOption={placeholderOption} placeholder={placeholder} placeholderMeta={placeholderMeta} onToggle={controller.toggle} />
-      <PickerList expanded={disclosure.expanded} searchable={searchable} searchRef={disclosure.searchRef} query={disclosure.query} setQuery={disclosure.setQuery} searchPlaceholder={searchPlaceholder} listId={controller.listId} label={label} filteredOptions={optionState.filteredOptions} filteredGroups={optionState.filteredGroups} grouped={optionState.grouped} placeholder={placeholder} emptyText={emptyText} onChoose={controller.choose} />
+      <PickerList expanded={disclosure.expanded} searchable={searchable} searchRef={disclosure.searchRef} query={disclosure.query} setQuery={disclosure.setQuery} searchPlaceholder={searchPlaceholder} listId={controller.listId} label={label} filteredOptions={optionState.filteredOptions} filteredGroups={optionState.filteredGroups} grouped={optionState.grouped} placeholder={placeholder} emptyText={emptyText} onChoose={controller.choose} footer={footer} />
     </div>
     <PickerMessages helper={helper} helperId={controller.helperId} error={error} errorId={controller.errorId} />
   </fieldset>;
@@ -320,9 +323,10 @@ const InlineSelectionPicker = ({
   searchPlaceholder = "Cari…",
   emptyText = "Tidak ada pilihan yang cocok.",
   className = "",
+  footer = null,
 }) => {
-  const controller = usePickerController({ value, onChange, options, groups, helper, error, disabled, locked, searchable });
-  return <PickerField label={label} placeholder={placeholder} placeholderMeta={placeholderMeta} placeholderOption={placeholderOption} helper={helper} error={error} disabled={disabled} locked={locked} required={required} searchable={searchable} searchPlaceholder={searchPlaceholder} emptyText={emptyText} className={className} controller={controller} />;
+  const controller = usePickerController({ value, onChange, options, groups, helper, error, disabled, locked, searchable, hasFooter: Boolean(footer) });
+  return <PickerField label={label} placeholder={placeholder} placeholderMeta={placeholderMeta} placeholderOption={placeholderOption} helper={helper} error={error} disabled={disabled} locked={locked} required={required} searchable={searchable} searchPlaceholder={searchPlaceholder} emptyText={emptyText} className={className} footer={footer} controller={controller} />;
 };
 
 export default InlineSelectionPicker;

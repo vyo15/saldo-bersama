@@ -1,4 +1,3 @@
-import { aggregateCostShareRows } from "../../costSharing.js";
 import {
   budgetListStatement,
   goalListStatements,
@@ -104,48 +103,15 @@ export const mapBootstrapRows = ([accountRows = [], categories = [], configRows 
   };
 };
 
-export const reportBreakdownStatements = (actor, startDate, endDate) => {
-  const access = readableLedgerSql(actor, "t");
-  const commonWhere = `t.status='active' AND t.transaction_type='expense' AND t.transaction_date BETWEEN ? AND ? AND ${access.sql}`;
-  const args = [startDate, endDate, ...access.args];
-  return [
-    { sql: `SELECT a.account_id,a.name,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
-      FROM transactions t JOIN accounts a ON a.account_id=t.source_account_id
-      LEFT JOIN users u ON u.user_id=a.owner_user_id
-      WHERE ${commonWhere}
-      GROUP BY a.account_id,a.name,a.owner_scope,a.owner_user_id,u.name ORDER BY amount DESC`, args },
-    { sql: `SELECT u.user_id,u.name,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
-      FROM transactions t JOIN users u ON u.user_id=t.created_by
-      WHERE ${commonWhere}
-      GROUP BY u.user_id,u.name ORDER BY amount DESC`, args },
-    { sql: `SELECT COALESCE(c.nature,'other') AS nature,SUM(t.amount) AS amount,COUNT(*) AS transaction_count
-      FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id
-      WHERE ${commonWhere}
-      GROUP BY COALESCE(c.nature,'other') ORDER BY amount DESC`, args },
-    { sql: `SELECT t.cost_share_json
-      FROM transactions t
-      WHERE ${commonWhere} AND t.scope='shared' AND t.cost_share_mode<>'unspecified'`, args },
-    { sql: "SELECT user_id,name,role FROM users ORDER BY name COLLATE NOCASE,user_id", args: [] },
-  ];
-};
-
-export const mapReportBreakdowns = ([accounts = [], creators = [], natures = [], costShareRows = [], users = []]) => ({
-  accountExpenses: accounts.map((row) => ({
-    ...publicRow(row),
-    label: row.owner_scope === "personal" ? `${row.name} · Pribadi · ${row.owner_name}` : `${row.name} · Bersama`,
-  })),
-  creatorExpenses: creators.map((row) => ({ ...publicRow(row), label: row.name })),
-  natureExpenses: natures.map((row) => ({ ...publicRow(row), label: NATURE_LABELS[row.nature] || NATURE_LABELS.other })),
-  costShareExpenses: aggregateCostShareRows(costShareRows, users),
-});
-
-export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {}) => {
+export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "", allocationRuleId = "" } = {}) => {
   const periods = Array.from({ length: count }, (_, index) => addPeriodMonths(endPeriod, index - count + 1));
   const firstBounds = monthBounds(periods[0]);
   const lastBounds = monthBounds(periods.at(-1));
   const currentPeriod = todayJakarta().slice(0, 7);
   const trendEnd = periods.at(-1) === currentPeriod ? todayJakarta() : lastBounds.end;
   const ledgerAccess = readableLedgerSql(actor, "t");
+  const allocationSql = allocationRuleId ? "AND t.envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)" : "";
+  const allocationArgs = allocationRuleId ? [allocationRuleId] : [];
   const accountAccess = readableAccountSql(actor, "a");
   const cutoffs = periods.map((period) => {
     const bounds = monthBounds(period);
@@ -160,9 +126,9 @@ export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {
         COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
         COALESCE(SUM(CASE WHEN t.transaction_type='refund' THEN t.amount ELSE 0 END),0) AS refund
       FROM transactions t
-      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql}
+      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql} ${allocationSql}
       GROUP BY substr(t.transaction_date,1,7)`,
-      args: [firstBounds.start, trendEnd, ...ledgerAccess.args],
+      args: [firstBounds.start, trendEnd, ...ledgerAccess.args, ...allocationArgs],
     },
     {
       sql: `WITH cutoffs(period_key,cutoff_date) AS (VALUES ${cutoffValues}),
@@ -208,12 +174,14 @@ export const monthlyTrendPlan = (actor, endPeriod, count, { accountId = "" } = {
   return { periods, statements, accountId };
 };
 
-export const dailyTrendPlan = (actor, period, { accountId = "" } = {}) => {
+export const dailyTrendPlan = (actor, period, { accountId = "", allocationRuleId = "" } = {}) => {
   const bounds = monthBounds(period);
   const currentPeriod = todayJakarta().slice(0, 7);
   const trendEnd = period === currentPeriod ? todayJakarta() : bounds.end;
   const dates = dailyDatesForPeriod(period, trendEnd);
   const ledgerAccess = readableLedgerSql(actor, "t");
+  const allocationSql = allocationRuleId ? "AND t.envelope_period_id IN (SELECT envelope_period_id FROM envelope_periods WHERE envelope_rule_id=?)" : "";
+  const allocationArgs = allocationRuleId ? [allocationRuleId] : [];
   const accountAccess = readableAccountSql(actor, "a");
   const cutoffValues = dates.map(() => "(?,?)").join(",");
   const cutoffArgs = dates.flatMap((date) => [date, date]);
@@ -224,9 +192,9 @@ export const dailyTrendPlan = (actor, period, { accountId = "" } = {}) => {
         COALESCE(SUM(CASE WHEN t.transaction_type='expense' THEN t.amount ELSE 0 END),0) AS expense,
         COALESCE(SUM(CASE WHEN t.transaction_type='refund' THEN t.amount ELSE 0 END),0) AS refund
       FROM transactions t
-      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql}
+      WHERE t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${ledgerAccess.sql} ${allocationSql}
       GROUP BY t.transaction_date`,
-      args: [bounds.start, trendEnd, ...ledgerAccess.args],
+      args: [bounds.start, trendEnd, ...ledgerAccess.args, ...allocationArgs],
     },
     {
       sql: `WITH cutoffs(date_key,cutoff_date) AS (VALUES ${cutoffValues}),

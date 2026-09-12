@@ -121,7 +121,7 @@ test("mirror metadata memakai schema canonical dari backend dan menolak versi in
   assert.throws(() => context.mirrorSchemaVersion_({ schemaVersion: "9" }), (error) => error.code === "MIRROR_SCHEMA_INVALID");
 
   const mirrorSource = await readFile(new URL("../../apps-script/MirrorService.gs", import.meta.url), "utf8");
-  const jobsSource = await readFile(new URL("../../api/jobs.js", import.meta.url), "utf8");
+  const jobsSource = (await Promise.all(["../../api/jobs.js", "../../api/_lib/jobs/integrationWorker.js"].map((name) => readFile(new URL(name, import.meta.url), "utf8")))).join("\n");
   assert.match(jobsSource, /schemaVersion:\s*DATABASE_SCHEMA_VERSION/);
   assert.match(jobsSource, /assignee_user_id/);
   assert.match(jobsSource, /assignee_name/);

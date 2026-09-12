@@ -1,5 +1,6 @@
-import { FiCalendar, FiChevronDown, FiChevronUp, FiEdit3, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiCalendar, FiCheckCircle, FiEdit3, FiPlus, FiRepeat, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import Money from "../../components/common/Money.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
@@ -7,12 +8,13 @@ import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import Modal from "../../components/common/Modal.jsx";
-import { budgetBatchScheduleLabel, findBudgetBatchCategoryMatch } from "./budgetBatchModel.js";
+import { budgetBatchScheduleLabel } from "./budgetBatchModel.js";
 import styles from "./BudgetBatchEditor.module.css";
 
 const RECORDING_OPTIONS = Object.freeze([
   { value: "flexible", label: "Fleksibel", icon: FiEdit3 },
-  { value: "scheduled", label: "Terjadwal", icon: FiCalendar },
+  { value: "fixed_once", label: "Sekali bayar", icon: FiCheckCircle },
+  { value: "recurring", label: "Berulang", icon: FiRepeat },
 ]);
 
 const SCHEDULE_FREQUENCY_OPTIONS = Object.freeze([
@@ -31,88 +33,116 @@ const PAYMENT_METHOD_OPTIONS = Object.freeze([
   { value: "ewallet", label: "E-wallet" },
 ]);
 
-const buildCategoryOptions = ({ categories, items, rows, row, form }) => {
-  const chosen = new Set(rows.filter((entry) => entry.id !== row.id).map((entry) => entry.category_id).filter(Boolean));
-  return categories.map((category) => {
-    const { linked, legacy } = findBudgetBatchCategoryMatch(items, form, category.category_id);
-    const selectedElsewhere = chosen.has(category.category_id);
-    return {
-      value: category.category_id,
-      label: category.name,
-      ...categoryOptionVisual(category),
-      disabled: linked || selectedElsewhere,
-      meta: linked ? "Sudah ada di alokasi" : selectedElsewhere ? "Sudah dipilih" : legacy ? "Kebutuhan lama akan dihubungkan" : "",
-    };
-  });
-};
+const buildCategoryOptions = (categories) => categories.map((category) => ({
+  value: category.category_id,
+  label: category.name,
+  meta: "Kategori pengeluaran",
+  ...categoryOptionVisual(category),
+}));
 
 const CompactAmountInput = ({ row, onChange }) => {
   const numeric = row.amount === "" ? "" : Number(row.amount || 0);
   const value = numeric === "" ? "" : String(numeric).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return <label className={styles.amountField}>
-    <span className="sr-only">Nominal kebutuhan</span>
-    <span className={styles.currency} aria-hidden="true">Rp</span>
-    <input
-      inputMode="numeric"
-      autoComplete="off"
-      value={value}
-      placeholder="0"
-      aria-label="Nominal kebutuhan"
-      onChange={(event) => {
-        const raw = event.target.value;
-        if (!raw) return onChange("");
-        try { return onChange(parseRupiah(raw)); } catch { return onChange(raw.replace(/[^0-9]/g, "")); }
-      }}
-    />
+  return <label className={styles.fieldBlock}>
+    <span>Nominal</span>
+    <span className={styles.amountField}>
+      <span className={styles.currency} aria-hidden="true">Rp</span>
+      <input
+        inputMode="numeric"
+        autoComplete="off"
+        value={value}
+        placeholder="0"
+        aria-label="Nominal kebutuhan"
+        onChange={(event) => {
+          const raw = event.target.value;
+          if (!raw) return onChange("");
+          try { return onChange(parseRupiah(raw)); } catch { return onChange(raw.replace(/[^0-9]/g, "")); }
+        }}
+      />
+    </span>
   </label>;
 };
 
-const RecordingMode = ({ row, update }) => <div className={styles.recordingMode} role="group" aria-label="Cara mencatat kebutuhan">
-  {RECORDING_OPTIONS.map(({ value, label, icon: Icon }) => <button
-    key={value}
-    type="button"
-    className={row.recording_mode === value ? styles.recordingActive : ""}
-    aria-pressed={row.recording_mode === value}
-    onClick={() => update({ recording_mode: value })}
-  ><Icon aria-hidden="true" /><span>{label}</span></button>)}
+const NeedNameInput = ({ row, update }) => <label className={styles.fieldBlock}>
+  <span>Nama kebutuhan</span>
+  <input
+    className={styles.nameInput}
+    required
+    maxLength="100"
+    value={row.name || ""}
+    placeholder="Contoh: Arisan PT"
+    autoComplete="off"
+    onChange={(event) => update({ name: event.target.value })}
+  />
+</label>;
+
+const RecordingMode = ({ row, update }) => <div className={styles.modeBlock}>
+  <span className={styles.fieldLabel}>Pola kebutuhan</span>
+  <div className={styles.recordingMode} role="group" aria-label="Pola kebutuhan">
+    {RECORDING_OPTIONS.map(({ value, label, icon: Icon }) => <button
+      key={value}
+      type="button"
+      className={row.recording_mode === value ? styles.recordingActive : ""}
+      aria-pressed={row.recording_mode === value}
+      onClick={() => update({ recording_mode: value })}
+    ><Icon aria-hidden="true" /><span>{label}</span></button>)}
+  </div>
+  <small className={styles.modeHelper}>
+    {row.recording_mode === "fixed_once" ? `${formatRupiah(row.amount || 0)} otomatis diisi saat kebutuhan dicatat.`
+      : row.recording_mode === "recurring" ? "Nominal menjadi bawaan setiap jadwal pembayaran."
+        : "Bisa dicatat beberapa kali sesuai transaksi aktual."}
+  </small>
 </div>;
 
-const ScheduleFields = ({ row, update }) => row.recording_mode === "scheduled" ? <div className={styles.scheduleGrid}>
+const ScheduleFields = ({ row, update }) => row.recording_mode === "recurring" ? <div className={styles.scheduleGrid}>
   <SelectionField compact label="Frekuensi" value={row.schedule_frequency} onChange={(schedule_frequency) => update({ schedule_frequency })} options={SCHEDULE_FREQUENCY_OPTIONS} />
-  <label className="field"><span>Tanggal jatuh tempo *</span><input type="number" min="1" max="31" value={row.schedule_due_day ?? ""} onChange={(event) => update({ schedule_due_day: event.target.value })} /></label>
-  <label className="field"><span>Tanggal mulai *</span><TemporalInput type="date" value={row.schedule_start_date || ""} onChange={(event) => update({ schedule_start_date: event.target.value })} /></label>
+  <label className="field"><span>Jatuh tempo *</span><input type="number" min="1" max="31" value={row.schedule_due_day ?? ""} onChange={(event) => update({ schedule_due_day: event.target.value })} /></label>
+  <label className="field"><span>Mulai *</span><TemporalInput type="date" value={row.schedule_start_date || ""} onChange={(event) => update({ schedule_start_date: event.target.value })} /></label>
   <SelectionField compact label="Metode" value={row.schedule_payment_method} onChange={(schedule_payment_method) => update({ schedule_payment_method })} options={PAYMENT_METHOD_OPTIONS} />
 </div> : null;
 
-const BatchEditorRow = ({ row, index, rows, categories, items, form, updateRow, removeRow }) => {
-  const options = buildCategoryOptions({ categories, items, rows, row, form });
+const CategoryField = ({ row, categories, update, onCreateCategory, categoryCreateLabel }) => <div className={styles.categoryBlock}>
+  <InlineSelectionPicker
+    label="Kategori"
+    required
+    value={row.category_id}
+    onChange={(category_id) => update({ category_id })}
+    placeholder="Pilih kategori"
+    placeholderMeta="Gunakan kategori master, misalnya Arisan"
+    searchable={categories.length > 8}
+    searchPlaceholder="Cari kategori…"
+    options={buildCategoryOptions(categories)}
+    footer={onCreateCategory ? <button type="button" className={styles.categoryCreate} onClick={onCreateCategory}><FiPlus aria-hidden="true" /><span>{categoryCreateLabel || "Tambah kategori"}</span></button> : null}
+  />
+</div>;
+
+const BatchEditorRow = ({ row, index, categories, updateRow, removeRow, onCreateCategory, categoryCreateLabel }) => {
   const update = (updates) => updateRow(row.id, updates);
   return <div className={styles.editor} data-budget-batch-row={row.id}>
     <div className={styles.editorTopline}><span>Kebutuhan {index + 1}</span><button type="button" className={styles.trashButton} onClick={() => removeRow(row.id)} aria-label={`Hapus kebutuhan ${index + 1}`}><FiTrash2 aria-hidden="true" /></button></div>
     <div className={styles.primaryFields}>
-      <SelectionField className={styles.categoryField} hideLabel label="Kategori" required value={row.category_id} onChange={(category_id) => update({ category_id })} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={options} />
+      <NeedNameInput row={row} update={update} />
       <CompactAmountInput row={row} onChange={(amount) => update({ amount })} />
     </div>
-    <button type="button" className={styles.disclosure} onClick={() => update({ details_open: !row.details_open })} aria-expanded={row.details_open}>
-      <span>{budgetBatchScheduleLabel(row)}</span><span>Pengaturan {row.details_open ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}</span>
-    </button>
-    {row.details_open ? <div className={styles.details}><RecordingMode row={row} update={update} /><ScheduleFields row={row} update={update} /></div> : null}
+    <CategoryField row={row} categories={categories} update={update} onCreateCategory={onCreateCategory} categoryCreateLabel={categoryCreateLabel} />
+    <RecordingMode row={row} update={update} />
+    <ScheduleFields row={row} update={update} />
   </div>;
 };
 
 const BatchCompactRow = ({ row, category, onEdit, onRemove }) => <div className={styles.compactRow}>
   <button type="button" className={styles.compactMain} onClick={onEdit}>
-    <span className={styles.compactCopy}><strong>{category?.name || "Pilih kategori"}</strong><small>{budgetBatchScheduleLabel(row)}</small></span>
+    <span className={styles.compactCopy}><strong>{row.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetBatchScheduleLabel(row)}</small></span>
     <strong className={styles.compactAmount}>{formatRupiah(row.amount || 0)}</strong>
   </button>
-  <button type="button" className={styles.compactRemove} onClick={onRemove} aria-label={`Hapus ${category?.name || "kebutuhan"}`}><FiTrash2 aria-hidden="true" /></button>
+  <button type="button" className={styles.compactRemove} onClick={onRemove} aria-label={`Hapus ${row.name || "kebutuhan"}`}><FiTrash2 aria-hidden="true" /></button>
 </div>;
 
-const BatchRows = ({ controller, categories, items }) => {
+const BatchRows = ({ controller, categories, onCreateCategory, categoryCreateLabel }) => {
   const categoryLookup = new Map(categories.map((item) => [item.category_id, item]));
   return <div className={styles.rows}>
     {controller.batchRows.map((row, index) => row.id === controller.activeBatchRowId
-      ? <BatchEditorRow key={row.id} row={row} index={index} rows={controller.batchRows} categories={categories} items={items} form={controller.form} updateRow={controller.updateBatchRow} removeRow={controller.removeBatchRow} />
+      ? <BatchEditorRow key={row.id} row={row} index={index} categories={categories} updateRow={controller.updateBatchRow} removeRow={controller.removeBatchRow} onCreateCategory={onCreateCategory} categoryCreateLabel={categoryCreateLabel} />
       : <BatchCompactRow key={row.id} row={row} category={categoryLookup.get(row.category_id)} onEdit={() => controller.selectBatchRow(row.id)} onRemove={() => controller.removeBatchRow(row.id)} />)}
   </div>;
 };
@@ -128,9 +158,9 @@ const BatchFundingNotice = ({ funding, sourceAccount }) => {
   if (funding.requiredAmount <= 0) return null;
   if (funding.shortageAmount > 0) return <div className={styles.fundingWarning} role="alert">
     <strong>Dana belum mencukupi {formatRupiah(funding.shortageAmount)}</strong>
-    <small>Kebutuhan membutuhkan {formatRupiah(funding.requiredAmount)}, sementara Dana Tersedia {sourceAccount?.name || "rekening sumber"} {formatRupiah(funding.availableAmount)}. Tambahkan saldo atau kurangi nominal Kebutuhan.</small>
+    <small>Kebutuhan membutuhkan {formatRupiah(funding.requiredAmount)}, sementara Dana Tersedia {sourceAccount?.name || "rekening sumber"} {formatRupiah(funding.availableAmount)}.</small>
   </div>;
-  return <div className={styles.fundingReady} role="status"><span>Setelah dialokasikan</span><strong>{formatRupiah(funding.afterAmount)}</strong></div>;
+  return <div className={styles.fundingReady} role="status"><span>Dana Tersedia setelah dialokasikan</span><strong>{formatRupiah(funding.afterAmount)}</strong></div>;
 };
 
 const BatchFooter = ({ controller, close, funding, onAddBalance }) => <div className={styles.footer}>
@@ -146,11 +176,10 @@ const BatchFooter = ({ controller, close, funding, onAddBalance }) => <div class
   </div>
 </div>;
 
-const BudgetBatchEditor = ({ open, controller, categories, items, lockedEnvelope, sourceAccount = null, onAddBalance = null }) => {
+const BudgetBatchEditor = ({ open, controller, categories, lockedEnvelope, sourceAccount = null, onAddBalance = null, onCreateCategory = null, categoryCreateLabel = "Tambah kategori" }) => {
   const submitting = controller.saveState.status === "submitting";
   const funding = budgetFundingState(controller, sourceAccount);
-  const availableCategoryCount = categories.filter((category) => !findBudgetBatchCategoryMatch(items, controller.form, category.category_id).linked).length;
-  const addDisabled = controller.batchRows.length >= Math.min(controller.batchLimit, availableCategoryCount);
+  const addDisabled = controller.batchRows.length >= controller.batchLimit;
   const guardValue = {
     context: {
       envelope_rule_id: controller.form.envelope_rule_id,
@@ -159,6 +188,7 @@ const BudgetBatchEditor = ({ open, controller, categories, items, lockedEnvelope
       owner_user_id: controller.form.owner_user_id,
     },
     rows: controller.batchRows.map((row) => ({
+      name: row.name,
       category_id: row.category_id,
       amount: row.amount,
       recording_mode: row.recording_mode,
@@ -183,7 +213,7 @@ const BudgetBatchEditor = ({ open, controller, categories, items, lockedEnvelope
       if (funding.shortageAmount > 0) { event.preventDefault(); return; }
       controller.saveBudget(event);
     }}>
-      <BatchRows controller={controller} categories={categories} items={items} />
+      <BatchRows controller={controller} categories={categories} onCreateCategory={onCreateCategory} categoryCreateLabel={categoryCreateLabel} />
       <BatchFundingNotice funding={funding} sourceAccount={sourceAccount} />
       <button type="button" className={styles.addButton} onClick={controller.addBatchRow} disabled={addDisabled}><FiPlus aria-hidden="true" /><span>Tambah kebutuhan lain</span></button>
       {controller.saveState.status === "error" ? <div className="notice notice--danger" role="alert">{controller.saveState.error?.message || "Kebutuhan belum dapat disimpan."}</div> : null}

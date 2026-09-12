@@ -192,7 +192,7 @@ test("service menjaga budget exact-scope, recurring due-day, optimistic version,
   const planningFiles = (await readdir(planningDirectory)).filter((name) => name.endsWith(".js")).sort();
   const [planningParts, finance, readModels] = await Promise.all([
     Promise.all(planningFiles.map((name) => readFile(new URL(name, planningDirectory), "utf8"))),
-    readFile(new URL("../../api/_lib/services/finance.js", import.meta.url), "utf8"),
+    Promise.all(["finance.js", "finance/transactionValidation.js", "finance/transactionMutations.js"].map((name) => readFile(new URL(`../../api/_lib/services/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
     readFile(new URL("../../api/_lib/services/readModels.js", import.meta.url), "utf8"),
   ]);
   const planning = planningParts.join("\n");

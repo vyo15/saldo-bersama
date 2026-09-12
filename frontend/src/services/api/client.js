@@ -7,7 +7,7 @@ import {
 } from "./cache.js";
 import { createSecureRandomId } from "../../domain/security.js";
 import { ApiError, isOutcomeUnknownError } from "./errors.js";
-import { createServerSession, destroyServerSession, downloadExcel, gatewayFetch, readSession } from "./transport.js";
+import { createServerSession, destroyServerSession, downloadExcel, downloadReport, gatewayFetch, readSession } from "./transport.js";
 import { stableValue } from "./serialization.js";
 import { publishServerStateChanged } from "../sync/syncSignals.js";
 
@@ -307,4 +307,5 @@ export const apiClient = {
   },
 
   downloadExcel,
+  downloadReport,
 };

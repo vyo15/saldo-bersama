@@ -76,16 +76,22 @@ const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onR
   const status = budgetVisualState(budget, periodMeta);
   const tone = status.key === "danger" ? "is-danger" : ["warning", "pace"].includes(status.key) ? "is-warning" : "";
   const CategoryIcon = categoryIcon(category?.icon, "expense");
+  const remaining = Math.max(0, amount - used);
+  const patternLabel = schedule?.label
+    || (budget.recording_mode === "fixed_once" ? "Sekali bayar · nominal otomatis saat dicatat"
+      : budget.recording_mode === "recurring" ? "Berulang · mengikuti jadwal pembayaran"
+        : "Fleksibel · dapat dicatat berkali-kali");
+  const recordAction = budget.recording_mode === "fixed_once" && remaining <= 0 ? null : onRecord;
   return <div className={allocationClass("allocation-limit-row")} data-budget-id={budget.budget_id}>
     <div className={allocationClass("allocation-limit-row__main")}>
       <div className={allocationClass("allocation-limit-row__identity")}>
         <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" /></span>
-        <div><strong>{budget.name}</strong><small>Terpakai <Money value={used} /> dari nominal <Money value={amount} /></small><small>Sisa kebutuhan <Money value={Math.max(0, amount - used)} /></small><small>{schedule?.label || "Fleksibel · dapat dicatat berkali-kali"}</small></div>
+        <div><strong>{budget.name}</strong><small>Terpakai <Money value={used} /> dari nominal <Money value={amount} /></small><small>Sisa kebutuhan <Money value={remaining} /></small><small>{patternLabel}</small></div>
       </div>
       <span className={allocationClass(tone)}>{status.label}</span>
     </div>
     <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${Math.round(status.usedPercent)}%`} />
-    <BudgetLimitActions budget={budget} schedule={schedule} canManage={canManage} onRecord={onRecord} onOpenSchedule={onOpenSchedule} onEdit={onEdit} />
+    <BudgetLimitActions budget={budget} schedule={schedule} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} />
   </div>;
 };
 
@@ -122,7 +128,7 @@ const AllocationNeedsPanel = ({
   const categoryLookup = new Map((expenseCategories || []).map((category) => [category.category_id, category]));
   return <section className={allocationClass("allocation-detail-section allocation-detail-section--needs")} aria-labelledby="allocation-needs-title">
     <div className={allocationClass("allocation-detail-panel__header")}>
-      <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Atur kategori dan nominal kebutuhan yang menggunakan Alokasi Dana ini.</p></div>
+      <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Atur nama, kategori, nominal, dan pola kebutuhan yang menggunakan Alokasi Dana ini.</p></div>
       {linkedBudgets.length ? <span className={allocationClass("allocation-detail-section__count")}>{linkedBudgets.length} item</span> : null}
     </div>
     {canManage && linkedBudgets.length ? <Button className={allocationClass("allocation-needs-add")} variant="secondary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
@@ -187,6 +193,7 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
   });
   const recordExpense = (budget = null) => {
     if (!canRecordExpense) return;
+    const remaining = budget ? Math.max(0, Number(budget.amount || 0) - Number(budget.used_amount || 0)) : 0;
     openTransactionComposer({
       initialType: TRANSACTION_TYPES.EXPENSE,
       initialSourceAccountId: item.source_account_id,
@@ -196,6 +203,8 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
         category_id: budget?.category_id || "",
         envelope_period_id: item.envelope_period_id,
         budget_id: budget?.budget_id || "",
+        amount: budget?.recording_mode === "fixed_once" ? remaining : "",
+        description: budget?.name || "",
       },
     });
   };

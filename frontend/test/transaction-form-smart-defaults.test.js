@@ -70,6 +70,18 @@ test("smart allocation memetakan Kebutuhan kategori ke Alokasi Dana pada rekenin
   assert.equal(candidates[0].need.name, "Bensin");
 });
 
+test("smart allocation tidak menebak kebutuhan ketika kategori sama dipakai beberapa kebutuhan dalam Alokasi yang sama", () => {
+  const budgets = [
+    { budget_id: "b-arisan-pt", period_key: "2026-08", category_id: "c-arisan", envelope_rule_id: "r-rumah", name: "Arisan PT", status: "active" },
+    { budget_id: "b-arisan-sekolah", period_key: "2026-08", category_id: "c-arisan", envelope_rule_id: "r-rumah", name: "Arisan Sekolah", status: "active" },
+  ];
+  const envelopes = [
+    { envelope_period_id: "p-rumah", envelope_rule_id: "r-rumah", source_account_id: "a1", period_start: "2026-08-01", period_end: "2026-08-31", name: "Rumah" },
+  ];
+  const form = { transaction_type: "expense", transaction_date: "2026-08-20", source_account_id: "a1", category_id: "c-arisan" };
+  assert.deepEqual(smartAllocationCandidates({ budgets, envelopes, form }), []);
+});
+
 test("early warning membedakan dana bebas, sisa Alokasi, dan kebijakan overspend", () => {
   const source = { balance: 1_000_000, available_balance: 200_000 };
   assert.equal(earlyFundsWarning({ transactionType: "expense", amount: 2_000_000, source: { ...source, allow_negative: true }, envelope: null }), null);

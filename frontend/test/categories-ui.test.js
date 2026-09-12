@@ -5,10 +5,12 @@ import test from "node:test";
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain rekening", async () => {
-  const [app, navigation, page, styles, presentation, api, accountPage, categoryPresentation, reviewHook, reviewService] = await Promise.all([
+  const [app, navigation, page, dialogs, iconPicker, styles, presentation, api, accountPage, categoryPresentation, reviewHook, reviewService] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/config/navigation.js"),
     read("src/features/categories/CategoriesPage.jsx"),
+    read("src/features/categories/CategoryDialogs.jsx"),
+    read("src/features/categories/CategoryIconPicker.jsx"),
     read("src/features/categories/CategoriesPage.module.css"),
     read("src/shared/presentation/transaction.js"),
     read("src/features/categories/categories.api.js"),
@@ -17,6 +19,7 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
     read("src/hooks/useMasterDataRequestReview.js"),
     read("src/services/masterDataRequests.js"),
   ]);
+  const categoryFeature = [page, dialogs, iconPicker].join("\n");
 
   assert.match(app, /path="kategori"/);
   assert.match(navigation, /to: "\/kategori", label: "Kategori"[\s\S]*icon: FiTag/);
@@ -30,13 +33,13 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(reviewHook, /reviewMasterDataRequest/);
   assert.match(reviewService, /masterDataRequests\.review/);
   assert.match(page, /useApiResource\("categories\.list"\)/);
-  assert.match(page, /create-category-form/);
-  assert.match(page, /edit-category-form/);
-  assert.match(page, /CategoryIconPicker/);
+  assert.match(dialogs, /create-category-form/);
+  assert.match(dialogs, /edit-category-form/);
+  assert.match(dialogs, /CategoryIconPicker/);
   assert.match(page, /icon: editCategory\.icon/);
-  assert.match(page, /role="radiogroup"/);
-  assert.match(page, /role="radio"/);
-  assert.match(page, /Cari ikon: nikah, rumah, tagihan/);
+  assert.match(iconPicker, /role="radiogroup"/);
+  assert.match(iconPicker, /role="radio"/);
+  assert.match(iconPicker, /Cari ikon: nikah, rumah, tagihan/);
   assert.match(styles, /\.iconGrid/);
   assert.match(styles, /\.iconOption\.isSelected/);
   assert.match(presentation, /key: "wedding_ring"[\s\S]*label: "Cincin"/);
@@ -72,9 +75,9 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(categoryPresentation, /value: CATEGORY_TYPES\.EXPENSE, label: "Uang keluar"/);
   assert.match(categoryPresentation, /value: CATEGORY_TYPES\.INCOME, label: "Uang masuk"/);
   assert.match(categoryPresentation, /value: CATEGORY_TYPES\.REFUND, label: "Pengembalian dana"/);
-  assert.match(page, /legend="Dipakai untuk transaksi"[\s\S]*mobileColumns=\{3\}[\s\S]*denseTiles[\s\S]*plainIcons/);
-  assert.match(page, /tone: item\.value/);
-  assert.match(page, /CATEGORY_TYPE_ICONS = Object\.freeze\(\{ expense: MoneyOutIcon, income: MoneyInIcon, refund: RefundIcon \}\)/);
+  assert.match(dialogs, /legend="Dipakai untuk transaksi"[\s\S]*mobileColumns=\{3\}[\s\S]*denseTiles[\s\S]*plainIcons/);
+  assert.match(dialogs, /tone: item\.value/);
+  assert.match(dialogs, /CATEGORY_TYPE_ICONS = Object\.freeze\(\{ expense: MoneyOutIcon, income: MoneyInIcon, refund: RefundIcon \}\)/);
   assert.doesNotMatch(page, /Transfer antar rekening tidak memakai kategori/);
   assert.doesNotMatch(page, /gunakan Transfer atau Target/);
   assert.match(styles, /\.iconGroups[\s\S]*flex-wrap: wrap/);
@@ -84,7 +87,7 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(categoryPresentation, /value: CATEGORY_NATURES\.DISCRETIONARY, label: "Gaya hidup"/);
   assert.match(categoryPresentation, /value: CATEGORY_NATURES\.EMERGENCY, label: "Darurat"/);
   assert.doesNotMatch(categoryPresentation, /label: "Kebutuhan tidak terduga"|label: "Keinginan dan gaya hidup"|label: "Kondisi darurat"/);
-  assert.doesNotMatch(page, /CATEGORY_NATURE_OPTIONS|name="nature"|Sifat Pengeluaran/);
+  assert.doesNotMatch(categoryFeature, /CATEGORY_NATURE_OPTIONS|name="nature"|Sifat Pengeluaran/);
   assert.doesNotMatch(page, /accounts\.list|AccountFinancialCard/);
   assert.doesNotMatch(accountPage, /categories\.list|create-category-form|Kategori transaksi/);
 });

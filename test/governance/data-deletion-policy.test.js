@@ -21,7 +21,7 @@ const walk = async (relative, extension) => {
 };
 
 const APPROVED_SQL_DELETES = new Map([
-  ["api/jobs.js", new Set(["request_nonces"])],
+  ["api/_lib/jobs/integrationWorker.js", new Set(["request_nonces"])],
   ["api/_lib/rateLimit.js", new Set(["rate_limit_buckets"])],
   ["api/_lib/services/maintenance/housekeeping.js", new Set(["idempotency_keys", "import_previews", "restore_previews"])],
   ["api/_lib/idempotency.js", new Set(["idempotency_keys"])],
@@ -30,7 +30,8 @@ const APPROVED_SQL_DELETES = new Map([
   ["api/_lib/services/planning/envelopes.js", new Set(["envelope_periods", "envelope_rules"])],
   ["api/_lib/services/planning/recurring.js", new Set(["recurring_occurrences", "recurring_rules"])],
   ["api/_lib/services/planning/goals.js", new Set(["savings_goals"])],
-  ["api/_lib/services/planning/budgets.js", new Set(["budget_history", "budgets"])],
+  ["api/_lib/services/planning/budgetHistory.js", new Set(["budget_history", "budgets"])],
+  ["api/_lib/services/planning/budgetLifecycle.js", new Set(["budgets"])],
   ["api/_lib/services/maintenance/import.js", new Set(["import_previews"])],
   ["api/_lib/services/maintenance/restore.js", new Set(["restore_previews", "user_sessions", "__RESTORE_DELETE_ORDER__"])],
   ["api/_lib/services/maintenance/reset.js", new Set(["__RESTORE_DELETE_ORDER__", "integration_outbox"])],

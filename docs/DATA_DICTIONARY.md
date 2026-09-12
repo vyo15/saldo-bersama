@@ -5,7 +5,7 @@
 > **Update when:** Makna field/table atau lifecycle data berubah.  
 > **Boundary:** Tipe/constraint authoritative berada di migration; kronologi migration berada di Git/CHANGELOG.
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `018_envelope_decoration.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `019_budget_recording_mode.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -77,6 +77,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `accounts.bank_template`: template visual kartu bank yang tidak mengubah nama rekening. Enum rekening bank: `generic`, `bca`, `bni`, `btn`, `mandiri`, `permata`; rekening non-bank wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
 - `accounts.is_system_hidden`: integer boolean default `0`; `1` hanya untuk rekening compatibility yang dibuat backend bagi Investasi asset-centric. Row hidden tidak dikembalikan oleh `accounts.list`/picker user-facing dan bukan rekening yang dapat dikelola user.
 - `accounts.ewallet_template`: provider visual E-wallet yang tidak mengubah nama rekening. Enum E-wallet: `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, `linkaja`; rekening non-E-wallet wajib `generic`. Field divalidasi backend, ikut backup/restore, dan perubahan tercatat pada audit account.
+- `budgets.name`: nama Kebutuhan spesifik yang dilihat user dan menjadi identitas rencana dalam periode + ownership + Alokasi, misalnya `Arisan PT`; `category_id` tetap menunjuk master klasifikasi seperti `Arisan`, sehingga beberapa Kebutuhan boleh berbagi kategori selama namanya berbeda.
+- `budgets.recording_mode`: pola pencatatan Kebutuhan dengan nilai `flexible`, `fixed_once`, atau `recurring`. `fixed_once` dipakai untuk Sekali bayar; `recurring` dapat menautkan Jadwal Rutin. `budget_history.recording_mode` menyimpan pola tersebut saat periode dipadatkan agar reopen/report tetap konsisten.
 - `transactions.budget_id`: nullable link eksplisit ke Kebutuhan yang menghasilkan expense. Tidak memakai FK ke `budgets` karena row operasional dapat dipadatkan ke `budget_history`; backend memvalidasi periode, kategori, scope, dan Alokasi sebelum menyimpan.
 - `recurring_rules.budget_id`: nullable link jadwal yang lahir dari Kebutuhan; future occurrence tidak otomatis dianggap memakai Kebutuhan bulan lama setelah row operasional dipadatkan.
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
@@ -125,7 +127,7 @@ Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API cont
 
 ## Current schema marker
 
-Versi runtime aktif: `20`. Latest migration canonical: `018_envelope_decoration.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
+Versi runtime aktif: `21`. Latest migration canonical: `019_budget_recording_mode.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
 
 Compatibility penting yang tetap current:
 

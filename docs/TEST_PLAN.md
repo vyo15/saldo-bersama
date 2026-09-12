@@ -20,7 +20,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 20 sebelum runtime current menerima traffic.
+- Schema Production harus versi 21 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -89,7 +89,7 @@ Minimum contract:
 
 ### Auto-funding Kebutuhan
 
-- `budgets.batchCreate` mendukung maksimal 20 item, atomic, kategori unik pada Alokasi/batch, dan optional Jadwal Rutin dalam transaction yang sama.
+- `budgets.batchCreate` mendukung maksimal 20 item dan atomic. Identitas item memakai **nama kebutuhan** pada periode/ownership/Alokasi, sehingga beberapa kebutuhan boleh memakai kategori yang sama; nama kebutuhan duplikat pada Alokasi yang sama ditolak. Pola `recurring` dapat membuat Jadwal Rutin dalam transaction yang sama.
 - Menambah Kebutuhan otomatis menaikkan dana Alokasi sebesar delta dari Dana Tersedia tanpa mengubah saldo fisik.
 - Edit nominal hanya menyesuaikan delta; nominal tidak boleh turun di bawah usage aktual.
 - Bila Dana Tersedia kurang, backend mengembalikan `BUDGET_FUNDING_INSUFFICIENT` dengan `requiredAmount`, `availableAmount`, `shortageAmount`; **tidak ada partial budget/recurring/funding write**.
@@ -102,7 +102,9 @@ Minimum contract:
 ## Jadwal Rutin dan Target
 
 - Recurring occurrence mengikuti timezone Asia/Jakarta, idempotency, account capability, completion/skip/restore, dan shortage rule.
-- Scheduled Kebutuhan yang dibuat bersama batch harus memakai ownership/source account kompatibel; satu pelanggaran me-rollback seluruh batch.
+- Kebutuhan `recurring` yang dibuat bersama batch harus memakai ownership/source account kompatibel; satu pelanggaran me-rollback seluruh batch.
+- Kebutuhan `fixed_once` harus mem-prefill sisa nominal saat aksi **Catat** dan tidak menampilkan aksi Catat lagi ketika sisa sudah Rp0.
+- Jika dua kebutuhan aktif memakai kategori master yang sama pada Alokasi yang sama, transaksi legacy tanpa `budget_id` tidak boleh dihitung ke keduanya; transaksi baru dari detail kebutuhan wajib membawa `budget_id`.
 - Target movement tidak boleh memanipulasi saldo tanpa transaksi/movement canonical dan reversal harus audit-safe.
 - Reminder manual terikat entity aktif, satu scheduled reminder per entity/user, dan dispatch nonterminal mencegah duplikasi.
 
@@ -118,7 +120,7 @@ Minimum contract:
 
 ## Dashboard, laporan, dan rekonsiliasi
 
-- Dashboard memakai saldo operasional non-investasi dan tidak double-count RDN/market value.
+- Dashboard memakai **Dana Tersedia** (`safeToSpend`) sebagai angka utama, menempatkan Saldo rekening non-investasi sebagai konteks sekunder, dan tidak double-count RDN/market value. Dana Tersedia harus sudah memperhitungkan Alokasi Dana, proteksi, dan komitmen Jadwal Rutin operasional di luar Alokasi; Jadwal Rutin yang tertaut ke Kebutuhan yang sudah didanai Alokasi tidak boleh dikurangi dua kali.
 - Report monthly/trend tidak menghitung Transfer sebagai income/expense dan memakai snapshot/read transaction konsisten.
 - Rekonsiliasi non-investasi dan Investasi/RDN memakai service berbeda; generic reconciliation menolak RDN.
 - Reconciliation checkpoint menyimpan mismatch historis tanpa persistent active alert setelah user melakukan pencocokan eksplisit.
@@ -173,7 +175,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 20 sebelum deployment current menerima traffic.
+- Schema Production harus versi 21 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 

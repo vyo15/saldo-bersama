@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { readDesktopDashboardSource } from "./sourceBundles.js";
 import { fileURLToPath } from "node:url";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
@@ -101,7 +102,7 @@ test("canonical account terms stay user-facing near balances", async () => {
     read("src/features/accounts/components/MobileAccountsExperience.jsx"),
     read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
-    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
   ]);
 
   assert.match(accountPresentation, /ACCOUNT_BALANCE_GUIDANCE/);
@@ -113,7 +114,8 @@ test("canonical account terms stay user-facing near balances", async () => {
   assert.doesNotMatch(dashboardMobile, /ACCOUNT_AVAILABLE_BALANCE_HINT|AccountVisual/, "Beranda mobile compact tidak menduplikasi detail saldo rekening.");
   assert.match(dashboardMobile, /Saldo rekening/);
   assert.match(dashboardMobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
-  assert.match(dashboardMobile, /Aman digunakan/);
+  assert.match(dashboardMobile, /Dana Tersedia/);
+  assert.match(dashboardMobile, /overview\.safeToSpend/);
   assert.match(dashboardDesktop, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
 });
 
@@ -259,8 +261,9 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(transactions, /MobileTransactionList/);
   assert.match(transactions, /MobileTransactionOverview/);
   assert.match(transactions, /MobileTransactionFilters/);
-  assert.match(reports, /const MobileReportsView/);
-  assert.match(reports, /const MobileBudgetList/);
+  assert.match(reports, /const ReportsContent/);
+  assert.match(reports, /const BudgetRows/);
+  assert.match(reports, /const AllocationRows/);
   assert.match(accounts + accountSheets + mobileActivity, /mobileTransactionList/);
   assert.match(reconciliation, /styles\.mobileHistoryList/);
   assert.match(settings, /mobile-data-list/);
@@ -545,13 +548,14 @@ test("feature write memakai API facade lokal dan halaman tidak mengimpor transpo
     "budgets/budgets.api.js",
     "settings/settings.api.js",
     "transactions/transactions.api.js",
+    "reports/reports.api.js",
   ]) assert.match(await read(`src/features/${facade}`), /apiClient/);
 });
 
 test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi business form", async () => {
   const [page, desktop, mobile, detail, responsive] = await Promise.all([
     read("src/features/dashboard/DashboardPage.jsx"),
-    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     read("src/features/dashboard/components/MobileTransactionDetail.jsx"),
     read("src/styles/responsive.css"),

@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `018_envelope_decoration.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `019_budget_recording_mode.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -112,9 +112,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `20`
+Versi aktif: `21`
 
-Latest migration: `018_envelope_decoration.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `019_budget_recording_mode.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 

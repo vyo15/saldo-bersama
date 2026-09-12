@@ -60,13 +60,15 @@ export const smartAllocationCandidates = ({ budgets = [], envelopes = [], form }
   budgets.forEach((budget) => {
     if (!budget.envelope_rule_id || budget.category_id !== form.category_id) return;
     if (period && budget.period_key && budget.period_key !== period) return;
-    if (!matchingRules.has(budget.envelope_rule_id)) matchingRules.set(budget.envelope_rule_id, budget);
+    const current = matchingRules.get(budget.envelope_rule_id) || [];
+    matchingRules.set(budget.envelope_rule_id, [...current, budget]);
   });
   const seen = new Set();
   return envelopes.reduce((items, envelope) => {
     if (envelope.source_account_id !== form.source_account_id || !dateInsideEnvelope(form.transaction_date, envelope)) return items;
-    const need = matchingRules.get(envelope.envelope_rule_id);
-    if (!need || seen.has(envelope.envelope_period_id)) return items;
+    const needs = matchingRules.get(envelope.envelope_rule_id) || [];
+    if (needs.length !== 1 || seen.has(envelope.envelope_period_id)) return items;
+    const need = needs[0];
     seen.add(envelope.envelope_period_id);
     items.push({ envelope, need });
     return items;

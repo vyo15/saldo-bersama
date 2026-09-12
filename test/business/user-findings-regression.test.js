@@ -57,7 +57,10 @@ test("regression UI seluruh temuan penting tetap terpasang", () => {
   const reports = source("frontend/src/features/reports/ReportsPage.jsx");
   const shell = source("frontend/src/layouts/AppShell.jsx");
   const notifications = source("frontend/src/shared/workflows/financialNotifications.js");
-  const mobileAccounts = source("frontend/src/features/accounts/components/MobileAccountsExperience.jsx");
+  const mobileAccounts = [
+    source("frontend/src/features/accounts/components/MobileAccountsExperience.jsx"),
+    source("frontend/src/features/accounts/components/useMobileAccountStack.js"),
+  ].join("\n");
   const allocations = source("api/_lib/services/planning/envelopes.js");
   const attention = source("frontend/src/hooks/useDashboardAttentionState.js");
   const categories = source("frontend/src/features/categories/CategoriesPage.module.css");

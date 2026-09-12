@@ -7,6 +7,7 @@ import healthHandler from "../../api/health.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const source = (relative) => readFile(path.join(root, relative), "utf8");
+const bundleSource = (...relatives) => Promise.all(relatives.map(source)).then((parts) => parts.join("\n"));
 const exists = async (relative) => { try { await stat(path.join(root, relative)); return true; } catch { return false; } };
 
 const parseEnv = (text) => Object.fromEntries(text.split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("=")).map((line) => {
@@ -38,7 +39,7 @@ test("Apps Script hanya bridge Google, bukan database atau business logic", asyn
 test("database schema dan service menjaga integer, ownership, audit, idempotency, dan soft delete", async () => {
   const [sql, finance, security] = await Promise.all([
     source("database/migrations/001_initial_schema.sql"),
-    source("api/_lib/services/finance.js"),
+    bundleSource("api/_lib/services/finance.js", "api/_lib/services/finance/transactionValidation.js", "api/_lib/services/finance/transactionMutations.js", "api/_lib/services/finance/transactionQueries.js"),
     source("api/_lib/security.js"),
   ]);
   assert.match(sql, /amount INTEGER NOT NULL CHECK \(amount > 0\)/);
@@ -52,7 +53,7 @@ test("database schema dan service menjaga integer, ownership, audit, idempotency
 });
 
 test("Google Sheets adalah mirror satu arah dan tidak memuat secret/push material", async () => {
-  const [jobs, mirror] = await Promise.all([source("api/jobs.js"), source("apps-script/MirrorService.gs")]);
+  const [jobs, mirror] = await Promise.all([bundleSource("api/jobs.js", "api/_lib/jobs/integrationWorker.js"), source("apps-script/MirrorService.gs")]);
   assert.match(jobs, /Mirror read-only/);
   assert.match(jobs, /safeRows/);
   const mirrorSnapshotSource = jobs.slice(jobs.indexOf("const mirrorSnapshot"), jobs.indexOf("const calendarSnapshot"));
@@ -66,7 +67,7 @@ test("Google Sheets adalah mirror satu arah dan tidak memuat secret/push materia
 });
 
 test("Calendar hanya menyinkronkan recurring shared dan memakai stable entity ID", async () => {
-  const [jobs, calendar] = await Promise.all([source("api/jobs.js"), source("apps-script/CalendarService.gs")]);
+  const [jobs, calendar] = await Promise.all([bundleSource("api/jobs.js", "api/_lib/jobs/integrationWorker.js"), source("apps-script/CalendarService.gs")]);
   assert.match(jobs, /r\.scope='shared'/);
   assert.match(jobs, /entityId: item\.occurrence_id/);
   assert.match(calendar, /saldo_bersama_entity_id/);
@@ -78,7 +79,7 @@ test("Calendar hanya menyinkronkan recurring shared dan memakai stable entity ID
 
 test("Google bridge memakai deployment server-to-server dan scheduler nonce persisten", async () => {
   const [manifestText, jobs, schema] = await Promise.all([
-    source("apps-script/appsscript.json"), source("api/jobs.js"), source("database/migrations/001_initial_schema.sql"),
+    source("apps-script/appsscript.json"), bundleSource("api/jobs.js", "api/_lib/jobs/integrationWorker.js"), source("database/migrations/001_initial_schema.sql"),
   ]);
   const manifest = JSON.parse(manifestText);
   assert.equal(manifest.webapp.executeAs, "USER_DEPLOYING");
@@ -234,7 +235,7 @@ test("Web Push memakai secure context, status backend, lock-screen privacy, dan 
       "api/_lib/services/notifications/subscriptions.js",
       "api/_lib/services/notifications/actionable.js",
     ].map(source)).then((parts) => parts.join("\n")),
-    source("api/jobs.js"),
+    bundleSource("api/jobs.js", "api/_lib/jobs/pushWorker.js"),
     source("database/migrations/004_notification_deliveries.sql"),
     source("database/migrations/005_notification_preferences.sql"),
   ]);
@@ -268,8 +269,8 @@ test("Web Push memakai secure context, status backend, lock-screen privacy, dan 
 
 test("manual reminder menjaga delivery pending, lifecycle cancellation, dan integrity parity", async () => {
   const [reminders, budgets, envelopes, goals, recurring, integrity] = await Promise.all([
-    source("api/_lib/services/reminders.js"),
-    source("api/_lib/services/planning/budgets.js"),
+    bundleSource("api/_lib/services/reminders.js", "api/_lib/services/reminders/reminderEntity.js", "api/_lib/services/reminders/reminderState.js", "api/_lib/services/reminders/reminderCommands.js", "api/_lib/services/reminders/reminderQueue.js"),
+    bundleSource("api/_lib/services/planning/budgets.js", "api/_lib/services/planning/budgetShared.js", "api/_lib/services/planning/budgetQueries.js", "api/_lib/services/planning/budgetMutations.js", "api/_lib/services/planning/budgetLifecycle.js", "api/_lib/services/planning/budgetHistory.js"),
     Promise.all([
       "api/_lib/services/planning/envelopes.js",
       "api/_lib/services/planning/envelopeLifecycle.js",
@@ -315,7 +316,7 @@ test("dokumen arsitektur baru tersedia dan dokumen schema Sheets legacy sudah di
 test("runtime memakai satu Firebase public key dan tidak menduplikasi resource ID Google di Vercel", async () => {
   const [firebase, jobs, notifications, integrations, maintenance, environmentDoc] = await Promise.all([
     source("api/_lib/firebase.js"),
-    source("api/jobs.js"),
+    bundleSource("api/jobs.js", "api/_lib/jobs/integrationWorker.js", "api/_lib/jobs/pushWorker.js"),
     source("api/_lib/services/notifications/pushSecurity.js"),
     source("api/_lib/services/integrations.js"),
     Promise.all(["shared.js", "backup.js", "restore.js", "import.js", "integrity.js"].map((name) => source(`api/_lib/services/maintenance/${name}`))).then((parts) => parts.join("\n")),
@@ -508,21 +509,26 @@ test("frontend auth canonical tidak memuat Google GSI legacy", async () => {
   assert.doesNotMatch(mobileAuth, /SERVER_OAUTH_START_PATH|window\.location\.assign/);
 });
 
-test("responsive page memakai useMediaQuery canonical tanpa listener matchMedia duplikat", async () => {
-  const files = [
+test("responsive page memakai breakpoint canonical tanpa listener matchMedia duplikat", async () => {
+  const jsResponsiveFiles = [
     "frontend/src/features/transactions/TransactionsPage.jsx",
     "frontend/src/features/accounts/AccountsPage.jsx",
     "frontend/src/features/dashboard/DashboardPage.jsx",
-    "frontend/src/features/reports/ReportsPage.jsx",
     "frontend/src/features/accounts/components/DesktopAccountsWorkspace.jsx",
     "frontend/src/features/accounts/components/MobileAccountActivity.jsx",
     "frontend/src/features/auth/LoginPage.jsx",
   ];
-  for (const file of files) {
+  for (const file of jsResponsiveFiles) {
     const text = await source(file);
     assert.match(text, /useMediaQuery/);
     assert.doesNotMatch(text, /window\.matchMedia/);
   }
+  const [reportsPage, reportsStyles] = await Promise.all([
+    source("frontend/src/features/reports/ReportsPage.jsx"),
+    source("frontend/src/features/reports/ReportsPage.module.css"),
+  ]);
+  assert.doesNotMatch(reportsPage, /window\.matchMedia|useMediaQuery/);
+  assert.match(reportsStyles, /@media \(max-width: 820px\)/);
 });
 
 test("maintenance recovery settings memakai satu guarded hook", async () => {
@@ -545,15 +551,18 @@ test("maintenance recovery settings memakai satu guarded hook", async () => {
 
 test("service façade maintainability tetap satu arah tanpa child mengimpor façade induk", async () => {
   const boundaries = [
-    ["api/_lib/services/notifications.js", ["pushSecurity.js", "subscriptions.js", "delivery.js", "actionable.js"]],
-    ["api/_lib/services/masterData.js", ["accounts.js", "categories.js", "shared.js"]],
-    ["api/_lib/services/reporting/dashboard.js", ["alerts.js", "readModel.js"]],
+    { facade: "api/_lib/services/notifications.js", children: ["api/_lib/services/notifications/pushSecurity.js", "api/_lib/services/notifications/subscriptions.js", "api/_lib/services/notifications/delivery.js", "api/_lib/services/notifications/actionable.js"] },
+    { facade: "api/_lib/services/masterData.js", children: ["api/_lib/services/masterData/accounts.js", "api/_lib/services/masterData/categories.js", "api/_lib/services/masterData/shared.js"] },
+    { facade: "api/_lib/services/reporting/dashboard.js", children: ["api/_lib/services/reporting/dashboard/alerts.js", "api/_lib/services/reporting/dashboard/readModel.js"] },
+    { facade: "api/_lib/services/finance.js", children: ["api/_lib/services/finance/transactionValidation.js", "api/_lib/services/finance/transactionMutations.js", "api/_lib/services/finance/transactionQueries.js"] },
+    { facade: "api/_lib/services/investments.js", children: ["api/_lib/services/investments/investmentState.js", "api/_lib/services/investments/investmentQueries.js", "api/_lib/services/investments/investmentSetup.js", "api/_lib/services/investments/investmentTrading.js", "api/_lib/services/investments/investmentCorrections.js"] },
+    { facade: "api/_lib/services/reminders.js", children: ["api/_lib/services/reminders/reminderEntity.js", "api/_lib/services/reminders/reminderState.js", "api/_lib/services/reminders/reminderCommands.js", "api/_lib/services/reminders/reminderQueue.js"] },
+    { facade: "api/_lib/services/planning/budgets.js", children: ["api/_lib/services/planning/budgetShared.js", "api/_lib/services/planning/budgetQueries.js", "api/_lib/services/planning/budgetMutations.js", "api/_lib/services/planning/budgetLifecycle.js", "api/_lib/services/planning/budgetHistory.js"] },
   ];
-  for (const [facade, children] of boundaries) {
-    const directory = path.dirname(facade);
+  for (const { facade, children } of boundaries) {
     const facadeName = path.basename(facade);
     for (const child of children) {
-      const childSource = await source(`${directory}/${path.basename(facade, ".js")}/${child}`);
+      const childSource = await source(child);
       assert.doesNotMatch(childSource, new RegExp(`from ["'][^"']*${facadeName.replace(".", "\\.")}["']`), `${child} tidak boleh mengimpor façade ${facadeName}`);
     }
   }

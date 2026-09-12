@@ -77,8 +77,10 @@
 
 ## 9. Full gate dan artifact
 
+- [ ] `npm run lint` PASS pada tree final; jika sempat gagal, error source sudah diperbaiki dan lint diulang sampai PASS.
+- [ ] Targeted regression sesuai area perubahan PASS sebelum full gate.
 - [ ] `npm run verify` PASS pada tree final yang sama dengan artifact/delivery.
-- [ ] `npm run lint`, test/build diagnosis tambahan dijalankan bila full gate menunjukkan area spesifik.
+- [ ] Tidak ada known lint/test/build failure yang diteruskan ke patch/ZIP final; edit setelah PASS memicu validation ulang.
 - [ ] `npm run clean` dry-run tidak menyentuh path protected.
 - [ ] Clean source dibuat dengan `npm run zip`; bila verification gagal, command exit non-zero dan **tidak membuat archive baru**.
 - [ ] ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, dist/build, coverage, cache, database/export privat, patch/diff, atau secret.

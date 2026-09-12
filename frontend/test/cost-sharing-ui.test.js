@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { readDesktopDashboardSource } from "./sourceBundles.js";
 
 const read = (path) => readFile(new URL(`../src/${path}`, import.meta.url), "utf8");
 
@@ -26,7 +27,7 @@ test("rekening dan beranda menjelaskan transparansi keluarga serta pencatat", as
     read("features/accounts/components/AccountFinancialCard.jsx"),
     read("features/dashboard/DashboardPage.jsx"),
     read("features/dashboard/components/MobileFinanceDashboard.jsx"),
-    read("features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
   ]);
   assert.match(accountDialogs, /Pemegang rekening/);
   assert.match(accountDialogs, /seluruh anggota tetap dapat melihatnya/);

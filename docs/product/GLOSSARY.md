@@ -9,15 +9,15 @@
 | Rekening | Wadah saldo dengan saldo awal dan transaksi; dapat `shared` atau `personal`. Kedua jenis tetap terlihat penuh oleh dua anggota keluarga terotorisasi. |
 | Rekening personal | Rekening yang secara operasional dipegang satu anggota keluarga. Istilah `personal` tidak berarti privat/tersembunyi; pasangan tetap dapat membaca saldo dan histori sesuai prinsip full transparency. |
 | Rekening bersama | Rekening keluarga tanpa satu pemegang personal. Capability operasi tetap ditentukan backend sesuai role. |
-| Saldo rekening | Jumlah saldo cash rekening readable non-investasi. Ini angka utama Beranda dan berbeda dari Saldo RDN/Total investasi. |
-| Saldo RDN | Saldo cash pada rekening canonical `account_type=investment`. Saldo RDN adalah dana investasi, tidak masuk Aman digunakan atau dana belum dialokasikan, dan ordinary ledger hanya memindahkannya melalui Transfer. |
+| Saldo rekening | Jumlah saldo cash rekening readable non-investasi. Pada Beranda nilainya menjadi konteks sekunder karena tidak seluruh saldo bebas dipakai; berbeda dari Saldo RDN/Total investasi. |
+| Saldo RDN | Saldo cash pada rekening canonical `account_type=investment`. Saldo RDN adalah dana investasi, tidak masuk Dana Tersedia Beranda atau dana belum dialokasikan, dan ordinary ledger hanya memindahkannya melalui Transfer. |
 | Nilai aset | Nilai tercatat holding investasi pada harga terakhir yang diketahui dari read-model Investasi. |
 | Total investasi tercatat | Nilai aset + Saldo RDN dari `investments.overview`; bukan saldo operasional Beranda. |
-| Aman digunakan | Dana operasional non-investasi yang dapat dipakai actor setelah proteksi, Alokasi Dana, dan komitmen Jadwal Rutin operasional. |
+| Dana Tersedia Beranda | Label user-facing untuk read-model `safeToSpend`: dana operasional non-investasi yang masih dapat dipakai actor setelah proteksi, Alokasi Dana, dan komitmen Jadwal Rutin operasional yang belum tercakup Alokasi. Jadwal yang sudah ditautkan ke Kebutuhan dalam Alokasi tidak dikurangi kedua kali. Ini angka utama Beranda. |
 | Total kekayaan tercatat | Snapshot saat ini: Saldo rekening + Total investasi tercatat. Tidak dipakai sebagai historical market-value tanpa histori valuasi authoritative. |
 | Saldo seluruh rekening | Saldo cash seluruh rekening readable termasuk RDN; dipakai untuk tren ledger/report yang secara eksplisit berlabel seluruh rekening. |
 | Saldo | Saldo fisik rekening: saldo awal ditambah dampak seluruh transaksi aktif hingga cutoff. Alokasi tidak membuat saldo baru. |
-| Dana tersedia | Saldo fisik rekening dikurangi seluruh sisa Alokasi Dana aktif yang bersumber dari rekening tersebut. Ini adalah dana yang masih bebas dipakai untuk transaksi tanpa Alokasi Dana atau Transfer. |
+| Dana tersedia rekening | `available_balance`: saldo fisik satu rekening dikurangi seluruh sisa Alokasi Dana aktif yang bersumber dari rekening tersebut. Ini dipakai untuk funding Alokasi/Kebutuhan dan berbeda dari Dana Tersedia Beranda yang juga memperhitungkan proteksi serta komitmen rutin di luar Alokasi. |
 | Dialokasikan | Total sisa Alokasi Dana aktif yang masih terikat pada rekening sumber. Nilai ini merupakan bagian dari Saldo, bukan tambahan di atas Saldo. |
 | Pemasukan | Transaksi `income` yang menambah rekening tujuan. |
 | Pengeluaran | Transaksi `expense` yang mengurangi rekening sumber. |

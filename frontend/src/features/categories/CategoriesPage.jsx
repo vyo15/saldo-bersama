@@ -4,36 +4,28 @@ import { useLocation, useNavigate } from "react-router";
 import { FiArchive, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
-import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
-import Modal from "../../components/common/Modal.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
-import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
-import { MoneyInIcon, MoneyOutIcon, RefundIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { MoneyInIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
-import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import {
-  CATEGORY_ICON_GROUPS,
-  CATEGORY_ICON_OPTIONS,
   DEFAULT_CATEGORY_ICON_BY_TYPE,
   categoryIcon,
   categoryIconKey,
-  categoryIconOption,
 } from "../../shared/presentation/transaction.js";
 import { archiveCategory, createCategory as requestCreateCategory, deleteUnusedCategory, previewCategoryArchive, requestCategoryCreation, updateCategory as requestUpdateCategory } from "./categories.api.js";
-import {
-  CATEGORY_TYPE_OPTIONS,
-  categoryTypeLabel,
-} from "../../shared/presentation/category.js";
+import { categoryTypeLabel } from "../../shared/presentation/category.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
+import { ArchiveCategoryModal, CreateCategoryModal, EditCategoryModal } from "./CategoryDialogs.jsx";
+import { categoryIconToneClass } from "./categoryUi.js";
 import styles from "./CategoriesPage.module.css";
 
 const emptyCategoryForm = () => ({
@@ -41,10 +33,6 @@ const emptyCategoryForm = () => ({
   transaction_type: "expense",
   icon: DEFAULT_CATEGORY_ICON_BY_TYPE.expense,
 });
-
-const categoryIconToneClass = (type) => type === "income"
-  ? styles.categoryIconIncome
-  : type === "refund" ? styles.categoryIconRefund : styles.categoryIconExpense;
 
 const CATEGORY_SECTION_ORDER = Object.freeze(["expense", "income", "refund"]);
 const CATEGORY_SECTION_META = Object.freeze({
@@ -54,87 +42,6 @@ const CATEGORY_SECTION_META = Object.freeze({
 });
 
 const categoryStatusLabel = (status) => status === "active" ? "Aktif" : status === "archived" ? "Arsip" : String(status || "Tidak diketahui").replaceAll("_", " ");
-
-const CategoryIconPicker = ({ value, onChange, transactionType, name }) => {
-  const [query, setQuery] = useState("");
-  const [group, setGroup] = useState("all");
-  const selected = categoryIconOption(value, transactionType);
-  const SelectedIcon = selected.icon;
-  const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
-  const options = CATEGORY_ICON_OPTIONS.filter((option) => {
-    const matchesGroup = group === "all" || option.group === group;
-    const matchesQuery = !normalizedQuery
-      || `${option.label} ${option.terms}`.toLocaleLowerCase("id-ID").includes(normalizedQuery);
-    return matchesGroup && matchesQuery;
-  });
-
-  return (
-    <section className={`form-grid__full ${styles.iconPicker}`} aria-labelledby="category-icon-picker-title">
-      <div className={styles.iconPickerHeading}>
-        <div>
-          <h3 id="category-icon-picker-title">Pilih ikon kategori</h3>
-        </div>
-        <span className={styles.selectedIconBadge}><SelectedIcon aria-hidden="true" /><span>{selected.label}</span></span>
-      </div>
-
-      <div className={styles.iconPickerToolbar}>
-        <label className={styles.iconSearch}>
-          <FiSearch aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari ikon: nikah, rumah, tagihan..."
-          />
-          <span className="sr-only">Cari ikon kategori</span>
-        </label>
-        <div className={styles.iconGroups} aria-label="Kelompok ikon">
-          {CATEGORY_ICON_GROUPS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`${styles.iconGroupButton}${group === item.id ? ` ${styles.isActive}` : ""}`}
-              aria-pressed={group === item.id}
-              onClick={() => setGroup(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.iconGrid} role="radiogroup" aria-label="Pilihan ikon kategori">
-        {options.length ? options.map((option) => {
-          const Icon = option.icon;
-          const checked = option.key === selected.key;
-          return (
-            <button
-              key={option.key}
-              type="button"
-              role="radio"
-              aria-checked={checked}
-              className={`${styles.iconOption}${checked ? ` ${styles.isSelected}` : ""}`}
-              onClick={() => onChange(option.key)}
-              title={option.label}
-            >
-              <Icon aria-hidden="true" />
-              <span>{option.label}</span>
-            </button>
-          );
-        }) : <div className={styles.iconEmpty}>Ikon tidak ditemukan. Coba kata “nikah”, “rumah”, atau “tagihan”.</div>}
-      </div>
-
-      <div className={styles.categoryPreview} aria-label="Pratinjau kategori">
-        <span className={`${styles.categoryIcon} ${categoryIconToneClass(transactionType)}`}><SelectedIcon aria-hidden="true" /></span>
-        <span className={styles.categoryPreviewCopy}>
-          <strong>{name.trim() || "Nama kategori"}</strong>
-          <small>{categoryTypeLabel(transactionType)}</small>
-        </span>
-        <span className={styles.previewLabel}>Pratinjau</span>
-      </div>
-    </section>
-  );
-};
 
 const CategoryToolbar = ({ searchQuery, setSearchQuery, statusFilter, setStatusFilter, ownerMode }) => <div className={styles.categoryToolbar}><label className={styles.categorySearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari kategori</span><input className="search-field" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari kategori" /></label><SelectionField className={styles.categoryStatusFilter} label="Filter status kategori" hideLabel compact value={statusFilter} onChange={setStatusFilter} options={[{ value: "all", label: "Semua status" }, { value: "active", label: "Aktif" }, ...(ownerMode ? [{ value: "archived", label: "Arsip" }] : [])]} /></div>;
 
@@ -246,28 +153,6 @@ const useCategoryMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, se
     };
   }, [activeMenuRef, menuTriggerRefs, openMenuId, setOpenMenuId]);
 };
-
-const CATEGORY_TYPE_ICONS = Object.freeze({ expense: MoneyOutIcon, income: MoneyInIcon, refund: RefundIcon });
-const CategoryTypeField = ({ form, setForm }) => <VisualChoiceGroup className="form-grid__full" legend="Dipakai untuk transaksi" name="category-transaction-type" value={form.transaction_type} onChange={(nextType) => { setForm((current) => ({ ...current, transaction_type: nextType, icon: current.icon === DEFAULT_CATEGORY_ICON_BY_TYPE[current.transaction_type] ? DEFAULT_CATEGORY_ICON_BY_TYPE[nextType] : current.icon })); }} options={CATEGORY_TYPE_OPTIONS.map((item) => ({ ...item, icon: CATEGORY_TYPE_ICONS[item.value] || RefundIcon, tone: item.value }))} columns={3} mobileColumns={3} denseTiles plainIcons />;
-
-const CreateCategoryModal = ({ open, close, form, setForm, createCategory, dialogState, requestMode }) => {
-  const submitting = dialogState.status === "submitting";
-  const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: submitting });
-  return <>
-    <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="kategori baru" dismissible={!submitting} title={requestMode ? "Ajukan kategori" : "Tambah kategori"} description={requestMode ? "Kategori baru dapat dipakai setelah Administrator menyetujui pengajuan." : undefined} size="lg" footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-category-form" loading={submitting}>{requestMode ? "Kirim pengajuan" : "Simpan kategori"}</Button></>}><form id="create-category-form" className="form-grid" onSubmit={createCategory}><label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" placeholder="Contoh: Cicilan rumah" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label><CategoryTypeField form={form} setForm={setForm} /><CategoryIconPicker value={form.icon} onChange={(icon) => setForm((current) => ({ ...current, icon }))} transactionType={form.transaction_type} name={form.name} />{dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}</form></Modal>
-  </>;
-};
-
-const EditCategoryModal = ({ editCategory, setEditCategory, saveCategory, dialogState }) => {
-  const submitting = dialogState.status === "submitting";
-  const close = () => setEditCategory(null);
-  const guard = useUnsavedChangesGuard({ open: Boolean(editCategory), value: editCategory, onClose: close, blocked: submitting });
-  return <>
-    <Modal open={Boolean(editCategory)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan kategori" dismissible={!submitting} title="Edit kategori" size="lg" footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="edit-category-form" loading={submitting}>Simpan perubahan</Button></>}><form id="edit-category-form" className="form-grid" onSubmit={saveCategory}><label className="field form-grid__full"><span>Nama kategori *</span><input required maxLength="80" value={editCategory?.name || ""} onChange={(event) => setEditCategory((current) => ({ ...current, name: event.target.value }))} /></label>{editCategory ? <CategoryIconPicker value={editCategory.icon} onChange={(icon) => setEditCategory((current) => ({ ...current, icon }))} transactionType={editCategory.transaction_type} name={editCategory.name} /> : null}{dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}</form></Modal>
-  </>;
-};
-
-const ArchiveCategoryModal = ({ archiveTarget, dialogState, setArchiveTarget, applyCategoryLifecycle }) => <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus kategori yang belum dipakai?" : "Arsipkan kategori?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.category.name} belum pernah digunakan dan dapat dihapus permanen.` : `${archiveTarget.category.name} pernah digunakan atau masih memiliki dependency. Riwayat lama tetap disimpan dan kategori hanya diarsipkan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : archiveTarget ? `Arsipkan ${archiveTarget.category.name}` : "Arsipkan kategori"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason busy={dialogState.status === "submitting"} error={dialogState.error} onCancel={() => dialogState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyCategoryLifecycle}>{archiveTarget ? <dl className={styles.impactSummary}><div><dt>Transaksi</dt><dd>{archiveTarget.preview.dependencies.transactions}</dd></div><div><dt>Tagihan rutin</dt><dd>{archiveTarget.preview.dependencies.recurring}</dd></div><div><dt>Kebutuhan</dt><dd>{archiveTarget.preview.dependencies.budgets}</dd></div></dl> : null}</ConfirmationModal>;
 
 const groupCategories = (items) => items.reduce((groups, category) => {
   const key = category.transaction_type || "other";

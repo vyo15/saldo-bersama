@@ -72,7 +72,7 @@ const fileNameFromDisposition = (value, fallback) => {
   return match ? decodeURIComponent(match[1].replace(/^"|"$/g, "")) : fallback;
 };
 
-export const downloadExcel = async () => {
+const downloadExport = async (body, fallbackName) => {
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     throw new ApiError("Export membutuhkan koneksi internet.", { code: "OFFLINE", status: 503 });
   }
@@ -82,7 +82,7 @@ export const downloadExcel = async () => {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-Request-ID": createSecureRandomId() },
-      body: "{}",
+      body: JSON.stringify(body || {}),
     });
     publishNetworkHealth("online");
   } catch (error) {
@@ -91,7 +91,7 @@ export const downloadExcel = async () => {
   }
   if (!response.ok) return parseResponse(response);
   const blob = await response.blob();
-  const fileName = fileNameFromDisposition(response.headers.get("content-disposition"), "saldo-bersama.xlsx");
+  const fileName = fileNameFromDisposition(response.headers.get("content-disposition"), fallbackName);
   const url = URL.createObjectURL(blob);
   try {
     const anchor = document.createElement("a");
@@ -106,3 +106,13 @@ export const downloadExcel = async () => {
   }
   return { downloaded: true, fileName, size: blob.size };
 };
+
+export const downloadExcel = async () => downloadExport({}, "saldo-bersama.xlsx");
+
+export const downloadReport = async ({ period, trendMonths = 6, allocationRuleId = "", format }) => downloadExport({
+  kind: "report",
+  period,
+  trend_months: trendMonths,
+  allocation_rule_id: allocationRuleId,
+  format,
+}, `Saldo-Bersama_Laporan.${format === "pdf" ? "pdf" : "xlsx"}`);

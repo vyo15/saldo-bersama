@@ -22,6 +22,7 @@ const investmentAssetCentricMigrationUrl = new URL("015_investment_asset_centric
 const globalSyncRevisionMigrationUrl = new URL("016_global_sync_revisions.sql", migrationDirectory);
 const budgetLifecycleHistoryMigrationUrl = new URL("017_budget_lifecycle_history.sql", migrationDirectory);
 const envelopeDecorationMigrationUrl = new URL("018_envelope_decoration.sql", migrationDirectory);
+const budgetRecordingModeMigrationUrl = new URL("019_budget_recording_mode.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -111,9 +112,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v20 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v21 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "20");
+  assert.equal(result.schema_version, "21");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -443,4 +444,15 @@ test("migration v20 menambah pemanis Alokasi Dana secara additive tanpa mengubah
   assert.match(sql, /DEFAULT 'auto'/);
   assert.match(sql, /value='20'/);
   assert.doesNotMatch(sql, /UPDATE envelope_periods|UPDATE transactions|UPDATE accounts/);
+});
+
+test("migration v21 menyimpan pola Kebutuhan secara additive dan membackfill jadwal lama", async () => {
+  const sql = await readFile(budgetRecordingModeMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE budgets[\s\S]*ADD COLUMN recording_mode/);
+  assert.match(sql, /ALTER TABLE budget_history[\s\S]*ADD COLUMN recording_mode/);
+  assert.match(sql, /recording_mode IN \('flexible','fixed_once','recurring'\)/);
+  assert.match(sql, /UPDATE budgets[\s\S]*SET recording_mode='recurring'[\s\S]*recurring_rules/);
+  assert.match(sql, /idx_budgets_need_identity/);
+  assert.match(sql, /value='21'/);
+  assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN/i);
 });

@@ -83,11 +83,12 @@ test("batch Kebutuhan membuat beberapa budget dan jadwal dalam satu mutation ide
     const payload = {
       ...basePayload("batch-rule"),
       items: [
-        { category_id: "batch-food", amount: 900_000, recording_mode: "flexible" },
+        { name: "Belanja bulanan", category_id: "batch-food", amount: 900_000, recording_mode: "flexible" },
         {
+          name: "Listrik rumah",
           category_id: "batch-electric",
           amount: 350_000,
-          recording_mode: "scheduled",
+          recording_mode: "recurring",
           schedule_frequency: "monthly",
           schedule_due_day: 20,
           schedule_start_date: todayJakarta(),
@@ -109,23 +110,82 @@ test("batch Kebutuhan membuat beberapa budget dan jadwal dalam satu mutation ide
   }
 });
 
-test("batch Kebutuhan menolak kategori duplikat tanpa menulis sebagian data", async () => {
+test("batch Kebutuhan mengizinkan kategori sama selama nama kebutuhan berbeda", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
     await insertEnvelope(db, { ruleId: "batch-duplicate-rule", sourceAccountId: "batch-shared-account" });
+    const result = await dispatch(db, {
+      ...basePayload("batch-duplicate-rule"),
+      items: [
+        { name: "Arisan PT", category_id: "batch-food", amount: 100_000, recording_mode: "fixed_once" },
+        { name: "Arisan Sekolah", category_id: "batch-food", amount: 200_000, recording_mode: "fixed_once" },
+      ],
+    });
+    assert.equal(result.count, 2);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM budgets WHERE envelope_rule_id='batch-duplicate-rule'")).count), 2);
+    assert.equal(Number((await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id='batch-duplicate-rule'")).allocated_amount), 300_000);
+    const modes = await db.all("SELECT name,recording_mode FROM budgets WHERE envelope_rule_id='batch-duplicate-rule' ORDER BY name");
+    assert.deepEqual(modes.map((item) => [item.name, item.recording_mode]), [["Arisan PT", "fixed_once"], ["Arisan Sekolah", "fixed_once"]]);
+  } finally {
+    db.close();
+  }
+});
+
+test("batch Kebutuhan menolak nama kebutuhan duplikat secara atomik", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await insertEnvelope(db, { ruleId: "batch-duplicate-name-rule", sourceAccountId: "batch-shared-account" });
     await assert.rejects(
       dispatch(db, {
-        ...basePayload("batch-duplicate-rule"),
+        ...basePayload("batch-duplicate-name-rule"),
         items: [
-          { category_id: "batch-food", amount: 100_000, recording_mode: "flexible" },
-          { category_id: "batch-food", amount: 200_000, recording_mode: "flexible" },
+          { name: "Arisan PT", category_id: "batch-food", amount: 100_000, recording_mode: "fixed_once" },
+          { name: " arisan pt ", category_id: "batch-electric", amount: 200_000, recording_mode: "fixed_once" },
         ],
       }),
-      (error) => error?.code === "BUDGET_BATCH_DUPLICATE_CATEGORY" && error?.status === 409,
+      (error) => error?.code === "BUDGET_BATCH_DUPLICATE_NAME" && error?.status === 409,
     );
-    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM budgets WHERE envelope_rule_id='batch-duplicate-rule'")).count), 0);
-    assert.equal(Number((await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id='batch-duplicate-rule'")).allocated_amount), 0);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM budgets WHERE envelope_rule_id='batch-duplicate-name-rule'")).count), 0);
+    assert.equal(Number((await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id='batch-duplicate-name-rule'")).allocated_amount), 0);
+  } finally {
+    db.close();
+  }
+});
+
+test("edit Kebutuhan menolak rename ke nama saudara yang sudah dipakai", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    await insertEnvelope(db, { ruleId: "batch-rename-rule", sourceAccountId: "batch-shared-account" });
+    await dispatch(db, {
+      ...basePayload("batch-rename-rule"),
+      items: [
+        { name: "Arisan PT", category_id: "batch-food", amount: 100_000, recording_mode: "fixed_once" },
+        { name: "Arisan Sekolah", category_id: "batch-food", amount: 200_000, recording_mode: "fixed_once" },
+      ],
+    });
+    const target = await db.one("SELECT * FROM budgets WHERE envelope_rule_id='batch-rename-rule' AND name='Arisan Sekolah'");
+    await assert.rejects(
+      dispatchNamed(db, "budgets.upsert", {
+        budget_id: target.budget_id,
+        period_key: target.period_key,
+        category_id: target.category_id,
+        envelope_rule_id: target.envelope_rule_id,
+        name: " arisan pt ",
+        amount: target.amount,
+        warning_threshold: target.warning_threshold,
+        recording_mode: target.recording_mode,
+        scope: target.scope,
+        owner_user_id: target.owner_user_id,
+        row_version: target.row_version,
+      }),
+      (error) => error?.code === "BUDGET_ALREADY_EXISTS" && error?.status === 409,
+    );
+    const unchanged = await db.one("SELECT name,row_version FROM budgets WHERE budget_id=?", [target.budget_id]);
+    assert.equal(unchanged.name, "Arisan Sekolah");
+    assert.equal(Number(unchanged.row_version), Number(target.row_version));
   } finally {
     db.close();
   }
@@ -140,11 +200,12 @@ test("batch Kebutuhan rollback seluruh write bila jadwal tidak konsisten dengan 
       dispatch(db, {
         ...basePayload("batch-rollback-rule"),
         items: [
-          { category_id: "batch-food", amount: 100_000, recording_mode: "flexible" },
+          { name: "Belanja mingguan", category_id: "batch-food", amount: 100_000, recording_mode: "flexible" },
           {
+            name: "Internet rumah",
             category_id: "batch-internet",
             amount: 200_000,
-            recording_mode: "scheduled",
+            recording_mode: "recurring",
             schedule_frequency: "monthly",
             schedule_due_day: 10,
             schedule_start_date: todayJakarta(),
@@ -173,8 +234,8 @@ test("batch Kebutuhan menjelaskan kekurangan dana dan rollback tanpa partial wri
       dispatch(db, {
         ...basePayload("batch-insufficient-rule"),
         items: [
-          { category_id: "batch-food", amount: 200_000, recording_mode: "flexible" },
-          { category_id: "batch-internet", amount: 250_000, recording_mode: "flexible" },
+          { name: "Belanja bulanan", category_id: "batch-food", amount: 200_000, recording_mode: "flexible" },
+          { name: "Internet rumah", category_id: "batch-internet", amount: 250_000, recording_mode: "flexible" },
         ],
       }),
       (error) => error?.code === "BUDGET_FUNDING_INSUFFICIENT"
@@ -190,6 +251,49 @@ test("batch Kebutuhan menjelaskan kekurangan dana dan rollback tanpa partial wri
 });
 
 
+test("transaksi kategori sama tidak terhitung ganda dan budget_id eksplisit hanya memakai kebutuhan tujuan", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    await insertEnvelope(db, { ruleId: "batch-ambiguous-rule", sourceAccountId: "batch-shared-account" });
+    const created = await dispatch(db, {
+      ...basePayload("batch-ambiguous-rule"),
+      items: [
+        { name: "Arisan PT", category_id: "batch-food", amount: 500_000, recording_mode: "fixed_once" },
+        { name: "Arisan Sekolah", category_id: "batch-food", amount: 300_000, recording_mode: "fixed_once" },
+      ],
+    });
+    const budgets = await db.all("SELECT budget_id,name FROM budgets WHERE envelope_rule_id='batch-ambiguous-rule' ORDER BY name");
+    const arisanPt = budgets.find((item) => item.name === "Arisan PT");
+    assert.ok(arisanPt);
+
+    await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+      "tx-ambiguous-unlinked", todayJakarta(), "expense", "batch-shared-account", null, "batch-food", "period-batch-ambiguous-rule", null, null, 75_000,
+      "Transaksi kategori umum", "", "", "transfer", "shared", null, "active", 1, "tx-ambiguous-unlinked-key", owner.user_id, now, owner.user_id, now, null, null, "",
+    ]);
+
+    const afterUnlinked = await dispatchNamed(db, "budgets.list", { period_key: period });
+    const ambiguousNeeds = afterUnlinked.items.filter((item) => item.envelope_rule_id === "batch-ambiguous-rule");
+    assert.equal(ambiguousNeeds.length, 2);
+    assert.ok(ambiguousNeeds.every((item) => Number(item.used_amount || 0) === 0));
+
+    await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,budget_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+      "tx-ambiguous-linked", todayJakarta(), "expense", "batch-shared-account", null, "batch-food", "period-batch-ambiguous-rule", null, null, arisanPt.budget_id, 125_000,
+      "Bayar Arisan PT", "", "", "transfer", "shared", null, "active", 1, "tx-ambiguous-linked-key", owner.user_id, now, owner.user_id, now, null, null, "",
+    ]);
+
+    const afterLinked = await dispatchNamed(db, "budgets.list", { period_key: period });
+    const byName = new Map(afterLinked.items.filter((item) => item.envelope_rule_id === "batch-ambiguous-rule").map((item) => [item.name, item]));
+    assert.equal(Number(byName.get("Arisan PT")?.used_amount || 0), 125_000);
+    assert.equal(Number(byName.get("Arisan Sekolah")?.used_amount || 0), 0);
+    assert.equal(created.count, 2);
+  } finally {
+    db.close();
+  }
+});
+
 test("edit, arsip, pulihkan, dan hapus Kebutuhan menyesuaikan dana Alokasi otomatis", async () => {
   const db = await createSqliteTestDatabase();
   try {
@@ -200,6 +304,7 @@ test("edit, arsip, pulihkan, dan hapus Kebutuhan menyesuaikan dana Alokasi otoma
       envelope_rule_id: "budget-lifecycle-rule",
       envelope_period_id: "period-budget-lifecycle-rule",
       category_id: "batch-food",
+      name: "Belanja rumah",
       scope: "shared",
       owner_user_id: null,
       warning_threshold: 80,
@@ -256,6 +361,7 @@ test("Kebutuhan yang sudah terpakai hanya mengembalikan sisa aman saat diarsipka
       envelope_rule_id: "budget-used-rule",
       envelope_period_id: "period-budget-used-rule",
       category_id: "batch-food",
+      name: "Belanja rumah",
       scope: "shared",
       owner_user_id: null,
       warning_threshold: 80,

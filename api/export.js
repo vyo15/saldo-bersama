@@ -1,13 +1,36 @@
 import { getDatabase } from "./_lib/db/httpClient.js";
 import { assertDatabaseReady, DATABASE_SCHEMA_VERSION } from "./_lib/db/schema.js";
 import { createXlsx } from "./_lib/export/xlsx.js";
-import { methodNotAllowed, fail } from "./_lib/http.js";
+import { createReportPdf } from "./_lib/export/pdf.js";
+import { reportWorkbookSheets } from "./_lib/export/report.js";
+import { methodNotAllowed, fail, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
 import { assertAllowedOrigin, enforceBestEffortRateLimit, identityRateLimitKey } from "./_lib/security.js";
 import { enforceDistributedRateLimit } from "./_lib/rateLimit.js";
 import { resolveRegisteredSession } from "./_lib/sessionRegistry.js";
 import { resolveActor } from "./_lib/services/users.js";
 import { nowIso, todayJakarta } from "./_lib/services/core.js";
+import { monthlyReport } from "./_lib/services/reporting/dashboard.js";
+
+
+const reportPeriodLabel = (period) => {
+  const [year, month] = String(period || "").split("-").map(Number);
+  if (!year || !month) return String(period || "");
+  return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date(Date.UTC(year, month - 1, 1)));
+};
+
+const fileSafe = (value) => String(value || "laporan").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "laporan";
+
+const reportExport = async (db, actor, body) => {
+  const format = body?.format === "pdf" ? "pdf" : body?.format === "xlsx" ? "xlsx" : "";
+  if (!format) throw Object.assign(new Error("Format laporan harus PDF atau Excel."), { status: 400, code: "INVALID_REPORT_FORMAT" });
+  const payload = { period: body?.period, trend_months: body?.trend_months || 6, allocation_rule_id: body?.allocation_rule_id || "" };
+  const report = await monthlyReport(db, { actor, payload });
+  const meta = { periodLabel: reportPeriodLabel(payload.period), scopeLabel: report.reportScope?.label || "Semua Alokasi" };
+  const base = `Saldo-Bersama_Laporan_${fileSafe(meta.scopeLabel)}_${fileSafe(payload.period)}`;
+  if (format === "pdf") return { buffer: createReportPdf(report, meta), fileName: `${base}.pdf`, contentType: "application/pdf" };
+  return { buffer: createXlsx(reportWorkbookSheets(report, meta)), fileName: `${base}.xlsx`, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+};
 
 const exportData = async (db) => {
   const [accounts, categories, transactions, budgets, envelopes, recurring, goals, reconciliations, audit] = await Promise.all([
@@ -34,29 +57,36 @@ export default async function handler(request, response) {
   if (request.method !== "POST") return methodNotAllowed(response, ["POST"]);
   try {
     assertAllowedOrigin(request);
+    const body = await readJsonBody(request, 50_000);
     const db = getDatabase();
     await assertDatabaseReady(db);
     const session = await resolveRegisteredSession(db, request);
     if (!session) return fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir.", { requestId });
-    if (session.role !== "owner") return fail(response, 403, "OWNER_ONLY", "Export lengkap hanya dapat dilakukan Administrator.", { requestId });
     const rateLimitKey = identityRateLimitKey("export", session.uid);
     enforceBestEffortRateLimit(rateLimitKey, { limit: 5, windowMs: 60_000 });
     await enforceDistributedRateLimit(db, rateLimitKey, { limit: 5, windowMs: 60_000 });
-    await resolveActor(db, session);
-    const data = typeof db.readTransaction === "function" ? await db.readTransaction(exportData) : await exportData(db);
-    const workbook = createXlsx(data);
-    const fileName = `saldo-bersama-${todayJakarta()}-${new Date().toISOString().slice(11,19).replace(/:/g, "")}.xlsx`;
+    const actor = await resolveActor(db, session);
+    let buffer; let fileName; let contentType;
+    if (body?.kind === "report") {
+      ({ buffer, fileName, contentType } = await reportExport(db, actor, body));
+    } else {
+      if (session.role !== "owner") return fail(response, 403, "OWNER_ONLY", "Export lengkap hanya dapat dilakukan Administrator.", { requestId });
+      const data = typeof db.readTransaction === "function" ? await db.readTransaction(exportData) : await exportData(db);
+      buffer = createXlsx(data);
+      fileName = `saldo-bersama-${todayJakarta()}-${new Date().toISOString().slice(11,19).replace(/:/g, "")}.xlsx`;
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    }
     response.statusCode = 200;
-    response.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    response.setHeader("Content-Type", contentType);
     response.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
     response.setHeader("Cache-Control", "private, no-store");
-    response.setHeader("Content-Length", String(workbook.length));
-    logEvent("info", "export.request.completed", { requestId, status: 200, bytes: workbook.length, durationMs: Date.now() - startedAt });
-    return response.end(workbook);
+    response.setHeader("Content-Length", String(buffer.length));
+    logEvent("info", "export.request.completed", { requestId, status: 200, bytes: buffer.length, kind: body?.kind === "report" ? "report" : "full", durationMs: Date.now() - startedAt });
+    return response.end(buffer);
   } catch (error) {
     const status = error.status || 500;
     const headers = status === 429 && error.retryAfterSeconds ? { "Retry-After": String(error.retryAfterSeconds) } : {};
     logEvent(status >= 500 ? "error" : "warn", "export.request.failed", { requestId, status, code: error.code || "EXPORT_ERROR", durationMs: Date.now() - startedAt, error: sanitizeError(error) });
-    return fail(response, status, error.code || "EXPORT_ERROR", status < 500 ? error.message : "Export Excel gagal.", { requestId }, headers);
+    return fail(response, status, error.code || "EXPORT_ERROR", status < 500 ? error.message : "Export laporan gagal.", { requestId }, headers);
   }
 }

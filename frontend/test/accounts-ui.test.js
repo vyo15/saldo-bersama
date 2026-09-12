@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile, stat } from "node:fs/promises";
 import test from "node:test";
+import { readDesktopDashboardSource, readMobileAccountStackSource } from "./sourceBundles.js";
 import * as featherIcons from "react-icons/fi";
 import {
   accountCardOwnershipLabel,
@@ -134,10 +135,11 @@ test("arah transaksi rekening konsisten untuk desktop dan mobile", () => {
 });
 
 test("halaman rekening menjaga workspace desktop dan mobile tetap ringkas dengan analitik di Riwayat", async () => {
-  const [page, accountSheets, mobileExperience, mobileActivity, mobileTransfer, accountEditors, desktopWorkspace, desktopStyles, card, accountStyleSources, cardStyles, categoryPage, reconciliationPage, transactionPresentation] = await Promise.all([
+  const [page, accountSheets, mobileExperience, mobileStack, mobileActivity, mobileTransfer, accountEditors, desktopWorkspace, desktopStyles, card, accountStyleSources, cardStyles, categoryPage, reconciliationPage, transactionPresentation] = await Promise.all([
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/accounts/components/MobileAccountSheets.jsx"),
     read("src/features/accounts/components/MobileAccountsExperience.jsx"),
+    readMobileAccountStackSource(),
     read("src/features/accounts/components/MobileAccountActivity.jsx"),
     read("src/features/accounts/components/MobileAccountTransferAction.jsx"),
     read("src/features/accounts/components/AccountEditorDialogs.jsx"),
@@ -178,6 +180,7 @@ test("halaman rekening menjaga workspace desktop dan mobile tetap ringkas dengan
   const accountPageSource = `${page}
 ${accountSheets}
 ${mobileExperience}
+${mobileStack}
 ${mobileActivity}
 ${mobileTransfer}
 ${accountEditors}`;
@@ -197,14 +200,14 @@ ${accountEditors}`;
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountSheets\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/MobileAccountsExperience\.jsx"\)\)/);
   assert.match(mobileExperience, /lazy\(\(\) => import\("\.\/MobileAccountActivity\.jsx"\)\)/);
-  assert.match(mobileExperience, /return useMemo\(\(\) => \(\{/);
-  assert.match(mobileExperience, /cancelMobileStackAnimation/);
-  assert.match(mobileExperience, /refs\.animatingRef\.current = false/);
-  assert.match(mobileExperience, /refs\.animationTokenRef\.current \+= 1/);
-  assert.match(mobileExperience, /useEffect\(\(\) => \(\) => cancelMobileStackAnimation\(\), \[cancelMobileStackAnimation\]\)/);
-  assert.match(mobileExperience, /MOBILE_SYNTHETIC_CLICK_GUARD_MS = 500/);
-  assert.match(mobileExperience, /performance\.now\(\) < gesture\.suppressClickUntil/);
-  assert.doesNotMatch(mobileExperience, /setTimeout\(\(\) => \{ refs\.gestureRef\.current\.suppressClick = false;/);
+  assert.match(mobileStack, /return useMemo\(\(\) => \(\{/);
+  assert.match(mobileStack, /cancelMobileStackAnimation/);
+  assert.match(mobileStack, /refs\.animatingRef\.current = false/);
+  assert.match(mobileStack, /refs\.animationTokenRef\.current \+= 1/);
+  assert.match(mobileStack, /useEffect\(\(\) => \(\) => cancelMobileStackAnimation\(\), \[cancelMobileStackAnimation\]\)/);
+  assert.match(mobileStack, /MOBILE_SYNTHETIC_CLICK_GUARD_MS = 500/);
+  assert.match(mobileStack, /performance\.now\(\) < gesture\.suppressClickUntil/);
+  assert.doesNotMatch(mobileStack, /setTimeout\(\(\) => \{ refs\.gestureRef\.current\.suppressClick = false;/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/AccountEditorDialogs\.jsx"\)\)/);
   assert.match(page, /lazy\(\(\) => import\("\.\/components\/DesktopAccountsWorkspace\.jsx"\)\)/);
   assert.doesNotMatch(page, /import DesktopAccountsWorkspace from "\.\/components\/DesktopAccountsWorkspace\.jsx";/);
@@ -380,16 +383,16 @@ ${accountEditors}`;
   assert.doesNotMatch(accountPageSource, /velocityY|handleMobileStackWheel|onWheel=\{/);
   assert.match(accountPageSource, /event\.key === "ArrowLeft"/);
   assert.match(accountPageSource, /event\.key === "ArrowRight"/);
-  assert.match(mobileExperience, /useReducedMotion/);
-  assert.match(mobileExperience, /semanticMotionDurationMs\("emphasized"\)/);
-  assert.doesNotMatch(mobileExperience, /matchMedia\?\.\("\(prefers-reduced-motion: reduce\)"\)/);
+  assert.match(mobileStack, /useReducedMotion/);
+  assert.match(mobileStack, /semanticMotionDurationMs\("emphasized"\)/);
+  assert.doesNotMatch(mobileStack, /matchMedia\?\.\("\(prefers-reduced-motion: reduce\)"\)/);
   assert.match(accountPageSource, /Geser kartu ke kiri atau kanan untuk mengganti rekening/);
   assert.match(accountPageSource, /gunakan tombol panah kiri dan kanan, atau indikator posisi/);
   assert.doesNotMatch(mobileExperience, /setMobileAccountSheet\("picker"\)|tombol Pilih rekening/);
   assert.doesNotMatch(accountSheets, /title="Pilih rekening"|MobileAccountPicker|onSelectAccount/);
-  assert.match(mobileExperience, /if \(reducedMotion\) \{[\s\S]*refs\.positionRef\.current = normalizedTarget;[\s\S]*finish\(\);[\s\S]*return;/);
-  assert.match(mobileExperience, /willChange = enabled \? "transform, opacity"/);
-  assert.doesNotMatch(mobileExperience, /willChange = enabled \? "[^"]*(?:filter|box-shadow)/);
+  assert.match(mobileStack, /if \(reducedMotion\) \{[\s\S]*refs\.positionRef\.current = normalizedTarget;[\s\S]*finish\(\);[\s\S]*return;/);
+  assert.match(mobileStack, /willChange = enabled \? "transform, opacity"/);
+  assert.doesNotMatch(mobileStack, /willChange = enabled \? "[^"]*(?:filter|box-shadow)/);
   assert.match(accountPageSource, /<AccountVisual account=\{account\} carousel stack \/>/);
   assert.match(cardStyles, /\.stackShadow \{[^}]*filter:\s*drop-shadow/s);
   assert.match(cardStyles, /\.stackClip \{[^}]*overflow:\s*hidden;[^}]*border-radius:\s*1\.2rem;/s);
@@ -598,7 +601,7 @@ test("logo compact rekening bank dan e-wallet memakai asset persegi transparan t
 
 test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile memakai shortcut ringkas", async () => {
   const [dashboard, mobileDashboard, dashboardStyles] = await Promise.all([
-    read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"),
+    readDesktopDashboardSource(),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     read("src/features/dashboard/DashboardPage.module.css"),
   ]);

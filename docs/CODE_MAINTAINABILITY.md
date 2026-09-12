@@ -81,6 +81,23 @@ Sekitar 400+ baris atau lebih dari enam subcomponent/hook substantif memicu revi
 
 Line count bukan Definition of Done.
 
+### Growth guard runtime
+
+`test/governance/maintainability-boundaries.test.js` membuat review di atas dapat ditegakkan, bukan hanya menjadi saran:
+
+- runtime file baru di `api/` dan `frontend/src/` memiliki review threshold 400 baris;
+- exception wajib bernama, mempunyai rationale konkret, dan mempunyai growth ceiling yang lebih ketat daripada pengecualian tanpa batas;
+- facade hasil decomposition (`finance`, `investments`, `reminders`, `budgets`) wajib tetap tipis sehingga implementation tidak kembali menumpuk di public entrypoint;
+- shell frontend yang sudah diekstrak mempunyai growth ceiling agar presentation/model/action tidak kembali digabungkan diam-diam.
+
+Exception yang saat ini sengaja dipertahankan:
+
+- `api/session.js`: security-sensitive auth/session boundary; perubahan struktur dilakukan hanya dalam pekerjaan auth/session khusus;
+- `api/_lib/services/reporting/dashboard/readModel.js`: cohesive SQL read-model yang menjaga query plan Dashboard dalam satu ownership;
+- `frontend/src/components/common/SelectionField.jsx`: shared accessible state machine untuk overlay, keyboard, trigger, dan panel.
+
+Exception bukan izin untuk terus menambah kode. Melewati growth ceiling harus memicu review baru dan alasan baru yang dapat dipertanggungjawabkan.
+
 ## CSS
 
 - Pertahankan cascade/order kecuali perubahan visual memang diminta.

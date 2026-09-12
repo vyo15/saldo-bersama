@@ -21,11 +21,19 @@ Ikuti `docs/CODE_MAINTAINABILITY.md`. Reviewer harus memastikan extraction benar
 
 ## Validation dan delivery
 
-Quality gate canonical tetap:
+Setelah mengubah source, jalankan lint lebih dulu dan perbaiki sampai bersih:
+
+```bash
+npm run lint
+```
+
+Jika lint gagal, perbaiki root cause lalu jalankan ulang. Jangan mengandalkan `npm run zip` untuk menemukan error yang seharusnya sudah ditutup pada patch loop. Setelah targeted regression relevan PASS, quality gate canonical tetap:
 
 ```bash
 npm run verify
 ```
+
+Patch/ZIP final tidak boleh diserahkan dengan known lint/test/build failure. Edit setelah PASS membatalkan evidence lama dan validation relevan wajib diulang.
 
 Namun untuk workflow rutin pengguna tidak perlu menjalankannya manual sebelum setiap push karena managed pre-push hook menjalankan full verification. Direct Production schema/binding preflight read-only hanya dijalankan bila diff menyentuh database-compatibility guard; perubahan non-schema memakai core Vercel Production health dan tidak memerlukan credential Turso Production lokal pada:
 
