@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import { readSessionCredential, safeEqualText } from "./security.js";
 import { appendAudit } from "./services/audit.js";
 import { nowIso } from "./services/core.js";
-import { bumpSyncRevisions } from "./syncRevisions.js";
 
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
 const LAST_SEEN_WRITE_INTERVAL_MS = 15 * 60_000;
@@ -83,17 +82,19 @@ export const resolveRegisteredSession = async (db, request) => {
   const lastSeen = row.last_seen_at ? new Date(row.last_seen_at).getTime() : 0;
   if (!Number.isFinite(lastSeen) || Date.now() - lastSeen >= LAST_SEEN_WRITE_INTERVAL_MS) {
     const timestamp = nowIso();
-    const updateHeartbeat = async (writer) => {
-      const result = await writer.execute(
+    // Do not detach a write transaction from a serverless request. A Vercel function can
+    // be frozen immediately after the response is sent, leaving a Turso BEGIN IMMEDIATE
+    // transaction alive long enough to block every subsequent write. Heartbeat is
+    // best-effort metadata, so keep it as one bounded autocommit write and wait for it
+    // before returning the session. Session lifecycle mutations already invalidate
+    // sessions.listOwn; last_seen itself does not need a global realtime revision bump.
+    try {
+      await db.execute(
         "UPDATE user_sessions SET last_seen_at=?,updated_at=? WHERE session_id=? AND revoked_at IS NULL AND last_seen_at=?",
         [timestamp, timestamp, row.session_id, row.last_seen_at],
+        { timeoutMs: 1_500 },
       );
-      if (Number(result.rowsAffected || 0) > 0) await bumpSyncRevisions(writer, ["sessions.listOwn"], timestamp);
-    };
-    const heartbeat = typeof db.transaction === "function"
-      ? db.transaction(updateHeartbeat)
-      : updateHeartbeat(db);
-    heartbeat.catch(() => undefined);
+    } catch {}
   }
   return {
     uid: row.firebase_uid,

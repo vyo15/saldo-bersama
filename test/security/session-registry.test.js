@@ -95,6 +95,68 @@ test("registry menyimpan hash verifier saja dan resolver memakai user aktif cano
   }
 });
 
+test("resolver sesi tidak melepas transaction heartbeat background pada serverless", async () => {
+  process.env.SESSION_SECRET = "session-registry-test-secret-at-least-32-chars";
+  const credential = {
+    sessionId: "session-heartbeat",
+    sessionSecret: "heartbeat-secret",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  };
+  const row = {
+    session_id: credential.sessionId,
+    user_id: "u-owner",
+    verifier_hash: sessionVerifierHash(credential.sessionSecret),
+    issued_at: new Date(Date.now() - 60_000).toISOString(),
+    expires_at: credential.expiresAt,
+    last_seen_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+    revoked_at: null,
+    firebase_uid: "uid-owner",
+    email: "owner@gmail.com",
+    name: "Owner",
+    photo_url: "",
+    role: "owner",
+    user_status: "active",
+  };
+  let heartbeatCompleted = false;
+  let transactionCalled = false;
+  let heartbeatOptions = null;
+  const db = {
+    one: async () => row,
+    execute: async (_sql, _args, options) => {
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      heartbeatOptions = options;
+      heartbeatCompleted = true;
+      return { rowsAffected: 1 };
+    },
+    transaction: async () => { transactionCalled = true; throw new Error("heartbeat tidak boleh membuka transaction"); },
+  };
+
+  const resolved = await resolveRegisteredSession(db, cookieRequest(credential));
+  assert.equal(resolved?.sessionId, credential.sessionId);
+  assert.equal(heartbeatCompleted, true, "resolver harus menunggu heartbeat bounded selesai sebelum response serverless berakhir");
+  assert.equal(transactionCalled, false, "heartbeat metadata tidak boleh memakai BEGIN IMMEDIATE detached");
+  assert.equal(heartbeatOptions?.timeoutMs, 1_500);
+});
+
+test("kegagalan heartbeat metadata tidak menggugurkan sesi valid", async () => {
+  process.env.SESSION_SECRET = "session-registry-test-secret-at-least-32-chars";
+  const credential = {
+    sessionId: "session-heartbeat-failure",
+    sessionSecret: "heartbeat-failure-secret",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  };
+  const db = {
+    one: async () => ({
+      session_id: credential.sessionId, user_id: "u-owner", verifier_hash: sessionVerifierHash(credential.sessionSecret),
+      expires_at: credential.expiresAt, last_seen_at: new Date(Date.now() - 60 * 60_000).toISOString(), revoked_at: null,
+      firebase_uid: "uid-owner", email: "owner@gmail.com", name: "Owner", photo_url: "", role: "owner", user_status: "active",
+    }),
+    execute: async () => { throw Object.assign(new Error("writer busy"), { code: "DATABASE_TIMEOUT" }); },
+  };
+  const resolved = await resolveRegisteredSession(db, cookieRequest(credential));
+  assert.equal(resolved?.email, "owner@gmail.com");
+});
+
 test("logout hanya mencabut session bila verifier credential cocok", async () => {
   const { db, owner } = await setup();
   try {

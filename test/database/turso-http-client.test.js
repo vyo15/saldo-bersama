@@ -133,3 +133,17 @@ test("health melakukan query terautentikasi, bukan mengandalkan endpoint publik"
   const client = new TursoHttpClient({ url: "https://saldo.turso.io", authToken: "token", fetchImpl: async () => response({ results: [result(), result(["ok"], [[{ type: "integer", value: "1" }]]), close] }) });
   assert.equal(await client.health(), true);
 });
+
+test("operasi metadata dapat memakai timeout lebih pendek tanpa mengubah timeout transaksi utama", async () => {
+  const client = new TursoHttpClient({
+    url: "https://saldo.turso.io",
+    authToken: "token",
+    fetchImpl: async (_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })), { once: true });
+    }),
+  });
+  await assert.rejects(
+    client.execute("UPDATE user_sessions SET last_seen_at=last_seen_at", [], { timeoutMs: 5 }),
+    (error) => error.code === "DATABASE_TIMEOUT" && error.details?.timeoutMs === 5,
+  );
+});

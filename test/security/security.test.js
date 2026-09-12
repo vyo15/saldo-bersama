@@ -105,14 +105,19 @@ test("identity rate-limit key memakai scope dan hash tanpa membocorkan UID", () 
   assert.notEqual(gatewayKey, exportKey);
 });
 
-test("gateway dan export memakai canonical identity key untuk local dan durable rate limit", async () => {
+test("gateway menjaga read tetap tersedia tanpa durable write rate-limit sementara mutation tetap fail-closed", async () => {
   const [gateway, exportSource] = await Promise.all([
     readFile(new URL("../../api/gateway.js", import.meta.url), "utf8"),
     readFile(new URL("../../api/export.js", import.meta.url), "utf8"),
   ]);
   assert.match(gateway, /const rateLimitKey = identityRateLimitKey\("gateway", session\.uid\)/);
   assert.match(gateway, /enforceBestEffortRateLimit\(rateLimitKey\)/);
-  assert.match(gateway, /await enforceDistributedRateLimit\(db, rateLimitKey\)/);
+  assert.match(gateway, /if \(!isReadAction\(action\)\) await enforceDistributedRateLimit\(db, rateLimitKey\)/);
+  assert.ok(
+    gateway.indexOf('requestState.action = String(body.action || "")') < gateway.indexOf('if (!isReadAction(action)) await enforceDistributedRateLimit'),
+    "gateway harus mengetahui action sebelum melakukan durable write rate-limit",
+  );
+  assert.match(gateway, /stage: requestState\.stage/);
   assert.match(exportSource, /const rateLimitKey = identityRateLimitKey\("export", session\.uid\)/);
   assert.match(exportSource, /enforceBestEffortRateLimit\(rateLimitKey, \{ limit: 5, windowMs: 60_000 \}\)/);
   assert.match(exportSource, /await enforceDistributedRateLimit\(db, rateLimitKey, \{ limit: 5, windowMs: 60_000 \}\)/);

@@ -121,23 +121,23 @@ export class TursoHttpClient {
     }
   }
 
-  async execute(sql, args = []) {
+  async execute(sql, args = [], { timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
     const response = await this.pipeline([
       statementRequest("PRAGMA foreign_keys = ON"),
       statementRequest(sql, args),
       { type: "close" },
-    ]);
+    ], { timeoutMs });
     return response.results[1];
   }
 
-  async all(sql, args = []) { return (await this.execute(sql, args)).rows; }
-  async one(sql, args = []) { return (await this.execute(sql, args)).rows[0] || null; }
-  async batch(statements = []) {
+  async all(sql, args = [], options = {}) { return (await this.execute(sql, args, options)).rows; }
+  async one(sql, args = [], options = {}) { return (await this.execute(sql, args, options)).rows[0] || null; }
+  async batch(statements = [], { timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
     const response = await this.pipeline([
       statementRequest("PRAGMA foreign_keys = ON"),
       ...statements.map((item) => statementRequest(item.sql, item.args || [])),
       { type: "close" },
-    ]);
+    ], { timeoutMs });
     return response.results.slice(1, 1 + statements.length);
   }
 

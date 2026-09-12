@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { dispatchAction } from "./_lib/actionDispatcher.js";
+import { isReadAction } from "./_lib/actions/policy.js";
 import { getDatabase } from "./_lib/db/httpClient.js";
 import { assertDatabaseReady } from "./_lib/db/schema.js";
 import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
@@ -46,29 +47,44 @@ const rejectGatewayRequest = (response, session, body, requestId, action) => {
 };
 
 const processGatewayRequest = async (request, response, requestId, requestState) => {
+  requestState.stage = "origin";
   assertAllowedOrigin(request);
   const db = getDatabase();
+  requestState.stage = "schema";
   await assertDatabaseReady(db);
+  requestState.stage = "session";
   const session = await resolveRegisteredSession(db, request);
   if (!session) return { action: "unknown", response: fail(response, 401, "UNAUTHENTICATED", "Sesi sudah berakhir. Silakan login kembali.", { requestId }) };
-  const rateLimitKey = identityRateLimitKey("gateway", session.uid);
-  enforceBestEffortRateLimit(rateLimitKey);
-  await enforceDistributedRateLimit(db, rateLimitKey);
+
+  // Resolve the canonical action before touching the durable rate-limit bucket. Reads
+  // must not depend on a database write: if SQLite/Turso temporarily has a blocked
+  // writer, authenticated read screens should remain usable instead of all failing
+  // before the gateway even knows which action was requested.
+  requestState.stage = "body";
   const body = await readJsonBody(request, 1_500_000);
   requestState.action = String(body.action || "").slice(0, 120);
+  requestState.stage = "authorization";
   const rejection = rejectGatewayRequest(response, session, body, requestId, requestState.action);
   if (rejection.response) return rejection;
   const { action } = rejection;
   const payload = body.payload || {};
   assertPayloadAuthorization(session, action, payload);
+
+  requestState.stage = "rate_limit";
+  const rateLimitKey = identityRateLimitKey("gateway", session.uid);
+  enforceBestEffortRateLimit(rateLimitKey);
+  if (!isReadAction(action)) await enforceDistributedRateLimit(db, rateLimitKey);
+
+  requestState.stage = "dispatch";
   const result = await dispatch(db, session, action, payload, {
     idempotencyKey: body.idempotencyKey || null,
     rowVersion: body.rowVersion ?? null,
   }, requestId);
+  requestState.stage = "completed";
   return { action, response: ok(response, result), role: session.role };
 };
 
-const failGatewayRequest = (response, error, { requestId, action, startedAt }) => {
+const failGatewayRequest = (response, error, { requestId, action, stage, startedAt }) => {
   const status = Number(error.status || 500);
   const code = String(error.code || "GATEWAY_ERROR");
   const headers = status === 429 && error.retryAfterSeconds ? { "Retry-After": String(error.retryAfterSeconds) } : {};
@@ -78,6 +94,7 @@ const failGatewayRequest = (response, error, { requestId, action, startedAt }) =
     status,
     code,
     durationMs: Date.now() - startedAt,
+    stage,
     error: sanitizeError(error),
   });
   const safeDetails = status < 500 ? (error.details || {}) : {};
@@ -87,7 +104,7 @@ const failGatewayRequest = (response, error, { requestId, action, startedAt }) =
 export default async function handler(request, response) {
   const startedAt = Date.now();
   const requestId = requestIdFrom(request);
-  const requestState = { action: "unknown" };
+  const requestState = { action: "unknown", stage: "start" };
   attachRequestId(response, requestId);
   if (request.method !== "POST") return methodNotAllowed(response, ["POST"]);
   try {
@@ -97,6 +114,6 @@ export default async function handler(request, response) {
     }
     return result.response;
   } catch (error) {
-    return failGatewayRequest(response, error, { requestId, action: requestState.action, startedAt });
+    return failGatewayRequest(response, error, { requestId, action: requestState.action, stage: requestState.stage, startedAt });
   }
 }

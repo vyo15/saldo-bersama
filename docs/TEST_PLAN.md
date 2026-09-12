@@ -473,7 +473,8 @@ Full reset harus diuji pada database terisolasi: preview mencakup accounts/categ
 
 ## Hardening v17 tambahan
 
-- Local process limiter dan durable cross-instance rate limit memakai key hash+scope yang sama; gateway, export, login, serta OAuth valid harus menolak request di atas limit tanpa menjadikan client sebagai authority.
+- Local process limiter berlaku untuk seluruh gateway; durable cross-instance rate limit memakai key hash+scope yang sama pada mutation/external path, export, login, serta OAuth. Authenticated read tidak boleh membutuhkan durable write bucket, sehingga blocked writer tidak mematikan read-only UI; mutation tetap fail-closed.
+- Session `last_seen_at` maksimal periodik/best-effort: Vercel serverless tidak boleh melepas `BEGIN IMMEDIATE` heartbeat secara fire-and-forget; heartbeat bounded harus selesai/timeout sebelum handler berakhir dan kegagalannya tidak membatalkan session valid.
 - Bucket expired dibersihkan housekeeping, tidak masuk logical backup, dan controlled restore menghapus state throttle lama.
 - `system.health` menjadi degraded untuk unresolved integration dead-letter, notification queue dead-letter yang masih actionable, per-device Push dead-letter yang belum diikuti keberhasilan lebih baru, backup terbaru gagal, atau integrity run terbaru gagal tanpa mengekspos payload finansial, notification title/body, error message mentah, maupun resource ID. Public `/api/health` hanya ikut degraded untuk core blocker: database/schema/binding tidak siap, maintenance aktif, atau integrity failure. Dead-letter/backup/scheduler warning tidak boleh mematikan core availability dan histori failure yang sudah dipulihkan tidak boleh membuat operational health degraded selamanya.
 - Carousel Rekening mobile untuk e-wallet wajib merender asset canonical tanpa overlay gelap tambahan; clipping memakai satu `stackClip` rounded root, image e-wallet boleh overscan di dalam root, dan regression tidak boleh mengunci `clip-path` legacy.
