@@ -222,6 +222,16 @@ test("FinanceContext memakai initial state Turso tanpa bootstrap Apps Script leg
   assert.doesNotMatch(source, /IDENTITY_BIND_REQUIRED|system\.initialize|Apps Script/);
 });
 
+test("FinanceContext fallback ke read terpisah saat initial state timeout tanpa hard reload", async () => {
+  const source = await readFile(new URL("../src/app/FinanceContext.jsx", import.meta.url), "utf8");
+  assert.match(source, /shouldFallbackInitialState/);
+  assert.match(source, /DATABASE_TIMEOUT/);
+  assert.match(source, /loadSplitInitialState/);
+  assert.match(source, /apiClient\.request\("bootstrap\.get"/);
+  assert.match(source, /apiClient\.request\("dashboard\.overview"/);
+  assert.doesNotMatch(source, /location\.reload|window\.location/);
+});
+
 test("useApiResource memperlakukan idle enabled sebagai initial loading agar halaman tidak berkedip siap lalu loading", async () => {
   const source = await readFile(new URL("../src/hooks/useApiResource.js", import.meta.url), "utf8");
   assert.match(source, /enabled && state\.status === "idle" \? "loading" : state\.status/);

@@ -140,7 +140,7 @@ test("dashboard memakai opening balance bulk, envelope ringan, dan laporan trend
   assert.doesNotMatch(dashboard, /listEnvelopes/);
   assert.match(dashboard, /WITH cutoffs\(period_key,cutoff_date\) AS/);
   assert.doesNotMatch(dashboard, /for \(const period of periods\)[\s\S]{0,220}visibleAccounts/);
-  assert.match(dashboard, /readBatchRows\(db, plan\.statements\)/);
+  assert.match(dashboard, /readBatchRowsChunked\(db, plan\.statements\)/);
 });
 
 test("rekening mobile tidak membuat request trend tambahan dan analitik tetap dimiliki riwayat transaksi", async () => {
@@ -214,22 +214,22 @@ test("query budget transaksi memakai satu batch dan dashboard memakai satu batch
   };
   const dashboardDb = makeDashboardDb();
   await dashboardOverview(dashboardDb, { actor, payload: { period: currentPeriod } });
-  assert.equal(dashboardDb.metrics.network, 1, "dashboard overview harus satu pipeline batch pada adapter yang mendukung batch");
+  assert.equal(dashboardDb.metrics.network, 3, "dashboard overview memecah read berat agar tiap pipeline Turso tetap bounded");
 
   const initialDb = makeDashboardDb();
   await appInitialState(initialDb, { actor, payload: { period: currentPeriod } });
-  assert.equal(initialDb.metrics.network, 1, "initial state menggabungkan bootstrap dan dashboard ke satu pipeline batch");
+  assert.equal(initialDb.metrics.network, 5, "initial state memecah bootstrap, dashboard besar, dan sync agar satu pipeline Turso tidak terlalu berat");
   assert.equal(initialDb.metrics.accountBalanceStatements, 2, "current accounts bootstrap direuse; initial state hanya membaca current + opening balance sekali masing-masing");
 
   const historicalInitialDb = makeDashboardDb();
   await appInitialState(historicalInitialDb, { actor, payload: { period: historicalPeriod } });
-  assert.equal(historicalInitialDb.metrics.network, 1, "initial state historis tetap satu pipeline batch");
+  assert.equal(historicalInitialDb.metrics.network, 4, "initial state historis memecah pipeline besar tetapi tetap mempertahankan urutan read model");
   assert.equal(historicalInitialDb.metrics.accountBalanceStatements, 3, "periode historis tetap membaca current bootstrap, cutoff historis, dan opening balance secara terpisah di batch yang sama");
 
   const reportDb = makeDashboardDb();
   const { monthlyReport } = await import("../../api/_lib/services/reporting/dashboard.js");
   await monthlyReport(reportDb, { actor, payload: { period: currentPeriod, trend_months: 12 } });
-  assert.equal(reportDb.metrics.network, 1, "laporan bulanan menggabungkan dashboard, breakdown, dan trend ke satu pipeline batch");
+  assert.equal(reportDb.metrics.network, 4, "laporan bulanan memecah dashboard, breakdown, dan trend agar tiap pipeline Turso tetap bounded");
 });
 
 
@@ -471,4 +471,18 @@ test("preview tutup periode menggabungkan statistik dan integrity base setelah b
   assert.equal(metrics.one, 1, "closure blocker tetap dibaca dulu agar closed period fail-fast");
   assert.equal(metrics.batch, 1, "integrity base, unallocated, dan statistik harus satu batch setelah blocker");
   assert.deepEqual(metrics.statements, [20]);
+});
+
+test("initial dashboard membatasi ukuran pipeline Turso tanpa melepas snapshot transaction", async () => {
+  const [dashboard, batchReader, policy] = await Promise.all([
+    source("api/_lib/services/reporting/dashboard.js"),
+    source("api/_lib/db/readBatchRows.js"),
+    source("api/_lib/actions/policy.js"),
+  ]);
+  assert.match(batchReader, /readBatchRowsChunked/);
+  assert.match(batchReader, /chunkSize = 6/);
+  assert.match(dashboard, /readBatchRowsChunked\(db, plan\.statements\)/);
+  assert.match(dashboard, /readBatchRowsChunked\(db, dashboardPlan\.statements\)/);
+  assert.match(dashboard, /readBatchRows\(db, bootstrapStatements\)/);
+  assert.match(policy, /"app\.initialState": snapshotRead\(\)/);
 });

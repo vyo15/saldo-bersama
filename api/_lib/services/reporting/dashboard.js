@@ -1,4 +1,4 @@
-import { readBatchRows } from "../../db/readBatchRows.js";
+import { readBatchRows, readBatchRowsChunked } from "../../db/readBatchRows.js";
 import { presentSyncRevisionRows, syncRevisionStatement } from "../../syncRevisions.js";
 import { appError, boundedInteger, monthBounds, nowIso, periodKey, sanitizeText, todayJakarta } from "../core.js";
 import { transactionCapabilities } from "../transactionPolicy.js";
@@ -145,7 +145,7 @@ const dashboardResult = (context, periodContext, readState) => {
 export const dashboardOverview = async (db, context, { preloadedAccounts = null } = {}) => {
   const periodContext = dashboardPeriodContext(context, preloadedAccounts);
   const plan = dashboardReadPlan(context, periodContext);
-  const rows = await readBatchRows(db, plan.statements);
+  const rows = await readBatchRowsChunked(db, plan.statements);
   const readState = mapDashboardReadRows(rows, plan, context, periodContext, preloadedAccounts);
   return dashboardResult(context, periodContext, readState);
 };
@@ -158,14 +158,16 @@ export const appInitialState = async (db, context) => {
   const periodContext = dashboardPeriodContext(context, []);
   const dashboardPlan = dashboardReadPlan(context, periodContext);
   const syncStatement = syncRevisionStatement();
-  const combinedRows = await readBatchRows(db, [...bootstrapStatements, ...dashboardPlan.statements, syncStatement]);
-  const bootstrap = mapBootstrapRows(combinedRows.slice(0, bootstrapStatements.length), context);
-  const dashboardStart = bootstrapStatements.length;
-  const dashboardEnd = dashboardStart + dashboardPlan.statements.length;
-  const dashboardRows = combinedRows.slice(dashboardStart, dashboardEnd);
+  // Keep one snapshot transaction, but avoid one oversized Turso pipeline. Production
+  // datasets can make a large multi-statement HTTP pipeline exceed the per-request
+  // transport deadline even though each individual read is healthy.
+  const bootstrapRows = await readBatchRows(db, bootstrapStatements);
+  const bootstrap = mapBootstrapRows(bootstrapRows, context);
+  const dashboardRows = await readBatchRowsChunked(db, dashboardPlan.statements);
   const readState = mapDashboardReadRows(dashboardRows, dashboardPlan, context, periodContext, bootstrap.accounts);
   const overview = dashboardResult(context, periodContext, readState);
-  const sync = presentSyncRevisionRows(combinedRows[dashboardEnd] || []);
+  const [syncRows = []] = await readBatchRows(db, [syncStatement]);
+  const sync = presentSyncRevisionRows(syncRows);
   return { bootstrap, overview, sync };
 };
 
@@ -182,7 +184,7 @@ export const monthlyReport = async (db, context) => {
   const cutoffDate = period === currentPeriod ? todayJakarta() : bounds.end;
   const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate);
   const trendPlan = trendMonths === 1 ? dailyTrendPlan(context.actor, period, { accountId }) : monthlyTrendPlan(context.actor, period, trendMonths, { accountId });
-  const combinedRows = await readBatchRows(db, [
+  const combinedRows = await readBatchRowsChunked(db, [
     ...dashboardPlan.statements,
     ...breakdownStatements,
     ...trendPlan.statements,

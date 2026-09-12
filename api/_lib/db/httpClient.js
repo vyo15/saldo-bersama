@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-const REQUEST_TIMEOUT_MS = 12_000;
-const TRANSACTION_STEP_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 20_000;
+const TRANSACTION_OPEN_TIMEOUT_MS = 12_000;
+const TRANSACTION_STEP_TIMEOUT_MS = 20_000;
 const pipelineMetricsStorage = new AsyncLocalStorage();
 
 const appError = (code, message, status = 500, details = null) => Object.assign(new Error(message), { code, status, details });
@@ -112,7 +113,7 @@ export class TursoHttpClient {
       const decoded = parsePipeline(payload);
       return { results: decoded, baton: payload.baton || null, baseUrl: payload.base_url || baseUrl || this.baseUrl };
     } catch (error) {
-      if (error?.name === "AbortError") throw appError("DATABASE_TIMEOUT", "Database melewati batas waktu.", 503);
+      if (error?.name === "AbortError") throw appError("DATABASE_TIMEOUT", "Database melewati batas waktu.", 503, { timeoutMs });
       if (error?.code) throw error;
       throw appError("DATABASE_UNAVAILABLE", "Database Turso tidak dapat dihubungi.", 503);
     } finally {
@@ -163,7 +164,7 @@ export class TursoHttpClient {
       connection = await this.pipeline([
         statementRequest("PRAGMA foreign_keys = ON"),
         statementRequest(begin),
-      ], { timeoutMs: 8_000 });
+      ], { timeoutMs: TRANSACTION_OPEN_TIMEOUT_MS });
       const tx = {
         execute: (sql, args = []) => enqueue(async () => {
           const next = await this.pipeline([statementRequest(sql, args)], {

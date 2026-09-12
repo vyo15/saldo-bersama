@@ -14,6 +14,17 @@ const INITIAL_ACTIONS = ["app.initialState", "bootstrap.get", "dashboard.overvie
 const authenticated = (authStatus, user) => authStatus === "authenticated" && Boolean(user);
 const snapshotReady = (bootstrapRef, overviewRef) => Boolean(bootstrapRef.current && overviewRef.current);
 
+const shouldFallbackInitialState = (error) => ["DATABASE_TIMEOUT", "DATABASE_UNAVAILABLE"].includes(String(error?.code || ""));
+
+const loadSplitInitialState = async ({ force = false } = {}) => {
+  const [bootstrap, overview, sync] = await Promise.all([
+    apiClient.request("bootstrap.get", {}, { force }),
+    apiClient.request("dashboard.overview", {}, { force }),
+    apiClient.request("sync.state", {}, { force: true }).catch(() => null),
+  ]);
+  return { bootstrap, overview, ...(sync ? { sync } : {}) };
+};
+
 const seedOverviewCollections = (overview, { includePeriod = false } = {}) => {
   const envelopes = { items: overview?.envelopes || [] };
   const recurring = { items: overview?.recurring || [] };
@@ -72,7 +83,14 @@ const useInitialFinanceLoad = (authStatus, user, controls) => useCallback(async 
   const token = beginFinanceRequest(controls.requestEpoch.current, ["bootstrap", "overview"]);
   setInitialLoadingState(controls);
   try {
-    const initial = await apiClient.request("app.initialState", {}, { force });
+    let initial;
+    try {
+      initial = await apiClient.request("app.initialState", {}, { force });
+    } catch (error) {
+      if (!shouldFallbackInitialState(error)) throw error;
+      apiClient.invalidate(["app.initialState", "bootstrap.get", "dashboard.overview"]);
+      initial = await loadSplitInitialState({ force: true });
+    }
     const ownsBootstrap = requestOwnsFinanceResource(controls.requestEpoch.current, token, "bootstrap");
     const ownsOverview = requestOwnsFinanceResource(controls.requestEpoch.current, token, "overview");
     if (!ownsBootstrap && !ownsOverview) return initial;
