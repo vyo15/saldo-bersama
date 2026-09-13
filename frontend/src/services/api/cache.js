@@ -23,6 +23,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "envelopes.previewRuleLifecycle": 0,
   "recurring.list": 30_000,
   "recurring.previewRuleLifecycle": 0,
+  "commitments.list": 30_000,
   "budgets.list": 30_000,
   "budgets.previewLifecycle": 0,
   "goals.list": 30_000,

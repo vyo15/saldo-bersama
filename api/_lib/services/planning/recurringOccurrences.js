@@ -4,7 +4,9 @@ import { appError, assertOwner, assertVersion, positiveInteger, publicRow, sanit
 import { nextVersionTimestamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
 import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./shared.js";
-import { enqueueRecurringOccurrenceSync } from "./recurringSchedule.js";
+import { enqueueRecurringOccurrenceSync, removeUnpaidFutureOccurrences } from "./recurringSchedule.js";
+import { completeCommitmentRecurringRule, restoreCompletedCommitmentRecurringRule } from "./recurringLifecycle.js";
+import { applyCommitmentOccurrencePayment, reverseCommitmentTransaction } from "./commitmentLedger.js";
 
 // Occurrence mutations bridge planning state to canonical transaction writes. The
 // transaction service remains authoritative for ledger/balance validation.
@@ -41,6 +43,8 @@ const buildOccurrencePaymentTransaction = (rule, occurrence, account, payload, a
   cost_share_percentages: rule.kind === "expense" ? payload.cost_share_percentages || [] : [],
   payment_method: rule.payment_method,
   recurring_occurrence_id: occurrence.occurrence_id,
+  commitment_id: rule.commitment_id || null,
+  commitment_flow: rule.commitment_id ? "payment" : null,
 });
 
 const buildPaidOccurrence = (occurrence, transactionId, amount) => {
@@ -141,8 +145,27 @@ export const payOccurrence = async (db, context) => {
   const { next, status } = buildPaidOccurrence(occurrence, transaction.transaction_id, amount);
   const result = await db.execute("UPDATE recurring_occurrences SET actual_amount=?,status=?,transaction_ids_json=?,row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=?", [next.actual_amount, next.status, next.transaction_ids_json, next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
-  const response = occurrencePaymentResponse(rule, next, status, transaction);
-  if (next.status === "paid") {
+  const commitmentResult = await applyCommitmentOccurrencePayment(db, context, { rule, occurrence, nextOccurrence: next, transaction, payload: p, amount });
+  let finalNext = next;
+  let finalStatus = status;
+  if (commitmentResult?.occurrence_completed && next.status !== "paid") {
+    finalNext = { ...next, status: "paid", ...nextVersionTimestamp(next) };
+    const completed = await db.execute("UPDATE recurring_occurrences SET status='paid',row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=?", [finalNext.row_version, finalNext.updated_at, next.occurrence_id, next.row_version]);
+    if (completed.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
+    finalStatus = "paid";
+  }
+  if (commitmentResult?.commitment_completed) {
+    await completeCommitmentRecurringRule(db, { ...context, commitmentManaged: true }, {
+      rule,
+      commitmentId: rule.commitment_id,
+      removeUnpaidFutureOccurrences,
+    });
+  }
+  const response = {
+    ...occurrencePaymentResponse(rule, finalNext, finalStatus, transaction),
+    ...(commitmentResult ? { commitment: commitmentResult.commitment, commitment_movement: commitmentResult.movement } : {}),
+  };
+  if (finalNext.status === "paid") {
     await cancelScheduledManualRemindersForEntity(db, context, "recurring_occurrence", occurrence.occurrence_id, "ENTITY_COMPLETED");
   }
   await appendAudit(db, context, { entityType: "recurring_occurrence", entityId: occurrence.occurrence_id, previous: publicRow(occurrence), next: response });
@@ -163,6 +186,13 @@ export const reverseOccurrencePayment = async (db, context) => {
     allowLinked: true,
     audit: false
   });
+  const commitment = await reverseCommitmentTransaction(db, context, transaction.transaction_id);
+  if (commitment?.reactivated_from_completed) {
+    await restoreCompletedCommitmentRecurringRule(db, { ...context, commitmentManaged: true }, {
+      ruleId: occurrence.recurring_rule_id,
+      commitmentId: commitment.commitment_id,
+    });
+  }
   const ids = JSON.parse(occurrence.transaction_ids_json || "[]").filter(id => id !== transaction.transaction_id);
   const active = ids.length ? await db.all(`SELECT amount FROM transactions WHERE status='active' AND transaction_id IN (${ids.map(() => "?").join(",")})`, ids) : [];
   const actual = active.reduce((sum, row) => sum + Number(row.amount), 0);
@@ -178,7 +208,8 @@ export const reverseOccurrencePayment = async (db, context) => {
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
   const response = {
     occurrence: publicRow(next),
-    transaction: cancelledTransaction
+    transaction: cancelledTransaction,
+    ...(commitment ? { commitment } : {})
   };
   await appendAudit(db, context, {
     entityType: "recurring_occurrence",

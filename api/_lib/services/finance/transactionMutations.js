@@ -13,8 +13,8 @@ export const createTransactionInternal = async (db, context, payload, { allowInt
     created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp,
     cancelled_by: null, cancelled_at: null, cancellation_reason: "",
   };
-  await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,budget_id,recurring_occurrence_id,goal_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,cost_share_mode,cost_share_json,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,budget_id,recurring_occurrence_id,goal_id,commitment_id,commitment_flow,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,cost_share_mode,cost_share_json,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   if (audit) await appendAudit(db, context, { entityType: "transaction", entityId: record.transaction_id, next: { ...publicRow(record), ...transactionCostSharePresentation(record) } });
   await context.enqueueMirror?.(db, "transaction", record.transaction_id);
   return { ...publicRow(record), ...transactionCostSharePresentation(record) };
@@ -87,6 +87,7 @@ export const restoreTransaction = async (db, context) => {
   assertVersion(current, context.rowVersion ?? payload.row_version ?? payload.rowVersion);
   if (current.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Pulihkan pembayaran rutin melalui menu Tagihan.", 409, { occurrenceId: current.recurring_occurrence_id });
   if (current.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Pulihkan mutasi target melalui menu Target.", 409, { goalId: current.goal_id });
+  if (current.commitment_id) throw appError("LINKED_COMMITMENT_TRANSACTION", "Pulihkan transaksi Komitmen melalui menu Komitmen.", 409, { commitmentId: current.commitment_id });
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan transaksi wajib diisi.", 400);
   const normalized = await normalizeTransaction(db, context, { confirm_duplicate: false }, { current });

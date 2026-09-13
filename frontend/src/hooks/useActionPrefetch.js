@@ -16,7 +16,7 @@ const contextualActionsForPath = (pathname) => {
   if (pathname === "/investasi") return ["investmentDialog", "investmentSetup"];
   if (pathname === "/target") return ["goalDialog"];
   if (pathname === "/perencanaan/jadwal") return ["recurringDialog"];
-  if (pathname.startsWith("/perencanaan/")) return ["allocationOverlay"];
+  if (["/perencanaan/kantong", "/perencanaan/alokasi"].includes(pathname)) return ["allocationOverlay"];
   return [];
 };
 

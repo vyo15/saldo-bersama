@@ -19,9 +19,11 @@ import {
 import {
   mapReportAllocations,
   mapReportBreakdowns,
+  mapReportCommitmentActivity,
   mapReportTransactions,
   reportAllocationStatement,
   reportBreakdownStatements,
+  reportCommitmentActivityStatement,
   reportTransactionsStatement,
 } from "./reportReadModel.js";
 
@@ -203,13 +205,15 @@ const reportRowSlices = (rows, { dashboardCount, breakdownCount }) => {
   const breakdownStart = allocationIndex + 1;
   const breakdownEnd = breakdownStart + breakdownCount;
   const transactionIndex = breakdownEnd;
+  const commitmentIndex = transactionIndex + 1;
   return {
     dashboardRows: rows.slice(0, dashboardCount),
     budgetRows: rows[reportBudgetIndex] || [],
     allocationRows: rows[allocationIndex] || [],
     breakdownRows: rows.slice(breakdownStart, breakdownEnd),
     transactionRows: rows[transactionIndex] || [],
-    trendRows: rows.slice(transactionIndex + 1),
+    commitmentRows: rows[commitmentIndex] || [],
+    trendRows: rows.slice(commitmentIndex + 1),
   };
 };
 
@@ -252,6 +256,7 @@ export const monthlyReport = async (db, context) => {
   const allocationStatement = reportAllocationStatement(context.actor, period, { usageEndDate: cutoffDate });
   const breakdownStatements = reportBreakdownStatements(context.actor, bounds.start, cutoffDate, { allocationRuleId });
   const transactionStatement = reportTransactionsStatement(context.actor, bounds.start, cutoffDate, { allocationRuleId });
+  const commitmentStatement = reportCommitmentActivityStatement(context.actor, bounds.start, cutoffDate, { allocationRuleId });
   const trendPlan = reportTrendPlanFor(context.actor, request);
   const rows = await readBatchRowsChunked(db, [
     ...dashboardPlan.statements,
@@ -259,6 +264,7 @@ export const monthlyReport = async (db, context) => {
     allocationStatement,
     ...breakdownStatements,
     transactionStatement,
+    commitmentStatement,
     ...trendPlan.statements,
   ]);
   const slices = reportRowSlices(rows, { dashboardCount: dashboardPlan.statements.length, breakdownCount: breakdownStatements.length });
@@ -271,6 +277,7 @@ export const monthlyReport = async (db, context) => {
   const breakdowns = mapReportBreakdowns(slices.breakdownRows, aggregateCostShareRows);
   const trend = reportTrendFor(trendMonths, trendPlan, slices.trendRows);
   const reportSummary = reportSummaryFor(overview, selectedAllocation);
+  const commitmentActivity = mapReportCommitmentActivity(slices.commitmentRows);
   const reportTransactions = mapReportTransactions(slices.transactionRows, {
     openingBalance: selectedAllocation ? selectedAllocation.allocated_amount : reportSummary.openingBalance,
     allocationScoped: Boolean(selectedAllocation),
@@ -289,6 +296,7 @@ export const monthlyReport = async (db, context) => {
     natureExpenses: breakdowns.natureExpenses,
     costShareExpenses: breakdowns.costShareExpenses,
     reportTransactions,
+    commitmentActivity,
     trend: { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.items },
   };
   if (accountId) result.accountExpenseTrend = { months: trendMonths, granularity: trendMonths === 1 ? "day" : "month", items: trend.accountExpenseItems };

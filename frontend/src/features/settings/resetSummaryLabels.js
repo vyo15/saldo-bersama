@@ -13,6 +13,8 @@ export const RESET_DOMAIN_LABELS = freezeLabels([
   ["allocationRules", "Aturan alokasi"],
   ["allocationPeriods", "Periode alokasi"],
   ["allocationMovements", "Mutasi alokasi"],
+  ["commitments", "Komitmen"],
+  ["commitmentMovements", "Mutasi komitmen"],
   ["recurringRules", "Jadwal rutin"],
   ["recurringOccurrences", "Kejadian rutin"],
   ["periodClosures", "Tutup buku"],

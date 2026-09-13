@@ -282,9 +282,57 @@ test("AI workflow execution-first dan pertanyaan hanya untuk blocker nyata", () 
   assert.match(workflow, /staging-only/i);
   assert.match(workflow, /jangan mengirim ulang ZIP UNVERIFIED lama/i);
   assert.match(agents, /Deletion integrity wajib diverifikasi/i);
-  assert.match(agents, /jangan mengandalkan overlay changed-files-only ZIP/i);
+  assert.match(agents, /jangan menganggap file lama hilang hanya karena tidak ada di ZIP/i);
   assert.match(workflow, /path lama benar-benar \*\*absent\*\*/i);
-  assert.match(workflow, /Overlay changed-files-only tidak dianggap cukup untuk deletion/i);
+  assert.match(workflow, /Tidak adanya file dalam ZIP bukan bukti deletion sudah diterapkan/i);
+});
+
+
+test("parallel patch handoff memakai manifest, semantic merge, dan cleanup Git Bash eksplisit", () => {
+  const agents = read("AGENTS.md");
+  const workflow = read("docs/WORKFLOW.md");
+  const gitWorkflow = read("docs/GIT_WORKFLOW.md");
+  const done = read("docs/DEFINITION_OF_DONE.md");
+  const checklist = read("docs/QA_CHECKLIST.md");
+  const manifest = read("docs/templates/PATCH_MANIFEST_TEMPLATE.md");
+  const index = read("docs/INDEX.md");
+
+  for (const source of [agents, workflow, done, checklist]) {
+    assert.match(source, /changed-files-only/i);
+    assert.match(source, /FINAL \/ VERIFIED/i);
+    assert.match(source, /CANDIDATE \/ UNVERIFIED/i);
+  }
+
+  assert.match(agents, /project terbaru adalah source of truth/i);
+  assert.match(workflow, /semantic merge/i);
+  assert.match(workflow, /dilarang|bukan.*overwrite|overwrite.*buta/is);
+  assert.match(gitWorkflow, /project terbaru.*authority/is);
+  assert.match(gitWorkflow, /overwrite/i);
+  assert.match(workflow, /rm -f/);
+  assert.match(workflow, /rm -rf/);
+  assert.match(checklist, /Artifact -> Cleanup Git Bash -> Validation -> Tidak disentuh -> Status/i);
+  assert.match(manifest, /^# Patch Manifest Template/m);
+  assert.match(manifest, /Base:/);
+  assert.match(manifest, /Overlap notes:/);
+  assert.match(manifest, /Does not touch:/);
+  assert.match(manifest, /metadata handoff, bukan runtime source/i);
+  assert.match(index, /templates\/PATCH_MANIFEST_TEMPLATE\.md/);
+});
+
+test("repair loop memprioritaskan root cause dan user log hanya fallback environment-specific", () => {
+  const agents = read("AGENTS.md");
+  const workflow = read("docs/WORKFLOW.md");
+  const contributing = read("CONTRIBUTING.md");
+  const checklist = read("docs/QA_CHECKLIST.md");
+
+  assert.match(agents, /root-cause-first/i);
+  assert.match(workflow, /root-cause-first/i);
+  assert.match(workflow, /dua repair attempt/i);
+  assert.match(workflow, /targeted regression.*npm run lint.*npm run verify/is);
+  assert.match(agents, /User bukan QA runner pertama/i);
+  assert.match(workflow, /User bukan runner QA pertama/i);
+  assert.match(contributing, /User hanya perlu mengirim log lokal.*environment/i);
+  assert.match(checklist, /User log bukan default repair loop/i);
 });
 
 test("every canonical action is documented in API and authorization contracts", () => {

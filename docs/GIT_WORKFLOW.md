@@ -39,6 +39,12 @@ Pre-push selalu menjalankan `npm run verify`. Setelah itu, diff diklasifikasikan
 
 Setelah pre-push PASS, GitHub workflow **Quality** tetap berjalan pada `main` sebagai verifikasi server-side sekunder. Jangan memakai `--no-verify`, `--force`, atau bypass routine.
 
+## Checkpoint main untuk workflow multi-chat
+
+Tidak perlu branch per fitur untuk workflow pribadi ini. Gunakan commit kecil yang sudah verified sebagai checkpoint sehat di `main`. Beberapa ChatGPT boleh membuat patch paralel, tetapi patch tersebut **tidak langsung menjadi source of truth**. Saat penggabungan akhir, gunakan project terbaru di `main` sebagai authority, audit baseline/touched paths tiap patch, lalu semantic-merge overlap sebelum commit berikutnya.
+
+Jangan melakukan pola `extract patch A -> overwrite -> extract patch B -> overwrite`. Jika patch lama menyentuh file yang sudah berubah di project terbaru, ambil intent/logic yang masih relevan dan sesuaikan dengan source terbaru. Setelah grup overlap masuk, jalankan targeted regression; setelah semua patch terintegrasi, jalankan lint + full verify, baru commit checkpoint berikutnya.
+
 ## Runtime DEV/PROD di setiap workstation tepercaya
 
 Setiap PC/laptop tepercaya mempunyai dua profile lokal:

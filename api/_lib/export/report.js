@@ -23,6 +23,14 @@ export const reportWorkbookSheets = (report, meta) => {
   }
   return {
     Ringkasan: summaryRows,
+    Komitmen: [
+      { Metrik: "Pembayaran KPR/cicilan", Nominal: amount(report.commitmentActivity?.debt_payment_amount), Keterangan: "Arus kas keluar ke kewajiban" },
+      { Metrik: "Pokok teridentifikasi", Nominal: amount(report.commitmentActivity?.identified_principal_amount), Keterangan: "Mengurangi sisa kewajiban" },
+      { Metrik: "Bunga & biaya teridentifikasi", Nominal: amount(report.commitmentActivity?.identified_interest_amount), Keterangan: "Bagian biaya dari pembayaran" },
+      { Metrik: "Pembayaran dengan pokok belum diperbarui", Nominal: amount(report.commitmentActivity?.unknown_principal_payment_amount), Keterangan: `${Number(report.commitmentActivity?.unknown_principal_payment_count || 0)} pembayaran` },
+      { Metrik: "Setoran Arisan", Nominal: amount(report.commitmentActivity?.arisan_contribution_amount), Keterangan: "" },
+      { Metrik: "Penerimaan Arisan", Nominal: amount(report.commitmentActivity?.arisan_receipt_amount), Keterangan: "" },
+    ],
     Alokasi: (report.allocationOptions || []).map((item) => ({
       Alokasi: item.name,
       Dana_Alokasi: amount(item.allocated_amount),

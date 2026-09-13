@@ -38,7 +38,13 @@ const ENVELOPE_DEPENDENCIES = Object.freeze(unique(
 const RECURRING_DEPENDENCIES = Object.freeze(unique(
   CORE_OVERVIEW,
   AUDIT,
-  ["accounts.list", "transactions.list", "envelopes.list", "recurring.list", "recurring.previewRuleLifecycle", "budgets.list", "reports.monthly", "reminders.get", "periods.previewClose", "archive.list"],
+  ["accounts.list", "transactions.list", "envelopes.list", "recurring.list", "recurring.previewRuleLifecycle", "commitments.list", "budgets.list", "reports.monthly", "reminders.get", "periods.previewClose", "archive.list"],
+));
+
+const COMMITMENT_DEPENDENCIES = Object.freeze(unique(
+  CORE_OVERVIEW,
+  AUDIT,
+  ["accounts.list", "transactions.list", "recurring.list", "commitments.list", "reports.monthly", "periods.previewClose", "archive.list"],
 ));
 
 const BUDGET_DEPENDENCIES = Object.freeze(unique(
@@ -68,7 +74,7 @@ const ALL_BUSINESS_READS = Object.freeze(unique(
     "users.list", "sessions.listOwn", "archive.list", "investments.overview", "investments.instruments.list",
     "accounts.list", "accounts.previewLifecycle", "categories.list", "categories.previewArchive", "masterDataRequests.list",
     "transferRequests.list", "transactions.list", "envelopes.list", "envelopes.previewRuleLifecycle", "recurring.list",
-    "recurring.previewRuleLifecycle", "budgets.list", "budgets.previewLifecycle", "goals.list", "goals.previewLifecycle",
+    "recurring.previewRuleLifecycle", "commitments.list", "budgets.list", "budgets.previewLifecycle", "goals.list", "goals.previewLifecycle",
     "reports.monthly", "reconciliations.list", "periods.list", "periods.previewClose", "notifications.status",
     "notifications.preferences", "reminders.get", "integrations.status", "reset.preview", "reset.status", "fullReset.preview", "fullReset.status",
   ],
@@ -132,6 +138,10 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
   "recurring.payOccurrence": RECURRING_DEPENDENCIES,
   "recurring.reversePayment": RECURRING_DEPENDENCIES,
   "recurring.restoreRule": RECURRING_DEPENDENCIES,
+  "commitments.create": unique(COMMITMENT_DEPENDENCIES, RECURRING_DEPENDENCIES),
+  "commitments.update": unique(COMMITMENT_DEPENDENCIES, RECURRING_DEPENDENCIES),
+  "commitments.archive": unique(COMMITMENT_DEPENDENCIES, RECURRING_DEPENDENCIES),
+  "commitments.recordReceipt": unique(COMMITMENT_DEPENDENCIES, TRANSACTION_DEPENDENCIES),
 
   "budgets.batchCreate": unique(BUDGET_DEPENDENCIES, RECURRING_DEPENDENCIES),
   "budgets.upsert": BUDGET_DEPENDENCIES,

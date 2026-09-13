@@ -72,27 +72,43 @@ Sebelum coding, petakan **source -> behavior/contract -> test -> docs** memakai 
 
 Untuk bug/regression, test harus membuktikan behavior yang rusak. Jangan memakai source-text regex untuk mengunci nama variabel lokal, urutan helper internal, atau bentuk JSX yang boleh berubah tanpa mengubah behavior. Static/source tests tetap tepat untuk route literal, dependency boundary, forbidden API, security invariant, dan contract arsitektur yang memang harus literal.
 
-### 3. Parallel work
+### 3. Parallel patch dan final merge
 
-Beberapa chat/tab boleh melakukan audit atau menyiapkan patch paralel bila scope tidak overlap. Karena user bekerja dari satu folder fisik, **penerapan patch dilakukan serial**: patch A -> validate/commit/push -> patch B.
+Beberapa chat/tab boleh melakukan audit atau menyiapkan patch paralel untuk mempercepat pekerjaan, termasuk ketika user baru akan menggabungkan patch di akhir. Setiap patch harus diperlakukan sebagai **unit perubahan independen**, bukan project final, dan wajib mencatat baseline + scope + touched/added/deleted path + validation aktual mengikuti `templates/PATCH_MANIFEST_TEMPLATE.md`.
 
-Tidak ada task registry atau branch automation. Workflow rutin tetap di `main`; koordinasi scope dilakukan melalui plan serta diff source aktual.
+Aturan integrasi:
+
+1. default artifact patch adalah **changed-files-only ZIP** dengan path asli;
+2. project terbaru yang diberikan saat merge adalah **source of truth**;
+3. final merger membaca perubahan patch satu per satu dan melakukan **semantic merge**, bukan extract/overwrite ZIP secara buta;
+4. bila dua patch menyentuh file/contract yang sama, audit intent dan gabungkan logic yang masih relevan terhadap source terbaru;
+5. patch yang sudah superseded/equivalent oleh source terbaru boleh ditandai sudah terwakili dan tidak dipaksakan masuk;
+6. deletion/rename wajib membawa cleanup command Git Bash eksplisit dan usage audit;
+7. setelah setiap kelompok merge yang overlap, jalankan targeted regression sebelum patch berikutnya; setelah seluruh patch masuk, jalankan lint + full verify;
+8. integrasi final tetap satu pintu agar satu working folder tidak menerima overwrite paralel yang tidak direview.
+
+Tidak ada task registry atau branch automation. Workflow rutin tetap di `main`; commit kecil yang sudah verified menjadi checkpoint sehat. Multi-chat dipakai untuk paralelisasi audit/patch, sedangkan integrasi final tetap semantic dan terkendali.
 
 ### 4. Guarded changes
 
 Approval eksplisit wajib untuk schema/migration, auth/allowlist/role, API contract, saldo/transfer/audit/idempotency, backup/restore/import/purge, env/secret/deployment, serta trust-boundary/security tooling. Guarded change tetap membutuhkan approval + review + test. Delivery rutin tetap `git push origin main`; pre-push boleh melakukan check Production **read-only**, tetapi operasi live destructive/migration tidak pernah diotomatisasi oleh push.
 
-### 5. Validation
+### 5. Validation dan repair loop
 
-Urutan validation patch:
+Untuk bug/regression gunakan **root-cause-first**: reproduce/trace -> root cause -> patch kecil -> targeted regression. Jangan menumpuk workaround terhadap symptom. Jika dua repair attempt masih gagal pada failure yang sama, hentikan tambalan dan audit ulang baseline, diff, contract, serta owner logic sebelum edit berikutnya.
 
-1. setelah edit source stabil, jalankan `npm run lint` sebagai preflight wajib;
-2. bila lint gagal, perbaiki error source lalu ulangi `npm run lint` sampai PASS. Jangan menonaktifkan rule atau menambah ignore hanya untuk melewati gate;
-3. jalankan test regression/area yang terdampak;
-4. jalankan build/diagnosis relevan bila area perubahan memerlukannya;
-5. setelah seluruh edit dan docs final, jalankan full gate `npm run verify` dari tree yang sama;
-6. bila edit dilakukan lagi setelah PASS, PASS lama gugur dan lint + gate relevan harus diulang;
-7. handoff patch hanya boleh diberi status final bila full gate tree final PASS pada Node `22.15.0+` (22.x) atau `24.x`; environment di luar rentang dukungan hanya boleh menghasilkan candidate yang diberi label unverified. Candidate **tidak boleh** membawa known lint/test/build failure yang sudah berhasil direproduksi.
+Urutan validation dibuat bertingkat supaya cepat:
+
+1. jalankan syntax/static check atau targeted test paling murah yang langsung menyentuh perubahan;
+2. jalankan targeted regression area terdampak sampai PASS;
+3. setelah edit source stabil, jalankan `npm run lint`;
+4. bila lint gagal, perbaiki **root cause source** lalu ulangi `npm run lint` sampai PASS. Jangan menonaktifkan rule atau menambah ignore hanya untuk melewati gate;
+5. jalankan build/diagnosis relevan bila area perubahan memerlukannya;
+6. setelah seluruh edit dan docs final, jalankan full gate `npm run verify` dari tree yang sama;
+7. bila edit dilakukan lagi setelah PASS, PASS lama gugur dan lint + gate relevan harus diulang;
+8. handoff patch hanya boleh berstatus **FINAL / VERIFIED** bila full gate tree final PASS pada Node `22.15.0+` (22.x) atau `24.x`; environment eksternal yang benar-benar memblokir full gate hanya boleh menghasilkan **CANDIDATE / UNVERIFIED**. Candidate **tidak boleh** membawa known lint/test/build failure yang sudah berhasil direproduksi.
+
+User bukan runner QA pertama. Agent wajib menuntaskan repair loop yang dapat direproduksi sendiri; log Git Bash user hanya diminta sebagai fallback untuk failure environment-specific/tidak dapat direproduksi agent, misalnya credential Vercel/Turso, Windows-only behavior, browser/iPhone nyata, atau dependency/runtime eksternal.
 
 Untuk patch yang dibuat agent/ChatGPT, `npm run zip` bukan mekanisme pertama untuk mengetahui kualitas patch. Lint repair-loop dan regression harus diselesaikan **sebelum handoff**; `npm run zip` hanya menjadi fail-closed archive gate terakhir. Jika command dapat berjalan dan menemukan error, error tersebut wajib diperbaiki pada patch yang sama.
 
@@ -132,9 +148,15 @@ git push origin main
 
 Pre-push membaca ref/SHA aktual dari Git, menolak branch/ref mismatch, dirty working tree, non-fast-forward/force, lalu menjalankan full `npm run verify`. GitHub **Quality** tetap berjalan pada `main` sebagai verification server-side sekunder.
 
-### 7. Changed-files ZIP
+### 7. Changed-files ZIP dan patch manifest
 
-Jika user meminta patch ZIP, isi hanya file berubah dengan path asli. Jangan sertakan dependency, build, cache, generated file, temporary file, export/data privat, atau secret. Bila ada delete, laporkan path delete secara eksplisit.
+Jika user meminta patch ZIP, **default delivery adalah changed-files-only** dengan path asli. Jangan sertakan dependency, build, cache, generated file, temporary file, export/data privat, atau secret. Full-source ZIP hanya digunakan bila user meminta atau final integrator menilai overlay tidak aman.
+
+Setiap patch paralel/handoff harus menyertakan metadata mengikuti `templates/PATCH_MANIFEST_TEMPLATE.md`: nama/scope patch, baseline commit/SHA bila tersedia, changed/added/deleted paths, area touched/not touched, validation aktual, cleanup command, serta status `FINAL / VERIFIED` atau `CANDIDATE / UNVERIFIED`. Manifest handoff tidak menjadi runtime source dan tidak ikut final merge.
+
+Bila ada delete/rename, lakukan usage audit dan berikan command Git Bash siap-copy seperti `rm -f path/file-lama` atau `rm -rf path/folder-lama` hanya jika directory benar-benar terbukti orphan. Tidak adanya file dalam ZIP bukan bukti deletion sudah diterapkan.
+
+Final response patch memakai urutan tetap **Artifact -> Cleanup Git Bash -> Validation -> Tidak disentuh -> Status** supaya merger/user tidak perlu menebak evidence tiap patch.
 
 ### 8. Clean source ZIP
 

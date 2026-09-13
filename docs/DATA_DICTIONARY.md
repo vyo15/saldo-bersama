@@ -5,7 +5,7 @@
 > **Update when:** Makna field/table atau lifecycle data berubah.  
 > **Boundary:** Tipe/constraint authoritative berada di migration; kronologi migration berada di Git/CHANGELOG.
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `019_budget_recording_mode.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `020_commitments.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -36,6 +36,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `envelope_periods` | Instance Alokasi Dana per periode dan alokasi aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `recurring_rules` | Aturan tagihan atau pemasukan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `recurring_occurrences` | Kejadian per jatuh tempo dari aturan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `commitments` | KPR, cicilan, pinjaman, Arisan, atau komitmen berkala lain beserta sisa kewajiban/progres, rekening pembayaran, dan jadwal canonical. | Tinggi | Service/API; jadwal ditautkan 1:1 ke `recurring_rules`; archive mempertahankan histori |
+| `commitment_movements` | Ledger progres Komitmen untuk pembayaran, penerimaan Arisan, dan reversal; menyimpan pemisahan pokok/bunga bila sisa pokok diketahui. | Tinggi | Dibentuk oleh service Komitmen/Jadwal Rutin; tidak boleh ditulis langsung client |
 | `savings_goals` | Target tabungan yang terhubung ke rekening. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `transactions` | Ledger transaksi income, expense, transfer, refund, dan adjustment. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `investment_portfolios` | Compatibility container yang mengikat histori investasi ke satu rekening `account_type=investment`; broker context dipertahankan untuk data lama tetapi tidak menjadi hierarchy UI current. | Tinggi | Service/API; satu RDN per portfolio; ikut backup/restore |
@@ -69,7 +71,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 ## Field finansial utama
 
 - `users.photo_url`: kosong atau URL profil Google tepercaya `https://lh3.googleusercontent.com/...`; bukan field authorization.
-- `transactions.amount`, `accounts.initial_balance`, budget, envelope, goal, occurrence, reconciliation: integer Rupiah.
+- `transactions.amount`, `accounts.initial_balance`, budget, envelope, goal, commitment, occurrence, reconciliation: integer Rupiah.
 - `envelope_rules.assignee_user_id`: nullable; `NULL` berarti Jatah Bersama. Jika terisi, wajib menunjuk pengguna aktif pada create/restore dan tidak mengubah `scope`/`owner_user_id` ledger.
 - `envelope_rules.decoration_key`: metadata presentasi non-finansial; default `auto`, pilihan eksplisit dibatasi ke template canonical. Tidak mengubah saldo, status, ownership, atau rekonsiliasi.
 - `envelope_rules.source_account_id`: kolom schema tetap nullable untuk kompatibilitas backup/data legacy, tetapi runtime mewajibkannya untuk Alokasi Dana baru, pemakaian transaksi, realokasi baru, dan restore rule. Satu Alokasi Dana aktif canonical terikat pada tepat satu rekening sumber.
@@ -81,6 +83,10 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `budgets.recording_mode`: pola pencatatan Kebutuhan dengan nilai `flexible`, `fixed_once`, atau `recurring`. `fixed_once` dipakai untuk Sekali bayar; `recurring` dapat menautkan Jadwal Rutin. `budget_history.recording_mode` menyimpan pola tersebut saat periode dipadatkan agar reopen/report tetap konsisten.
 - `transactions.budget_id`: nullable link eksplisit ke Kebutuhan yang menghasilkan expense. Tidak memakai FK ke `budgets` karena row operasional dapat dipadatkan ke `budget_history`; backend memvalidasi periode, kategori, scope, dan Alokasi sebelum menyimpan.
 - `recurring_rules.budget_id`: nullable link jadwal yang lahir dari Kebutuhan; future occurrence tidak otomatis dianggap memakai Kebutuhan bulan lama setelah row operasional dipadatkan.
+- `recurring_rules.commitment_id`: nullable link 1:1 ke `commitments`. Jadwal yang memiliki link ini dikelola dari Komitmen, tidak boleh diedit/diarsipkan terpisah dari Jadwal Rutin, dan otomatis diarsipkan saat Komitmen selesai.
+- `transactions.commitment_id` + `transactions.commitment_flow`: internal link transaksi aktual ke Komitmen dengan flow `payment` atau `receipt`. Link ini hanya boleh dibuat oleh service Komitmen/Jadwal Rutin agar ledger rekening dan `commitment_movements` tetap sinkron.
+- `commitments.current_balance`: sisa pokok/setoran yang masih berjalan; untuk KPR/cicilan/pinjaman hanya berubah ketika sisa pokok aktual diberikan, sedangkan Arisan berkurang sesuai setoran. `received_amount` terpisah agar penerimaan Arisan tidak dianggap mengurangi histori setoran.
+- `commitment_movements.principal_known`: `1` bila pembagian pokok/bunga dapat dihitung dari sisa pokok setelah pembayaran; `0` menjaga pembayaran tetap tercatat tanpa menebak pokok. Reversal menandai movement `reversed`, bukan menghapus histori.
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
 - `investment_portfolios.rdn_account_id`: FK unik ke rekening `account_type=investment`; runtime mewajibkan rekening aktif, operable saat create, dan `allow_negative=0`. `row_version` portfolio menjadi optimistic-lock token seluruh mutation portfolio.
 - `investment_instruments.lot_size`: integer positif untuk konversi lot → lembar. Ticker unik uppercase; status `inactive` melarang buy baru tetapi tidak memblok sell holding existing.
@@ -117,7 +123,7 @@ Field berikut dihitung saat read dan tidak disimpan sebagai angka bebas edit:
 Nama berikut hanya kebutuhan/RFC dan **bukan** tabel/kolom runtime:
 
 - transaction lifecycle, receipt reference, draft/planned: RFC-0011; participant payer/beneficiary/liable_party hanya dapat dihidupkan kembali bila positioning produk berubah;
-- obligation/debt/receivable/settlement: RFC-0012;
+- receivable/settlement lintas pihak yang lebih umum di luar Komitmen KPR/cicilan/pinjaman/Arisan: RFC-0012;
 - relasi refund ke expense asli dan compatibility split historis: follow-up RFC-0013;
 - category parent dan goal stage: RFC-0014;
 - transaction line item multi-kategori/multi-Kebutuhan dengan satu cash movement: RFC-0019.
@@ -127,7 +133,7 @@ Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API cont
 
 ## Current schema marker
 
-Versi runtime aktif: `21`. Latest migration canonical: `019_budget_recording_mode.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
+Versi runtime aktif: `22`. Latest migration canonical: `020_commitments.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
 
 Compatibility penting yang tetap current:
 

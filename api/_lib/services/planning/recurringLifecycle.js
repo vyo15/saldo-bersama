@@ -83,6 +83,7 @@ export const archiveRecurringRule = async (db, context, { removeUnpaidFutureOccu
   const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=? AND status='active'", [p.recurring_rule_id]);
   if (!current) throw appError("NOT_FOUND", "Aturan rutin aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
+  if (current.commitment_id && !context.commitmentManaged) throw appError("COMMITMENT_SCHEDULE_MANAGED", "Jadwal ini dikelola dari Komitmen. Arsipkan Komitmen dari halaman Komitmen.", 409);
   const reason = sanitizeText(p.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip aturan rutin wajib diisi.", 400);
   const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
@@ -101,6 +102,7 @@ export const restoreRecurringRule = async (db, context) => {
   const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=? AND status='archived'", [p.recurring_rule_id]);
   if (!current) throw appError("NOT_FOUND", "Aturan rutin arsip tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
+  if (current.commitment_id && !context.commitmentManaged) throw appError("COMMITMENT_SCHEDULE_MANAGED", "Jadwal Komitmen tidak dapat dipulihkan terpisah dari Komitmennya.", 409);
   const reason = sanitizeText(p.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan aturan rutin wajib diisi.", 400);
   const category = await db.one("SELECT status,transaction_type FROM categories WHERE category_id=?", [current.category_id]);
@@ -112,6 +114,55 @@ export const restoreRecurringRule = async (db, context) => {
   if (update.rowsAffected !== 1) throw appError("CONFLICT", "Aturan rutin berubah di perangkat lain.", 409);
   await ensureRuleOccurrences(db, next);
   await appendAudit(db, context, { entityType: "recurring_rule", entityId: current.recurring_rule_id, previous: publicRow(current, ["auto_debit"]), next: { ...publicRow(next, ["auto_debit"]), restore_reason: reason } });
+  await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
+  return publicRow(next, ["auto_debit"]);
+};
+
+
+const assertCommitmentLifecycleContext = (context, rule, commitmentId) => {
+  if (!context.commitmentManaged || !rule?.commitment_id || rule.commitment_id !== commitmentId) {
+    throw appError("COMMITMENT_SCHEDULE_CONTEXT_REQUIRED", "Lifecycle jadwal Komitmen hanya dapat dijalankan dari domain Komitmen.", 409);
+  }
+};
+
+export const completeCommitmentRecurringRule = async (db, context, { rule, commitmentId, removeUnpaidFutureOccurrences }) => {
+  assertCommitmentLifecycleContext(context, rule, commitmentId);
+  if (rule.status !== "active") return publicRow(rule, ["auto_debit"]);
+  if (typeof removeUnpaidFutureOccurrences !== "function") throw new TypeError("removeUnpaidFutureOccurrences callback wajib tersedia.");
+  const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=?", [rule.recurring_rule_id]);
+  if (!current || current.status !== "active") return current ? publicRow(current, ["auto_debit"]) : null;
+  assertCommitmentLifecycleContext(context, current, commitmentId);
+  const next = { ...current, status: "archived", ...nextVersionStamp(current, context.actor.user_id) };
+  const update = await db.execute("UPDATE recurring_rules SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='active'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Jadwal Komitmen berubah di perangkat lain.", 409);
+  await cancelScheduledManualRemindersForRecurringRule(db, context, current.recurring_rule_id, "COMMITMENT_COMPLETED");
+  const removedFutureOccurrences = await removeUnpaidFutureOccurrences(db, current.recurring_rule_id);
+  await appendAudit(db, context, {
+    entityType: "recurring_rule",
+    entityId: current.recurring_rule_id,
+    previous: publicRow(current, ["auto_debit"]),
+    next: { ...publicRow(next, ["auto_debit"]), archive_reason: "Komitmen selesai", source: "commitment_completion", future_projections_removed_count: removedFutureOccurrences },
+  });
+  await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
+  return publicRow(next, ["auto_debit"]);
+};
+
+export const restoreCompletedCommitmentRecurringRule = async (db, context, { ruleId, commitmentId }) => {
+  if (!context.commitmentManaged) throw appError("COMMITMENT_SCHEDULE_CONTEXT_REQUIRED", "Lifecycle jadwal Komitmen hanya dapat dijalankan dari domain Komitmen.", 409);
+  const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=?", [ruleId]);
+  if (!current) throw appError("COMMITMENT_SCHEDULE_MISSING", "Jadwal Rutin Komitmen tidak ditemukan.", 409);
+  assertCommitmentLifecycleContext(context, current, commitmentId);
+  if (current.status === "active") return publicRow(current, ["auto_debit"]);
+  const next = { ...current, status: "active", ...nextVersionStamp(current, context.actor.user_id) };
+  const update = await db.execute("UPDATE recurring_rules SET status='active',row_version=?,updated_by=?,updated_at=? WHERE recurring_rule_id=? AND row_version=? AND status='archived'", [next.row_version, next.updated_by, next.updated_at, current.recurring_rule_id, current.row_version]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Jadwal Komitmen berubah di perangkat lain.", 409);
+  await ensureRuleOccurrences(db, next);
+  await appendAudit(db, context, {
+    entityType: "recurring_rule",
+    entityId: current.recurring_rule_id,
+    previous: publicRow(current, ["auto_debit"]),
+    next: { ...publicRow(next, ["auto_debit"]), restore_reason: "Pembayaran terakhir dibatalkan", source: "commitment_reversal" },
+  });
   await enqueueRecurringRuleSync(db, context, current.recurring_rule_id);
   return publicRow(next, ["auto_debit"]);
 };

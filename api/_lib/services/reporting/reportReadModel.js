@@ -88,6 +88,40 @@ export const mapReportBreakdowns = ([accounts = [], creators = [], natures = [],
   costShareExpenses: aggregateCostShares(costShareRows, users),
 });
 
+
+export const reportCommitmentActivityStatement = (actor, startDate, endDate, { allocationRuleId = "" } = {}) => {
+  const ledger = readableLedgerSql(actor, "t");
+  const scope = expenseScope(allocationRuleId, "t");
+  return {
+    sql: `SELECT
+      COALESCE(SUM(CASE WHEN cm.movement_type='payment' AND c.commitment_type<>'arisan' THEN cm.amount ELSE 0 END),0) AS debt_payment_amount,
+      COALESCE(SUM(CASE WHEN cm.movement_type='payment' AND c.commitment_type<>'arisan' AND cm.principal_known=1 THEN cm.principal_amount ELSE 0 END),0) AS identified_principal_amount,
+      COALESCE(SUM(CASE WHEN cm.movement_type='payment' AND c.commitment_type<>'arisan' AND cm.principal_known=1 THEN cm.interest_amount ELSE 0 END),0) AS identified_interest_amount,
+      COALESCE(SUM(CASE WHEN cm.movement_type='payment' AND c.commitment_type<>'arisan' AND cm.principal_known=0 THEN cm.amount ELSE 0 END),0) AS unknown_principal_payment_amount,
+      COALESCE(SUM(CASE WHEN cm.movement_type='payment' AND c.commitment_type<>'arisan' AND cm.principal_known=0 THEN 1 ELSE 0 END),0) AS unknown_principal_payment_count,
+      COALESCE(SUM(CASE WHEN cm.movement_type='payment' AND c.commitment_type='arisan' THEN cm.amount ELSE 0 END),0) AS arisan_contribution_amount,
+      COALESCE(SUM(CASE WHEN cm.movement_type='receipt' AND c.commitment_type='arisan' THEN cm.amount ELSE 0 END),0) AS arisan_receipt_amount
+    FROM commitment_movements cm
+    JOIN commitments c ON c.commitment_id=cm.commitment_id
+    JOIN transactions t ON t.transaction_id=cm.transaction_id
+    WHERE cm.status='active' AND t.status='active' AND t.transaction_date BETWEEN ? AND ? AND ${ledger.sql} AND ${scope.sql}`,
+    args: [startDate, endDate, ...ledger.args, ...scope.args],
+  };
+};
+
+export const mapReportCommitmentActivity = (rows = []) => {
+  const row = rows[0] || {};
+  return {
+    debt_payment_amount: Number(row.debt_payment_amount || 0),
+    identified_principal_amount: Number(row.identified_principal_amount || 0),
+    identified_interest_amount: Number(row.identified_interest_amount || 0),
+    unknown_principal_payment_amount: Number(row.unknown_principal_payment_amount || 0),
+    unknown_principal_payment_count: Number(row.unknown_principal_payment_count || 0),
+    arisan_contribution_amount: Number(row.arisan_contribution_amount || 0),
+    arisan_receipt_amount: Number(row.arisan_receipt_amount || 0),
+  };
+};
+
 export const reportTransactionsStatement = (actor, startDate, endDate, { allocationRuleId = "" } = {}) => {
   const ledger = readableLedgerSql(actor, "t");
   const scope = allocationRuleId

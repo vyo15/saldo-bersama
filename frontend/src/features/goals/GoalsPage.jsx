@@ -26,6 +26,7 @@ import { todayInJakarta } from "../../domain/dates.js";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
 
 const GoalDialogLayer = lazy(() => import("./components/GoalDialogLayer.jsx"));
+const GoalAchievementPostcard = lazy(() => import("./components/GoalAchievementPostcard.jsx"));
 
 const emptyGoalForm = () => ({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
 const emptyMovement = () => ({ goal: null, movement_type: "deposit", amount: "", source_account_id: "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "" });
@@ -89,6 +90,7 @@ const useGoalMovement = ({ accounts, transferRoutes, resource, refreshOverview, 
   const movementMutation = useGuardedMutation();
   const [movement, setMovement] = useState(emptyMovement);
   const [movementState, setMovementState] = useState({ status: "idle", error: null });
+  const [achievement, setAchievement] = useState(null);
   const compatibleMovementAccounts = movement.goal
     ? accounts.filter((account) => {
       const sourceId = movement.movement_type === "withdrawal" ? movement.goal.account_id : account.account_id;
@@ -98,6 +100,7 @@ const useGoalMovement = ({ accounts, transferRoutes, resource, refreshOverview, 
     })
     : accounts;
   const openMovement = useCallback((goal, movement_type, prefill = null) => {
+    setAchievement(null);
     setMovement(goalMovementDraft({ goal, movementType: movement_type, accounts, transferRoutes, prefill }));
     setMovementState({ status: "idle", error: null });
   }, [accounts, transferRoutes]);
@@ -110,15 +113,22 @@ const useGoalMovement = ({ accounts, transferRoutes, resource, refreshOverview, 
     if (error) { setMovementState({ status: "error", error }); return; }
     setMovementState({ status: "submitting", error: null });
     return movementMutation.run(async () => {
-      await requestMoveGoal({ goal_id: movement.goal.goal_id, movement_type: movement.movement_type, amount, source_account_id: movement.source_account_id, destination_account_id: movement.destination_account_id, transaction_date: movement.transaction_date, reason: movement.reason }, {});
+      const movementType = movement.movement_type;
+      const goalBefore = movement.goal;
+      const result = await requestMoveGoal({ goal_id: goalBefore.goal_id, movement_type: movementType, amount, source_account_id: movement.source_account_id, destination_account_id: movement.destination_account_id, transaction_date: movement.transaction_date, reason: movement.reason }, {});
       setMovement((current) => ({ ...current, goal: null }));
       setMovementState({ status: "idle", error: null });
-      notify({ message: movement.movement_type === "deposit" ? "Dana target dan transfer rekening berhasil dicatat." : "Penarikan target dan transfer rekening berhasil dicatat.", tone: "success", dedupeKey: "goals:move" });
+      if (movementType === "deposit" && result?.goal) {
+        setAchievement({ goalBefore, goalAfter: result.goal, amount });
+      } else {
+        notify({ message: movementType === "deposit" ? "Dana target dan transfer rekening berhasil dicatat." : "Penarikan target dan transfer rekening berhasil dicatat.", tone: "success", dedupeKey: "goals:move" });
+      }
       invalidate(goalLedgerRefreshKeys);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
     }).catch((caught) => setMovementState({ status: "error", error: caught }));
   };
-  return { movementMutation, movement, setMovement, movementState, compatibleMovementAccounts, openMovement, submitMovement };
+  const dismissAchievement = useCallback(() => setAchievement(null), []);
+  return { movementMutation, movement, setMovement, movementState, achievement, dismissAchievement, compatibleMovementAccounts, openMovement, submitMovement };
 };
 
 const useGoalLifecycle = ({ resource, refreshOverview, invalidate, notify }) => {
@@ -276,6 +286,11 @@ const GoalsPage = () => {
     {(reminderTarget || creation.open || lifecycle.editGoal || movement.movement.goal || lifecycle.reverseTarget || lifecycle.archiveTarget || lifecycle.statusTarget) ? (
       <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan aksi target..." />}>
         <GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} movement={movement} lifecycle={lifecycle} />
+      </Suspense>
+    ) : null}
+    {movement.achievement ? (
+      <Suspense fallback={null}>
+        <GoalAchievementPostcard {...movement.achievement} onClose={movement.dismissAchievement} />
       </Suspense>
     ) : null}
   </div>;

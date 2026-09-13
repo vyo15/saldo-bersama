@@ -145,6 +145,11 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `recurring.payOccurrence` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.reversePayment` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `recurring.restoreRule` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `commitments.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
+| `commitments.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `commitments.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `commitments.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `commitments.recordReceipt` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `budgets.upsert` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.batchCreate` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -214,6 +219,9 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - Master/config Administrator-only memakai server lifecycle preview. `accounts`, `categories`, envelope rule, recurring rule, goal, dan budget hanya boleh hard-delete melalui action `deleteUnused` masing-masing ketika backend membuktikan seluruh histori/dependensi domain = 0. Begitu pernah dipakai, jalurnya hanya archive/restore.
 - `envelopes.archiveRule` dan `envelopes.restoreRule` Administrator-only, memakai alasan + `row_version`, dan tidak menghapus movement/audit. `envelopes.deleteUnusedRule` hanya boleh menghapus rule baru bersama satu initial empty period yang belum pernah menjadi histori.
 - `goals.archive`/`goals.restore`, `recurring.archiveRule`/`recurring.restoreRule`, dan compatibility action `budgets.archive`/`budgets.restore` tetap Administrator-only. Flow user-facing Kebutuhan memakai `budgets.previewLifecycle` + `budgets.remove`: backend memilih hard-delete hanya untuk Kebutuhan history-free milik Administrator, sedangkan Kebutuhan yang sudah mempunyai jejak finansial dihentikan tanpa menghapus histori. Member hanya dapat menjalankannya pada scope/assignee yang memang boleh dikelola. `goals.deleteUnused`, `recurring.deleteUnusedRule`, dan compatibility `budgets.deleteUnused` tetap Administrator-only.
+- `commitments.create` membuat record Komitmen dan satu `recurring_rule` dalam scope rekening yang sama. `recurring_rules.commitment_id` menjadikan jadwal tersebut managed: update/archive langsung lewat action `recurring.*` ditolak agar tidak terjadi drift. Saat Komitmen selesai, jadwal future reproducible diarsipkan otomatis; reversal pembayaran terakhir memulihkan schedule internal bila sebelumnya selesai otomatis.
+- `recurring.payOccurrence` pada jadwal Komitmen tetap membuat transaksi canonical. Untuk KPR/cicilan/pinjaman, payload opsional `remaining_principal` menghitung pokok/bunga; tanpa field tersebut pembayaran sah tetapi sisa pokok tidak ditebak. Untuk Arisan, pembayaran mengurangi sisa setoran.
+- `commitments.recordReceipt` hanya untuk Arisan, membuat income canonical ke rekening yang ownership-nya kompatibel dan tidak boleh membuat total penerimaan melebihi `original_amount`.
 - `recurring.archiveRule` boleh membersihkan future generated projections berstatus `expected` yang reproducible dan belum materialized. Paid/partial/past/cancelled/transaction-linked occurrence adalah histori dan tidak boleh hard-delete.
 - `goals.list` mengembalikan `last_movement_row_version` bersama `last_movement_id`; `goals.reverseMovement` wajib membawa versi movement yang dilihat client melalui `rowVersion` atau `payload.row_version` sebelum linked transaction dibatalkan.
 - `recurring.cancelOccurrence` melewati tepat satu occurrence tanpa membuat/membatalkan transaksi dan tanpa mengubah saldo. Hanya occurrence tanpa pembayaran aktif/aktual yang boleh dilewati. `recurring.restoreOccurrence` memulihkan occurrence tersebut menjadi `expected` atau `overdue` berdasarkan tanggal saat pemulihan. Keduanya Administrator-only, beralasan, memakai `row_version`, idempotency, audit, dan tidak menghapus histori.

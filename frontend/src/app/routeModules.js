@@ -65,6 +65,7 @@ const ROUTE_PREFETCH = new Map([
   ["/perencanaan", [routeLoaders.planning]],
   ["/perencanaan/kantong", [routeLoaders.planning]],
   ["/perencanaan/jadwal", [routeLoaders.planning]],
+  ["/perencanaan/komitmen", [routeLoaders.planning]],
   ["/alokasi", [routeLoaders.planning]],
   ["/tagihan", [routeLoaders.planning]],
   ["/anggaran", [routeLoaders.planning]],

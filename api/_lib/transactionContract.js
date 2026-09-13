@@ -1,6 +1,8 @@
 export const RESERVED_TRANSACTION_FIELDS = Object.freeze([
   "recurring_occurrence_id",
   "goal_id",
+  "commitment_id",
+  "commitment_flow",
   "scope",
   "owner_user_id",
   "cost_share_json",
@@ -17,6 +19,8 @@ export const RESERVED_TRANSACTION_FIELDS = Object.freeze([
 export const INTERNAL_TRANSACTION_LINK_FIELDS = Object.freeze([
   "recurring_occurrence_id",
   "goal_id",
+  "commitment_id",
+  "commitment_flow",
 ]);
 
 const reservedTransactionFields = new Set(RESERVED_TRANSACTION_FIELDS);

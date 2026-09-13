@@ -73,6 +73,23 @@ export const ensureRuleOccurrences = async (db, rule, {
     await db.execute("INSERT INTO recurring_occurrences(occurrence_id,recurring_rule_id,period_key,due_date,expected_amount,actual_amount,status,transaction_ids_json,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", Object.values(occurrence));
   }
 };
+
+// Reproducible future projections are safe to remove when a schedule changes or ends.
+// Historical, cancelled, partial, and paid occurrences remain immutable audit history.
+export const removeUnpaidFutureOccurrences = async (db, ruleId, cutoff = todayJakarta()) => {
+  const result = await db.execute(`DELETE FROM recurring_occurrences
+    WHERE recurring_rule_id=?
+      AND due_date>=?
+      AND actual_amount=0
+      AND transaction_ids_json='[]'
+      AND status='expected'
+      AND NOT EXISTS (
+        SELECT 1 FROM transactions t
+        WHERE t.recurring_occurrence_id=recurring_occurrences.occurrence_id
+      )`, [ruleId, cutoff]);
+  return Number(result.rowsAffected || 0);
+};
+
 export const recurringScheduleChanged = (current, next) => ["frequency", "due_day", "start_date", "end_date", "expected_amount", "status"].some(field => String(current[field] ?? "") !== String(next[field] ?? ""));
 export const enqueueRecurringRuleSync = async (db, context, ruleId) => {
   await context.enqueueCalendar?.(db, "recurring", ruleId);

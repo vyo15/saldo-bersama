@@ -43,7 +43,7 @@ Dokumentasi Saldo Bersama dibagi berdasarkan fungsi, bukan berdasarkan umur file
 - **Snapshot:** `PROJECT_STATUS.md` dan `IMPLEMENTATION_MATRIX.md`.
 - **Runbook:** deployment, release, rollback, recovery, incident, operations, dan secret rotation.
 - **Historical:** ADR/RFC yang superseded/rejected, `docs/tasks/archive/` dari workflow lama, serta `docs/history/` termasuk one-time legacy cutover.
-- **Template:** template RFC dan template aktif lain.
+- **Template:** template RFC, `templates/PATCH_MANIFEST_TEMPLATE.md`, dan template aktif lain.
 
 ## Aturan perubahan
 

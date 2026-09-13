@@ -9,25 +9,10 @@ import {
   ensureRuleOccurrences,
   enqueueRecurringRuleSync,
   recurringScheduleChanged,
+  removeUnpaidFutureOccurrences,
 } from "./recurringSchedule.js";
 
 const FREQUENCIES = RECURRING_FREQUENCIES;
-
-// Hard DELETE of recurring projections stays in this explicitly allowlisted facade.
-// Only reproducible future projections are eligible; historical/materialized rows remain audit history.
-const removeUnpaidFutureOccurrences = async (db, ruleId, cutoff = todayJakarta()) => {
-  const result = await db.execute(`DELETE FROM recurring_occurrences
-    WHERE recurring_rule_id=?
-      AND due_date>=?
-      AND actual_amount=0
-      AND transaction_ids_json='[]'
-      AND status='expected'
-      AND NOT EXISTS (
-        SELECT 1 FROM transactions t
-        WHERE t.recurring_occurrence_id=recurring_occurrences.occurrence_id
-      )`, [ruleId, cutoff]);
-  return Number(result.rowsAffected || 0);
-};
 
 // Stable recurring-rule facade. Schedule projection, lifecycle, and occurrence
 // mutations are split by responsibility while action exports remain compatible.
@@ -153,6 +138,7 @@ export const updateRecurringRule = async (db, context) => {
   if (!current) throw appError("NOT_FOUND", "Aturan rutin tidak ditemukan.", 404);
   assertPlanningManageScope(context.actor, current, { allowOwnedPersonal: true });
   assertVersion(current, context.rowVersion ?? p.row_version);
+  if (current.commitment_id && !context.commitmentManaged) throw appError("COMMITMENT_SCHEDULE_MANAGED", "Jadwal ini dikelola dari Komitmen. Ubah jadwal melalui detail Komitmen.", 409);
   if (p.status !== undefined && String(p.status) !== "active") {
     throw appError("INVALID_STATUS", "Status aturan hanya dapat diubah melalui aksi arsip/pulihkan.", 400);
   }
@@ -185,12 +171,14 @@ export const recurringListStatement = (context) => {
     ? { sql: "1=1", args: [] }
     : { sql: "t.created_by=?", args: [context.actor.user_id] };
   return {
-    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.budget_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,a.account_type AS default_account_type,
+    sql: `SELECT o.*,r.name,r.kind,r.category_id,r.budget_id,r.commitment_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,a.account_type AS default_account_type,
+      c.commitment_type,c.current_balance AS commitment_current_balance,c.original_amount AS commitment_original_amount,c.total_installments AS commitment_total_installments,c.installments_paid AS commitment_installments_paid,c.auto_debit AS commitment_auto_debit,
       (SELECT t.transaction_id FROM transactions t
         WHERE t.recurring_occurrence_id=o.occurrence_id AND t.status='active' AND ${reverseAccess.sql}
         ORDER BY t.created_at DESC,t.transaction_id DESC LIMIT 1) AS reverse_transaction_id
       FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
       LEFT JOIN accounts a ON a.account_id=r.default_account_id
+      LEFT JOIN commitments c ON c.commitment_id=r.commitment_id
       WHERE o.period_key=? AND ${access.sql} ORDER BY o.due_date,r.name`,
     args: [...reverseAccess.args, period, ...access.args],
   };
@@ -198,6 +186,7 @@ export const recurringListStatement = (context) => {
 
 const recurringDisplayStatus = (row, today) => {
   if (String(row.status || "") === "cancelled") return "cancelled";
+  if (String(row.status || "") === "paid") return row.kind === "income" ? "received" : "paid";
   const actual = Number(row.actual_amount || 0);
   const expected = Number(row.expected_amount || 0);
   if (actual >= expected) return row.kind === "income" ? "received" : "paid";
@@ -224,8 +213,8 @@ const recurringCapabilities = (row, context, status, transactionIds) => {
     can_reverse: Boolean(row.reverse_transaction_id),
     can_cancel_occurrence: canSkip,
     can_restore_occurrence: actor.role === "owner" && activeRule && status === "cancelled",
-    can_edit_rule: activeRule && canManageRule,
-    can_archive_rule: actor.role === "owner" && activeRule,
+    can_edit_rule: activeRule && canManageRule && !row.commitment_id,
+    can_archive_rule: actor.role === "owner" && activeRule && !row.commitment_id,
     can_set_reminder: activeRule && canManageRule && !["paid", "received", "cancelled"].includes(status),
   };
 };
@@ -236,7 +225,7 @@ export const mapRecurringRows = (rows, context) => {
     const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
     const status = recurringDisplayStatus(row, today);
     return {
-      ...publicRow(row, ["auto_debit"]),
+      ...publicRow(row, ["auto_debit", "commitment_auto_debit"]),
       status,
       transaction_ids: transactionIds.join(","),
       ...recurringCapabilities(row, context, status, transactionIds),
@@ -256,6 +245,7 @@ export const deleteUnusedRecurringRule = async (db, context) => {
   const current = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=? AND status='active'", [p.recurring_rule_id]);
   if (!current) throw appError("NOT_FOUND", "Aturan rutin aktif tidak ditemukan.", 404);
   assertVersion(current, context.rowVersion ?? p.row_version);
+  if (current.commitment_id && !context.commitmentManaged) throw appError("COMMITMENT_SCHEDULE_MANAGED", "Jadwal Komitmen tidak dapat dihapus dari Jadwal Rutin.", 409);
   const reason = sanitizeText(p.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan aturan rutin wajib diisi.", 400);
   if (!strictBoolean(p.acknowledged, false)) throw appError("ACKNOWLEDGEMENT_REQUIRED", "Konfirmasi bahwa aturan rutin belum pernah digunakan wajib dicentang.", 400);

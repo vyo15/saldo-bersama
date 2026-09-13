@@ -12,12 +12,14 @@
 - [ ] Root cause dibedakan dari workaround visual/symptom.
 - [ ] Guarded/high-risk area memiliki approval yang diperlukan.
 - [ ] Test existing yang menyentuh area perubahan sudah dicari sebelum patch.
+- [ ] Patch paralel mencatat baseline/source, scope, touched/added/deleted path, dan area yang sengaja tidak disentuh.
+- [ ] Bug/regression ditangani root-cause-first; workaround berlapis tidak ditambahkan setelah failure yang sama tanpa audit ulang baseline/diff/contract.
 
 ## 2. Behavior dan regression
 
 - [ ] Bug/regression memiliki test behavior/contract yang relevan bila feasible.
 - [ ] Static/source assertion hanya mengunci invariant literal, bukan nama helper/variabel lokal.
-- [ ] Targeted regression PASS setelah implementasi final.
+- [ ] Targeted regression PASS setelah implementasi final; targeted gate yang masih gagal diselesaikan sebelum full verify mahal diulang.
 - [ ] Perubahan setelah PASS memicu pengulangan gate relevan.
 - [ ] Tidak ada production code yang diubah hanya untuk memuaskan test stale.
 
@@ -51,6 +53,7 @@
 - [ ] Detail object dengan sub-item erat memakai section/list hierarchy, bukan tumpukan card setara tanpa kebutuhan.
 - [ ] Satu fakta edukatif tidak diulang pada description, helper, card, dan notice di surface yang sama.
 - [ ] Warning finansial/destructive/recovery/error/conflict tetap dekat dengan dampaknya dan tidak disembunyikan demi minimalisme.
+- [ ] Celebration finansial hanya muncul setelah write dikonfirmasi server, tidak menggandakan toast/progress global, finite/non-blocking, reduced-motion safe, dan copy tidak mempermalukan kondisi finansial.
 
 ## 6. Auth, PWA, dan device
 
@@ -77,12 +80,17 @@
 
 ## 9. Full gate dan artifact
 
-- [ ] `npm run lint` PASS pada tree final; jika sempat gagal, error source sudah diperbaiki dan lint diulang sampai PASS.
+- [ ] `npm run lint` PASS pada tree final; jika sempat gagal, error source sudah diperbaiki dan lint diulang sampai PASS. User log bukan default repair loop dan hanya diminta untuk blocker environment-specific yang tidak dapat direproduksi agent.
 - [ ] Targeted regression sesuai area perubahan PASS sebelum full gate.
 - [ ] `npm run verify` PASS pada tree final yang sama dengan artifact/delivery.
 - [ ] Tidak ada known lint/test/build failure yang diteruskan ke patch/ZIP final; edit setelah PASS memicu validation ulang.
 - [ ] `npm run clean` dry-run tidak menyentuh path protected.
 - [ ] Clean source dibuat dengan `npm run zip`; bila verification gagal, command exit non-zero dan **tidak membuat archive baru**.
-- [ ] ZIP tidak memuat `.env.local`, `.git`, `.vercel`, dependency, dist/build, coverage, cache, database/export privat, patch/diff, atau secret.
+- [ ] Patch ZIP default changed-files-only, memakai path asli, dan tidak memuat `.env.local`, `.git`, `.vercel`, dependency, dist/build, coverage, cache, database/export privat, patch/diff, atau secret.
+- [ ] Patch manifest/handoff mencatat baseline, changed/added/deleted, cleanup, touched/not-touched, validation, dan status; metadata ini tidak ikut final runtime source.
+- [ ] Delete/rename sudah diaudit usage-nya dan memiliki command Git Bash `rm -f`/`rm -rf` eksplisit bila diperlukan.
+- [ ] Final merge memakai project terbaru sebagai authority; file overlap di-merge semantic dan tidak di-overwrite mentah antar ZIP.
+- [ ] Handoff memakai urutan Artifact -> Cleanup Git Bash -> Validation -> Tidak disentuh -> Status dan status tidak ambigu.
+- [ ] Status handoff eksplisit `FINAL / VERIFIED` setelah full gate PASS atau `CANDIDATE / UNVERIFIED` bila full gate benar-benar terblokir environment eksternal.
 - [ ] `git status --short` ditinjau sebelum commit/push.
 - [ ] Delivery Git tidak memakai `--no-verify`/force push dan GitHub **Quality** dipantau setelah push.

@@ -59,7 +59,7 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
   add("preferences", { sql: "SELECT user_id,notification_type FROM notification_preferences WHERE enabled=0", args: [] });
   add("recurringDue", {
     sql: `SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
-      r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,
+      r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,r.auto_debit,r.commitment_id,
       a.account_id,a.name AS account_name,a.status AS account_status
     FROM recurring_occurrences o
     JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
@@ -120,6 +120,15 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
   return { statements, indexes };
 };
 
+
+const recurringDueBody = (item, remaining) => {
+  const nominal = notificationRupiah(remaining);
+  const account = shortName(item.account_name, item.kind === "income" ? "rekening tujuan" : "rekening sumber");
+  if (item.kind === "income") return `${nominal} dijadwalkan masuk ke ${account}.`;
+  if (Number(item.auto_debit || 0) === 1) return `Pastikan autodebet ${nominal} dari ${account} sudah berhasil. Saldo aplikasi berubah setelah transaksi aktual dikonfirmasi.`;
+  return `${nominal} perlu dibayar dari ${account}.`;
+};
+
 const queueRecurringDueNotifications = async (db, state, recurring) => {
   const { today, users, disabledPreferences, accountBalances } = state;
   let queued = 0;
@@ -127,9 +136,7 @@ const queueRecurringDueNotifications = async (db, state, recurring) => {
     queued += await queueForRecipients(db, users, item, {
       type: "recurring_due",
       title: `${shortName(item.name, item.kind === "income" ? "Pemasukan rutin" : "Tagihan")} ${item.kind === "income" ? "dijadwalkan" : "jatuh tempo"} ${dueTimingLabel(today, item.due_date)}`,
-      body: item.kind === "income"
-        ? `${notificationRupiah(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)))} dijadwalkan masuk ke ${shortName(item.account_name, "rekening tujuan")}.`
-        : `${notificationRupiah(Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)))} perlu dibayar dari ${shortName(item.account_name, "rekening sumber")}.`,
+      body: recurringDueBody(item, Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0))),
       targetPath: "/perencanaan/jadwal",
       dedupeKey: `recurring:${item.occurrence_id}:${item.due_date}`,
     }, disabledPreferences);

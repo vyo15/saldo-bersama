@@ -7,6 +7,7 @@ const KIND_BY_PATH = Object.freeze({
   "/transaksi": "transactions",
   "/perencanaan/kantong": "planning",
   "/perencanaan/jadwal": "planning",
+  "/perencanaan/komitmen": "planning",
   "/target": "goals",
   "/laporan": "reports",
   "/investasi": "investments",

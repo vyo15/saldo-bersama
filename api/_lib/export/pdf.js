@@ -109,6 +109,19 @@ const budgetRows = (report) => (report.budgets || []).map((item) => [
   money(Number(item.amount || 0) - Number(item.used_amount || 0)),
 ]);
 
+
+const commitmentRows = (report) => {
+  const activity = report.commitmentActivity || {};
+  return [
+    ["Pembayaran KPR/cicilan", money(activity.debt_payment_amount)],
+    ["Pokok teridentifikasi", money(activity.identified_principal_amount)],
+    ["Bunga & biaya teridentifikasi", money(activity.identified_interest_amount)],
+    ["Pokok belum diperbarui", money(activity.unknown_principal_payment_amount)],
+    ["Setoran Arisan", money(activity.arisan_contribution_amount)],
+    ["Penerimaan Arisan", money(activity.arisan_receipt_amount)],
+  ].filter(([, value]) => value !== money(0));
+};
+
 const categoryRows = (report) => (report.categoryExpenses || []).map((item) => [
   item.label,
   String(Number(item.transaction_count || 0)),
@@ -162,6 +175,15 @@ export const createReportPdf = (report, meta) => {
   addHeader(first, meta);
   addSummary(first, report);
   const pages = [first];
+  const commitmentActivityRows = commitmentRows(report);
+  if (commitmentActivityRows.length) pages.push(...tablePages({
+    meta,
+    title: "Aktivitas Komitmen",
+    headers: ["Metrik", "Nominal"],
+    rows: commitmentActivityRows,
+    widths: [320, 187],
+    chunkSize: 20,
+  }));
   if (report.reportScope?.mode === "all") pages.push(...tablePages({
     meta,
     title: "Penggunaan Alokasi",

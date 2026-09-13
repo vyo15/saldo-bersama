@@ -7,7 +7,7 @@
 
 ## Runtime canonical
 
-- **Active schema contract:** v21
+- **Active schema contract:** v22
 - Node yang didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - Turso adalah source of truth; Google Sheets hanya mirror satu arah untuk data shared.
 - Development dan Production memakai database terpisah yang ditandai `DATABASE_ENVIRONMENT`; cross-binding ditolak fail-closed.
@@ -22,11 +22,12 @@
 | Transaksi | Partial | Income/expense/transfer/refund/adjustment canonical; multi-line item masih Planned RFC-0019. |
 | Alokasi Dana | Implemented | Pembuatan Alokasi hanya membuat wadah + rekening/pengguna/periode. Tidak meminta budget awal sebagai flow utama. |
 | Kebutuhan | Partial | Multi-item atomic maksimal 20 dengan **Nama kebutuhan + Kategori + Nominal + Pola** (`flexible`, `fixed_once`, `recurring`). Kategori master dapat dipakai ulang oleh beberapa kebutuhan seperti Arisan PT/Arisan Sekolah. Menambah/mengubah Kebutuhan otomatis menyesuaikan dana Alokasi dari **Dana Tersedia**; saldo fisik baru berubah ketika transaksi terjadi. `fixed_once` mem-prefill nominal saat Catat, `recurring` membuat Jadwal Rutin, dan dana kurang ditolak dengan `BUDGET_FUNDING_INSUFFICIENT`. |
-| Jadwal Rutin | Partial | Recurring rule/occurrence, reminder, skip/restore, shortage notification; beberapa model participant/receipt masih deferred. |
-| Target | Partial | Goal + movement + projection canonical; stages/advanced contribution masih future RFC. |
+| Jadwal Rutin | Partial | Recurring rule/occurrence, reminder, skip/restore, shortage notification; jadwal yang berasal dari Komitmen dikelola dari domain Komitmen agar tidak drift. |
+| Komitmen | Implemented | KPR/cicilan/pinjaman/Arisan memakai ledger progres sendiri dan satu Jadwal Rutin canonical; pembayaran mengubah saldo rekening hanya setelah aktual dikonfirmasi, penerimaan Arisan terhubung ke transaksi income canonical. |
+| Target | Partial | Goal + movement + projection canonical; setoran sukses memakai in-app achievement postcard berbasis hasil server dengan milestone 25/50/75/90/100%, finite/reduced-motion safe; stages/advanced contribution masih future RFC. |
 | Investasi/RDN | Implemented | Asset-centric manual tracking; RDN terpisah dari saldo operasional; compatibility histori tetap readable. |
 | Dashboard | Implemented | Dana Tersedia (`safeToSpend`) menjadi angka utama agar Saldo rekening tidak terbaca sebagai uang bebas; Saldo rekening non-investasi tetap konteks sekunder. Shared view model, planning/attention state, investment overview, dan notification deep-link tetap canonical. |
-| Laporan | Partial | Monthly/trend/breakdown tersedia; report document semester/tahunan dan beberapa model contribution masih future. |
+| Laporan | Partial | Monthly/trend/breakdown tersedia termasuk aktivitas Komitmen (pokok, bunga/biaya, setoran/penerimaan Arisan); report document semester/tahunan masih future. |
 | Rekonsiliasi | Implemented | Ledger reconciliation + investment reconciliation terpisah. |
 | Realtime | Implemented | `sync_revisions`, `sync.state`, dependency map, visible polling, foreground/reconnect/push/BroadcastChannel, pull-to-refresh tanpa hard reload. Multi-device Production smoke tetap wajib untuk release sync-critical. |
 | Notification Center/Web Push | Partial | In-app feed + preference + Push tersedia; server read receipt lintas perangkat dan real Android/iOS coverage masih gap. |
@@ -42,6 +43,7 @@ Detail evidence dan remaining gap berada di `IMPLEMENTATION_MATRIX.md`; behavior
 - Bila Dana Tersedia tidak cukup, seluruh mutation Kebutuhan gagal atomic dan frontend menjelaskan total kebutuhan, dana tersedia, serta kekurangan. Draft lokal tidak boleh hilang hanya karena sync/reconnect.
 - Transfer internal netral terhadap total income/expense.
 - Saldo RDN dan nilai aset tidak masuk Dana Tersedia operasional.
+- Komitmen bukan saldo baru: KPR/cicilan/pinjaman menyimpan sisa kewajiban, Arisan menyimpan progres setoran/penerimaan, dan saldo rekening hanya berubah melalui transaksi aktual canonical.
 
 ## Auth dan session current
 

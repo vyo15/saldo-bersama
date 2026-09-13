@@ -21,6 +21,7 @@ const LOCAL_PROCESS_ACTIONS = new Set([
   "investments.corrections.create",
   "masterDataRequests.review",
   "reconciliations.create",
+  "goals.move",
   "reminders.upsert",
   "reminders.cancel",
   "transactions.create",

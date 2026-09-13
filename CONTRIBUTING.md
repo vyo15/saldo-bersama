@@ -35,6 +35,10 @@ npm run verify
 
 Patch/ZIP final tidak boleh diserahkan dengan known lint/test/build failure. Edit setelah PASS membatalkan evidence lama dan validation relevan wajib diulang.
 
+Untuk patch paralel/ChatGPT, gunakan changed-files-only ZIP sebagai default dan catat baseline + scope + touched paths mengikuti `docs/templates/PATCH_MANIFEST_TEMPLATE.md`. Jika beberapa patch baru digabung di akhir, project terbaru adalah source of truth dan overlap wajib di-merge secara semantic; jangan extract ZIP A/B/C dengan overwrite buta. Delete/rename wajib disertai usage audit dan command Git Bash `rm -f`/`rm -rf` yang eksplisit.
+
+Repair loop tetap dilakukan oleh pembuat patch: targeted regression -> lint -> full verify. User hanya perlu mengirim log lokal bila failure bergantung pada environment yang tidak tersedia di agent.
+
 Namun untuk workflow rutin pengguna tidak perlu menjalankannya manual sebelum setiap push karena managed pre-push hook menjalankan full verification. Direct Production schema/binding preflight read-only hanya dijalankan bila diff menyentuh database-compatibility guard; perubahan non-schema memakai core Vercel Production health dan tidak memerlukan credential Turso Production lokal pada:
 
 ```bash

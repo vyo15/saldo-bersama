@@ -38,10 +38,12 @@ BE    | Vercel Functions, auth/session, Turso, API, saldo, concurrency, audit, A
 11. Jalankan targeted regression lebih dulu, lalu validation penuh dari tree **setelah patch final**; jangan mengklaim PASS dari tree versi sebelumnya.
 12. Artifact patch tidak boleh disebut **final/ready/PASS** sebelum `npm run verify` atau `npm run zip` benar-benar PASS pada runtime Node yang didukung (`22.15.0+` pada 22.x atau `24.x`). Bila environment agent tidak dapat menjalankan runtime yang didukung/build native, artifact hanya boleh disebut **candidate/unverified**, dan limitation wajib ditulis jelas.
 13. Setelah validation PASS, delivery canonical adalah commit pada `main` lalu `git push origin main`; managed pre-push wajib memverifikasi ref/SHA aktual + working tree clean + fast-forward dan menjalankan `npm run verify`. Direct Turso Production read-only hanya wajib bila diff menyentuh database-compatibility guard; perubahan non-schema wajib melewati core Vercel Production health tanpa membutuhkan credential database Production lokal. Push tidak pernah auto-migrate. Jangan memakai `--no-verify` atau force push.
-14. Untuk handoff ke ChatGPT/user, buat changed-files-only ZIP dan/atau `npm run zip` tanpa dependency, build, cache, generated file, temporary file, atau secret.
-15. **Deletion integrity wajib diverifikasi.** Jika patch menghapus/merename file, jangan mengandalkan overlay changed-files-only ZIP karena file lama dapat tertinggal di working tree penerima. Sebelum delivery, verifikasi path lama benar-benar tidak ada pada final tree dan artifact hasil. Untuk handoff yang memuat deletion, utamakan full-source ZIP terbaru atau sertakan instruksi deletion eksplisit yang tidak dapat terlewat.
+14. Untuk handoff ke ChatGPT/user, default-kan **changed-files-only ZIP** dengan path asli agar patch satu scope tidak menimpa source lain yang tidak terkait. `npm run zip` tetap clean full-source archive terverifikasi dan hanya dipakai bila memang diminta/lebih aman. Jangan sertakan dependency, build, cache, generated file, temporary file, atau secret.
+15. **Deletion integrity wajib diverifikasi.** Jika patch menghapus/merename file, audit usage/import/route/test/docs/compatibility lebih dulu, verifikasi path lama benar-benar tidak ada pada final tree, lalu sertakan command Git Bash siap-copy (`rm -f ...`; `rm -rf ...` hanya untuk directory yang terbukti orphan). Changed-files-only ZIP tetap boleh dipakai bila deletion handoff eksplisit; jangan menganggap file lama hilang hanya karena tidak ada di ZIP.
+16. Setiap patch paralel wajib menyimpan identitas **scope + baseline** (commit/SHA bila Git tersedia), daftar touched/added/deleted path, validation aktual, dan area yang sengaja tidak disentuh mengikuti `docs/templates/PATCH_MANIFEST_TEMPLATE.md`. Metadata patch adalah handoff untuk merger, bukan source runtime.
+17. Saat beberapa patch digabung belakangan, **project terbaru adalah source of truth**. Final merger wajib membaca perubahan patch secara semantic, audit overlap per file/contract, dan dilarang melakukan extract/overwrite buta dari ZIP berurutan. Patch yang sudah superseded/equivalent tidak perlu dipaksakan masuk.
 
-Tidak ada lagi task card, Task ID, branch otomatis, atau `task:finish`. Beberapa ChatGPT tab boleh melakukan review/menyiapkan patch paralel, tetapi satu working folder user harus menerima patch secara **serial** agar perubahan tidak saling menimpa.
+Tidak ada lagi task card, Task ID, branch otomatis, atau `task:finish`. Beberapa ChatGPT tab boleh audit/menyiapkan patch paralel dari baseline yang sama atau berbeda, tetapi integrasi ke project terbaru tetap satu pintu dan dilakukan secara **semantic/serial** sebelum final verification.
 
 ## Validasi source wajib
 
@@ -215,6 +217,10 @@ Review teknis resmi menggunakan urutan berikut:
 
 ### Quality loop wajib sebelum handoff agent/ChatGPT
 
+Gunakan pola **root-cause-first**, bukan trial-and-error: reproduce/trace -> root cause -> patch kecil -> targeted regression. Untuk satu failure yang sama, jangan menumpuk workaround berulang. Jika dua repair attempt masih gagal pada symptom/root yang sama, hentikan tambalan, kembali audit baseline/diff/contract dan tentukan root cause baru sebelum edit berikutnya.
+
+Validation dilakukan bertingkat agar cepat: syntax/static/targeted check yang murah -> targeted regression -> `npm run lint` -> `npm run verify`. Jangan menjalankan full gate mahal berulang-ulang ketika targeted regression yang sama masih merah. User bukan QA runner pertama; minta log Git Bash hanya bila failure benar-benar environment-specific/tidak dapat direproduksi agent (mis. Vercel/Turso credential, Windows/browser/device nyata, atau dependency/runtime eksternal).
+
 Setiap patch source yang dibuat agent/ChatGPT **belum selesai** hanya karena implementasi sudah ditulis. Sebelum patch/ZIP diserahkan sebagai hasil final, agent wajib menjalankan loop berikut pada tree final yang sama:
 
 1. jalankan `npm run lint`;
@@ -228,14 +234,16 @@ Known lint/test/build failure tidak boleh dibawa ke artifact final atau disebut 
 
 - Jalankan setelah plan disetujui, implementasi eksplisit diminta, atau execution-first sudah sah untuk scope tersebut.
 - Ubah hanya file dalam plan. Temuan baru in-scope boleh ikut diperbaiki; guarded area baru tetap membutuhkan approval.
-- Jika user meminta ZIP patch, isi **changed-files-only** dengan path asli.
+- Jika user meminta ZIP patch, isi **changed-files-only** dengan path asli. Sertakan metadata handoff mengikuti `docs/templates/PATCH_MANIFEST_TEMPLATE.md` di luar source runtime/final merge.
 - Jangan gunakan `npm run zip` sebagai pengganti changed-files-only patch; `npm run zip` adalah clean full-source archive terverifikasi.
+- Patch paralel boleh dibuat dari source yang sama, tetapi wajib mencatat baseline dan touched paths. Final merger harus memakai project terbaru sebagai authority dan melakukan semantic merge untuk file overlap; dilarang overwrite mentah Patch A -> B -> C.
 - Jangan sertakan `node_modules`, `dist`, `.git`, `.vercel`, cache, generated file, build output, coverage, env lokal, secret, database dump, export/data privat, atau temporary file.
-- Ada delete/rename: sebutkan path lama eksplisit dan verifikasi path itu absent pada final tree. Overlay changed-files-only tidak cukup untuk deletion.
+- Ada delete/rename: sebutkan path lama eksplisit, audit seluruh usage, verifikasi path itu absent pada final tree, dan beri command Git Bash siap-copy (`rm -f` untuk file; `rm -rf` hanya bila directory benar-benar orphan).
 - Jangan ubah formatting massal, dependency, schema, route/role guard, action/payload contract, atau guarded flow tanpa approval.
 - Gunakan helper/service/component/hook existing.
-- Setelah patch, laporkan:
-  - daftar file berubah;
+- Setelah patch, gunakan format handoff konsisten: **Artifact -> Cleanup Git Bash -> Validation -> Tidak disentuh -> Status**. Detail minimalnya:
+  - baseline/source yang dipakai;
+  - daftar file berubah/baru/dihapus;
   - ringkasan perubahan;
   - hal yang sengaja tidak diubah;
   - risiko tersisa;
@@ -244,7 +252,7 @@ Known lint/test/build failure tidak boleh dibawa ke artifact final atau disebut 
   - limitation environment;
   - status commit/push;
   - apakah docs perlu update.
-- Hanya boleh menyebut artifact **final/ready/PASS** jika `npm run verify` benar-benar lulus pada runtime Node yang didukung (`22.15.0+` pada 22.x atau `24.x`). Selain itu gunakan **candidate/unverified**.
+- Status handoff hanya dua: **FINAL / VERIFIED** jika `npm run verify` PASS pada tree yang sama, atau **CANDIDATE / UNVERIFIED** bila full gate tidak dapat dijalankan karena environment eksternal. Jangan memakai wording ambigu seperti 'seharusnya aman'.
 
 ## Cleanup/legacy
 

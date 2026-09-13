@@ -27,6 +27,7 @@ import {
   deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence,
   previewBudgetLifecycle, previewEnvelopeRuleLifecycle, previewGoalLifecycle, previewRecurringRuleLifecycle, removeBudget, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
   reverseEnvelopeMovement, reverseGoalMovement, reverseOccurrencePayment, updateGoal, updateRecurringRule, upsertBudget,
+  archiveCommitment, createCommitment, listCommitments, recordCommitmentReceipt, updateCommitment,
 } from "../services/planning/index.js";
 import {
   appInitialState, bootstrapData, closePeriod, createReconciliation, dashboardOverview, listPeriods,
@@ -156,6 +157,11 @@ const ACTION_HANDLERS = Object.freeze({
   "recurring.payOccurrence": payOccurrence,
   "recurring.reversePayment": reverseOccurrencePayment,
   "recurring.restoreRule": restoreRecurringRule,
+  "commitments.list": listCommitments,
+  "commitments.create": createCommitment,
+  "commitments.update": updateCommitment,
+  "commitments.archive": archiveCommitment,
+  "commitments.recordReceipt": recordCommitmentReceipt,
   "budgets.list": listBudgets,
   "budgets.batchCreate": createBudgetsBatch,
   "budgets.upsert": upsertBudget,

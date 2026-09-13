@@ -10,8 +10,8 @@ const authoritativeFields = [
   "updated_by", "updated_at", "cancelled_by", "cancelled_at", "cancellation_reason", "status",
 ];
 
-test("internal transaction link mode hanya membuka recurring_occurrence_id dan goal_id", () => {
-  assert.deepEqual(INTERNAL_TRANSACTION_LINK_FIELDS, ["recurring_occurrence_id", "goal_id"]);
+test("internal transaction link mode hanya membuka linkage server untuk recurring, target, dan Komitmen", () => {
+  assert.deepEqual(INTERNAL_TRANSACTION_LINK_FIELDS, ["recurring_occurrence_id", "goal_id", "commitment_id", "commitment_flow"]);
   for (const field of INTERNAL_TRANSACTION_LINK_FIELDS) {
     assert.equal(firstForbiddenTransactionField({ [field]: "link-id" }, { allowInternalLinks: true }), null);
     assert.equal(firstForbiddenTransactionField({ [field]: "link-id" }), field);

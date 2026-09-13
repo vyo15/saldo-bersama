@@ -173,7 +173,34 @@ const investmentIntegrityStatement = () => ({
   args: [],
 });
 
-export const integrityBaseStatements = () => [...INTEGRITY_STATIC_STATEMENTS, accountAllocationIntegrityStatement(), costShareIntegrityStatement(), investmentIntegrityStatement()];
+
+const commitmentIntegrityStatement = () => ({
+  sql: `WITH commitment_issues AS (
+    SELECT 'COMMITMENT_SCHEDULE_MISSING' AS code
+    FROM commitments c LEFT JOIN recurring_rules r ON r.commitment_id=c.commitment_id
+    WHERE c.status<>'archived' AND r.recurring_rule_id IS NULL
+    UNION ALL
+    SELECT 'COMMITMENT_SCHEDULE_STATUS_MISMATCH'
+    FROM commitments c JOIN recurring_rules r ON r.commitment_id=c.commitment_id
+    WHERE (c.status='active' AND r.status<>'active') OR (c.status='completed' AND r.status<>'archived')
+    UNION ALL
+    SELECT 'COMMITMENT_SCHEDULE_SCOPE_MISMATCH'
+    FROM commitments c JOIN recurring_rules r ON r.commitment_id=c.commitment_id
+    WHERE c.scope<>r.scope OR COALESCE(c.owner_user_id,'')<>COALESCE(r.owner_user_id,'')
+    UNION ALL
+    SELECT 'COMMITMENT_MOVEMENT_TRANSACTION_MISMATCH'
+    FROM commitment_movements cm
+    LEFT JOIN transactions t ON t.transaction_id=cm.transaction_id
+    WHERE cm.status='active' AND (
+      t.transaction_id IS NULL OR t.status<>'active' OR t.commitment_id<>cm.commitment_id
+      OR (cm.movement_type='payment' AND t.commitment_flow<>'payment')
+      OR (cm.movement_type='receipt' AND t.commitment_flow<>'receipt')
+    )
+  ) SELECT code,COUNT(*) AS count FROM commitment_issues GROUP BY code ORDER BY code`,
+  args: [],
+});
+
+export const integrityBaseStatements = () => [...INTEGRITY_STATIC_STATEMENTS, accountAllocationIntegrityStatement(), costShareIntegrityStatement(), investmentIntegrityStatement(), commitmentIntegrityStatement()];
 
 const appendSimpleIntegrityIssues = (issues, rows) => {
   const [fk = [], duplicates = [], invalidTransfer = [], brokenOwnership = [], invalidEnvelopeAssignee = [], linkedCancelled = []] = rows;
@@ -336,6 +363,14 @@ const appendInvestmentIntegrityIssues = (issues, rows) => {
   }
 };
 
+
+const appendCommitmentIntegrityIssues = (issues, rows) => {
+  for (const row of rows || []) {
+    const count = Number(row.count || 0);
+    if (count > 0) issues.push({ code: row.code, count });
+  }
+};
+
 export const integrityIssuesFromBaseRows = (baseRows) => {
   const issues = [];
   appendSimpleIntegrityIssues(issues, baseRows.slice(0, 6));
@@ -346,6 +381,7 @@ export const integrityIssuesFromBaseRows = (baseRows) => {
   appendAllocationIntegrityIssues(issues, baseRows.slice(12, 16));
   appendCostShareIntegrityIssues(issues, baseRows[16] || []);
   appendInvestmentIntegrityIssues(issues, baseRows[17] || []);
+  appendCommitmentIntegrityIssues(issues, baseRows[18] || []);
   return issues;
 };
 

@@ -13,6 +13,7 @@ Gunakan index ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 - `DOCUMENT_LIFECYCLE.md` — lifecycle, authority, dan aturan current vs history.
 - `WORKFLOW.md` — workflow review, implementasi, validation, dan delivery.
 - `GIT_WORKFLOW.md` — commit/push canonical.
+- `templates/PATCH_MANIFEST_TEMPLATE.md` — metadata handoff patch paralel/final merge.
 - [`CODE_MAINTAINABILITY.md`](CODE_MAINTAINABILITY.md) — decomposition, facade, comment/JSDoc, dan characterization test.
 - `PROJECT_STATUS.md` — snapshot kondisi sekarang.
 - `product/PRODUCT_REQUIREMENTS.md` — behavior produk canonical.
@@ -39,6 +40,7 @@ Gunakan index ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 | Environment key? | `ENVIRONMENT_VARIABLES.md` |
 | Setup workstation? | `SETUP.md` |
 | Deployment Production? | `DEPLOYMENT.md` |
+| Patch paralel/final merge harus membawa metadata apa? | `templates/PATCH_MANIFEST_TEMPLATE.md`, `WORKFLOW.md` |
 | Keputusan teknis yang sudah diterima? | `adr/README.md` |
 | Proposal/future design? | `rfc/README.md` |
 | History perubahan? | `../CHANGELOG.md`, Git, `history/`, `docs/tasks/archive/` |
@@ -57,7 +59,7 @@ Gunakan index ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 | Realtime/sync/offline | `ARCHITECTURE.md`, `API_CONTRACT.md`, `TEST_PLAN.md` | sync revision/dependency regression + multi-device smoke bila release menyentuh sync |
 | Env/deployment/CI/tooling | `ENVIRONMENT_VARIABLES.md`, `DEPLOYMENT.md`, `GIT_WORKFLOW.md`, `TEST_PLAN.md` | tooling/governance + `npm run verify` |
 | Build/performance/bundle | `TEST_PLAN.md`, `UI_DESIGN_SYSTEM.md`, `WORKFLOW.md` | production build + build budget + browser smoke |
-| Dokumentasi/governance | `DOCUMENT_LIFECYCLE.md`, `WORKFLOW.md`, `DEFINITION_OF_DONE.md` | governance/documentation tests |
+| Dokumentasi/governance | `DOCUMENT_LIFECYCLE.md`, `WORKFLOW.md`, `DEFINITION_OF_DONE.md`, `templates/PATCH_MANIFEST_TEMPLATE.md` | governance/documentation tests |
 
 Jika perubahan menyentuh lebih dari satu area, gabungkan authority dan test dari semua baris. Snapshot tidak boleh mengalahkan source; bila snapshot drift, perbaiki pada patch yang sama.
 
@@ -93,6 +95,7 @@ Jika perubahan menyentuh lebih dari satu area, gabungkan authority dan test dari
 - `DEFINITION_OF_DONE.md`
 - `RELEASE_CHECKLIST.md`
 - `UI_DESIGN_SYSTEM.md`
+- `templates/PATCH_MANIFEST_TEMPLATE.md`
 
 ## Operations
 

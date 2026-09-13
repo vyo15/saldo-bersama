@@ -99,6 +99,7 @@ const App = () => (
         <Route path="perencanaan" element={<Navigate to="/perencanaan/kantong" replace />} />
         <Route path="perencanaan/kantong" element={routeElement(PlanningPage)} />
         <Route path="perencanaan/jadwal" element={routeElement(PlanningPage)} />
+        <Route path="perencanaan/komitmen" element={routeElement(PlanningPage)} />
         <Route path="anggaran" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
         <Route path="perencanaan/kebutuhan" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
         <Route path="alokasi" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />

@@ -11,13 +11,13 @@ const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "investment_instruments", "investment_portfolios", "master_data_requests", "transfer_requests", "envelope_rules", "envelope_periods",
-  "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections", "envelope_movements",
+  "commitments", "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "commitment_movements", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections", "envelope_movements",
   "budgets", "budget_history", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "manual_reminders", "audit_log", "idempotency_keys",
 ];
 
 export const RESTORE_DELETE_ORDER = [
   "notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces", "rate_limit_buckets", "goal_movements", "budget_history", "budgets", "envelope_movements",
-  "investment_reconciliations", "investment_valuations", "investment_corrections", "investment_trades", "transactions", "recurring_occurrences", "recurring_rules", "envelope_periods", "envelope_rules", "savings_goals",
+  "investment_reconciliations", "investment_valuations", "investment_corrections", "investment_trades", "commitment_movements", "transactions", "recurring_occurrences", "recurring_rules", "commitments", "envelope_periods", "envelope_rules", "savings_goals",
   "reconciliations", "period_closures", "transfer_requests", "master_data_requests", "investment_portfolios", "investment_instruments", "categories", "accounts", "manual_reminders", "notification_preferences", "push_subscriptions", "idempotency_keys",
 ];
 
@@ -132,7 +132,7 @@ const TRANSIENT_SYSTEM_CONFIG_KEYS = new Set([
 
 const backupTablesForSchemaVersion = (schemaVersion = DATABASE_SCHEMA_VERSION) => {
   const version = Number(schemaVersion || 0);
-  return BACKUP_TABLES.filter((table) => !(version < 19 && table === "budget_history"));
+  return BACKUP_TABLES.filter((table) => !(version < 19 && table === "budget_history") && !(version < 22 && ["commitments", "commitment_movements"].includes(table)));
 };
 
 export const snapshotDatabase = async (db, { schemaVersion = DATABASE_SCHEMA_VERSION } = {}) => db.transaction(async (tx) => {
@@ -190,6 +190,7 @@ const isLegacyOptionalBackupTable = (schemaVersion, table) => (
   || (schemaVersion < 14 && ["master_data_requests", "transfer_requests"].includes(table))
   || (schemaVersion < 15 && ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"].includes(table))
   || (schemaVersion < 19 && table === "budget_history")
+  || (schemaVersion < 22 && ["commitments", "commitment_movements"].includes(table))
 );
 
 export const validateSnapshot = (snapshot) => {

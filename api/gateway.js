@@ -12,7 +12,7 @@ import { stableValue } from "./_lib/serialization.js";
 
 const COALESCED_READ_ACTIONS = new Set([
   "app.initialState", "system.health", "users.list", "audit.list", "dashboard.overview", "accounts.list",
-  "categories.list", "transactions.list", "sessions.listOwn", "envelopes.list", "recurring.list", "budgets.list", "goals.list",
+  "categories.list", "transactions.list", "sessions.listOwn", "envelopes.list", "recurring.list", "commitments.list", "budgets.list", "goals.list",
   "reports.monthly", "reconciliations.list", "periods.list", "integrations.status", "notifications.status",
 ]);
 const inFlightReads = new Map();

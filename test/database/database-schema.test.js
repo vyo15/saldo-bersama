@@ -23,6 +23,7 @@ const globalSyncRevisionMigrationUrl = new URL("016_global_sync_revisions.sql", 
 const budgetLifecycleHistoryMigrationUrl = new URL("017_budget_lifecycle_history.sql", migrationDirectory);
 const envelopeDecorationMigrationUrl = new URL("018_envelope_decoration.sql", migrationDirectory);
 const budgetRecordingModeMigrationUrl = new URL("019_budget_recording_mode.sql", migrationDirectory);
+const commitmentsMigrationUrl = new URL("020_commitments.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -112,9 +113,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v21 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v22 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "21");
+  assert.equal(result.schema_version, "22");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -455,4 +456,16 @@ test("migration v21 menyimpan pola Kebutuhan secara additive dan membackfill jad
   assert.match(sql, /idx_budgets_need_identity/);
   assert.match(sql, /value='21'/);
   assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN/i);
+});
+
+
+test("migration v22 menambahkan Komitmen, ledger gerakan, dan link transaksi/jadwal tanpa cascade delete", async () => {
+  const sql = await readFile(commitmentsMigrationUrl, "utf8");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS commitments/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS commitment_movements/);
+  assert.match(sql, /ALTER TABLE recurring_rules[\s\S]*ADD COLUMN commitment_id/);
+  assert.match(sql, /ALTER TABLE transactions[\s\S]*ADD COLUMN commitment_id/);
+  assert.match(sql, /ADD COLUMN commitment_flow/);
+  assert.match(sql, /value='22'/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
 });

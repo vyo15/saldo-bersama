@@ -135,6 +135,23 @@ const TransactionRows = ({ items, expanded, onToggle }) => {
   </div>)}</div>{items.length > 6 ? <button className={styles.textAction} type="button" onClick={onToggle}>{expanded ? "Tampilkan ringkas" : `Lihat semua ${items.length} transaksi`}</button> : null}</>;
 };
 
+
+const CommitmentActivity = ({ activity = {} }) => {
+  const rows = [
+    ["Pembayaran KPR/cicilan", activity.debt_payment_amount, "Arus kas keluar ke kewajiban"],
+    ["Pokok teridentifikasi", activity.identified_principal_amount, "Mengurangi sisa kewajiban"],
+    ["Bunga & biaya teridentifikasi", activity.identified_interest_amount, "Bagian biaya dari pembayaran"],
+    ["Pokok belum diperbarui", activity.unknown_principal_payment_amount, `${Number(activity.unknown_principal_payment_count || 0)} pembayaran perlu sisa pokok terbaru`],
+    ["Setoran Arisan", activity.arisan_contribution_amount, "Komitmen setoran pada periode ini"],
+    ["Penerimaan Arisan", activity.arisan_receipt_amount, "Dana Arisan yang diterima"],
+  ].filter(([, value]) => Number(value || 0) > 0);
+  if (!rows.length) return null;
+  return <section className={styles.flatSection}>
+    <div className={styles.sectionHeading}><div><h2>Aktivitas Komitmen</h2><p>Pisahkan pembayaran pokok, bunga/biaya, dan Arisan tanpa mengubah arus kas rekening.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Kelola</Link></div>
+    <div className={styles.categoryRows}>{rows.map(([label, value, note]) => <div className={styles.categoryRow} key={label}><span><strong>{label}</strong><small>{note}</small></span><span><strong>{formatCompactRupiah(value)}</strong></span></div>)}</div>
+  </section>;
+};
+
 const BreakdownDetails = ({ accountExpenses, creatorExpenses }) => <details className={styles.breakdownDetails}>
   <summary>Rincian lainnya <span>Rekening & pencatat</span></summary>
   <div className={styles.breakdownGrid}>
@@ -146,8 +163,8 @@ const BreakdownDetails = ({ accountExpenses, creatorExpenses }) => <details clas
 const Documents = ({ period, scopeLabel, trendMonths, allocationRuleId }) => <section className={styles.documentsSection}>
   <div className={styles.sectionHeading}><div><h2>Dokumen laporan</h2><p>{monthLabel(period)} · {scopeLabel}</p></div></div>
   <div className={styles.documentRows}>
-    <div><FiFileText aria-hidden="true" /><span><strong>PDF rekening koran</strong><small>Ringkasan, Kebutuhan, dan rincian transaksi siap baca.</small></span><ReportFileButton format="pdf" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
-    <div><FiLayers aria-hidden="true" /><span><strong>Excel terolah</strong><small>Sheet Ringkasan, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening.</small></span><ReportFileButton format="xlsx" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+    <div><FiFileText aria-hidden="true" /><span><strong>PDF rekening koran</strong><small>Ringkasan, Komitmen, Kebutuhan, dan rincian transaksi siap baca.</small></span><ReportFileButton format="pdf" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+    <div><FiLayers aria-hidden="true" /><span><strong>Excel terolah</strong><small>Sheet Ringkasan, Komitmen, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening.</small></span><ReportFileButton format="xlsx" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
   </div>
 </section>;
 
@@ -178,6 +195,7 @@ const ReportsContent = ({ data, period, setPeriod, trendMonths, setTrendMonths, 
       <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Tren pengeluaran</h2><p>{trendMonths === 1 ? "Harian pada bulan terpilih" : `${trendMonths} bulan terakhir`}</p></div><SelectionField className={styles.inlineTrend} label="Rentang tren" hideLabel compact value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} options={trendOptions} ariaLabel="Pilih rentang tren" /></div><TrendView trend={data.trend} period={period} /></section>
     </div>
     {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan vs Aktual</h2><p>Rencana pengeluaran dan realisasinya.</p></div></div><BudgetRows budgets={data.budgets || []} /></section> : null}
+    <CommitmentActivity activity={data.commitmentActivity || {}} />
     <div className={styles.secondaryGrid}>
       <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada scope aktif.</p></div></div><CategoryRows items={data.categoryExpenses || []} /></section>
       <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Transaksi terbaru</h2><p>Rincian debit, kredit, dan saldo berjalan.</p></div></div><TransactionRows items={data.reportTransactions || []} expanded={transactionsExpanded} onToggle={() => setTransactionsExpanded((value) => !value)} /></section>

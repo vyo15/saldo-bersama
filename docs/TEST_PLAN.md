@@ -20,7 +20,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 21 sebelum runtime current menerima traffic.
+- Schema Production harus versi 22 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -99,13 +99,19 @@ Minimum contract:
 - Copy Kebutuhan saat period close bersifat opt-in; histori transaksi/usage tidak disalin dan funding periode tujuan mengikuti rule current.
 - `/anggaran` hanya compatibility redirect; tidak boleh menghidupkan surface Anggaran kedua.
 
-## Jadwal Rutin dan Target
+## Jadwal Rutin, Komitmen, dan Target
 
 - Recurring occurrence mengikuti timezone Asia/Jakarta, idempotency, account capability, completion/skip/restore, dan shortage rule.
 - Kebutuhan `recurring` yang dibuat bersama batch harus memakai ownership/source account kompatibel; satu pelanggaran me-rollback seluruh batch.
 - Kebutuhan `fixed_once` harus mem-prefill sisa nominal saat aksi **Catat** dan tidak menampilkan aksi Catat lagi ketika sisa sudah Rp0.
 - Jika dua kebutuhan aktif memakai kategori master yang sama pada Alokasi yang sama, transaksi legacy tanpa `budget_id` tidak boleh dihitung ke keduanya; transaksi baru dari detail kebutuhan wajib membawa `budget_id`.
 - Target movement tidak boleh memanipulasi saldo tanpa transaksi/movement canonical dan reversal harus audit-safe.
+- Setoran Target yang sukses baru boleh memicu achievement in-app setelah response server definitif; progress/milestone diturunkan dari `goal.current_amount` hasil server, 100% tidak auto-mengubah lifecycle menjadi `completed`, feedback tidak dobel dengan global process indicator, dan reduced-motion tetap menyampaikan copy/progress tanpa animasi dekoratif.
+- Komitmen KPR/cicilan/pinjaman membuat tepat satu `recurring_rule`; jadwal tertaut tidak dapat diedit/diarsipkan langsung dan berhenti otomatis saat kewajiban selesai. Reversal pembayaran terakhir mengaktifkan kembali Komitmen + jadwal tanpa kehilangan histori.
+- Pembayaran KPR/cicilan dengan `remaining_principal` menghitung pokok = saldo sebelum - saldo sesudah dan bunga/biaya = pembayaran - pokok. Tanpa sisa pokok, pembayaran tetap valid tetapi `principal_known=0` dan UI/report wajib menandainya perlu diperbarui.
+- Arisan mengurangi sisa setoran lewat occurrence pembayaran, dapat mencatat penerimaan income terpisah sampai maksimal nilai hak Arisan, dan penerimaan tidak menutup sisa setoran yang masih berjalan.
+- Autodebet Komitmen/Jadwal Rutin tidak pernah mengurangi saldo hanya karena tanggal jatuh tempo; saldo berubah setelah transaksi aktual dikonfirmasi.
+- Laporan bulanan memisahkan aktivitas Komitmen (pembayaran kewajiban, pokok teridentifikasi, bunga/biaya, pokok belum diketahui, setoran/penerimaan Arisan) tanpa mengubah arus kas canonical.
 - Reminder manual terikat entity aktif, satu scheduled reminder per entity/user, dan dispatch nonterminal mencegah duplikasi.
 
 ## Investasi dan RDN
@@ -178,7 +184,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 21 sebelum deployment current menerima traffic.
+- Schema Production harus versi 22 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 

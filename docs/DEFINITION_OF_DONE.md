@@ -11,7 +11,10 @@ Perubahan dianggap selesai bila:
 - authority docs/contract/runbook terdampak diperbarui sesuai `docs/INDEX.md`; snapshot tetap current-state, history tetap di CHANGELOG/Git/archive, dan tidak ada instruction lama yang menyamar sebagai aturan aktif;
 - tidak ada secret, data finansial nyata, raw stack trace, dependency, build/generated artifact, atau file lokal dalam commit/ZIP;
 - bila user meminta delivery Git, perubahan sudah di-commit pada `main` dan `git push origin main` hanya berhasil setelah managed pre-push memverifikasi ref/SHA aktual + full `npm run verify` + Production gate sesuai scope: DB schema/binding read-only untuk diff database-compatibility atau core Vercel health untuk diff non-schema; workflow **Quality** server-side tetap dipantau;
-- clean/changed-files ZIP dibuat bila diperlukan.
+- changed-files-only ZIP menjadi default handoff patch; patch paralel mencatat baseline/scope/touched paths/validation mengikuti `docs/templates/PATCH_MANIFEST_TEMPLATE.md`, sedangkan clean full-source ZIP hanya dibuat bila diperlukan;
+- bila ada delete/rename, usage audit selesai, path lama absent pada final tree, dan handoff menyertakan command Git Bash `rm -f`/`rm -rf` yang tepat;
+- bila beberapa patch digabung di akhir, project terbaru dipakai sebagai source of truth, overlap di-merge secara semantic (bukan overwrite ZIP mentah), targeted regression overlap PASS, lalu lint + full verify PASS pada hasil integrasi;
+- status handoff adalah `FINAL / VERIFIED` hanya setelah full gate PASS; jika full gate benar-benar terblokir environment eksternal, gunakan `CANDIDATE / UNVERIFIED` dan jangan membawa known failure yang dapat direproduksi.
 
 Untuk guarded/high-risk, Done juga mensyaratkan approval eksplisit dan evidence test domain yang sesuai. Tidak ada task-card/archive requirement.
 - Critical rationale/non-obvious invariant pada financial, security, idempotency/concurrency, dan destructive workflow terdokumentasi dekat code terkait sesuai `docs/CODE_MAINTAINABILITY.md`.

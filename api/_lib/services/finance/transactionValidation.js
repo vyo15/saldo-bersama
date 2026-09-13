@@ -63,6 +63,7 @@ export const assertCanModify = (context, transaction) => {
   if (context.actor.role !== "owner" && (!actorCanOperateTransaction(context.actor, transaction) || transaction.created_by !== context.actor.user_id)) throw appError("FORBIDDEN", "Member hanya dapat mengubah transaksi miliknya pada rekening yang dapat dioperasikan.", 403);
   if (transaction.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Koreksi transaksi rutin harus dilakukan melalui menu Tagihan.", 409, { occurrenceId: transaction.recurring_occurrence_id });
   if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi target harus dilakukan melalui menu Target.", 409, { goalId: transaction.goal_id });
+  if (transaction.commitment_id) throw appError("LINKED_COMMITMENT_TRANSACTION", "Koreksi transaksi Komitmen harus dilakukan melalui menu Komitmen/Jadwal Rutin.", 409, { commitmentId: transaction.commitment_id });
 };
 
 const assertEnvelopeCompatibility = (row, context, transaction) => {
@@ -294,6 +295,8 @@ const buildNormalizedTransactionRecord = ({
   budget_id: type === "expense" ? optionalTransactionId(transactionField(payload, current, "budget_id", "")) : null,
   recurring_occurrence_id: internalLinkId(payload, current, "recurring_occurrence_id", allowInternalLinks),
   goal_id: internalLinkId(payload, current, "goal_id", allowInternalLinks),
+  commitment_id: internalLinkId(payload, current, "commitment_id", allowInternalLinks),
+  commitment_flow: allowInternalLinks ? (String(transactionField(payload, current, "commitment_flow", "")) || null) : (current?.commitment_flow || null),
   amount,
   description: normalizedTransactionText(payload, current, "description", 250),
   overspend_reason: normalizedTransactionText(payload, current, "overspend_reason", 180),
@@ -342,6 +345,8 @@ export const normalizeTransaction = async (db, context, payload, { current = nul
     categoryId,
   });
   const costShare = await resolveTransactionCostShare(db, payload, current, baseRecord);
+  if (baseRecord.commitment_flow && !["payment", "receipt"].includes(baseRecord.commitment_flow)) throw appError("INVALID_COMMITMENT_FLOW", "Jenis aliran Komitmen tidak valid.", 400);
+  if (Boolean(baseRecord.commitment_id) !== Boolean(baseRecord.commitment_flow)) throw appError("INVALID_COMMITMENT_LINK", "Tautan Komitmen transaksi tidak lengkap.", 400);
   const record = { ...baseRecord, ...costShare };
   const excludeTransactionId = currentTransactionId(current);
   const envelopeState = await validateEnvelope(db, context, record, { excludeTransactionId });
