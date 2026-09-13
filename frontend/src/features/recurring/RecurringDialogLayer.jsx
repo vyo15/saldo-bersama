@@ -1,6 +1,6 @@
 import { CreateRuleModal, EditRuleModal, PaymentModal, RecurringConfirmations } from "./RecurringDialogs.jsx";
 
-const RecurringDialogLayer = ({ rules, payments, recovery, categories, editCategories, accounts, paymentAccounts, paymentEnvelopes, envelopeStatus, budgetSuggestions }) => {
+const RecurringDialogLayer = ({ rules, payments, recovery, categories, editCategories, accounts, paymentAccounts, paymentEnvelopes, envelopeStatus, budgets }) => {
   const confirmations = {
     archiveRuleTarget: rules.archiveRuleTarget,
     setArchiveRuleTarget: rules.setArchiveRuleTarget,
@@ -24,9 +24,9 @@ const RecurringDialogLayer = ({ rules, payments, recovery, categories, editCateg
 
   return (
     <>
-      <CreateRuleModal open={rules.createOpen} close={rules.closeCreate} form={rules.form} setForm={rules.setForm} categories={categories} accounts={accounts} createRule={rules.createRule} createMutation={rules.createMutation} message={rules.message} budgetSuggestions={budgetSuggestions} />
+      <CreateRuleModal open={rules.createOpen} close={rules.closeCreate} form={rules.form} setForm={rules.setForm} categories={categories} accounts={accounts} createRule={rules.createRule} createMutation={rules.createMutation} message={rules.message} budgets={budgets} />
       <PaymentModal payment={payments.payment} setPayment={payments.setPayment} paymentState={payments.paymentState} paymentMutation={payments.paymentMutation} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeStatus} completeOccurrence={payments.completeOccurrence} />
-      <EditRuleModal editRule={rules.editRule} setEditRule={rules.setEditRule} editState={rules.editState} saveRule={rules.saveRule} editCategories={editCategories} accounts={accounts} budgetSuggestions={budgetSuggestions} />
+      <EditRuleModal editRule={rules.editRule} setEditRule={rules.setEditRule} editState={rules.editState} saveRule={rules.saveRule} editCategories={editCategories} accounts={accounts} budgets={budgets} />
       <RecurringConfirmations {...confirmations} />
     </>
   );

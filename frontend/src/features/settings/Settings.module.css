@@ -1374,3 +1374,12 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   .settingsDesktopContent { padding: clamp(1rem, 2vw, 1.4rem); }
   .settingsDesktopSubmenuCopy small { display: none; }
 }
+
+.preferenceGroups { display: grid; gap: var(--space-4); }
+.preferenceGroup { display: grid; gap: var(--space-2); }
+.preferenceGroup h4 { color: var(--text-soft); font-size: var(--font-size-xs); font-weight: 700; letter-spacing: .02em; }
+.cadenceList { min-width: 0; overflow: visible; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.cadenceItem { min-width: 0; min-height: 5rem; padding: .9rem var(--space-3); display: grid; grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem); gap: var(--space-4); align-items: center; border-bottom: 1px solid var(--border); }
+.cadenceItem:last-child { border-bottom: 0; }
+.cadenceItem :global(.field) { margin: 0; }
+@media (max-width: 560px) { .cadenceItem { grid-template-columns: 1fr; gap: var(--space-2); } }

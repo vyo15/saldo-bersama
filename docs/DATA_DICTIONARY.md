@@ -5,7 +5,7 @@
 > **Update when:** Makna field/table atau lifecycle data berubah.  
 > **Boundary:** Tipe/constraint authoritative berada di migration; kronologi migration berada di Git/CHANGELOG.
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `020_commitments.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `021_notification_attention_state.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -60,7 +60,9 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `integration_links` | Pemetaan entity internal dengan resource integrasi eksternal. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `notification_queue` | Antrean notifikasi per pengguna yang diproses worker. | Sedang | Service/API; data operasional, dibersihkan hanya melalui workflow maintenance |
 | `notification_deliveries` | Status pengiriman per notification dan subscription untuk retry tanpa duplikasi perangkat sukses. | Tinggi | Service/API; endpoint tidak disalin ke backup finansial |
-| `notification_preferences` | Preferensi tujuh tipe alert otomatis canonical untuk setiap pengguna. Row yang belum ada berarti tipe aktif; perubahan memakai `row_version` dan audit actor server-side. | Sedang | Service/API; ikut backup/restore, tidak menyimpan endpoint/credential Push |
+| `notification_preferences` | Preferensi tujuh tipe alert otomatis canonical untuk setiap pengguna. Row yang belum ada mengikuti default per tipe; `recurring_completed` default mati agar tidak berisik. Perubahan memakai `row_version` dan audit actor server-side. | Sedang | Service/API; ikut backup/restore, tidak menyimpan endpoint/credential Push |
+| `notification_settings` | Cadence actor-scoped untuk reminder rekonsiliasi dan konsistensi pencatatan. Default `30`/`0`, pilihan dibatasi 0/14/30/60 dan 0/3/5/7 hari. | Sedang | Service/API; ikut backup/restore; row-versioned + audited; tidak menyimpan detail finansial |
+| `notification_read_states` | Status baca presentation-only lintas perangkat berdasarkan `notification_key + fingerprint`. Fingerprint baru membuat kondisi yang berubah tampil unread kembali; read tidak berarti resolved. | Rendah | Service/API; tidak masuk logical backup finansial; dibersihkan oleh reset/maintenance dan tidak memengaruhi ledger/planning |
 | `manual_reminders` | Pengingat manual one-shot per user untuk Jadwal Rutin, Kebutuhan, periode Alokasi Dana, atau Target. Menyimpan UTC `scheduled_at`, status, dan `row_version`; queue internal dapat membentuk copy server-side, sedangkan transport Web Push hanya membawa type/id/target privacy-safe. | Sedang | Service/API; ikut backup/restore; cancel melalui soft state; status `queued` ditautkan ke `notification_queue` lewat dedupe `manual-reminder:<reminder_id>`; title/body client tidak dipercaya |
 | `push_subscriptions` | Subscription Web Push per pengguna/perangkat. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `backup_runs` | Metadata backup teknis dan statusnya. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |

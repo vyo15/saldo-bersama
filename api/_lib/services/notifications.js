@@ -20,6 +20,8 @@ export {
   testPush,
   unregisterPush,
   updateNotificationPreference,
+  defaultNotificationPreferenceEnabled,
 } from "./notifications/subscriptions.js";
+export { markNotificationRead, updateNotificationSettings } from "./notifications/attentionState.js";
 export { listSubscriptionsForUser, queueNotification } from "./notifications/delivery.js";
 export { notificationRupiah, queueActionableNotifications } from "./notifications/actionable.js";

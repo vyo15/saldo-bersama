@@ -3,6 +3,24 @@ import { nowIso, publicRow } from "../core.js";
 import { queueNotification } from "../notifications/delivery.js";
 import { resolveManualReminderEntity } from "./reminderEntity.js";
 
+
+const automaticDedupePrefixes = (entityType, entityId) => ({
+  recurring_occurrence: [`recurring:${entityId}:`, `recurring-shortage:${entityId}:`],
+  budget: [`budget:${entityId}:`],
+  envelope_period: [`envelope:${entityId}:`],
+  goal: [`goal:${entityId}:`],
+}[entityType] || []);
+
+const recentAutomaticNotification = async (db, reminder) => {
+  const prefixes = automaticDedupePrefixes(reminder.entity_type, reminder.entity_id);
+  if (!prefixes.length) return null;
+  const recentSince = new Date(Date.now() - 10 * 60_000).toISOString();
+  const where = prefixes.map(() => "dedupe_key LIKE ?").join(" OR ");
+  return db.one(`SELECT notification_id FROM notification_queue
+    WHERE user_id=? AND created_at>=? AND (${where})
+    ORDER BY created_at DESC LIMIT 1`, [reminder.user_id, recentSince, ...prefixes.map((value) => `${value}%`)]);
+};
+
 const queueOneDueReminder = async (db, reminder) => db.transaction(async (tx) => {
   const current = await tx.one("SELECT * FROM manual_reminders WHERE reminder_id=? AND status='scheduled'", [reminder.reminder_id]);
   if (!current || current.scheduled_at > nowIso()) return 0;
@@ -34,6 +52,16 @@ const queueOneDueReminder = async (db, reminder) => db.transaction(async (tx) =>
   }
   const claim = await tx.execute("UPDATE manual_reminders SET status='queued',row_version=row_version+1,updated_at=? WHERE reminder_id=? AND status='scheduled'", [nowIso(), current.reminder_id]);
   if (claim.rowsAffected !== 1) return 0;
+  const automatic = await recentAutomaticNotification(tx, current);
+  if (automatic) {
+    await appendAudit(tx, { actor, action: "reminders.dispatch", requestId: `job:${current.reminder_id}` }, {
+      entityType: "manual_reminder",
+      entityId: current.reminder_id,
+      previous: publicRow(current),
+      next: { status: "queued", notification_id: automatic.notification_id, notification_created: false, deduplicated: true },
+    });
+    return 0;
+  }
   const queued = await queueNotification(tx, {
     userId: current.user_id,
     type: "manual_reminder",

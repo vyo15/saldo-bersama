@@ -5,7 +5,7 @@ import { listGoals } from "../../api/_lib/services/planning/goals.js";
 import { listBudgets } from "../../api/_lib/services/planning/budgets.js";
 import { createRecurringRule } from "../../api/_lib/services/planning/recurring.js";
 import { dashboardOverview, monthlyReport } from "../../api/_lib/services/reporting/dashboard.js";
-import { notificationPreferences, queueActionableNotifications, updateNotificationPreference } from "../../api/_lib/services/notifications.js";
+import { notificationPreferences, queueActionableNotifications, updateNotificationPreference, updateNotificationSettings } from "../../api/_lib/services/notifications.js";
 import { addDays, todayJakarta } from "../../api/_lib/services/core.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
@@ -309,7 +309,7 @@ test("laporan menampilkan tren, breakdown, peringatan, dan proyeksi target dari 
     const reconciliationAlert = report.overview.alerts.find((item) => item.type === "reconciliation_stale" || item.type === "reconciliation_difference");
     if (reconciliationAlert) assert.equal(reconciliationAlert.targetPath, "/rekonsiliasi");
     const unallocatedAlert = report.overview.alerts.find((item) => item.type === "unallocated_expense");
-    if (unallocatedAlert) assert.match(unallocatedAlert.title, /pengeluaran belum masuk Alokasi Dana/);
+    if (unallocatedAlert) assert.match(unallocatedAlert.title, /pengeluaran belum masuk kebutuhan/);
 
     const goals = await listGoals(db, { actor: owner, payload: {} });
     assert.equal(goals.items[0].remaining_amount, 12_000_000);
@@ -401,14 +401,16 @@ test("notifikasi ambang Alokasi assigned hanya dikirim kepada penerima jatah", a
   }
 });
 
-test("preferensi notifikasi default aktif, per pengguna, row-version guarded, dan mencegah queue baru untuk jenis yang dimute", async () => {
+test("preferensi push per pengguna tidak menghapus history center dan completion default mati", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = await seed(db);
     const period = todayJakarta().slice(0, 7);
     const defaults = await notificationPreferences(db, { actor: owner, payload: {} });
     assert.equal(defaults.items.length, 7);
-    assert.equal(defaults.items.every((item) => item.enabled === true && item.row_version === null), true);
+    assert.equal(defaults.items.find((item) => item.type === "recurring_completed")?.enabled, false);
+    assert.equal(defaults.items.filter((item) => item.type !== "recurring_completed").every((item) => item.enabled === true && item.row_version === null), true);
+    assert.deepEqual(defaults.settings, { reconciliation_days: 30, recording_consistency_days: 0, row_version: null, updated_at: null, source: "default" });
 
     const muted = await updateNotificationPreference(db, {
       actor: owner,
@@ -435,7 +437,7 @@ test("preferensi notifikasi default aktif, per pengguna, row-version guarded, da
     await insertTransaction(db, { id: "expense-preference", date: `${period}-01`, type: "expense", amount: 95_000, source: "account-bank", category: "category-food" });
     await queueActionableNotifications(db);
     const budgetRecipients = await db.all("SELECT user_id FROM notification_queue WHERE notification_type='budget_threshold' ORDER BY user_id");
-    assert.deepEqual(budgetRecipients.map((item) => item.user_id), [member.user_id], "mute owner tidak boleh mematikan alert pasangan");
+    assert.deepEqual(budgetRecipients.map((item) => item.user_id).sort(), [member.user_id, owner.user_id].sort(), "mute push tidak boleh menghapus event dari pusat notifikasi");
     const unallocatedRecipients = await db.all("SELECT user_id FROM notification_queue WHERE notification_type='unallocated_expense' ORDER BY user_id");
     assert.deepEqual(unallocatedRecipients.map((item) => item.user_id).sort(), [member.user_id, owner.user_id].sort(), "jenis notifikasi lain tetap aktif");
 
@@ -452,6 +454,20 @@ test("preferensi notifikasi default aktif, per pengguna, row-version guarded, da
     });
     assert.equal(enabled.enabled, true);
     assert.equal(enabled.row_version, 3);
+
+    const settings = await updateNotificationSettings(db, {
+      actor: owner,
+      action: "notifications.updateSettings",
+      requestId: "settings-cadence",
+      payload: { reconciliation_days: 14, recording_consistency_days: 5 },
+    });
+    assert.equal(settings.reconciliation_days, 14);
+    assert.equal(settings.recording_consistency_days, 5);
+    assert.equal(settings.row_version, 1);
+    await assert.rejects(
+      updateNotificationSettings(db, { actor: owner, action: "notifications.updateSettings", requestId: "settings-stale", rowVersion: 99, payload: { reconciliation_days: 30, recording_consistency_days: 0, row_version: 99 } }),
+      (error) => error?.code === "CONFLICT",
+    );
   } finally { db.close(); }
 });
 
@@ -556,4 +572,28 @@ test("laporan dapat di-scope per Alokasi dan seluruh ringkasan, breakdown, tren,
   } finally {
     db.close();
   }
+});
+
+test("cadence tambahan membuat reminder rekonsiliasi lintas scope dan konsistensi pencatatan actor-scoped", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const old = "2026-01-01T00:00:00.000Z";
+    await db.execute("UPDATE accounts SET created_at=? WHERE account_id='account-bank'", [old]);
+    await db.execute("UPDATE users SET created_at=? WHERE user_id IN (?,?)", [old, owner.user_id, member.user_id]);
+    await db.execute(
+      "INSERT INTO notification_settings(user_id,reconciliation_days,recording_consistency_days,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+      [owner.user_id, 14, 3, 1, now, now],
+    );
+    await db.execute(
+      "INSERT INTO notification_settings(user_id,reconciliation_days,recording_consistency_days,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+      [member.user_id, 0, 0, 1, now, now],
+    );
+
+    await queueActionableNotifications(db);
+    const reconciliation = await db.all("SELECT user_id,notification_type,dedupe_key FROM notification_queue WHERE notification_type='reconciliation_stale'");
+    assert.deepEqual(reconciliation.map((item) => item.user_id), [owner.user_id], "cadence mati pada member tidak boleh menerima push-event rekonsiliasi scheduler");
+    const consistency = await db.all("SELECT user_id,notification_type FROM notification_queue WHERE notification_type='recording_consistency'");
+    assert.deepEqual(consistency.map((item) => item.user_id), [owner.user_id], "reminder konsistensi harus actor-scoped dan opt-in");
+  } finally { db.close(); }
 });

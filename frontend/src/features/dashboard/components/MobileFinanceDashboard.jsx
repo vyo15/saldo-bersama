@@ -1,73 +1,75 @@
 import {
   FiAlertTriangle,
+  FiArrowDownLeft,
+  FiArrowUpRight,
   FiBell,
   FiCalendar,
   FiChevronRight,
   FiEye,
   FiEyeOff,
-  FiInfo,
   FiPieChart,
   FiPlus,
 } from "react-icons/fi";
 import { Link } from "react-router";
 import { AccountIcon, InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import UserAvatar from "../../../components/common/UserAvatar.jsx";
-import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import { formatDateLongIndonesia } from "../../../domain/dates.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
-import { dashboardDueLabel, dashboardInsightState, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
+import { dashboardDueLabel, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import DashboardQuickActions from "./DashboardQuickActions.jsx";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
-const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
-  return (
-    <header className={dashboardClass("mobile-finance-hero")}>
-      <div className={dashboardClass("mobile-finance-hero__bar")}>
-        <div className={dashboardClass("mobile-finance-user")}>
-          <UserAvatar user={user} className={dashboardClass("mobile-finance-user__avatar")} />
-          <div className={dashboardClass("mobile-finance-user__copy")}>
-            <strong>Hai, {displayName}</strong>
-            <span>Keuangan keluarga · {formatPeriod(overview.periodKey)}</span>
-          </div>
-        </div>
-        <div className={dashboardClass("mobile-finance-hero__actions")}>
-          <Link to="/notifikasi" className={dashboardClass("mobile-hero-button mobile-notification-button")} aria-label={notificationCount ? `Buka notifikasi, ${notificationCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
-            <FiBell aria-hidden="true" />
-            {notificationCount ? <span className={dashboardClass("mobile-notification-badge")}>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}
-          </Link>
+const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => (
+  <header className={dashboardClass("mobile-finance-hero")}>
+    <div className={dashboardClass("mobile-finance-hero__bar")}>
+      <div className={dashboardClass("mobile-finance-user")}>
+        <UserAvatar user={user} className={dashboardClass("mobile-finance-user__avatar")} />
+        <div className={dashboardClass("mobile-finance-user__copy")}>
+          <strong>Hai, {displayName}</strong>
+          <span>Keuangan keluarga · {formatPeriod(overview.periodKey)}</span>
         </div>
       </div>
+      <div className={dashboardClass("mobile-finance-hero__actions")}>
+        <Link to="/notifikasi" className={dashboardClass("mobile-hero-button mobile-notification-button")} aria-label={notificationCount ? `Buka notifikasi, ${notificationCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
+          <FiBell aria-hidden="true" />
+          {notificationCount ? <span className={dashboardClass("mobile-notification-badge")}>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}
+        </Link>
+      </div>
+    </div>
 
-      <div className={dashboardClass("mobile-finance-identity")}>
-        <div className={dashboardClass("mobile-finance-balance-label")}>
-          <span>Dana Tersedia</span>
-          <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}>
-            {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
-          </button>
-        </div>
-        <div className={dashboardClass(`mobile-finance-balance${balanceVisible ? "" : " mobile-finance-balance--hidden"}`)} aria-live="polite">
-          <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
-        </div>
-        <div className={dashboardClass("mobile-finance-meta")}>
-          <span>Setelah Alokasi Dana dan komitmen lain</span>
-          <span aria-live="polite"><i aria-hidden="true" />{dashboardSyncLabel(overview.lastSyncedAt)}</span>
-        </div>
+    <div className={dashboardClass("mobile-finance-identity")}>
+      <div className={dashboardClass("mobile-finance-balance-label")}>
+        <span>Dana Tersedia</span>
+        <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}>
+          {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
+        </button>
       </div>
+      <div className={dashboardClass(`mobile-finance-balance${balanceVisible ? "" : " mobile-finance-balance--hidden"}`)} aria-live="polite">
+        <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
+      </div>
+      <div className={dashboardClass("mobile-finance-meta")}>
+        <span>Sisa uang yang aman dipakai setelah kebutuhan dan tagihan.</span>
+        <span aria-live="polite"><i aria-hidden="true" />{dashboardSyncLabel(overview.lastSyncedAt)}</span>
+      </div>
+    </div>
 
-      <div className={dashboardClass("mobile-finance-summary")} aria-label="Ringkasan dana tersedia">
-        <div><span>Saldo rekening</span><SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} /></div>
-        <div><span>Aman dipakai / hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
-      </div>
-    </header>
-  );
-};
+    <div className={dashboardClass("mobile-finance-summary")} aria-label="Ringkasan dana tersedia">
+      <div><span>Saldo rekening</span><SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} /></div>
+      <div><span>Aman dipakai / hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
+    </div>
+  </header>
+);
 
 const MobileCashFlow = ({ overview, balanceVisible }) => {
   const cashFlow = overview?.cashFlow || {};
+  const cashIn = Number(cashFlow.income || 0) + Number(cashFlow.refund || 0);
+  const cashOut = Number(cashFlow.expense || 0);
+  const net = cashIn - cashOut;
+  const netTone = net < 0 ? "negative" : net > 0 ? "positive" : "default";
   return (
     <section className={dashboardClass("mobile-cash-flow")} aria-labelledby="mobile-cash-flow-title">
       <div className={dashboardClass("mobile-cash-flow__heading")}>
@@ -75,26 +77,22 @@ const MobileCashFlow = ({ overview, balanceVisible }) => {
         <span>{formatPeriod(overview.periodKey)}</span>
       </div>
       <div className={dashboardClass("mobile-cash-flow__values")}>
-        <div><span>Masuk</span><SensitiveMoney visible={balanceVisible} value={cashFlow.income || 0} tone="positive" /></div>
-        <div><span>Keluar</span><SensitiveMoney visible={balanceVisible} value={cashFlow.expense || 0} tone="negative" /></div>
+        <div>
+          <span><FiArrowDownLeft aria-hidden="true" />Masuk</span>
+          <SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" />
+        </div>
+        <div>
+          <span><FiArrowUpRight aria-hidden="true" />Keluar</span>
+          <SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" />
+        </div>
+      </div>
+      <div className={dashboardClass("mobile-cash-flow__net")}>
+        <span>Selisih</span>
+        <span className={dashboardClass(`mobile-cash-flow__net-value money--${netTone}`)}>
+          {balanceVisible && net > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={net} tone={netTone} />
+        </span>
       </div>
     </section>
-  );
-};
-
-const MobileFinancialInsight = ({ overview, balanceVisible }) => {
-  const insight = dashboardInsightState(overview);
-  const copy = insight.kind === "safe"
-    ? <><SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} /> masih tersedia setelah Alokasi Dana dan komitmen lain bulan ini.</>
-    : insight.kind === "cashflow"
-      ? <>Arus kas bersih bulan ini negatif. Jaga pengeluaran harian sekitar <SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /> agar tetap terkendali.</>
-      : <>Dana Tersedia sedang terbatas. Periksa Alokasi Dana dan Jadwal Rutin sebelum menambah pengeluaran baru.</>;
-
-  return (
-    <aside className={dashboardClass("mobile-financial-insight")} data-tone={insight.tone} aria-label="Insight keuangan">
-      <span className={dashboardClass("mobile-financial-insight__icon")}><FiInfo aria-hidden="true" /></span>
-      <span className={dashboardClass("mobile-financial-insight__copy")}><strong>{insight.title}</strong><small>{copy}</small></span>
-    </aside>
   );
 };
 
@@ -118,56 +116,68 @@ const priorityBudget = (overview) => (overview?.budgets || [])
     return rightRatio - leftRatio;
   })[0] || null;
 
-const MobileBudgetPlan = ({ overview, balanceVisible }) => {
+const upcomingRecurring = (overview) => (overview?.recurring || [])
+  .filter((item) => !["paid", "received", "cancelled", "archived"].includes(item.occurrence_status || item.status))
+  .sort((left, right) => String(left.due_date || "9999").localeCompare(String(right.due_date || "9999")))[0] || null;
+
+const recurringDateLabel = (value) => formatDateLongIndonesia(value) || "Tanggal belum tersedia";
+
+const MobileBudgetPlanItem = ({ budget, balanceVisible }) => {
+  const used = Math.max(0, Number(budget.used_amount || 0));
+  const amount = Math.max(0, Number(budget.amount || 0));
+  const remaining = Math.max(0, amount - used);
+  const percentage = amount > 0 ? Math.round((used / amount) * 100) : 0;
+  const usageLabel = used <= 0 ? "Belum terpakai" : `${percentage}% terpakai`;
+  return (
+    <Link className={dashboardClass("mobile-plan-item")} to="/perencanaan/kantong" state={{ attentionBudgetId: budget.budget_id }}>
+      <span className={dashboardClass("mobile-plan-item__icon")}><FiPieChart aria-hidden="true" /></span>
+      <span className={dashboardClass("mobile-plan-item__copy")}>
+        <strong>{budget.name || "Kebutuhan"}</strong>
+        <small>Sisa <SensitiveMoney visible={balanceVisible} value={remaining} /> · {usageLabel}</small>
+      </span>
+      <FiChevronRight className={dashboardClass("mobile-plan-item__chevron")} aria-hidden="true" />
+    </Link>
+  );
+};
+
+const MobileSchedulePlanItem = ({ item, balanceVisible }) => (
+  <Link className={dashboardClass("mobile-plan-item")} to="/perencanaan/jadwal" state={{ attentionOccurrenceId: item.occurrence_id }}>
+    <span className={dashboardClass("mobile-plan-item__icon mobile-plan-item__icon--schedule")}><FiCalendar aria-hidden="true" /></span>
+    <span className={dashboardClass("mobile-plan-item__copy")}>
+      <strong>{item.name || "Jadwal rutin"}</strong>
+      <small>{recurringDateLabel(item.due_date)} · <SensitiveMoney visible={balanceVisible} value={item.expected_amount || item.amount || 0} /></small>
+    </span>
+    <span className={dashboardClass("mobile-plan-item__aside")}>{dashboardDueLabel(item.due_date)}</span>
+  </Link>
+);
+
+const MobileUpcomingPlan = ({ overview, balanceVisible }) => {
   const budget = priorityBudget(overview);
-  if (!budget) {
-    const action = dashboardNeedEmptyAction(overview);
+  const recurring = upcomingRecurring(overview);
+  const needAction = budget ? null : dashboardNeedEmptyAction(overview);
+  const recurringAction = recurring ? null : dashboardRecurringEmptyAction(overview);
+  if (!budget && !recurring) {
+    const operable = (overview.accountBalances || []).some((item) => item.account_type !== "investment" && item.can_transact !== false);
+    const action = operable
+      ? { label: "Mulai atur dana", description: "Siapkan kebutuhan dan pembayaran rutin agar uang lebih mudah dipantau.", to: "/perencanaan" }
+      : { label: "Siapkan rekening", description: "Aktifkan rekening sebelum mulai mengatur dana.", to: "/rekening" };
     return (
-      <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-budget-plan-title">
-        <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-budget-plan-title">Rencana Keuangan</h2></div>
+      <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-upcoming-plan-title">
+        <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-upcoming-plan-title">Rencana terdekat</h2></div>
         <MobileEmptyAction action={action} />
       </section>
     );
   }
 
-  const used = Math.max(0, Number(budget.used_amount || 0));
-  const amount = Math.max(0, Number(budget.amount || 0));
-  const remaining = Math.max(0, amount - used);
-  const percentage = amount > 0 ? Math.round((used / amount) * 100) : 0;
-  const note = used <= 0 ? "Belum ada pemakaian bulan ini" : percentage >= 100 ? "Batas kebutuhan sudah tercapai" : "Masih tersedia untuk bulan ini";
   return (
-    <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-budget-plan-title">
-      <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-budget-plan-title">Rencana Keuangan</h2><Link to="/perencanaan">Lihat alokasi</Link></div>
-      <Link className={dashboardClass("mobile-budget-card")} to="/perencanaan">
-        <span className={dashboardClass("mobile-budget-card__icon")}><FiPieChart aria-hidden="true" /></span>
-        <div className={dashboardClass("mobile-budget-card__copy")}>
-          <strong>{budget.name || "Kebutuhan"}</strong>
-          <small>Sisa <SensitiveMoney visible={balanceVisible} value={remaining} /></small>
-          <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name || "kebutuhan"}`} />
-          <em>{note}</em>
-        </div>
-      </Link>
-    </section>
-  );
-};
-
-const upcomingRecurring = (overview) => (overview?.recurring || [])
-  .filter((item) => !["paid", "cancelled", "archived"].includes(item.occurrence_status || item.status))
-  .sort((left, right) => String(left.due_date || "9999").localeCompare(String(right.due_date || "9999")))[0] || null;
-
-const recurringDateLabel = (value) => formatDateLongIndonesia(value) || "Tanggal belum tersedia";
-
-const MobileUpcomingSchedule = ({ overview, balanceVisible }) => {
-  const item = upcomingRecurring(overview);
-  const emptyAction = item ? null : dashboardRecurringEmptyAction(overview);
-  return (
-    <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-upcoming-schedule-title">
-      <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-upcoming-schedule-title">Jadwal Terdekat</h2>{item ? <Link to="/perencanaan/jadwal">Lihat semua</Link> : null}</div>
-      {item ? <Link className={dashboardClass("mobile-schedule-card")} to="/perencanaan/jadwal">
-        <span className={dashboardClass("mobile-schedule-card__icon")}><FiCalendar aria-hidden="true" /></span>
-        <span className={dashboardClass("mobile-schedule-card__copy")}><strong>{item.name || "Jadwal rutin"}</strong><small>{recurringDateLabel(item.due_date)}</small></span>
-        <span className={dashboardClass("mobile-schedule-card__meta")}><SensitiveMoney visible={balanceVisible} value={item.expected_amount || item.amount || 0} /><small>{dashboardDueLabel(item.due_date)}</small></span>
-      </Link> : <MobileEmptyAction action={emptyAction} />}
+    <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-upcoming-plan-title">
+      <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-upcoming-plan-title">Rencana terdekat</h2><Link to="/perencanaan">Lihat semua</Link></div>
+      <div className={dashboardClass("mobile-plan-list")}>
+        {budget ? <MobileBudgetPlanItem budget={budget} balanceVisible={balanceVisible} /> : null}
+        {recurring ? <MobileSchedulePlanItem item={recurring} balanceVisible={balanceVisible} /> : null}
+      </div>
+      {!budget && needAction ? <Link className={dashboardClass("mobile-plan-add-link")} to={needAction.to} state={needAction.state || undefined}>+ {needAction.label}</Link> : null}
+      {!recurring && recurringAction ? <Link className={dashboardClass("mobile-plan-add-link")} to={recurringAction.to} state={recurringAction.state || undefined}>+ {recurringAction.label}</Link> : null}
     </section>
   );
 };
@@ -176,12 +186,12 @@ const MobileNextAction = ({ alerts }) => {
   if (!alerts?.length) return null;
   const alert = alerts[0];
   const guidance = financialAlertGuidance(alert);
-  const Icon = alert.severity === "info" ? FiInfo : FiAlertTriangle;
+  const Icon = alert.severity === "info" ? FiBell : FiAlertTriangle;
   return <section className={dashboardClass("mobile-finance-section mobile-next-action-section")} aria-labelledby="mobile-next-action-title">
-    <div className={dashboardClass("mobile-section-heading mobile-next-action-heading")}><h2 id="mobile-next-action-title">Perlu dilakukan</h2><span>{alerts.length > 1 ? `${alerts.length} notifikasi aktif` : "1 tugas"}</span></div>
+    <div className={dashboardClass("mobile-section-heading mobile-next-action-heading")}><h2 id="mobile-next-action-title">Perlu dilakukan</h2><span>{alerts.length > 1 ? `${alerts.length} perhatian aktif` : "1 tugas"}</span></div>
     <Link className={dashboardClass("mobile-next-action")} data-severity={alert.severity} to={guidance.to} state={guidance.state} aria-label={`${financialNotificationTitle(alert)}. ${alert.message}`}>
       <span className={dashboardClass("mobile-next-action__icon")}><Icon aria-hidden="true" /></span>
-      <span className={dashboardClass("mobile-next-action__copy")}><strong>{financialNotificationTitle(alert)}</strong><small>{alert.message}</small></span>
+      <span className={dashboardClass("mobile-next-action__copy")}><strong>{financialNotificationTitle(alert)}</strong><small>{alert.message}</small><em>{guidance.actionLabel}</em></span>
       <FiChevronRight className={dashboardClass("mobile-next-action__chevron")} aria-hidden="true" />
     </Link>
   </section>;
@@ -202,7 +212,7 @@ const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, 
 
 const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel, balanceVisible, onOpenTransactionDetail, onOpenTransaction }) => (
   <section className={dashboardClass("mobile-finance-section")} aria-labelledby="recent-transactions-title">
-    <div className={dashboardClass("mobile-section-heading")}><h2 id="recent-transactions-title">Aktivitas Terbaru</h2>{recentTransactions.length ? <Link to="/transaksi">Lihat semua</Link> : null}</div>
+    <div className={dashboardClass("mobile-section-heading")}><h2 id="recent-transactions-title">Aktivitas terbaru</h2>{recentTransactions.length ? <Link to="/transaksi">Lihat semua</Link> : null}</div>
     {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <MobileEmptyAction action={{ label: "Catat transaksi", description: "Tambah aktivitas pertama" }} onClick={onOpenTransaction} />}
   </section>
 );
@@ -218,15 +228,16 @@ const percentageLabel = (value) => value == null ? "" : `${value >= 0 ? "+" : ""
 
 const MobileInvestment = ({ summary, balanceVisible }) => {
   if (!summary) return null;
+  const hasInvestedAssets = Number(summary.market_value || 0) !== 0 || Number(summary.cost_basis || 0) > 0 || Number(summary.holding_count || 0) > 0;
+  if (!hasInvestedAssets) return null;
   const profit = Number(summary.unrealized_pl || 0);
   const tone = profit < 0 ? "negative" : profit > 0 ? "positive" : "default";
   const returnPercent = investmentReturnPercent(summary);
-  const hasInvestedAssets = Number(summary.market_value || 0) !== 0 || Number(summary.cost_basis || 0) > 0 || Number(summary.holding_count || 0) > 0;
   return <section className={dashboardClass("mobile-finance-section")} aria-labelledby="mobile-investment-title">
-    <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-investment-title">Investasi</h2><Link to="/investasi">Buka catatan</Link></div>
+    <div className={dashboardClass("mobile-section-heading")}><h2 id="mobile-investment-title">Investasi</h2><Link to="/investasi">Lihat</Link></div>
     <Link className={dashboardClass("mobile-investment-card")} to="/investasi">
       <span className={dashboardClass("mobile-investment-card__icon")}><InvestmentIcon aria-hidden="true" /></span>
-      <span className={dashboardClass("mobile-investment-card__copy")}><small>Total investasi tercatat</small><strong><SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /></strong><em data-tone={tone}>{hasInvestedAssets ? <>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</> : <>Belum ada aset investasi tercatat</>}</em></span>
+      <span className={dashboardClass("mobile-investment-card__copy")}><small>Total investasi tercatat</small><strong><SensitiveMoney visible={balanceVisible} value={summary.market_value || 0} /></strong><em data-tone={tone}>{balanceVisible && profit > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={profit} tone={tone} />{balanceVisible && returnPercent != null ? ` (${percentageLabel(returnPercent)})` : ""}</em></span>
       <FiChevronRight className={dashboardClass("mobile-investment-card__chevron")} aria-hidden="true" />
     </Link>
   </section>;
@@ -235,20 +246,18 @@ const MobileInvestment = ({ summary, balanceVisible }) => {
 const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, displayName, balanceVisible, onToggleBalance, onOpenTransactionDetail, onOpenTransaction, setupContent }) => {
   const { recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel } = viewModel;
   const notificationEvents = useApiResource("notifications.center", { limit: 80 }, { enabled: Boolean(user) });
-  const notificationState = useFinancialNotificationReadState({ alerts: mergeNotificationCenterItems(overview.alerts || [], notificationEvents.data?.items || []), scope: user?.uid || user?.email || "anonymous" });
+  const notificationState = useFinancialNotificationReadState({ alerts: mergeNotificationCenterItems(overview.alerts || [], notificationEvents.data?.items || []), readStates: notificationEvents.data?.readStates || [] });
   return <section className={dashboardClass("mobile-finance-dashboard")} aria-label="Ringkasan keuangan mobile">
     <h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1>
     <MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} notificationCount={notificationState.unreadCount} />
     <div className={dashboardClass("mobile-finance-content")}>
-      {setupContent}
-      <DashboardQuickActions />
       <MobileCashFlow overview={overview} balanceVisible={balanceVisible} />
       <MobileNextAction alerts={overview.alerts} />
-      <MobileFinancialInsight overview={overview} balanceVisible={balanceVisible} />
-      <MobileBudgetPlan overview={overview} balanceVisible={balanceVisible} />
-      <MobileUpcomingSchedule overview={overview} balanceVisible={balanceVisible} />
-      <MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} />
+      {setupContent}
+      <DashboardQuickActions />
+      <MobileUpcomingPlan overview={overview} balanceVisible={balanceVisible} />
       <MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} onOpenTransaction={onOpenTransaction} />
+      <MobileInvestment summary={investmentSummary} balanceVisible={balanceVisible} />
     </div>
   </section>;
 };

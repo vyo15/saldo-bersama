@@ -138,6 +138,8 @@ Catatan rekonsiliasi: `reconciliations.create` tetap dapat dipanggil Administrat
 | `notifications.status` | Ya | Ya |
 | `notifications.preferences` | Ya | Ya |
 | `notifications.updatePreference` | Ya | Ya |
+| `notifications.updateSettings` | Ya | Ya |
+| `notifications.markRead` | Ya | Ya |
 | `notifications.register` | Ya | Ya |
 | `notifications.unregister` | Ya | Ya |
 | `notifications.test` | Ya | Ya |

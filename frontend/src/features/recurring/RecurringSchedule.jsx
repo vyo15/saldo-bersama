@@ -211,7 +211,7 @@ const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, ac
         budgets={budgets}
       />
     )) : (
-      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title={hasAnyItems ? "Tidak ada jadwal yang sesuai" : "Belum ada jadwal"} description={emptyText} headingLevel={3} action={hasAnyItems ? <Button onClick={onReset}>Tampilkan jadwal tersedia</Button> : canCreate ? <Button variant="primary" icon={FiCalendar} onClick={actions.openCreate}>Buat jadwal rutin</Button> : null} />
+      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title={hasAnyItems ? "Tidak ada jadwal yang sesuai" : "Punya pembayaran yang berulang?"} description={hasAnyItems ? emptyText : "Simpan jadwal supaya pembayaran atau pemasukan rutin tidak terlewat."} headingLevel={3} action={hasAnyItems ? <Button onClick={onReset}>Tampilkan jadwal tersedia</Button> : canCreate ? <Button variant="primary" icon={FiCalendar} onClick={actions.openCreate}>Tambah pembayaran rutin</Button> : null} />
     )}
   </div>
 );

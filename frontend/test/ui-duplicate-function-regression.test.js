@@ -55,7 +55,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.match(accountStyles, /\.mobileQuickActions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
 
   for (const [path, label] of [
-    ["/perencanaan", "Alokasi"],
+    ["/perencanaan", "Atur Dana"],
     ["/rekening", "Rekening"],
     ["/target", "Target"],
     ["/rekonsiliasi", "Cocokkan"],

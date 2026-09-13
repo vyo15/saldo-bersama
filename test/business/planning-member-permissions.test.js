@@ -134,14 +134,18 @@ test("Member dapat mengelola planning Bersama dan Kebutuhan personal miliknya se
       frequency: "monthly",
       due_day: 10,
       start_date: todayJakarta(),
+      auto_debit: true,
     }));
     assert.equal(recurring.scope, "shared");
+    assert.equal(recurring.auto_debit, false, "write Jadwal Rutin baru selalu menonaktifkan metadata Autodebet legacy");
     const recurringUpdated = await updateRecurringRule(db, context(member, "recurring.updateRule", {
       recurring_rule_id: recurring.recurring_rule_id,
       row_version: recurring.row_version,
       expected_amount: 275_000,
+      auto_debit: true,
     }, recurring.row_version));
     assert.equal(recurringUpdated.expected_amount, 275_000);
+    assert.equal(recurringUpdated.auto_debit, false, "update Jadwal Rutin tidak boleh menghidupkan Autodebet legacy");
 
     const occurrence = await db.one("SELECT * FROM recurring_occurrences WHERE recurring_rule_id=? ORDER BY due_date LIMIT 1", [recurring.recurring_rule_id]);
     assert.ok(occurrence);

@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  dashboardDueLabel,
-  dashboardInsightState,
-} from "../src/features/dashboard/dashboardPresentation.js";
+import { dashboardDueLabel } from "../src/features/dashboard/dashboardPresentation.js";
 
 test("dashboardDueLabel memakai tanggal Jakarta dan copy relatif yang stabil", () => {
   const today = "2026-09-06";
@@ -17,17 +14,3 @@ test("dashboardDueLabel memakai tanggal Jakarta dan copy relatif yang stabil", (
   assert.equal(dashboardDueLabel("2026-02-31", today), "Jadwal belum tersedia");
 });
 
-test("dashboardInsightState memprioritaskan ruang aman lalu arus kas", () => {
-  assert.equal(
-    dashboardInsightState({ safeToSpend: 0, cashFlow: { net: 100_000 } }).kind,
-    "limited",
-  );
-  assert.equal(
-    dashboardInsightState({ safeToSpend: 500_000, cashFlow: { net: -1 } }).kind,
-    "cashflow",
-  );
-  assert.equal(
-    dashboardInsightState({ safeToSpend: 500_000, cashFlow: { net: 1 } }).kind,
-    "safe",
-  );
-});

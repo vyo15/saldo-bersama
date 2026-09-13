@@ -1,5 +1,5 @@
-const STATIC_CACHE = "saldo-bersama-static-v12";
-const RUNTIME_CACHE = "saldo-bersama-runtime-v12";
+const STATIC_CACHE = "saldo-bersama-static-v13";
+const RUNTIME_CACHE = "saldo-bersama-runtime-v13";
 const STATIC_ASSETS = [
   "/",
   "/site.webmanifest",
@@ -48,6 +48,8 @@ const NOTIFICATION_COPY = Object.freeze({
   envelope_threshold: { title: "Alokasi perlu diperiksa", body: "Ada alokasi yang membutuhkan perhatian. Buka aplikasi untuk melihat detail." },
   goal_behind: { title: "Target perlu diperiksa", body: "Ada target yang membutuhkan perhatian. Buka aplikasi untuk melihat detail." },
   unallocated_expense: { title: "Transaksi perlu dirapikan", body: "Ada transaksi yang membutuhkan perhatian. Buka aplikasi untuk melihat detail." },
+  reconciliation_stale: { title: "Saldo perlu dicocokkan", body: "Catatan saldo perlu diperiksa. Buka aplikasi untuk melihat detail." },
+  recording_consistency: { title: "Catatan keuangan perlu ditinjau", body: "Ada catatan keuangan yang mungkin perlu dirapikan. Buka aplikasi untuk melihat detail." },
 });
 
 const notificationCopy = (payload) => NOTIFICATION_COPY[String(payload.notificationType || "")]

@@ -1,3 +1,4 @@
+import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { formatRupiah } from "../../../domain/money.js";
 import styles from "../TransactionForm.module.css";
 
@@ -7,85 +8,69 @@ const signedRupiah = (value) => {
   return `${amount > 0 ? "+" : "−"}${formatRupiah(Math.abs(amount))}`;
 };
 
-const ImpactValue = ({ label, value, delta }) => (
+const ImpactValue = ({ label, value, delta, hideDelta = false }) => (
   <span className={styles.impactValue}>
     <span className={styles.impactValueCopy}>
       <small>{label}</small>
       <strong>{formatRupiah(value)}</strong>
     </span>
-    <span className={`${styles.impactDelta} ${Number(delta || 0) < 0 ? styles.impactDeltaNegative : ""}`.trim()}>
-      {signedRupiah(delta)}
-    </span>
+    {hideDelta ? null : (
+      <span className={`${styles.impactDelta} ${Number(delta || 0) < 0 ? styles.impactDeltaNegative : ""}`.trim()}>
+        {signedRupiah(delta)}
+      </span>
+    )}
   </span>
 );
 
-const TransferImpact = ({ impact }) => {
-  if (!impact.source || !impact.destination) return null;
+const changedAccounts = (impact) => (impact.accountChanges || []).filter((item) => Number(item.balanceAfter || 0) !== Number(item.balanceBefore || 0));
+
+const impactFootnote = (impact) => {
+  const safeDelta = Number(impact.safeToSpendDelta || 0);
+  if (impact.transactionType === TRANSACTION_TYPES.EXPENSE && impact.envelope && safeDelta === 0) {
+    return "Dana Tersedia tidak berubah karena pengeluaran memakai dana yang sudah disiapkan.";
+  }
+  if (impact.transactionType === TRANSACTION_TYPES.EXPENSE && !impact.envelope) {
+    return "Pengeluaran belum masuk rencana, sehingga langsung mengurangi Dana Tersedia.";
+  }
+  if (impact.transactionType === TRANSACTION_TYPES.TRANSFER && safeDelta === 0) {
+    return "Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga.";
+  }
+  if (impact.transactionType === TRANSACTION_TYPES.TRANSFER && safeDelta < 0) {
+    return "Sebagian dana berpindah keluar dari uang operasional, sehingga Dana Tersedia berkurang.";
+  }
+  if (impact.transactionType === TRANSACTION_TYPES.TRANSFER && safeDelta > 0) {
+    return "Dana kembali ke rekening operasional, sehingga Dana Tersedia bertambah.";
+  }
+  return impact.isEdit ? "Ini perkiraan perubahan dari kondisi transaksi yang tersimpan saat ini." : "Angka aktual akan mengikuti hasil yang dikonfirmasi server setelah disimpan.";
+};
+
+const TransactionImpactPreview = ({ impact }) => {
+  if (!impact || Number(impact.amount || 0) <= 0) return null;
+  const accounts = changedAccounts(impact);
+  const budgetBefore = Number(impact.budgetRemainingBefore || 0);
+  const budgetAfter = Number(impact.budgetRemainingAfter || 0);
+  const envelopeBefore = Number(impact.envelope?.remaining_amount || 0);
+  const envelopeAfter = Number(impact.envelopeAfter || 0);
+  const safeBefore = Number(impact.safeToSpendBefore || 0);
+  const safeAfter = Number(impact.safeToSpendAfter || 0);
+
   return (
     <div className={`form-grid__full ${styles.impactPreview}`} aria-live="polite">
-      <span className={styles.impactEyebrow}>Setelah transfer</span>
+      <span className={styles.impactEyebrow}>Perkiraan setelah disimpan</span>
       <div className={styles.impactTransferRoute}>
-        <ImpactValue
-          label={impact.source.name}
-          value={impact.sourceAfter}
-          delta={Number(impact.sourceAfter || 0) - Number(impact.source.balance || 0)}
-        />
-        <ImpactValue
-          label={impact.destination.name}
-          value={impact.destinationAfter}
-          delta={Number(impact.destinationAfter || 0) - Number(impact.destination.balance || 0)}
-        />
+        {impact.budget ? (
+          <ImpactValue label={`Sisa ${impact.budget.name || "Kebutuhan"}`} value={budgetAfter} delta={budgetAfter - budgetBefore} />
+        ) : impact.envelope ? (
+          <ImpactValue label={`Sisa ${impact.envelope.name}`} value={envelopeAfter} delta={envelopeAfter - envelopeBefore} />
+        ) : null}
+        <ImpactValue label="Dana Tersedia" value={safeAfter} delta={safeAfter - safeBefore} hideDelta={safeAfter === safeBefore} />
+        {accounts.map((item) => (
+          <ImpactValue key={item.accountId} label={item.account.name || "Rekening"} value={item.balanceAfter} delta={item.balanceAfter - item.balanceBefore} />
+        ))}
       </div>
-      <small className={styles.impactFootnote}>Total aset tetap. Transfer memakai dana tersedia yang belum dialokasikan.</small>
+      <small className={styles.impactFootnote}>{impactFootnote(impact)}</small>
     </div>
   );
-};
-
-const StandardImpact = ({ impact }) => {
-  if (impact.envelope) {
-    const envelopeBefore = Number(impact.envelope.remaining_amount || 0);
-    const envelopeAfter = Number(impact.envelopeAfter || 0);
-    return (
-      <div className={`form-grid__full ${styles.impactPreview}`} aria-live="polite">
-        <span className={styles.impactEyebrow}>Setelah transaksi</span>
-        <ImpactValue label={`Sisa ${impact.envelope.name}`} value={envelopeAfter} delta={envelopeAfter - envelopeBefore} />
-        {impact.source ? (
-          <small className={styles.impactFootnote}>
-            Saldo {impact.source.name} menjadi {formatRupiah(impact.sourceAfter)}.
-          </small>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (impact.source) {
-    const before = Number(impact.sourceAvailable || 0);
-    const after = Number(impact.sourceAvailableAfter || 0);
-    return (
-      <div className={`form-grid__full ${styles.impactPreview}`} aria-live="polite">
-        <span className={styles.impactEyebrow}>Setelah transaksi</span>
-        <ImpactValue label={`Dana tersedia ${impact.source.name}`} value={after} delta={after - before} />
-      </div>
-    );
-  }
-
-  if (impact.destination) {
-    const before = Number(impact.destination.balance || 0);
-    const after = Number(impact.destinationAfter || 0);
-    return (
-      <div className={`form-grid__full ${styles.impactPreview}`} aria-live="polite">
-        <span className={styles.impactEyebrow}>Setelah transaksi</span>
-        <ImpactValue label={impact.destination.name} value={after} delta={after - before} />
-      </div>
-    );
-  }
-
-  return null;
-};
-
-const TransactionImpactPreview = ({ impact, isTransfer }) => {
-  if (!impact || Number(impact.amount || 0) <= 0) return null;
-  return isTransfer ? <TransferImpact impact={impact} /> : <StandardImpact impact={impact} />;
 };
 
 export default TransactionImpactPreview;

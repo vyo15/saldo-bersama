@@ -4,7 +4,7 @@ import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
 const DASHBOARD_QUICK_ACTIONS = Object.freeze([
-  { to: "/perencanaan", label: "Alokasi", description: "Kelola dana & kebutuhan", icon: FiPieChart, tone: "allocation" },
+  { to: "/perencanaan", label: "Atur Dana", description: "Atur kebutuhan, jadwal & kewajiban", icon: FiPieChart, tone: "allocation" },
   { to: "/rekening", label: "Rekening", description: "Lihat saldo fisik", icon: AccountIcon, tone: "account" },
   { to: "/target", label: "Target", description: "Pantau tujuan keuangan", icon: FiTarget, tone: "goal" },
   { to: "/rekonsiliasi", label: "Cocokkan", description: "Samakan saldo aktual", icon: FiCheckCircle, tone: "reconciliation" },

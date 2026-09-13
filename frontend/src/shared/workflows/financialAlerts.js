@@ -9,6 +9,9 @@ const ALERT_TARGETS = Object.freeze({
   envelope_threshold: { prefix: "envelope", fallbackPath: "/perencanaan/kantong" },
   recurring_overdue: { prefix: "recurring-overdue", fallbackPath: "/perencanaan/jadwal" },
   recurring_due: { prefix: "recurring-due", fallbackPath: "/perencanaan/jadwal" },
+  recurring_funding_shortage: { prefix: "recurring-funding-shortage", fallbackPath: "/perencanaan/jadwal" },
+  recurring_completed: { prefix: "recurring-completed", fallbackPath: "/perencanaan/jadwal" },
+  recording_consistency: { prefix: "recording-consistency", fallbackPath: "/transaksi" },
   goal_behind: { prefix: "goal-behind", fallbackPath: "/target" },
 });
 
@@ -72,8 +75,8 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
   unallocated_expense: ({ alert, to, baseState }) => {
     const period = alertPeriod(alert);
     return guidance({
-      instruction: "Pilih pengeluaran yang belum memiliki alokasi, buka Edit, lalu tentukan Alokasi Dana yang sesuai.",
-      actionLabel: "Pilih Alokasi Dana",
+      instruction: "Buka pengeluaran yang belum masuk rencana, lalu hubungkan ke Kebutuhan yang sesuai. Alokasi Dana tetap dapat dipilih manual bila memang diperlukan.",
+      actionLabel: "Rapikan transaksi",
       to,
       baseState,
       state: { allocation: "unallocated", ...entityState("period", period) },
@@ -122,6 +125,26 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
     to,
     baseState,
     state: entityState("attentionOccurrenceId", entityId),
+  }),
+  recurring_funding_shortage: ({ to, baseState, entityId }) => guidance({
+    instruction: "Dana pada rekening pembayaran belum cukup untuk jadwal ini. Periksa rekening atau nominal sebelum mencatat pembayaran.",
+    actionLabel: "Periksa tagihan",
+    to,
+    baseState,
+    state: entityState("attentionOccurrenceId", entityId),
+  }),
+  recurring_completed: ({ to, baseState, entityId }) => guidance({
+    instruction: "Pembayaran rutin ini sudah tercatat. Buka jadwal untuk melihat detail dan pembayaran berikutnya.",
+    actionLabel: "Lihat pembayaran",
+    to,
+    baseState,
+    state: entityState("attentionOccurrenceId", entityId),
+  }),
+  recording_consistency: ({ to, baseState }) => guidance({
+    instruction: "Buka transaksi bila ada aktivitas yang belum sempat dicatat atau dirapikan.",
+    actionLabel: "Buka transaksi",
+    to,
+    baseState,
   }),
   goal_behind: ({ to, baseState, entityId }) => guidance({
     instruction: "Target berada di bawah ritme rencana. Tambahkan dana jika kondisi keuangan memungkinkan; jangan mengambil dana dari rekening yang tidak sesuai.",

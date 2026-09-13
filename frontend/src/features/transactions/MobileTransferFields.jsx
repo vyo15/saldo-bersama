@@ -154,7 +154,12 @@ const ImpactPreview = ({ impact }) => {
           tone="positive"
         />
       </div>
-      <p>Total aset tetap. Transfer memakai dana yang belum dialokasikan dari rekening sumber.</p>
+      <div className={styles.safeImpact}>
+        <span>Dana Tersedia</span>
+        <strong>{formatRupiah(impact.safeToSpendAfter || 0)}</strong>
+        <small>{Number(impact.safeToSpendDelta || 0) === 0 ? "Tetap" : `${Number(impact.safeToSpendDelta || 0) > 0 ? "+" : "−"}${formatRupiah(Math.abs(Number(impact.safeToSpendDelta || 0)))}`}</small>
+      </div>
+      <p>{Number(impact.safeToSpendDelta || 0) === 0 ? "Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga." : Number(impact.safeToSpendDelta || 0) < 0 ? "Dana berpindah keluar dari uang operasional sehingga Dana Tersedia berkurang." : "Dana kembali ke rekening operasional sehingga Dana Tersedia bertambah."}</p>
     </section>
   );
 };

@@ -30,10 +30,9 @@ const dueTimingLabel = (today, dueDate) => {
 
 const shortName = (value, fallback) => sanitizeText(value, 60) || fallback;
 
-const queueForRecipients = async (db, users, item, notification, disabledPreferences = new Set()) => {
+const queueForRecipients = async (db, users, item, notification) => {
   let queued = 0;
   for (const user of notificationRecipients(users, item)) {
-    if (disabledPreferences.has(`${user.user_id}:${notification.type}`)) continue;
     const result = await queueNotification(db, {
       userId: user.user_id,
       type: notification.type,
@@ -55,8 +54,8 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
     indexes[key] = statements.length;
     statements.push(statement);
   };
-  add("users", { sql: "SELECT user_id FROM users WHERE status='active'", args: [] });
-  add("preferences", { sql: "SELECT user_id,notification_type FROM notification_preferences WHERE enabled=0", args: [] });
+  add("users", { sql: "SELECT user_id,created_at FROM users WHERE status='active'", args: [] });
+  add("settings", { sql: "SELECT user_id,reconciliation_days,recording_consistency_days FROM notification_settings", args: [] });
   add("recurringDue", {
     sql: `SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
       r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,r.auto_debit,r.commitment_id,
@@ -100,6 +99,23 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
       GROUP BY scope,owner_user_id`,
     args: [period],
   });
+  add("reconciliations", {
+    sql: `SELECT a.account_id,a.name,a.owner_scope AS scope,a.owner_user_id,a.created_at,latest.reconciled_at
+      FROM accounts a
+      LEFT JOIN (
+        SELECT account_id,reconciled_at FROM (
+          SELECT account_id,reconciled_at,ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY reconciled_at DESC,created_at DESC) AS rn
+          FROM reconciliations
+        ) ranked WHERE rn=1
+      ) latest ON latest.account_id=a.account_id
+      WHERE a.status='active' AND a.account_type<>'investment'`,
+    args: [],
+  });
+  add("recordingActivity", {
+    sql: `SELECT created_by AS user_id,MAX(created_at) AS last_created_at
+      FROM transactions WHERE status='active' GROUP BY created_by`,
+    args: [],
+  });
   add("accountBalances", {
     sql: `SELECT a.account_id,
       CASE WHEN a.initial_balance_date<=? THEN a.initial_balance ELSE 0 END + COALESCE((SELECT SUM(CASE
@@ -130,7 +146,7 @@ const recurringDueBody = (item, remaining) => {
 };
 
 const queueRecurringDueNotifications = async (db, state, recurring) => {
-  const { today, users, disabledPreferences, accountBalances } = state;
+  const { today, users, accountBalances } = state;
   let queued = 0;
   for (const item of recurring) {
     queued += await queueForRecipients(db, users, item, {
@@ -139,7 +155,7 @@ const queueRecurringDueNotifications = async (db, state, recurring) => {
       body: recurringDueBody(item, Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0))),
       targetPath: "/perencanaan/jadwal",
       dedupeKey: `recurring:${item.occurrence_id}:${item.due_date}`,
-    }, disabledPreferences);
+    });
     const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0));
     if (item.kind !== "expense" || remaining <= 0 || item.account_status !== "active" || item.due_date > addDays(today, 2)) continue;
     const balance = Number(accountBalances.get(item.account_id) || 0);
@@ -150,13 +166,13 @@ const queueRecurringDueNotifications = async (db, state, recurring) => {
       body: `Masih kurang ${notificationRupiah(remaining - balance)} dari kebutuhan ${notificationRupiah(remaining)} di ${shortName(item.account_name, "rekening sumber")}.`,
       targetPath: "/perencanaan/jadwal",
       dedupeKey: `recurring-shortage:${item.occurrence_id}:${item.due_date}`,
-    }, disabledPreferences);
+    });
   }
   return queued;
 };
 
 const queueRecurringCompletedNotifications = async (db, state, items) => {
-  const { users, disabledPreferences } = state;
+  const { users } = state;
   let queued = 0;
   for (const item of items) {
     queued += await queueForRecipients(db, users, item, {
@@ -165,13 +181,13 @@ const queueRecurringCompletedNotifications = async (db, state, items) => {
       body: `${notificationRupiah(Number(item.actual_amount || item.expected_amount || 0))} sudah tercatat sebagai ${item.kind === "income" ? "pemasukan" : "pembayaran"} rutin.`,
       targetPath: "/perencanaan/jadwal",
       dedupeKey: `recurring-completed:${item.occurrence_id}`,
-    }, disabledPreferences);
+    });
   }
   return queued;
 };
 
 const queueBudgetNotifications = async (db, state, budgets) => {
-  const { period, users, disabledPreferences } = state;
+  const { period, users } = state;
   let queued = 0;
   for (const item of budgets) {
     const percentage = Number(item.amount || 0) > 0 ? Math.round((Number(item.used_amount || 0) / Number(item.amount)) * 100) : 0;
@@ -183,13 +199,13 @@ const queueBudgetNotifications = async (db, state, budgets) => {
       body: `Terpakai ${notificationRupiah(item.used_amount)} dari ${notificationRupiah(item.amount)}. Sisa ${notificationRupiah(Math.max(0, Number(item.amount || 0) - Number(item.used_amount || 0)))}.`,
       targetPath: "/perencanaan/kantong",
       dedupeKey: `budget:${item.budget_id}:${period}:${threshold}`,
-    }, disabledPreferences);
+    });
   }
   return queued;
 };
 
 const queueEnvelopeNotifications = async (db, state, envelopes) => {
-  const { users, disabledPreferences } = state;
+  const { users } = state;
   let queued = 0;
   for (const item of envelopes) {
     const allocated = Number(item.allocated_amount || 0);
@@ -202,13 +218,13 @@ const queueEnvelopeNotifications = async (db, state, envelopes) => {
       body: `Terpakai + dipesan ${notificationRupiah(Number(item.used_amount || 0) + Number(item.reserved_amount || 0))} dari ${notificationRupiah(item.allocated_amount)}. Sisa ${notificationRupiah(Math.max(0, allocated - Number(item.used_amount || 0) - Number(item.reserved_amount || 0)))}.`,
       targetPath: "/perencanaan/kantong",
       dedupeKey: `envelope:${item.envelope_period_id}:${threshold}`,
-    }, disabledPreferences);
+    });
   }
   return queued;
 };
 
 const queueGoalNotifications = async (db, state, goals) => {
-  const { period, users, disabledPreferences } = state;
+  const { period, users } = state;
   let queued = 0;
   for (const item of goals) {
     const projection = goalProjection(item, Number(item.current_amount || 0));
@@ -221,23 +237,82 @@ const queueGoalNotifications = async (db, state, goals) => {
         : `Masih kurang ${notificationRupiah(projection.remaining_amount)}. Kebutuhan rata-rata ${notificationRupiah(projection.required_monthly_amount)} per bulan.`,
       targetPath: "/target",
       dedupeKey: `goal:${item.goal_id}:${period}:${projection.pace_status}`,
-    }, disabledPreferences);
+    });
   }
   return queued;
 };
 
 const queueUnallocatedExpenseNotifications = async (db, state, items) => {
-  const { today, users, disabledPreferences } = state;
+  const { today, users } = state;
   let queued = 0;
   for (const item of items) {
     if (Number(item.count || 0) < 1) continue;
     queued += await queueForRecipients(db, users, item, {
       type: "unallocated_expense",
-      title: `${Number(item.count || 0)} pengeluaran belum dialokasikan`,
-      body: `Total ${notificationRupiah(item.total_amount)} belum masuk Alokasi Dana. Rapikan agar laporan bulan ini tetap akurat.`,
+      title: `${Number(item.count || 0)} pengeluaran belum masuk kebutuhan`,
+      body: `Total ${notificationRupiah(item.total_amount)} belum terhubung ke Kebutuhan. Rapikan agar rencana bulan ini tetap akurat.`,
       targetPath: "/transaksi",
       dedupeKey: `unallocated:${item.scope}:${item.owner_user_id || "shared"}:${today}`,
-    }, disabledPreferences);
+    });
+  }
+  return queued;
+};
+
+
+const daysSince = (dateValue, today) => {
+  const candidate = String(dateValue || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return 0;
+  const from = new Date(`${candidate}T00:00:00+07:00`).getTime();
+  const to = new Date(`${today}T00:00:00+07:00`).getTime();
+  return Math.max(0, Math.floor((to - from) / 86_400_000));
+};
+
+const settingsFor = (state, userId) => state.settings.get(userId) || { reconciliationDays: 30, recordingConsistencyDays: 0 };
+
+const queueReconciliationNotifications = async (db, state, items) => {
+  let queued = 0;
+  for (const item of items) {
+    const balance = Number(state.accountBalances.get(item.account_id) || 0);
+    if (balance === 0) continue;
+    for (const user of notificationRecipients(state.users, item)) {
+      const days = settingsFor(state, user.user_id).reconciliationDays;
+      if (!days) continue;
+      const checkpoint = item.reconciled_at || item.created_at;
+      if (daysSince(checkpoint, state.today) <= days) continue;
+      const result = await queueNotification(db, {
+        userId: user.user_id,
+        type: "reconciliation_stale",
+        title: `Saatnya cocokkan saldo ${shortName(item.name, "Rekening")}`,
+        body: item.reconciled_at
+          ? `Sudah lebih dari ${days} hari sejak saldo terakhir dicocokkan.`
+          : "Pastikan saldo aplikasi sama dengan saldo yang benar-benar Anda lihat.",
+        targetPath: "/rekonsiliasi",
+        scheduledAt: nowIso(),
+        dedupeKey: `reconciliation-stale:${item.account_id}:${String(checkpoint || "never").slice(0, 10)}:${days}:${user.user_id}`,
+      });
+      if (result.created) queued += 1;
+    }
+  }
+  return queued;
+};
+
+const queueRecordingConsistencyNotifications = async (db, state) => {
+  let queued = 0;
+  for (const user of state.users) {
+    const days = settingsFor(state, user.user_id).recordingConsistencyDays;
+    if (!days) continue;
+    const lastActivity = state.recordingActivity.get(user.user_id) || user.created_at;
+    if (daysSince(lastActivity, state.today) < days) continue;
+    const result = await queueNotification(db, {
+      userId: user.user_id,
+      type: "recording_consistency",
+      title: "Ada yang belum sempat dicatat?",
+      body: "Buka Saldo Bersama kalau ada transaksi yang ingin dirapikan.",
+      targetPath: "/transaksi",
+      scheduledAt: nowIso(),
+      dedupeKey: `recording-consistency:${user.user_id}:${String(lastActivity || "never").slice(0, 10)}:${days}`,
+    });
+    if (result.created) queued += 1;
   }
   return queued;
 };
@@ -256,7 +331,8 @@ export const queueActionableNotifications = async (db) => {
     period,
     dueEndDate,
     users: at("users"),
-    disabledPreferences: new Set(at("preferences").map((row) => `${row.user_id}:${row.notification_type}`)),
+    settings: new Map(at("settings").map((row) => [row.user_id, { reconciliationDays: Number(row.reconciliation_days), recordingConsistencyDays: Number(row.recording_consistency_days) }])),
+    recordingActivity: new Map(at("recordingActivity").map((row) => [row.user_id, row.last_created_at])),
     accountBalances: new Map(at("accountBalances").map((row) => [row.account_id, Number(row.balance || 0)])),
   };
 
@@ -267,5 +343,7 @@ export const queueActionableNotifications = async (db) => {
   queued += await queueEnvelopeNotifications(db, state, at("envelopes"));
   queued += await queueGoalNotifications(db, state, at("goals"));
   queued += await queueUnallocatedExpenseNotifications(db, state, at("unallocated"));
+  queued += await queueReconciliationNotifications(db, state, at("reconciliations"));
+  queued += await queueRecordingConsistencyNotifications(db, state);
   return queued;
 };

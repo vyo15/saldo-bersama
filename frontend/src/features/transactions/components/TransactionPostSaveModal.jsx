@@ -1,9 +1,11 @@
 import FinancialSuccessOverlay from "../../../components/feedback/FinancialSuccessOverlay.jsx";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
+import { formatRupiah } from "../../../domain/money.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { investmentContinuationState } from "../../../shared/workflows/investmentContinuation.js";
 
 const postSaveAccount = (accounts, accountId) => accounts.find((item) => item.account_id === accountId) || null;
+const snapshotAccount = (postSave, accountId) => (postSave.snapshot?.accounts || []).find((item) => item.account_id === accountId) || null;
 
 const postSaveAccountLabel = (accounts, accountId, fallback) => {
   const account = postSaveAccount(accounts, accountId);
@@ -34,19 +36,36 @@ const investmentTransferContinuation = ({ type, sourceAccount, destinationAccoun
     label: destinationIsInvestment ? "Catat pembelian" : "Buka investasi",
     onClick: () => {
       onClose();
-      navigate("/investasi", {
-        state: investmentContinuationState({ action, payload: { rdnAccountId: investmentAccount.account_id, ensureSetup: true } }),
-      });
+      navigate("/investasi", { state: investmentContinuationState({ action, payload: { rdnAccountId: investmentAccount.account_id, ensureSetup: true } }) });
     },
   };
+};
+
+const authoritativeRows = ({ postSave, sourceLabel, destinationLabel }) => {
+  if (!postSave.snapshot) return [{ label: "Status", value: "Berhasil", tone: "positive" }];
+  const source = snapshotAccount(postSave, postSave.sourceAccountId);
+  const destination = snapshotAccount(postSave, postSave.destinationAccountId);
+  const rows = [];
+  if ([TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.TRANSFER].includes(postSave.transactionType) && source) {
+    rows.push({ label: `Saldo ${sourceLabel}`, value: formatRupiah(source.balance || 0) });
+  }
+  if ([TRANSACTION_TYPES.INCOME, TRANSACTION_TYPES.REFUND, TRANSACTION_TYPES.TRANSFER].includes(postSave.transactionType) && destination) {
+    rows.push({ label: `Saldo ${destinationLabel}`, value: formatRupiah(destination.balance || 0) });
+  }
+  rows.push({ label: "Dana Tersedia", value: formatRupiah(postSave.snapshot.safeToSpend || 0) });
+  if (postSave.snapshot.budget) {
+    const budget = postSave.snapshot.budget;
+    rows.push({ label: `Sisa ${budget.name || "Kebutuhan"}`, value: formatRupiah(Math.max(0, Number(budget.amount || 0) - Number(budget.used_amount || 0))) });
+  }
+  return rows;
 };
 
 const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate, onAddAnother }) => {
   const type = postSave.transactionType;
   const sourceAccount = postSaveAccount(accounts, postSave.sourceAccountId);
   const destinationAccount = postSaveAccount(accounts, postSave.destinationAccountId);
-  const sourceLabel = postSaveAccountLabel(accounts, postSave.sourceAccountId, "Rekening sumber");
-  const destinationLabel = postSaveAccountLabel(accounts, postSave.destinationAccountId, "Rekening tujuan");
+  const sourceLabel = postSaveAccountLabel(accounts, postSave.sourceAccountId, "rekening sumber");
+  const destinationLabel = postSaveAccountLabel(accounts, postSave.destinationAccountId, "rekening tujuan");
   const investmentContinuation = investmentTransferContinuation({ type, sourceAccount, destinationAccount, explicitContinuation: postSave.continuation, onClose, navigate });
   const closeAction = investmentContinuation?.onClick || onClose;
   const doneLabel = investmentContinuation?.label || "Selesai";
@@ -55,15 +74,13 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     onClose();
     navigate("/perencanaan/kantong", { state });
   };
+  const summaryRows = authoritativeRows({ postSave, sourceLabel, destinationLabel });
 
   const presentation = type === TRANSACTION_TYPES.INCOME
     ? {
       title: "Pemasukan berhasil",
-      description: "Dana sudah masuk ke rekening. Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru.",
-      summaryRows: [
-        { label: "Rekening tujuan", value: destinationLabel },
-        { label: "Status", value: "Berhasil", tone: "positive" },
-      ],
+      description: "Dana sudah masuk ke rekening. Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru. Ringkasan di bawah memakai kondisi terbaru yang telah dikonfirmasi server.",
+      summaryRows,
       secondaryActions: [
         { label: "Tambah pemasukan lagi", onClick: onAddAnother },
         { label: "Bagi ke Alokasi Dana", onClick: allocate },
@@ -73,34 +90,22 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
       ? {
         title: "Transfer berhasil",
         description: investmentContinuation
-          ? "Dana sudah berhasil dipindahkan dan server telah mengonfirmasi transaksi. Transfer ke/dari RDN tetap netral terhadap pemasukan dan pengeluaran."
-          : "Dana sudah berhasil dipindahkan ke rekening tujuan dan server telah mengonfirmasi transaksi. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.",
-        summaryRows: [
-          { label: "Dari rekening", value: sourceLabel },
-          { label: "Ke rekening", value: destinationLabel },
-          { label: "Status", value: "Berhasil", tone: "positive" },
-        ],
-        secondaryActions: [
-          ...(!postSave.continuation ? [{ label: "Tambah lagi", onClick: onAddAnother }] : []),
-        ],
+          ? "Dana sudah dipindahkan dan kondisi rekening telah disegarkan. Transfer ke/dari RDN tetap netral terhadap pemasukan dan pengeluaran."
+          : "Dana sudah dipindahkan dan kondisi rekening telah disegarkan. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.",
+        summaryRows,
+        secondaryActions: [...(!postSave.continuation ? [{ label: "Tambah lagi", onClick: onAddAnother }] : [])],
       }
       : type === TRANSACTION_TYPES.REFUND
         ? {
           title: "Refund berhasil",
-          description: "Refund sudah tercatat dan saldo rekening telah diperbarui oleh server.",
-          summaryRows: [
-            { label: "Rekening", value: sourceLabel },
-            { label: "Status", value: "Berhasil", tone: "positive" },
-          ],
+          description: "Refund sudah tercatat. Ringkasan memakai kondisi terbaru yang telah dikonfirmasi server.",
+          summaryRows,
           secondaryActions: [],
         }
         : {
           title: "Pengeluaran berhasil",
-          description: "Pengeluaran sudah tercatat dan saldo rekening telah diperbarui oleh server.",
-          summaryRows: [
-            { label: "Rekening", value: sourceLabel },
-            { label: "Status", value: "Berhasil", tone: "positive" },
-          ],
+          description: "Pengeluaran sudah tercatat. Ringkasan memakai kondisi terbaru yang telah dikonfirmasi server.",
+          summaryRows,
           secondaryActions: [{ label: "Tambah lagi", onClick: onAddAnother }],
         };
 
@@ -113,7 +118,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     secondaryActions={presentation.secondaryActions}
     onClose={closeAction}
     doneLabel={doneLabel}
-    footerNote="Riwayat transaksi sudah diperbarui."
+    footerNote={postSave.snapshot ? "Saldo dan Dana Tersedia sudah disegarkan." : "Transaksi tersimpan. Ringkasan terbaru akan dimuat kembali dari server."}
   />;
 };
 

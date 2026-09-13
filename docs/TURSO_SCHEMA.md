@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `020_commitments.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `021_notification_attention_state.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -52,7 +52,9 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `integration_links`
 - `notification_queue`
 - `notification_deliveries`
-- `notification_preferences` — preference tujuh tipe alert otomatis canonical per pengguna; row yang belum ada berarti aktif secara default.
+- `notification_preferences` — preference tujuh tipe alert otomatis canonical per pengguna; row yang belum ada mengikuti default per tipe (`recurring_completed` default mati, lainnya aktif).
+- `notification_settings` — cadence actor-scoped untuk pengingat rekonsiliasi (0/14/30/60 hari) dan konsistensi pencatatan (0/3/5/7 hari); memakai `row_version`, default 30/0.
+- `notification_read_states` — presentation state server-side lintas perangkat untuk pasangan notification key + fingerprint. Read tidak menyelesaikan kondisi finansial dan tabel ini tidak menjadi financial authority.
 - `manual_reminders` — pengingat one-shot milik pengguna yang terikat ke Jadwal Rutin, Kebutuhan, periode Alokasi Dana, atau Target.
 - `push_subscriptions`
 - `backup_runs`
@@ -93,6 +95,7 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - Idempotency unik per actor dan key.
 - Antrean outbox dan Web Push menyimpan identitas worker; worker lama tidak boleh menyelesaikan row yang sudah direbut worker baru.
 - Satu pengguna hanya boleh memiliki satu `manual_reminders` berstatus `scheduled` untuk satu objek. Waktu disimpan UTC setelah input divalidasi sebagai waktu Asia/Jakarta; perubahan memakai `row_version`. Service juga menolak penjadwalan baru selama dispatch reminder sebelumnya masih nonterminal di `notification_queue`, sehingga partial unique index tidak menjadi satu-satunya guard duplikasi delivery.
+- `notification_read_states` unik per `(user_id, notification_key, fingerprint)`; read receipt hanya presentation state actor dan dapat dibersihkan maintenance tanpa mengubah source alert. `notification_settings` selalu actor-scoped dan cadence dibatasi CHECK database yang sama dengan validator service.
 
 ## Enum penting
 
@@ -116,9 +119,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `22`
+Versi aktif: `23`
 
-Latest migration: `020_commitments.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `021_notification_attention_state.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 

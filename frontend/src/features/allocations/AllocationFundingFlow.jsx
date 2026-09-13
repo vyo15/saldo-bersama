@@ -7,6 +7,7 @@ import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import { accountOptionVisual, allocationOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
+import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 
 const initialForm = () => ({ sourceAccountId: "", envelopePeriodId: "", amount: "", reason: "" });
 const availableBalance = (account) => Number(account?.available_balance ?? account?.balance ?? 0);
@@ -33,13 +34,15 @@ const FundingFields = ({ accounts, envelopes, selectedAccount, form, setForm, ch
 
 const AllocationFundingFlow = ({ open, accounts, items, initialSourceAccountId = "", initialEnvelopePeriodId = "", suggestedAmount = 0, busy = false, error = null, onClose, onSubmit }) => {
   const [form, setForm] = useState(initialForm);
+  const [ready, setReady] = useState(false);
   const eligibleAccounts = useMemo(() => fundingAccounts(accounts, items), [accounts, items]);
   const selectedAccount = eligibleAccounts.find((item) => item.account_id === form.sourceAccountId) || null;
   const envelopes = useMemo(() => matchingEnvelopes(items, form.sourceAccountId), [form.sourceAccountId, items]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setReady(false); return; }
     setForm(initialFundingForm({ accounts: eligibleAccounts, items, requestedAccountId: initialSourceAccountId, requestedEnvelopePeriodId: initialEnvelopePeriodId, suggestedAmount }));
+    setReady(true);
   }, [eligibleAccounts, initialEnvelopePeriodId, initialSourceAccountId, items, open, suggestedAmount]);
 
   const changeSource = (sourceAccountId) => {
@@ -51,8 +54,9 @@ const AllocationFundingFlow = ({ open, accounts, items, initialSourceAccountId =
   const amountNumber = Number(String(form.amount || "").replace(/\D/g, "")) || 0;
   const invalidAmount = amountNumber <= 0 || amountNumber > available;
   const submit = (event) => { event.preventDefault(); if (target && !invalidAmount && !busy) onSubmit?.({ target, amount: form.amount, reason: form.reason }); };
+  const guard = useUnsavedChangesGuard({ open: open && ready, value: form, onClose, blocked: busy });
 
-  return <Modal open={open} onClose={onClose} dismissible={!busy} title="Bagi dana tersedia" description="Pilih rekening dan Alokasi Dana. Pembagian ini tidak mengubah saldo rekening." size="sm" footer={<><Button type="button" disabled={busy} onClick={onClose}>Batal</Button><Button type="submit" form="allocation-funding-form" variant="primary" loading={busy} disabled={!target || invalidAmount || busy}>Tambahkan</Button></>}>
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="pembagian dana" dismissible={!busy} title="Bagi dana tersedia" description="Pilih rekening dan Alokasi Dana. Pembagian ini tidak mengubah saldo rekening." size="sm" footer={<><Button type="button" disabled={busy} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="allocation-funding-form" variant="primary" loading={busy} disabled={!target || invalidAmount || busy}>Tambahkan</Button></>}>
     <form id="allocation-funding-form" className="form-grid" onSubmit={submit}>
       <FundingFields accounts={eligibleAccounts} envelopes={envelopes} selectedAccount={selectedAccount} form={form} setForm={setForm} changeSource={changeSource} available={available} invalidAmount={invalidAmount} amountNumber={amountNumber} />
       {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}

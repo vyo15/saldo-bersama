@@ -20,7 +20,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 22 sebelum runtime current menerima traffic.
+- Schema Production harus versi 23 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -67,10 +67,13 @@ Minimum contract:
 ### Transaksi
 
 - Income, expense, transfer, refund, adjustment mematuhi transaction shape database/service.
-- Smart default rekening/kategori/Alokasi tidak auto-submit.
-- Expense tanpa Alokasi dan Transfer memvalidasi Dana Tersedia bila negative balance tidak diizinkan.
+- Smart default rekening/kategori/Kebutuhan tidak auto-submit. Tepat satu Kebutuhan matching boleh auto-link; dua atau lebih kandidat—including kategori sama pada Alokasi yang sama—harus meminta pilihan user; nol kandidat tetap mengizinkan jalur Alokasi manual.
+- Composer mobile menjaga tanggal/metode/catatan dalam `Detail tambahan`, membuka otomatis untuk edit/non-default/error, dan tetap mempertahankan semua capability form.
+- Expense tanpa Alokasi Dana **tetap** meminta konfirmasi `Simpan tetap`; duplicate confirmation, overspend guard/alasan, period lock, dan transfer approval tidak boleh hilang karena progressive UI.
+- Preview lokal menguji Kebutuhan, saldo rekening, dan Dana Tersedia untuk expense teralokasi/tidak teralokasi, transfer operasional↔operasional, transfer ke/dari Investasi/RDN/protected account, income/refund, serta edit dengan rumus reverse-old + apply-new. Label preview harus menyatakan perkiraan.
+- Post-save create memakai snapshot hasil `refreshOverview()` untuk saldo/Dana Tersedia/Kebutuhan ketika refresh berhasil dan memiliki fallback aman bila refresh gagal.
 - Cancel/archive/retry menjaga ledger, audit, dan idempotency.
-- RFC-0019 belum runtime: satu transaksi canonical masih satu category/Alokasi; test tidak boleh mengasumsikan line item sudah implemented.
+- RFC-0019 belum runtime: satu transaksi canonical masih satu category/Alokasi/Kebutuhan; test tidak boleh mengasumsikan line item sudah implemented.
 
 ### Kategori
 
@@ -104,13 +107,17 @@ Minimum contract:
 - Recurring occurrence mengikuti timezone Asia/Jakarta, idempotency, account capability, completion/skip/restore, dan shortage rule.
 - Kebutuhan `recurring` yang dibuat bersama batch harus memakai ownership/source account kompatibel; satu pelanggaran me-rollback seluruh batch.
 - Kebutuhan `fixed_once` harus mem-prefill sisa nominal saat aksi **Catat** dan tidak menampilkan aksi Catat lagi ketika sisa sudah Rp0.
+- Create Alokasi user-facing **Atur uang** tetap menghasilkan wadah Rp0 lalu langsung membuka batch Kebutuhan; dekorasi/periode/rollover berada di progressive detail dan batch memakai CTA **Simpan dan siapkan dana**.
+- Jadwal Rutin expense: tepat satu Kebutuhan kompatibel auto-link `budget_id`; lebih dari satu kandidat meminta pilihan; nol kandidat tetap dapat disimpan mandiri. Perubahan kategori/rekening harus melepas/menyesuaikan link yang tidak lagi valid dan backend tetap memvalidasi kategori + ownership + rekening sumber.
+- Komitmen dapat membawa `budget_id` ke recurring rule managed; edit tanpa `budget_id` mempertahankan link existing, write `auto_debit=true` dari client tetap disimpan sebagai false, dan `listCommitments` mengembalikan `budget_id` recurring untuk edit UI. Dashboard tidak boleh menambah `reservedBills` untuk Jadwal/Komitmen yang Kebutuhannya sudah didanai.
+- Lifecycle UI planning: create/edit/penerimaan Komitmen, Bagi Dana manual, dan Pengingat manual memakai dirty guard canonical; dismiss dirty meminta konfirmasi, Batal/Tutup eksplisit langsung menutup, dan open→close→open tidak memerlukan refresh. Setelah save reminder yang modalnya tetap terbuka, baseline draft harus kembali clean.
 - Jika dua kebutuhan aktif memakai kategori master yang sama pada Alokasi yang sama, transaksi legacy tanpa `budget_id` tidak boleh dihitung ke keduanya; transaksi baru dari detail kebutuhan wajib membawa `budget_id`.
 - Target movement tidak boleh memanipulasi saldo tanpa transaksi/movement canonical dan reversal harus audit-safe.
 - Setoran Target yang sukses baru boleh memicu achievement in-app setelah response server definitif; progress/milestone diturunkan dari `goal.current_amount` hasil server, 100% tidak auto-mengubah lifecycle menjadi `completed`, feedback tidak dobel dengan global process indicator, dan reduced-motion tetap menyampaikan copy/progress tanpa animasi dekoratif.
 - Komitmen KPR/cicilan/pinjaman membuat tepat satu `recurring_rule`; jadwal tertaut tidak dapat diedit/diarsipkan langsung dan berhenti otomatis saat kewajiban selesai. Reversal pembayaran terakhir mengaktifkan kembali Komitmen + jadwal tanpa kehilangan histori.
 - Pembayaran KPR/cicilan dengan `remaining_principal` menghitung pokok = saldo sebelum - saldo sesudah dan bunga/biaya = pembayaran - pokok. Tanpa sisa pokok, pembayaran tetap valid tetapi `principal_known=0` dan UI/report wajib menandainya perlu diperbarui.
 - Arisan mengurangi sisa setoran lewat occurrence pembayaran, dapat mencatat penerimaan income terpisah sampai maksimal nilai hak Arisan, dan penerimaan tidak menutup sisa setoran yang masih berjalan.
-- Autodebet Komitmen/Jadwal Rutin tidak pernah mengurangi saldo hanya karena tanggal jatuh tempo; saldo berubah setelah transaksi aktual dikonfirmasi.
+- UI tidak menawarkan Autodebet pada Komitmen/Jadwal Rutin; kolom legacy tetap readable, write baru selalu `false`, dan tanggal jatuh tempo tidak pernah mengurangi saldo sampai transaksi aktual dikonfirmasi.
 - Laporan bulanan memisahkan aktivitas Komitmen (pembayaran kewajiban, pokok teridentifikasi, bunga/biaya, pokok belum diketahui, setoran/penerimaan Arisan) tanpa mengubah arus kas canonical.
 - Reminder manual terikat entity aktif, satu scheduled reminder per entity/user, dan dispatch nonterminal mencegah duplikasi.
 
@@ -126,7 +133,10 @@ Minimum contract:
 
 ## Dashboard, laporan, dan rekonsiliasi
 
-- Dashboard memakai **Dana Tersedia** (`safeToSpend`) sebagai angka utama, menempatkan Saldo rekening non-investasi sebagai konteks sekunder, dan tidak double-count RDN/market value. Dana Tersedia harus sudah memperhitungkan Alokasi Dana, proteksi, dan komitmen Jadwal Rutin operasional di luar Alokasi; Jadwal Rutin yang tertaut ke Kebutuhan yang sudah didanai Alokasi tidak boleh dikurangi dua kali.
+- Dashboard memakai **Dana Tersedia** (`safeToSpend`) sebagai angka utama dengan helper “Sisa uang yang aman dipakai setelah kebutuhan dan tagihan.”, menempatkan Saldo rekening non-investasi + Aman dipakai / hari sebagai konteks sekunder, dan tidak double-count RDN/market value. Dana Tersedia harus sudah memperhitungkan Alokasi Dana, proteksi, dan komitmen Jadwal Rutin operasional di luar Alokasi; Jadwal Rutin yang tertaut ke Kebutuhan yang sudah didanai Alokasi tidak boleh dikurangi dua kali.
+- Snapshot `Bulan ini` menguji `Masuk = income + refund`, `Keluar = expense`, dan `Selisih = Masuk - Keluar`; `Selisih` tidak dilabeli `Sisa`.
+- Mobile decision-first menguji urutan Dana Tersedia → Bulan ini → `Perlu dilakukan` hanya saat alert aktif → quick action `Atur Dana / Rekening / Target / Cocokkan` → `Rencana terdekat` gabungan Kebutuhan+Jadwal → Aktivitas terbaru → Investasi hanya bila ada nilai/holding; standalone `Insight Keuangan` tidak boleh kembali.
+- Prioritas alert mengutamakan tindakan manusia: investment mismatch > recurring overdue > budget/envelope overspend > recurring due > funding gap > unallocated expense > goal behind > stale reconciliation. Reconciliation non-investasi yang sudah dicocokkan tetap checkpoint dan tidak membangkitkan persistent historical-difference alert.
 - Report monthly/trend tidak menghitung Transfer sebagai income/expense dan memakai snapshot/read transaction konsisten.
 - Rekonsiliasi non-investasi dan Investasi/RDN memakai service berbeda; generic reconciliation menolak RDN.
 - Reconciliation checkpoint menyimpan mismatch historis tanpa persistent active alert setelah user melakukan pencocokan eksplisit.
@@ -136,9 +146,10 @@ Minimum contract:
 - Pengaturan Notifikasi perangkat menyediakan preview native lokal bertema **Liburan** dan **Masa Depan**; tombol dijalankan dari user gesture, meminta permission bila perlu, dan menggunakan service worker canonical.
 - Preview lokal tidak mengubah subscription/backend queue. Tap notifikasi harus deep-link ke `/target`; rich image adalah best-effort dan boleh diabaikan OS tanpa dianggap gagal selama title/body native tetap tampil.
 
-- Notification Center menggunakan feed/action canonical yang sama untuk mobile/desktop.
+- Notification Center menggunakan feed/action canonical yang sama untuk mobile/desktop dan status baca server-side actor yang sinkron lintas perangkat. Read receipt memakai fingerprint kondisi; menandai dibaca tidak menyelesaikan alert aktif, sedangkan perubahan fingerprint harus tampil unread kembali.
 - Lock-screen Push tidak memuat nominal, rekening, merchant, atau nama objek finansial sensitif.
-- Preference user dihormati; VAPID incomplete menonaktifkan Push fail-closed tanpa merusak in-app notifications.
+- Preference user dihormati; `recurring_completed` default mati, cadence rekonsiliasi default 30 hari, reminder konsistensi pencatatan default mati/opt-in, dan VAPID incomplete menonaktifkan Push fail-closed tanpa merusak in-app notifications.
+- Cadence rekonsiliasi menerima hanya 0/14/30/60 hari; reminder konsistensi pencatatan hanya 0/3/5/7 hari, actor-scoped, dedupe, dan tidak menganggap hari tanpa transaksi sebagai error. Scheduler membaca users/settings/recurring/budget/alokasi/target/unallocated/reconciliation/activity/balance dalam satu batch source read.
 - Funding/recurring shortage menjelaskan kondisi actionable tanpa membuat mutation finansial otomatis.
 
 ## Global realtime dan pull-to-refresh
@@ -184,7 +195,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 22 sebelum deployment current menerima traffic.
+- Schema Production harus versi 23 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 

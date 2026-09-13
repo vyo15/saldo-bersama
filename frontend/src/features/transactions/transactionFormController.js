@@ -3,11 +3,11 @@ import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { createIdempotencyKey } from "../../domain/security.js";
 import { todayInJakarta } from "../../domain/dates.js";
-import { parseRupiah } from "../../domain/money.js";
 import { validateTransactionInput } from "../../domain/validation.js";
 import { canRepresentAccountTransfer } from "../../domain/ownership.js";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
 import { requestTransferApproval } from "./transferRequests.api.js";
+import { parseTransactionAmount } from "./transactionImpact.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 import { isInvestmentAccount } from "../../shared/presentation/account.js";
@@ -96,45 +96,7 @@ const destinationAccounts = (accounts, sourceAccount, isTransfer) => isTransfer 
   ? accounts.filter((account) => account.account_id !== sourceAccount.account_id && canRepresentAccountTransfer(sourceAccount, account))
   : accounts;
 
-const transactionImpactDeltas = ({ transactionType, amount, envelopeRemaining, hasEnvelope }) => {
-  if (transactionType === TRANSACTION_TYPES.ADJUSTMENT) return { sourceDelta: amount, availableDelta: amount };
-  if (transactionType === TRANSACTION_TYPES.TRANSFER) return { sourceDelta: -amount, availableDelta: -amount };
-  if (transactionType === TRANSACTION_TYPES.EXPENSE) {
-    const freeDebit = hasEnvelope ? Math.max(0, amount - envelopeRemaining) : amount;
-    return { sourceDelta: -amount, availableDelta: -freeDebit };
-  }
-  return { sourceDelta: 0, availableDelta: 0 };
-};
-
-export const parseTransactionAmount = (value) => { try { return parseRupiah(value); } catch { return null; } };
-const balanceAfter = (item, balance, delta) => item ? balance + delta : null;
-
-export const transactionImpact = ({ accountBalances, envelopes, form }) => {
-  const amount = parseTransactionAmount(form.amount);
-  if (amount === null) return null;
-  const source = accountBalances.find((item) => item.account_id === form.source_account_id);
-  const destination = accountBalances.find((item) => item.account_id === form.destination_account_id);
-  const envelope = envelopes.find((item) => item.envelope_period_id === form.envelope_period_id);
-  const sourceBalance = Number(source?.balance || 0);
-  const sourceAvailable = Number(source?.available_balance ?? source?.balance ?? 0);
-  const destinationBalance = Number(destination?.balance || 0);
-  const destinationAvailable = Number(destination?.available_balance ?? destination?.balance ?? 0);
-  const envelopeRemaining = Math.max(0, Number(envelope?.remaining_amount || 0));
-  const { sourceDelta, availableDelta } = transactionImpactDeltas({ transactionType: form.transaction_type, amount, envelopeRemaining, hasEnvelope: Boolean(envelope) });
-  return {
-    amount,
-    source,
-    destination,
-    envelope,
-    sourceAfter: balanceAfter(source, sourceBalance, sourceDelta),
-    sourceAvailable,
-    sourceAvailableAfter: balanceAfter(source, sourceAvailable, availableDelta),
-    destinationAfter: balanceAfter(destination, destinationBalance, amount),
-    destinationAvailable,
-    destinationAvailableAfter: balanceAfter(destination, destinationAvailable, amount),
-    envelopeAfter: balanceAfter(envelope, envelopeRemaining, -amount),
-  };
-};
+export { parseTransactionAmount, transactionImpact } from "./transactionImpact.js";
 
 const requiresOverspendNote = ({ form, envelopes, forced = false }) => {
   if (form.transaction_type !== TRANSACTION_TYPES.EXPENSE || !form.envelope_period_id) return false;
@@ -175,26 +137,61 @@ const prepareTransactionSubmission = ({ form, transaction, isIncome, confirmatio
   };
 };
 
+const postSaveTransactionContext = ({ saved, form }) => ({
+  amount: Number(saved?.amount || parseTransactionAmount(form.amount) || 0),
+  sourceAccountId: String(saved?.source_account_id || form.source_account_id || ""),
+  destinationAccountId: String(saved?.destination_account_id || form.destination_account_id || ""),
+  budgetId: String(saved?.budget_id || form.budget_id || ""),
+});
+
+const postSaveSnapshot = ({ refreshedOverview, sourceAccountId, destinationAccountId, budgetId }) => {
+  if (!refreshedOverview) return null;
+  const accountIds = [sourceAccountId, destinationAccountId];
+  const accounts = (refreshedOverview.accountBalances || []).filter((item) => accountIds.includes(item.account_id));
+  const budget = budgetId
+    ? (refreshedOverview.budgets || []).find((item) => item.budget_id === budgetId) || null
+    : null;
+  return { safeToSpend: Number(refreshedOverview.safeToSpend || 0), accounts, budget };
+};
+
+const buildPostSaveState = ({ saved, form, continuation, refreshedOverview }) => {
+  const context = postSaveTransactionContext({ saved, form });
+  return {
+    type: form.transaction_type === TRANSACTION_TYPES.INCOME ? "income" : "created",
+    transactionType: form.transaction_type,
+    ...context,
+    continuation: continuation && typeof continuation === "object" ? continuation : null,
+    snapshot: postSaveSnapshot({ refreshedOverview, ...context }),
+  };
+};
+
+const supportsPostSavePresentation = (transactionType) => [
+  TRANSACTION_TYPES.INCOME,
+  TRANSACTION_TYPES.EXPENSE,
+  TRANSACTION_TYPES.TRANSFER,
+  TRANSACTION_TYPES.REFUND,
+].includes(transactionType);
+
+const shouldKeepTransactionFormOpen = ({ transaction, notifyOnSuccess, transactionType }) => (
+  !transaction && notifyOnSuccess && supportsPostSavePresentation(transactionType)
+);
+
+const transactionSuccessMessage = (transaction) => transaction
+  ? "Perubahan transaksi berhasil disimpan."
+  : "Transaksi berhasil disimpan.";
+
 const finalizeTransactionSave = async ({ saved, transaction, form, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters }) => {
   invalidate(["transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "dashboard.overview", "investments.overview", "app.initialState"]);
-  await Promise.allSettled([refreshOverview(), Promise.resolve().then(() => onSaved?.(saved))]);
+  const [overviewResult] = await Promise.allSettled([refreshOverview(), Promise.resolve().then(() => onSaved?.(saved))]);
+  const refreshedOverview = overviewResult.status === "fulfilled" ? overviewResult.value : null;
   setters.setSubmitState({ status: "success", error: null });
-  const created = !transaction;
-  const amount = Number(saved?.amount || parseTransactionAmount(form.amount) || 0);
-  const supportsPostSaveFlow = [TRANSACTION_TYPES.INCOME, TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.REFUND].includes(form.transaction_type);
-  if (created && notifyOnSuccess && supportsPostSaveFlow) {
-    const type = form.transaction_type === TRANSACTION_TYPES.INCOME ? "income" : "created";
-    setPostSave({
-      type,
-      transactionType: form.transaction_type,
-      amount,
-      sourceAccountId: String(saved?.source_account_id || form.source_account_id || ""),
-      destinationAccountId: String(saved?.destination_account_id || form.destination_account_id || ""),
-      continuation: continuation && typeof continuation === "object" ? continuation : null,
-    });
+
+  if (shouldKeepTransactionFormOpen({ transaction, notifyOnSuccess, transactionType: form.transaction_type })) {
+    setPostSave(buildPostSaveState({ saved, form, continuation, refreshedOverview }));
     return true;
   }
-  if (notifyOnSuccess) notify({ message: transaction ? "Perubahan transaksi berhasil disimpan." : "Transaksi berhasil disimpan." });
+
+  if (notifyOnSuccess) notify({ message: transactionSuccessMessage(transaction) });
   return false;
 };
 

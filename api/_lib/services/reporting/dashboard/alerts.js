@@ -3,6 +3,23 @@ import { readableAccountSql, todayJakarta } from "../../core.js";
 // Alerts are read-model interpretations only. They never change ledger/planning state;
 // actionable mutations continue through their canonical domain services.
 const ALERT_PRIORITY = Object.freeze({ danger: 3, warning: 2, info: 1 });
+const ALERT_ACTION_PRIORITY = Object.freeze({
+  investment_reconciliation_difference: 100,
+  reconciliation_difference: 100,
+  recurring_overdue: 95,
+  recurring_due: 75,
+  unallocated_funds: 70,
+  unallocated_expense: 55,
+  goal_behind: 50,
+  investment_reconciliation_stale: 20,
+  reconciliation_stale: 15,
+});
+
+const alertActionPriority = (alert) => {
+  if (alert.type === "budget_threshold") return alert.severity === "danger" ? 85 : 60;
+  if (alert.type === "envelope_threshold") return alert.severity === "danger" ? 84 : 59;
+  return ALERT_ACTION_PRIORITY[alert.type] || 0;
+};
 
 const dayDifference = (from, to) => Math.floor((new Date(`${to}T00:00:00+07:00`) - new Date(`${from}T00:00:00+07:00`)) / 86_400_000);
 
@@ -109,8 +126,8 @@ const unallocatedAlerts = (period, count) => count > 0 ? [{
   id: `unallocated:${period}`,
   type: "unallocated_expense",
   severity: "warning",
-  title: `${count} pengeluaran belum masuk Alokasi Dana`,
-  message: "Pilih Alokasi Dana agar dana tersisa dan laporan perencanaan tetap akurat.",
+  title: `${count} pengeluaran belum masuk kebutuhan`,
+  message: "Hubungkan pengeluaran ke kebutuhan yang sesuai agar rencana keuangan tetap rapi.",
   targetPath: "/transaksi",
 }] : [];
 
@@ -211,10 +228,10 @@ const recurringAlerts = (recurring) => {
   return alerts;
 };
 
-const goalAlerts = (goals) => goals
+const goalAlerts = (period, goals) => goals
   .filter((item) => item.pace_status === "behind")
   .map((item) => ({
-    id: `goal-behind:${item.goal_id}`,
+    id: `goal-behind:${item.goal_id}:${period}`,
     type: "goal_behind",
     severity: "warning",
     title: `${item.name} tertinggal dari rencana`,
@@ -223,7 +240,8 @@ const goalAlerts = (goals) => goals
   }));
 
 const sortFinancialAlerts = (alerts) => alerts.sort((left, right) => (
-  (ALERT_PRIORITY[right.severity] || 0) - (ALERT_PRIORITY[left.severity] || 0)
+  alertActionPriority(right) - alertActionPriority(left)
+  || (ALERT_PRIORITY[right.severity] || 0) - (ALERT_PRIORITY[left.severity] || 0)
   || left.title.localeCompare(right.title, "id")
 ));
 
@@ -246,7 +264,7 @@ export const buildFinancialAlerts = ({
     ...budgetAlerts(budgets),
     ...envelopeAlerts(envelopes),
     ...recurringAlerts(recurring),
-    ...goalAlerts(goals),
+    ...goalAlerts(period, goals),
     ...reconciliationAlertsFromRows(reconciliationRows, accounts),
     ...investmentReconciliationAlertsFromRows(investmentReconciliationRows),
   ]);

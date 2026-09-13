@@ -459,7 +459,7 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
 
   assert.doesNotMatch(presentation, /QUICK_ACTIONS/);
   assert.match(quickActions, /DASHBOARD_QUICK_ACTIONS/);
-  assert.match(quickActions, /to: "\/perencanaan", label: "Alokasi"/);
+  assert.match(quickActions, /to: "\/perencanaan", label: "Atur Dana"/);
   assert.match(quickActions, /to: "\/rekening", label: "Rekening"/);
   assert.match(quickActions, /to: "\/target", label: "Target"/);
   assert.match(quickActions, /to: "\/rekonsiliasi", label: "Cocokkan"/);
@@ -476,9 +476,10 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
-  const order = ["<DashboardQuickActions", "<MobileCashFlow", "<MobileNextAction", "<MobileFinancialInsight", "<MobileBudgetPlan", "<MobileUpcomingSchedule", "<MobileInvestment", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
-  assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile ringkas harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan akses cepat → arus uang → perhatian → insight → rencana → jadwal → investasi → aktivitas.");
+  const order = ["<MobileCashFlow", "<MobileNextAction", "<DashboardQuickActions", "<MobileUpcomingPlan", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
+  assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile decision-first harus tetap ada.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan arus uang → perhatian → akses cepat → rencana terdekat → aktivitas → investasi.");
+  assert.doesNotMatch(mobile, /const MobileFinancialInsight\b|const MobileBudgetPlan\b|const MobileUpcomingSchedule\b/);
   assert.match(mobile, /Aman dipakai \/ hari/);
   assert.match(mobile, />Masuk<\/span>/);
   assert.match(mobile, />Keluar<\/span>/);

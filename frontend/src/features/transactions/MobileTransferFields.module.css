@@ -289,3 +289,15 @@
   .note,
   .submitButton { transition: none; }
 }
+
+.safeImpact {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+.safeImpact span { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+.safeImpact strong { font-size: 13px; }
+.safeImpact small { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }

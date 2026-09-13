@@ -93,7 +93,8 @@ test("Alokasi baru menjadi wadah Rp0 dan Kebutuhan mendanai Alokasi otomatis", a
     Promise.all(["budgets.js", "budgetShared.js", "budgetQueries.js", "budgetMutations.js", "budgetLifecycle.js", "budgetHistory.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
   assert.doesNotMatch(dialogs, /Dana yang disiapkan|AllocationNeedEstimate|Susun kebutuhan/);
-  assert.match(dialogs, /Dana mengikuti Kebutuhan/);
+  assert.match(dialogs, /Belum ada uang yang dipisahkan/);
+  assert.match(dialogs, /Lanjut ke kebutuhan/);
   assert.match(runner, /default_amount: 0/);
   assert.match(runner, /allocated_amount: 0/);
   assert.match(page, /setDetailAction\("add-need"\)/);
@@ -176,7 +177,7 @@ test("Tambah Kebutuhan pada detail Alokasi memakai batch compact tanpa mengganda
   assert.match(dialog, /formController\.formMode === "create-batch"/);
   assert.match(batchEditor, /Tambah kebutuhan lain/);
   assert.match(batchEditor, /budget-batch-form/);
-  assert.match(batchEditor, /Pola kebutuhan/);
+  assert.match(batchEditor, /Cara penggunaan/);
   assert.match(batchEditor, /Nama kebutuhan/);
   assert.match(batchEditor, /<InlineSelectionPicker/);
   assert.match(batchEditor, /fixed_once/);

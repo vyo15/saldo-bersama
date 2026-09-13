@@ -80,7 +80,7 @@ test("service worker hanya meng-cache app shell dan melewatkan seluruh API", asy
   assert.match(sw, /pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw, /isInfrastructurePath\(url\.pathname\)\) return/);
   assert.doesNotMatch(sw, /cache\.put\([^\n]*\/api\//);
-  assert.match(sw, /saldo-bersama-static-v12/);
+  assert.match(sw, /saldo-bersama-static-v13/);
   assert.match(sw, /response\.bodyUsed/);
   assert.match(sw, /event\.waitUntil/);
   assert.match(sw, /if \(isHtmlResponse\(response\)\) cacheResponse\(event, RUNTIME_CACHE, "\/", response\)/);
@@ -435,7 +435,7 @@ test("scheduler notifikasi menggabungkan seluruh source read dan saldo rekening 
   const queued = await queueActionableNotifications(db);
   assert.equal(queued, 0);
   assert.equal(metrics.network, 1, "source scheduler notifikasi harus satu batch");
-  assert.equal(metrics.statements, 9, "user, preferensi, recurring, budget, alokasi, target, unallocated, dan saldo harus dibaca bulk");
+  assert.equal(metrics.statements, 11, "user, pengaturan, recurring, budget, alokasi, target, unallocated, rekonsiliasi, aktivitas pencatatan, dan saldo harus dibaca bulk");
   assert.equal(metrics.alls, 0, "tidak boleh ada source read serial di luar batch");
   assert.equal(metrics.ones, 0, "saldo recurring tidak boleh lagi N+1 per occurrence");
   assert.equal(metrics.executes, 0, "tanpa item actionable tidak boleh ada write queue");

@@ -12,7 +12,7 @@ import {
 
 export const runCreateAllocation = async ({ createForm, resetForm, setCreateForm, onCreated, notify, refreshAfterMutation }) => {
   const name = String(createForm.name || "").trim();
-  if (!name) throw new Error("Nama alokasi wajib diisi.");
+  if (!name) throw new Error("Tujuan dana wajib diisi.");
   if (!createForm.source_account_id) throw new Error("Rekening sumber wajib dipilih.");
   const created = await createEnvelope({ ...createForm, name, default_amount: 0, allocated_amount: 0 }, {});
   setCreateForm(resetForm());

@@ -30,7 +30,6 @@ const buildUpdatedRecurringRule = (current, payload, account, owned, category, b
   validateRecurringIdentity(category, kind, frequency);
   const endDateValue = recurringPayloadValue(payload, current, "end_date");
   const endDate = payload.end_date === undefined ? current.end_date : (endDateValue ? dateValue(endDateValue) : null);
-  const autoDebit = payload.auto_debit === undefined ? current.auto_debit : (strictBoolean(payload.auto_debit) ? 1 : 0);
   return {
     ...current,
     name: sanitizeText(recurringPayloadValue(payload, current, "name"), 100),
@@ -42,7 +41,7 @@ const buildUpdatedRecurringRule = (current, payload, account, owned, category, b
     due_day: payload.due_day === undefined ? current.due_day : dueDayValue(payload.due_day),
     default_account_id: account.account_id,
     payment_method: sanitizeText(recurringPayloadValue(payload, current, "payment_method"), 40),
-    auto_debit: autoDebit,
+    auto_debit: 0,
     start_date: payload.start_date === undefined ? current.start_date : dateValue(payload.start_date),
     end_date: endDate,
     priority: payload.priority === undefined ? current.priority : String(payload.priority || "normal"),
@@ -113,7 +112,7 @@ export const createRecurringRule = async (db, context) => {
     due_day: dueDayValue(p.due_day ?? 1),
     default_account_id: account.account_id,
     payment_method: sanitizeText(p.payment_method, 40),
-    auto_debit: strictBoolean(p.auto_debit, false) ? 1 : 0,
+    auto_debit: 0,
     start_date: start,
     end_date: end,
     priority: ["low", "normal", "high"].includes(String(p.priority || "normal")) ? String(p.priority || "normal") : "normal",

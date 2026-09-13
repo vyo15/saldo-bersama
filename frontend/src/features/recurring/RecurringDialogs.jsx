@@ -9,10 +9,12 @@ import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
+import PlanningNeedField from "../../components/common/PlanningNeedField.jsx";
 import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
+import { planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 const FrequencyField = ({ value, onChange }) => <SelectionField label="Frekuensi" value={value} onChange={onChange} options={[{ value: "daily", label: "Harian" }, { value: "weekly", label: "Mingguan" }, { value: "biweekly", label: "Dua mingguan" }, { value: "monthly", label: "Bulanan" }, { value: "bimonthly", label: "Dua bulanan" }, { value: "quarterly", label: "Tiga bulanan" }, { value: "semiannual", label: "Semester" }, { value: "annual", label: "Tahunan" }]} />;
@@ -24,21 +26,32 @@ const AccountField = ({ label = "Rekening default", value, accounts, onChange })
 };
 const CategoryField = ({ value, categories, onChange }) => <SelectionField label="Kategori" required value={value} onChange={onChange} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />;
 
-export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgetSuggestions = {} }) => {
+export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgets = [] }) => {
   const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: createMutation.busy });
+  const patchPlanning = (current, next = {}) => {
+    const categoryId = next.category_id ?? current.category_id;
+    const accountId = next.default_account_id ?? current.default_account_id;
+    const patch = current.kind === "expense"
+      ? planningNeedSelectionPatch({ budgets, categoryId, accountId, budgetId: current.budget_id })
+      : { budget_id: "", account_id: accountId };
+    return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id };
+  };
   return <>
-  <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="jadwal rutin baru" dismissible={!createMutation.busy} title="Tambah jadwal rutin" footer={<><Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Tambah jadwal</Button></>}>
+  <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="pembayaran rutin baru" dismissible={!createMutation.busy} title="Tambah pembayaran rutin" description="Simpan pembayaran atau pemasukan yang berulang. Saldo baru berubah setelah aktual dikonfirmasi." footer={<><Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Simpan jadwal</Button></>}>
     <form id="create-recurring-form" className="form-grid" onSubmit={createRule}>
-      <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-      <VisualChoiceGroup className="form-grid__full" legend="Jenis" name="recurring-kind" value={form.kind} onChange={(kind) => setForm((current) => ({ ...current, kind, category_id: "" }))} options={[{ value: "expense", label: "Pengeluaran tetap", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar rutin" }, { value: "income", label: "Pemasukan tetap", icon: MoneyInIcon, tone: "income", description: "Uang masuk rutin" }]} columns={2} descriptive wrapLabels />
-      <MoneyInput id="recurring-amount" label="Nominal perkiraan" value={form.expected_amount} onChange={(value) => setForm((current) => ({ ...current, expected_amount: value }))} required />
+      <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Internet rumah" /></label>
+      <VisualChoiceGroup className="form-grid__full" legend="Jenis" name="recurring-kind" value={form.kind} onChange={(kind) => setForm((current) => ({ ...current, kind, category_id: "", budget_id: "" }))} options={[{ value: "expense", label: "Pembayaran", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar rutin" }, { value: "income", label: "Pemasukan", icon: MoneyInIcon, tone: "income", description: "Uang masuk rutin" }]} columns={2} descriptive wrapLabels />
+      <MoneyInput id="recurring-amount" label="Biasanya berapa?" value={form.expected_amount} onChange={(value) => setForm((current) => ({ ...current, expected_amount: value }))} required />
       <FrequencyField value={form.frequency} onChange={(frequency) => setForm((current) => ({ ...current, frequency }))} />
-      <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={form.due_day ?? ""} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>
-      <CategoryField value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => ({ ...current, category_id, default_account_id: current.kind === "expense" && budgetSuggestions[category_id]?.account_id ? budgetSuggestions[category_id].account_id : current.default_account_id }))} />
-      <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => ({ ...current, default_account_id }))} />
-      {form.kind === "expense" && budgetSuggestions[form.category_id]?.account_id === form.default_account_id ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {budgetSuggestions[form.category_id].envelope_name}. Rekening sumber dipilih otomatis dari Alokasi Dana tersebut.</CompactNotice> : null}
-      <PaymentMethodField value={form.payment_method} onChange={(payment_method) => setForm((current) => ({ ...current, payment_method }))} /><CompactNotice className="form-grid__full" tone="info">Saat tanggal jadwal tiba, sistem menunggu konfirmasi aktual. Saldo tidak berubah sebelum aktual disimpan.</CompactNotice>
-      <label className="field"><span>Tanggal mulai *</span><TemporalInput required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
+      <label className="field"><span>Tanggal tiap periode *</span><input required type="number" min="1" max="31" value={form.due_day ?? ""} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>
+      <CategoryField value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => patchPlanning(current, { category_id }))} />
+      <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => patchPlanning(current, { default_account_id }))} />
+      {form.kind === "expense" ? <PlanningNeedField budgets={budgets} categoryId={form.category_id} accountId={form.default_account_id} budgetId={form.budget_id} onSelect={(budget) => setForm((current) => ({ ...current, budget_id: budget?.budget_id || "", default_account_id: budget?.envelope_source_account_id || current.default_account_id }))} /> : null}
+      <details className="form-grid__full"><summary>Detail tambahan</summary><div className="form-grid">
+        <PaymentMethodField value={form.payment_method} onChange={(payment_method) => setForm((current) => ({ ...current, payment_method }))} />
+        <label className="field"><span>Tanggal mulai *</span><TemporalInput required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
+      </div></details>
+      <CompactNotice className="form-grid__full" tone="info">Saat tanggal jadwal tiba, sistem menunggu konfirmasi aktual. Saldo tidak berubah sebelum aktual disimpan.</CompactNotice>
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
   </Modal>
@@ -115,21 +128,19 @@ const EditRuleIdentityFields = ({ editRule, setEditRule }) => <>
   <label className="field"><span>Tanggal jatuh tempo/masuk *</span><input required type="number" min="1" max="31" value={editRule?.due_day ?? ""} onChange={(event) => setEditRule((current) => ({ ...current, due_day: event.target.value }))} /></label>
 </>;
 
-const EditRulePlanningFields = ({ editRule, setEditRule, editCategories, accounts, budgetSuggestions }) => {
-  const linkedBudget = budgetSuggestions[editRule?.category_id] || null;
-  const followsLinkedAccount = editRule?.kind === "expense" && linkedBudget?.account_id === editRule?.default_account_id;
-  const changeCategory = (category_id) => setEditRule((current) => ({
-    ...current,
-    category_id,
-    default_account_id: current?.kind === "expense" && budgetSuggestions[category_id]?.account_id
-      ? budgetSuggestions[category_id].account_id
-      : current?.default_account_id,
-  }));
+const EditRulePlanningFields = ({ editRule, setEditRule, editCategories, accounts, budgets }) => {
+  const patchPlanning = (current, next = {}) => {
+    const categoryId = next.category_id ?? current?.category_id ?? "";
+    const accountId = next.default_account_id ?? current?.default_account_id ?? "";
+    const patch = current?.kind === "expense"
+      ? planningNeedSelectionPatch({ budgets, categoryId, accountId, budgetId: current?.budget_id || "" })
+      : { budget_id: "", account_id: accountId };
+    return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id };
+  };
   return <>
-    <CategoryField value={editRule?.category_id || ""} categories={editCategories} onChange={changeCategory} />
-    <AccountField value={editRule?.default_account_id || ""} accounts={accounts} onChange={(default_account_id) => setEditRule((current) => ({ ...current, default_account_id }))} />
-    {followsLinkedAccount ? <CompactNotice className="form-grid__full" tone="info">Kategori ini terhubung ke {linkedBudget.envelope_name}. Rekening sumber mengikuti Alokasi Dana terkait.</CompactNotice> : null}
-    <PaymentMethodField value={editRule?.payment_method || "transfer"} onChange={(payment_method) => setEditRule((current) => ({ ...current, payment_method }))} />
+    <CategoryField value={editRule?.category_id || ""} categories={editCategories} onChange={(category_id) => setEditRule((current) => patchPlanning(current, { category_id }))} />
+    <AccountField value={editRule?.default_account_id || ""} accounts={accounts} onChange={(default_account_id) => setEditRule((current) => patchPlanning(current, { default_account_id }))} />
+    {editRule?.kind === "expense" ? <PlanningNeedField budgets={budgets} categoryId={editRule?.category_id || ""} accountId={editRule?.default_account_id || ""} budgetId={editRule?.budget_id || ""} onSelect={(budget) => setEditRule((current) => ({ ...current, budget_id: budget?.budget_id || "", default_account_id: budget?.envelope_source_account_id || current.default_account_id }))} /> : null}
   </>;
 };
 
@@ -141,16 +152,19 @@ const EditRuleDateFields = ({ editRule, setEditRule }) => <>
 
 const EditRuleFields = (props) => <>
   <EditRuleIdentityFields editRule={props.editRule} setEditRule={props.setEditRule} />
-  <EditRulePlanningFields editRule={props.editRule} setEditRule={props.setEditRule} editCategories={props.editCategories} accounts={props.accounts} budgetSuggestions={props.budgetSuggestions} />
-  <EditRuleDateFields editRule={props.editRule} setEditRule={props.setEditRule} />
+  <EditRulePlanningFields editRule={props.editRule} setEditRule={props.setEditRule} editCategories={props.editCategories} accounts={props.accounts} budgets={props.budgets} />
+  <details className="form-grid__full"><summary>Detail tambahan</summary><div className="form-grid">
+    <PaymentMethodField value={props.editRule?.payment_method || "transfer"} onChange={(payment_method) => props.setEditRule((current) => ({ ...current, payment_method }))} />
+    <EditRuleDateFields editRule={props.editRule} setEditRule={props.setEditRule} />
+  </div></details>
 </>;
 
-export const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategories, accounts, budgetSuggestions = {} }) => {
+export const EditRuleModal = ({ editRule, setEditRule, editState, saveRule, editCategories, accounts, budgets = [] }) => {
   const submitting = editState.status === "submitting";
   const close = () => setEditRule(null);
   const guard = useUnsavedChangesGuard({ open: Boolean(editRule), value: editRule, onClose: close, blocked: submitting });
   return <>
-    <Modal open={Boolean(editRule)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan jadwal rutin" dismissible={!submitting} title="Edit jadwal rutin" description={editRule ? `${editRule.name} · berlaku untuk jadwal berikutnya.` : ""} footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" loading={submitting}>Simpan perubahan</Button></>}><form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}><EditRuleFields editRule={editRule} setEditRule={setEditRule} editCategories={editCategories} accounts={accounts} budgetSuggestions={budgetSuggestions} />{editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}</form></Modal>
+    <Modal open={Boolean(editRule)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan jadwal rutin" dismissible={!submitting} title="Edit jadwal rutin" description={editRule ? `${editRule.name} · berlaku untuk jadwal berikutnya.` : ""} footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button type="submit" form="edit-recurring-form" variant="primary" loading={submitting}>Simpan perubahan</Button></>}><form id="edit-recurring-form" className="form-grid" onSubmit={saveRule}><EditRuleFields editRule={editRule} setEditRule={setEditRule} editCategories={editCategories} accounts={accounts} budgets={budgets} />{editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}</form></Modal>
   </>;
 };
 

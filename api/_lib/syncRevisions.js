@@ -163,6 +163,8 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
   "periods.reopen": unique(CORE_OVERVIEW, AUDIT, ["periods.list", "periods.previewClose", "transactions.list", "reports.monthly"]),
 
   "notifications.updatePreference": unique(AUDIT, ["notifications.preferences", "notifications.status", "notifications.center"]),
+  "notifications.updateSettings": unique(AUDIT, ["notifications.preferences", "notifications.center"]),
+  "notifications.markRead": unique(["notifications.center"]),
   "notifications.register": unique(["notifications.status"]),
   "notifications.unregister": unique(["notifications.status"]),
   "notifications.test": unique(["notifications.status", "notifications.center"]),

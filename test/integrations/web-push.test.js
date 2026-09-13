@@ -443,6 +443,51 @@ test("payload Web Push normal tidak membawa detail finansial dari queue server",
   }
 });
 
+test("preferensi push yang mati tetap menyimpan event center tanpa mengirim ke perangkat", async () => {
+  const db = await createSqliteTestDatabase();
+  const endpoint = "https://fcm.googleapis.com/fcm/send/preference-device";
+  const calls = [];
+  const pushClient = {
+    setVapidDetails: () => {},
+    sendNotification: async (...args) => calls.push(args),
+  };
+  try {
+    await seedUsers(db);
+    await register(db, owner, endpoint);
+    const now = new Date().toISOString();
+    await db.execute(
+      "INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+      [owner.user_id, "budget_threshold", 0, 1, now, now],
+    );
+    const muted = await queueNotification(db, {
+      userId: owner.user_id,
+      type: "budget_threshold",
+      title: "Kebutuhan hampir habis",
+      body: "Detail hanya untuk center.",
+      targetPath: "/perencanaan/kantong",
+      dedupeKey: "muted-push:budget",
+    });
+    const completion = await queueNotification(db, {
+      userId: owner.user_id,
+      type: "recurring_completed",
+      title: "Pembayaran selesai",
+      body: "Detail hanya untuk center.",
+      targetPath: "/perencanaan/jadwal",
+      dedupeKey: "default-muted:completion",
+    });
+
+    const result = await withPushEnvironment(() => processPush(db, { pushClient }));
+    assert.equal(result.claimed, 2);
+    assert.equal(result.suppressed, 2);
+    assert.equal(result.sent, 2);
+    assert.equal(calls.length, 0);
+    for (const id of [muted.notificationId, completion.notificationId]) {
+      assert.equal((await db.one("SELECT status FROM notification_queue WHERE notification_id=?", [id])).status, "sent");
+      assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM notification_deliveries WHERE notification_id=?", [id])).count), 0);
+    }
+  } finally { db.close(); }
+});
+
 test("retry multi-perangkat hanya mengulang delivery yang gagal dan tidak menggandakan perangkat sukses", async () => {
   const db = await createSqliteTestDatabase();
   const endpointA = "https://fcm.googleapis.com/fcm/send/device-a";

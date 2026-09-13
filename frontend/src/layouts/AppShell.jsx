@@ -165,7 +165,7 @@ const useAppShellRuntime = ({ overview, user, composerOpen, syncNow }) => {
   const serviceWorkerUpdate = useServiceWorkerUpdate({ blocked: composerOpen || modalActivity.modalOpen || mutationActivity.activeCount > 0 });
   const notificationEvents = useApiResource("notifications.center", { limit: 80 }, { enabled: Boolean(user) });
   const notificationItems = mergeNotificationCenterItems(overview?.alerts || [], notificationEvents.data?.items || []);
-  const notificationState = useFinancialNotificationReadState({ alerts: notificationItems, scope: user?.uid || user?.email || "anonymous" });
+  const notificationState = useFinancialNotificationReadState({ alerts: notificationItems, readStates: notificationEvents.data?.readStates || [] });
 
   useEffect(() => {
     if (!network.recoveryRevision || mutationActivity.activeCount > 0) return;

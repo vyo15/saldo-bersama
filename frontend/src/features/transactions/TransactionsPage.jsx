@@ -177,10 +177,10 @@ const dashboardTransactionAttention = (attention, filters, items) => {
 const TransactionAttentionNotice = ({ active, editableTarget, remaining = null, done = false }) => {
   if (done) return <CompactNotice tone="success" title="Review transaksi selesai." role="status">Semua pengeluaran yang dapat diperbaiki pada daftar ini sudah ditinjau.</CompactNotice>;
   if (!active) return null;
-  const title = editableTarget ? "Pilih Alokasi Dana pada transaksi yang dibuka." : "Pilih Alokasi Dana untuk pengeluaran di bawah.";
+  const title = editableTarget ? "Hubungkan transaksi ke Kebutuhan yang sesuai." : "Rapikan pengeluaran yang belum masuk Kebutuhan.";
   const description = editableTarget
-    ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Alokasi Dana pada form, lalu simpan setelah memastikan rekening dan nominal sudah benar."
-    : "Daftar sudah difilter ke pengeluaran yang belum dialokasikan. Buka transaksi yang dapat diedit, lalu pilih Alokasi Dana pada form.";
+    ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Kebutuhan yang sesuai; jika tidak ada yang cocok, Alokasi Dana tetap dapat dipilih manual."
+    : "Daftar sudah difilter ke pengeluaran yang belum masuk rencana. Buka transaksi yang dapat diedit, lalu pilih Kebutuhan yang sesuai.";
   return <CompactNotice tone="info" title={title} role="status">{description}{Number.isFinite(remaining) ? ` ${remaining} transaksi masih perlu ditinjau.` : ""}</CompactNotice>;
 };
 

@@ -1,6 +1,6 @@
 import webpush from "web-push";
 import {
-  configureWebPushClient, queueActionableNotifications, safeNotificationTargetPath, webPushConfigurationStatus, webPushRequestOptions,
+  NOTIFICATION_TYPES, configureWebPushClient, defaultNotificationPreferenceEnabled, queueActionableNotifications, safeNotificationTargetPath, webPushConfigurationStatus, webPushRequestOptions,
 } from "../services/notifications.js";
 import { nowIso, sanitizeText, uuid } from "../services/core.js";
 
@@ -8,6 +8,7 @@ export const queueDueNotifications = queueActionableNotifications;
 
 const PUSH_TIME_BUDGET_MS = 25_000;
 const MAX_PUSH_ATTEMPTS = 5;
+const PUSH_PREFERENCE_TYPES = new Set(NOTIFICATION_TYPES);
 
 const ensureNotificationDeliveries = async (db, notification, timestamp) => {
   const subscriptions = await db.all("SELECT subscription_id FROM push_subscriptions WHERE user_id=? AND status='active'", [notification.user_id]);
@@ -136,6 +137,21 @@ const queueStatusFromDeliverySummary = (deliverySummary, attempts) => {
   return "dead_letter";
 };
 
+
+const notificationPushEnabled = (item) => {
+  if (!PUSH_PREFERENCE_TYPES.has(item.notification_type)) return true;
+  if (item.preference_enabled === null || item.preference_enabled === undefined) return defaultNotificationPreferenceEnabled(item.notification_type);
+  return Number(item.preference_enabled) === 1;
+};
+
+const suppressClaimedNotification = async (db, item, workerId) => {
+  const update = await db.execute(
+    "UPDATE notification_queue SET status='sent',attempt_count=attempt_count+1,last_attempt_at=?,locked_by=NULL WHERE notification_id=? AND status='processing' AND locked_by=?",
+    [nowIso(), item.notification_id, workerId],
+  );
+  return update.rowsAffected === 1;
+};
+
 const processClaimedNotification = async (db, item, runtime) => {
   const deliveries = await claimNotificationDeliveries(db, item, runtime.workerId);
   const outcomes = await deliverPushNotifications(runtime.pushClient, item, deliveries);
@@ -158,13 +174,25 @@ export const processPush = async (db, { pushClient = webpush, timeBudgetMs = PUS
 
   const timestamp = nowIso();
   await recoverStalePushLocks(db, timestamp);
-  const notifications = await db.all("SELECT * FROM notification_queue WHERE status IN ('pending','failed') AND scheduled_at<=? ORDER BY scheduled_at LIMIT 25", [timestamp]);
-  const summary = { claimed: 0, sent: 0, failed: 0, partial: 0, deviceSent: 0, deviceFailed: 0, deviceExpired: 0 };
+  const notifications = await db.all(`SELECT q.*,p.enabled AS preference_enabled
+    FROM notification_queue q
+    LEFT JOIN notification_preferences p ON p.user_id=q.user_id AND p.notification_type=q.notification_type
+    WHERE q.status IN ('pending','failed') AND q.scheduled_at<=?
+    ORDER BY q.scheduled_at LIMIT 25`, [timestamp]);
+  const summary = { claimed: 0, sent: 0, failed: 0, suppressed: 0, partial: 0, deviceSent: 0, deviceFailed: 0, deviceExpired: 0 };
 
   for (const item of notifications) {
     if (Date.now() - runtime.startedAt >= runtime.timeBudgetMs) break;
     if (!(await claimNotification(db, item, runtime.workerId))) continue;
     summary.claimed += 1;
+
+    if (!notificationPushEnabled(item)) {
+      if (await suppressClaimedNotification(db, item, runtime.workerId)) {
+        summary.sent += 1;
+        summary.suppressed += 1;
+      }
+      continue;
+    }
 
     const result = await processClaimedNotification(db, item, runtime);
     summary.deviceSent += result.deviceSent;

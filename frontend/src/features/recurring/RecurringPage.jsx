@@ -50,21 +50,6 @@ const linkedBudgetForRecurring = (budgets, item) => {
   return candidates.length === 1 ? candidates[0] : null;
 };
 
-const recurringBudgetSuggestions = (budgets) => {
-  const grouped = new Map();
-  for (const budget of budgets || []) {
-    if (!budget.category_id || !budget.envelope_rule_id || !budget.envelope_source_account_id) continue;
-    const values = grouped.get(budget.category_id) || [];
-    values.push(budget);
-    grouped.set(budget.category_id, values);
-  }
-  return Object.fromEntries([...grouped.entries()].flatMap(([categoryId, values]) => {
-    if (values.length !== 1) return [];
-    const item = values[0];
-    return [[categoryId, { account_id: item.envelope_source_account_id, envelope_name: item.envelope_name }]];
-  }));
-};
-
 const eligiblePaymentEnvelopes = (items, payment, account) => {
   if (payment.item?.kind !== "expense" || !account?.account_id) return [];
   const active = (items || []).filter((item) => item.status === "active"
@@ -99,7 +84,7 @@ const recurringRulePlanningData = ({ accounts, budgets, user }) => {
     memberMode,
     canManagePlanning: ruleAccounts.length > 0,
     ruleAccounts,
-    budgetSuggestions: recurringBudgetSuggestions(ruleBudgets),
+    ruleBudgets,
   };
 };
 
@@ -119,7 +104,7 @@ const recurringHeaderActions = ({ period, onPeriodChange, canManagePlanning, all
       <span>Periode</span>
       <TemporalInput type="month" value={period} onChange={onPeriodChange} />
     </label>
-    {canManagePlanning && allItems.length ? <Button variant="primary" icon={FiPlus} data-preload-action="recurringDialog" onClick={rules.openCreate}>Tambah jadwal</Button> : null}
+    {canManagePlanning && allItems.length ? <Button variant="primary" icon={FiPlus} data-preload-action="recurringDialog" onClick={rules.openCreate}>Tambah pembayaran rutin</Button> : null}
   </div>
 );
 
@@ -190,6 +175,7 @@ const RecurringPage = ({ embedded = false }) => {
       const accountId = String(workflow.defaultAccountId || "");
       const categoryValid = activeCategories(bootstrap, "expense").some((item) => item.category_id === categoryId);
       const accountValid = activeAccounts(bootstrap, overview).some((item) => item.account_id === accountId && item.can_transact !== false);
+      rules.openCreate();
       rules.setForm((current) => ({
         ...current,
         name: String(workflow.name || current.name || "").slice(0, 100),
@@ -199,7 +185,6 @@ const RecurringPage = ({ embedded = false }) => {
         default_account_id: accountValid ? accountId : "",
       }));
       setKind("expense");
-      rules.openCreate();
     } else if (["pay-recurring", "view-recurring"].includes(workflow.workflowAction)) {
       const occurrenceId = String(workflow.occurrenceId || "");
       const item = (resource.data?.items || []).find((entry) => entry.occurrence_id === occurrenceId) || null;
@@ -220,7 +205,7 @@ const RecurringPage = ({ embedded = false }) => {
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
 
   const { allItems, filteredItems, accounts, categories, editCategories, paymentAccounts, paymentEnvelopes, budgets } = view;
-  const { memberMode, canManagePlanning, ruleAccounts, budgetSuggestions } = recurringRulePlanningData({ accounts, budgets, user });
+  const { memberMode, canManagePlanning, ruleAccounts, ruleBudgets } = recurringRulePlanningData({ accounts, budgets, user });
   const openReminder = (item) => setReminderTarget({ entityType: "recurring_occurrence", entityId: item.occurrence_id, name: item.name, suggestedDate: item.due_date });
   const actions = { openPayment: payments.openPayment, openReverse: payments.openReverse, openSkip: recovery.openSkip, openRestore: recovery.openRestore, openRuleEditor: rules.openRuleEditor, openArchive: rules.openArchive, openReminder, openCreate: rules.openCreate };
   const handlePeriodChange = (event) => { setPeriod(event.target.value); setFilter("all"); setKind("expense"); setExpandedId(null); };
@@ -239,7 +224,7 @@ const RecurringPage = ({ embedded = false }) => {
       <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
       {recurringDialogOpen({ rules, payments, recovery }) ? (
         <Suspense fallback={<LazyActionFallback surface="modal" title="Jadwal rutin" label="Menyiapkan aksi jadwal rutin..." />}>
-          <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgetSuggestions={budgetSuggestions} />
+          <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgets={ruleBudgets} />
         </Suspense>
       ) : null}
     </div>

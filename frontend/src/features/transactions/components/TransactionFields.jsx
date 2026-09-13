@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FiAlertTriangle, FiCalendar, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
+import { FiAlertTriangle, FiCalendar, FiCheckCircle, FiCreditCard, FiGrid, FiLayers, FiTag } from "react-icons/fi";
 import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx";
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
@@ -64,13 +64,31 @@ const envelopeOptionLabel = (item) => {
   return `${item.name} · ${assignee} — sisa ${formatRupiah(item.remaining_amount)}`;
 };
 
+
+const NeedField = ({ form, candidates, onNeedChange }) => {
+  if (!form.source_account_id || !form.category_id || !candidates.length) return null;
+  const options = [
+    { value: "", label: "Belum masuk Kebutuhan", meta: "Catat tanpa menghubungkan ke Kebutuhan", ...allocationOptionVisual() },
+    ...candidates.map((candidate) => ({
+      value: candidate.need.budget_id,
+      label: candidate.need.name || "Kebutuhan",
+      meta: `${candidate.envelope.name} · sisa ${formatRupiah(Math.max(0, Number(candidate.need.amount || 0) - Number(candidate.need.used_amount || 0)))}`,
+      icon: FiCheckCircle,
+    })),
+  ];
+  return <div className={`field ${styles.visualField}`}>
+    <label htmlFor="budget-need">{candidates.length > 1 ? "Dipakai untuk kebutuhan mana?" : "Kebutuhan"}</label>
+    <FieldControl icon={FiCheckCircle}><SelectionControl id="budget-need" embedded value={form.budget_id} onChange={onNeedChange} placeholder="Pilih Kebutuhan" searchable={options.length > 8} ariaLabel="Kebutuhan" options={options} /></FieldControl>
+    <small>{candidates.length === 1 ? "Kebutuhan yang cocok dipilih otomatis." : `${candidates.length} Kebutuhan cocok dengan kategori ini. Pilih yang benar.`}</small>
+  </div>;
+};
 const EnvelopeField = ({ form, envelopes, candidates, onEnvelopeChange }) => {
   const disabled = !form.source_account_id || !form.category_id;
   const options = useMemo(() => orderedEnvelopeOptions(envelopes, candidates), [candidates, envelopes]);
   const placeholder = !form.source_account_id ? "Pilih rekening terlebih dahulu" : !form.category_id ? "Pilih kategori terlebih dahulu" : "Belum dialokasikan";
   const hint = allocationSelectionHint({ form, candidates, selectedEnvelopeId: form.envelope_period_id });
   return <div className={`field ${styles.visualField}`}>
-    <label htmlFor="envelope">Alokasi Dana (opsional)</label>
+    <label htmlFor="envelope">Alokasi Dana (manual)</label>
     <FieldControl icon={FiLayers}><SelectionControl id="envelope" embedded value={form.envelope_period_id} onChange={onEnvelopeChange} disabled={disabled} placeholder={placeholder} searchable={options.length > 8} ariaLabel="Alokasi Dana" options={[...(!disabled ? [{ value: "", label: "Belum dialokasikan", ...allocationOptionVisual() }] : []), ...options.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: envelopeOptionLabel(item).replace(`${item.name} · `, ""), ...allocationOptionVisual() }))]} /></FieldControl>
     {hint ? <small>{hint}</small> : null}
   </div>;
@@ -80,6 +98,7 @@ const AccountCategoryFields = (p) => <>
     {!p.isIncome ? <SourceAccountField form={p.form} accounts={p.accounts} recentTransactions={p.recentTransactions} onSourceAccountChange={p.onSourceAccountChange} errors={p.errors} /> : null}
     {p.isIncome || p.isTransfer ? <DestinationAccountField form={p.form} accounts={p.compatibleDestinationAccounts} update={p.update} errors={p.errors} /> : null}
     {!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} recentTransactions={p.recentTransactions} update={p.update} errors={p.errors} /> : null}
+    {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <NeedField form={p.form} candidates={p.allocationCandidates} onNeedChange={p.onNeedChange} /> : null}
     {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField form={p.form} envelopes={p.compatibleEnvelopes} candidates={p.allocationCandidates} onEnvelopeChange={p.onEnvelopeChange} /> : null}
   </>;
 

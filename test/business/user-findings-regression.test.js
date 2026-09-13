@@ -41,6 +41,52 @@ test("rekonsiliasi eksplisit menjadi checkpoint dan rekening investasi tidak iku
   assert.equal(alerts.some((item) => item.type === "reconciliation_difference"), false);
 });
 
+
+test("alert dashboard memprioritaskan tindakan manusia, bukan alfabet judul", () => {
+  const alerts = buildFinancialAlerts({
+    period: "2026-09",
+    historical: false,
+    accounts: [{ account_id: "bank-1", name: "Bank", owner_scope: "shared", balance: 1_000_000 }],
+    envelopes: [],
+    recurring: [{ occurrence_id: "late", name: "KPR", status: "overdue", due_date: "2026-09-01", auto_debit: false }],
+    goals: [{ goal_id: "goal-1", name: "Liburan", pace_status: "behind", required_monthly_amount: 100_000 }],
+    budgets: [],
+    unallocatedCount: 3,
+    reconciliationRows: [],
+    investmentReconciliationRows: [],
+  });
+  assert.equal(alerts[0].type, "recurring_overdue");
+  assert.ok(alerts.findIndex((item) => item.type === "unallocated_expense") < alerts.findIndex((item) => item.type === "goal_behind"));
+
+  const dueBeforeNearLimit = buildFinancialAlerts({
+    period: "2026-09",
+    historical: false,
+    accounts: [],
+    envelopes: [],
+    recurring: [{ occurrence_id: "due", name: "Internet", status: "pending", due_date: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10), auto_debit: false }],
+    goals: [],
+    budgets: [{ budget_id: "food", name: "Makan", amount: 1_000_000, used_amount: 810_000, warning_threshold: 80 }],
+    unallocatedCount: 0,
+    reconciliationRows: [],
+    investmentReconciliationRows: [],
+  });
+  assert.equal(dueBeforeNearLimit[0]?.type, "recurring_due");
+
+  const exceededBeforeDue = buildFinancialAlerts({
+    period: "2026-09",
+    historical: false,
+    accounts: [],
+    envelopes: [],
+    recurring: [{ occurrence_id: "due", name: "Internet", status: "pending", due_date: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10), auto_debit: false }],
+    goals: [],
+    budgets: [{ budget_id: "food", name: "Makan", amount: 1_000_000, used_amount: 1_010_000, warning_threshold: 80 }],
+    unallocatedCount: 0,
+    reconciliationRows: [],
+    investmentReconciliationRows: [],
+  });
+  assert.equal(exceededBeforeDue[0]?.type, "budget_threshold");
+});
+
 test("preview pembelian investasi menghitung weighted average otomatis", () => {
   const result = investmentProjectedAverage(
     { instrument_id: "bbca", lots: "10", price_per_share: "1500", fee: "0" },
@@ -69,7 +115,9 @@ test("regression UI seluruh temuan penting tetap terpasang", () => {
   assert.match(budget, /value=\{form\.schedule_due_day \?\? ""\}/);
   assert.doesNotMatch(reports, /FinancialAlertList|ReportAlerts|MobileSummaryAlerts/);
   assert.doesNotMatch(shell, /<header className="topbar"/);
-  assert.match(notifications, /notification-read-state/);
+  assert.match(notifications, /notificationReadIdentity/);
+  assert.match(notifications, /markNotificationsRead/);
+  assert.doesNotMatch(notifications, /notification-read-state|localStorage/);
   assert.match(mobileAccounts, /cancelledForward/);
   assert.match(mobileAccounts, /Math\.abs\(progress\) >= 0\.16/);
   assert.match(allocations, /a\.action='envelopes\.adjustAllocation'/);

@@ -6,7 +6,6 @@ import PageHeader from "../../components/common/PageHeader.jsx";
 import Button from "../../components/common/Button.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
-import { useAuth } from "../auth/AuthContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { financialAlertGuidance } from "../../shared/workflows/financialAlerts.js";
 import {
@@ -47,6 +46,8 @@ const NotificationRow = ({ alert, read, onOpen }) => {
   const tone = notificationTone(alert);
   const entity = financialNotificationEntity(alert);
   const fact = financialNotificationFact(alert);
+  const guidanceAlert = alert.guidanceId ? { ...alert, id: alert.guidanceId } : alert;
+  const actionLabel = notificationRequiresAction(alert) ? financialAlertGuidance(guidanceAlert, { source: "notification-center" }).actionLabel : "";
   return (
     <button type="button" data-native-enter className={styles.row} data-read={read ? "true" : "false"} data-tone={tone} onClick={() => onOpen(alert)}>
       <span className={styles.icon}><Icon aria-hidden="true" /></span>
@@ -54,6 +55,7 @@ const NotificationRow = ({ alert, read, onOpen }) => {
         <strong>{financialNotificationTitle(alert)}</strong>
         {entity ? <span className={styles.entity}>{entity}</span> : null}
         {fact ? <small>{fact}</small> : null}
+        {actionLabel ? <span className={styles.actionLabel}>{actionLabel}</span> : null}
       </span>
       <span className={styles.trailing}><FiChevronRight aria-hidden="true" /></span>
     </button>
@@ -66,7 +68,7 @@ const NotificationGroup = ({ title, accessibleLabel, alerts, isRead, onOpen }) =
   return (
     <section className={styles.group} aria-labelledby={headingId} aria-label={title ? undefined : accessibleLabel}>
       {title ? <h2 id={headingId}>{title}</h2> : null}
-      <div className={styles.list}>{alerts.map((alert) => <NotificationRow key={alert.id} alert={alert} read={isRead(alert.id)} onOpen={onOpen} />)}</div>
+      <div className={styles.list}>{alerts.map((alert) => <NotificationRow key={alert.id} alert={alert} read={isRead(alert)} onOpen={onOpen} />)}</div>
     </section>
   );
 };
@@ -75,7 +77,7 @@ const NotificationEmptyState = ({ filter }) => (
   <div className={styles.empty} role="status">
     <span className={styles.emptyIcon}><FiCheckCircle aria-hidden="true" /></span>
     <h2>{filter === "all" ? "Semua beres" : "Tidak ada item di sini"}</h2>
-    <p>{filter === "all" ? "Belum ada notifikasi baru atau kondisi aktif yang perlu Anda tinjau." : "Tidak ada notifikasi yang cocok dengan filter ini."}</p>
+    <p>{filter === "all" ? "Tidak ada hal yang perlu diperhatikan saat ini." : "Tidak ada notifikasi yang cocok dengan filter ini."}</p>
   </div>
 );
 
@@ -86,20 +88,18 @@ const NotificationContent = ({ alerts, filter, isRead, onOpen }) => {
   if (!visible.length) return <NotificationEmptyState filter={filter} />;
   const splitGroups = filter === "all" && actionAlerts.length > 0 && reminders.length > 0;
   return <>
-    <NotificationGroup title={splitGroups ? "Perlu tindakan" : ""} accessibleLabel="Notifikasi yang perlu tindakan" alerts={actionAlerts} isRead={isRead} onOpen={onOpen} />
-    <NotificationGroup title={splitGroups ? "Pengingat" : ""} accessibleLabel="Pengingat" alerts={reminders} isRead={isRead} onOpen={onOpen} />
+    <NotificationGroup title={splitGroups ? `Perlu dilakukan · ${actionAlerts.length}` : ""} accessibleLabel="Notifikasi yang perlu tindakan" alerts={actionAlerts} isRead={isRead} onOpen={onOpen} />
+    <NotificationGroup title={splitGroups ? "Terbaru" : ""} accessibleLabel="Notifikasi terbaru" alerts={reminders} isRead={isRead} onOpen={onOpen} />
   </>;
 };
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { overview, status, error, refreshError, refreshOverview } = useFinance();
   const eventFeed = useApiResource("notifications.center", { limit: 80 });
   const [filter, setFilter] = useState("all");
-  const scope = user?.uid || user?.email || "anonymous";
   const centerItems = useMemo(() => mergeNotificationCenterItems(overview?.alerts || [], eventFeed.data?.items || []), [eventFeed.data?.items, overview?.alerts]);
-  const notifications = useFinancialNotificationReadState({ alerts: centerItems, scope });
+  const notifications = useFinancialNotificationReadState({ alerts: centerItems, readStates: eventFeed.data?.readStates || [] });
 
   if (["idle", "loading"].includes(status) && !overview) return <NativePageSkeleton kind="notifications" label="Memuat notifikasi…" />;
   if (status === "error" && !overview) return <ErrorState error={error} onRetry={refreshOverview} />;
@@ -107,12 +107,13 @@ const NotificationsPage = () => {
 
   const refreshCenter = async () => Promise.allSettled([refreshOverview(), eventFeed.reload()]);
   const openNotification = (alert) => {
-    notifications.markRead(alert.id);
-    if (alert.source === "event") {
+    notifications.markRead(alert).catch(() => {});
+    const guidanceAlert = alert.guidanceId ? { ...alert, id: alert.guidanceId } : alert;
+    if (alert.source === "event" && !alert.guidanceId) {
       navigate(alert.targetPath || "/");
       return;
     }
-    const guidance = financialAlertGuidance(alert, { source: "notification-center" });
+    const guidance = financialAlertGuidance(guidanceAlert, { source: "notification-center" });
     navigate(guidance.to, { state: guidance.state });
   };
 
@@ -129,15 +130,15 @@ const NotificationsPage = () => {
           eyebrow="Pusat perhatian"
           title="Notifikasi"
           description={notifications.unreadCount ? `${notifications.unreadCount} item belum dibaca.` : "Semua kondisi aktif sudah ditinjau."}
-          help="Pusat notifikasi menggabungkan kondisi keuangan aktif dan kejadian pengingat terbaru. Status dibaca tersimpan di perangkat ini; kondisi aktif tetap hilang hanya setelah sumber masalahnya selesai."
-          actions={<Button variant="secondary" onClick={notifications.markAllRead} disabled={!notifications.unreadCount}>Tandai semua dibaca</Button>}
+          help="Pusat notifikasi menggabungkan kondisi keuangan aktif dan kejadian terbaru. Status dibaca tersinkron antarperangkat; kondisi aktif baru hilang setelah sumber masalahnya selesai."
+          actions={<Button variant="secondary" onClick={() => notifications.markAllRead().catch(() => {})} disabled={!notifications.unreadCount}>Tandai semua dibaca</Button>}
         />
       </div>
 
       <header className={styles.header}>
         <button type="button" className={styles.back} onClick={() => navigate(-1)} aria-label="Kembali"><FiChevronLeft aria-hidden="true" /></button>
         <div className={styles.heading}><h1>Notifikasi</h1><p>{notifications.unreadCount ? `${notifications.unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
-        <button type="button" className={styles.readAll} onClick={notifications.markAllRead} disabled={!notifications.unreadCount} aria-label="Tandai semua dibaca" title="Tandai semua dibaca"><FiCheckCircle aria-hidden="true" /></button>
+        <button type="button" className={styles.readAll} onClick={() => notifications.markAllRead().catch(() => {})} disabled={!notifications.unreadCount} aria-label="Tandai semua dibaca" title="Tandai semua dibaca"><FiCheckCircle aria-hidden="true" /></button>
       </header>
 
       <div className={styles.filterBar}>

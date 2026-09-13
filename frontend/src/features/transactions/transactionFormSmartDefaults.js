@@ -67,10 +67,12 @@ export const smartAllocationCandidates = ({ budgets = [], envelopes = [], form }
   return envelopes.reduce((items, envelope) => {
     if (envelope.source_account_id !== form.source_account_id || !dateInsideEnvelope(form.transaction_date, envelope)) return items;
     const needs = matchingRules.get(envelope.envelope_rule_id) || [];
-    if (needs.length !== 1 || seen.has(envelope.envelope_period_id)) return items;
-    const need = needs[0];
-    seen.add(envelope.envelope_period_id);
-    items.push({ envelope, need });
+    needs.forEach((need) => {
+      const key = `${envelope.envelope_period_id}:${need.budget_id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({ envelope, need });
+    });
     return items;
   }, []);
 };
@@ -89,12 +91,12 @@ export const allocationSelectionHint = ({ form, candidates, selectedEnvelopeId }
   if (form.transaction_type !== TRANSACTION_TYPES.EXPENSE) return "";
   if (!form.source_account_id) return "Pilih rekening terlebih dahulu.";
   if (!form.category_id) return "Pilih kategori terlebih dahulu.";
-  const selected = candidates.find((item) => item.envelope.envelope_period_id === selectedEnvelopeId);
-  if (selected) return `Dipilih dari Kebutuhan ${selected.need.name || selected.need.category_id}.`;
+  const selected = candidates.find((item) => item.envelope.envelope_period_id === selectedEnvelopeId && (!form.budget_id || item.need.budget_id === form.budget_id));
+  if (selected) return `Kebutuhan ${selected.need.name || selected.need.category_id} dipakai untuk transaksi ini.`;
   if (selectedEnvelopeId) return "Alokasi Dana dipilih manual. Server tetap memvalidasi rekening, periode, dan hak akses saat disimpan.";
-  if (candidates.length > 1) return `${candidates.length} Alokasi Dana cocok dengan Kebutuhan ini. Pilih salah satu.`;
-  if (candidates.length === 1) return `Alokasi Dana ${candidates[0].envelope.name} cocok dengan Kebutuhan ${candidates[0].need.name || candidates[0].need.category_id}.`;
-  return "Belum ada Kebutuhan aktif yang menghubungkan kategori ini ke Alokasi Dana. Anda tetap dapat memilih Alokasi lain secara manual.";
+  if (candidates.length > 1) return `${candidates.length} Kebutuhan cocok. Pilih kebutuhan yang benar.`;
+  if (candidates.length === 1) return `Kebutuhan ${candidates[0].need.name || candidates[0].need.category_id} cocok dan dapat dipilih otomatis.`;
+  return "Belum ada Kebutuhan aktif yang cocok. Transaksi tetap dapat dicatat atau Alokasi Dana dapat dipilih manual.";
 };
 
 export const earlyFundsWarning = ({ transactionType, amount, source, envelope }) => {

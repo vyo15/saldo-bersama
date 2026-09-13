@@ -42,6 +42,9 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
     .filter((item) => item.account_type !== "investment")
     .reduce((sum, item) => sum + Number(item.balance || 0), 0);
   const cashFlow = overview?.cashFlow || {};
+  const cashIn = Number(cashFlow.income || 0) + Number(cashFlow.refund || 0);
+  const cashOut = Number(cashFlow.expense || 0);
+  const net = cashIn - cashOut;
 
   return (
     <section className={dashboardClass("desktop-balance-card shared-panel")} aria-label="Ringkasan keuangan utama">
@@ -49,7 +52,7 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
         <div>
           <span>Dana Tersedia</span>
           <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
-          <small>Setelah Alokasi Dana, dana terlindungi, dan komitmen di luar Alokasi</small>
+          <small>Sisa uang yang aman dipakai setelah kebutuhan dan tagihan.</small>
         </div>
         <div className={dashboardClass("desktop-balance-card__sync")}>
           <FiShield aria-hidden="true" />
@@ -71,11 +74,15 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
       <div className={dashboardClass("desktop-balance-card__secondary")} aria-label="Arus uang bulan ini">
         <div>
           <span>Masuk bulan ini</span>
-          <SensitiveMoney visible={balanceVisible} value={cashFlow.income || 0} tone="positive" />
+          <SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" />
         </div>
         <div>
           <span>Keluar bulan ini</span>
-          <SensitiveMoney visible={balanceVisible} value={cashFlow.expense || 0} tone="negative" />
+          <SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" />
+        </div>
+        <div>
+          <span>Selisih</span>
+          <SensitiveMoney visible={balanceVisible} value={net} tone={net < 0 ? "negative" : net > 0 ? "positive" : "default"} />
         </div>
       </div>
     </section>

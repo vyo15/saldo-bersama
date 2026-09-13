@@ -264,7 +264,7 @@ test("Web Push memakai secure context, status backend, lock-screen privacy, dan 
   assert.match(deliveryMigration, /UNIQUE\(notification_id, subscription_id\)/);
   assert.match(preferenceMigration, /CREATE TABLE IF NOT EXISTS notification_preferences/);
   assert.match(preferenceMigration, /PRIMARY KEY \(user_id, notification_type\)/);
-  assert.match(backendNotifications, /enabled=0/);
+  assert.match(backendNotifications + jobs, /status=\'inactive\'|status="inactive"/);
 });
 
 test("manual reminder menjaga delivery pending, lifecycle cancellation, dan integrity parity", async () => {

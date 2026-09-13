@@ -27,10 +27,30 @@ const seed = async (db) => {
   await db.execute("INSERT INTO categories(category_id,name,transaction_type,nature,icon,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", ["income-arisan", "Penerimaan Arisan", "income", "other", "users", "active", 1, owner.user_id, now, owner.user_id, now]);
 };
 
+const seedFundedNeed = async (db) => {
+  const now = new Date().toISOString();
+  const period = todayJakarta().slice(0, 7);
+  const [year, month] = period.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  await db.execute(
+    "INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    ["commitment-rule-home", "Rumah Tangga", "monthly", "shared", null, null, 5_750_000, "bank-main", "unallocated", "confirm", "active", 1, owner.user_id, now, owner.user_id, now],
+  );
+  await db.execute(
+    "INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    ["commitment-period-home", "commitment-rule-home", "Rumah Tangga", `${period}-01`, `${period}-${String(lastDay).padStart(2, "0")}`, 5_750_000, 0, "active", 1, owner.user_id, now, owner.user_id, now, null, null],
+  );
+  await db.execute(
+    "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    ["commitment-budget-home", period, "expense-home", "commitment-rule-home", "Cicilan Rumah", 5_750_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null],
+  );
+};
+
 test("KPR membuat Jadwal Rutin terkelola, pembayaran memisahkan pokok/bunga, dan reverse mengembalikan progres", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
+    await seedFundedNeed(db);
     const created = await createCommitment(db, context("commitments.create", {
       commitment_type: "mortgage",
       name: "KPR Rumah",
@@ -42,6 +62,7 @@ test("KPR membuat Jadwal Rutin terkelola, pembayaran memisahkan pokok/bunga, dan
       installments_paid: 24,
       default_account_id: "bank-main",
       category_id: "expense-home",
+      budget_id: "commitment-budget-home",
       frequency: "monthly",
       due_day: 10,
       auto_debit: true,
@@ -52,11 +73,15 @@ test("KPR membuat Jadwal Rutin terkelola, pembayaran memisahkan pokok/bunga, dan
 
     const rule = await db.one("SELECT * FROM recurring_rules WHERE commitment_id=?", [created.commitment_id]);
     assert.ok(rule);
+    assert.equal(rule.budget_id, "commitment-budget-home");
+    assert.equal(rule.auto_debit, 0, "write baru tidak boleh mengaktifkan flag autodebet legacy");
+    const listedCommitment = (await listCommitments(db, context("commitments.list"))).items.find((item) => item.commitment_id === created.commitment_id);
+    assert.equal(listedCommitment.budget_id, "commitment-budget-home");
     const listedRecurring = await listRecurring(db, context("recurring.list", { period: String((await db.one("SELECT period_key FROM recurring_occurrences WHERE recurring_rule_id=? ORDER BY due_date LIMIT 1", [rule.recurring_rule_id])).period_key) }));
     const recurringItem = listedRecurring.items.find((item) => item.commitment_id === created.commitment_id);
     assert.equal(recurringItem.can_edit_rule, false);
     assert.equal(recurringItem.can_archive_rule, false);
-    assert.equal(recurringItem.commitment_auto_debit, true);
+    assert.equal(recurringItem.commitment_auto_debit, false);
 
     await assert.rejects(
       () => updateRecurringRule(db, context("recurring.updateRule", { recurring_rule_id: rule.recurring_rule_id, row_version: rule.row_version, expected_amount: 6_000_000 }, rule.row_version)),
@@ -99,7 +124,10 @@ test("KPR membuat Jadwal Rutin terkelola, pembayaran memisahkan pokok/bunga, dan
       due_day: 11,
     }, current.row_version));
     assert.equal(updated.installment_amount, 5_900_000);
-    assert.equal((await db.one("SELECT expected_amount FROM recurring_rules WHERE commitment_id=?", [created.commitment_id])).expected_amount, 5_900_000);
+    const updatedRule = await db.one("SELECT expected_amount,budget_id,auto_debit FROM recurring_rules WHERE commitment_id=?", [created.commitment_id]);
+    assert.equal(updatedRule.expected_amount, 5_900_000);
+    assert.equal(updatedRule.budget_id, "commitment-budget-home", "edit tanpa budget_id mempertahankan link Kebutuhan");
+    assert.equal(updatedRule.auto_debit, 0);
   } finally {
     db.close();
   }

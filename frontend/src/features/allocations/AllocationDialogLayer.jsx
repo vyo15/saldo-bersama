@@ -84,7 +84,7 @@ const AllocationDecorationPicker = ({ name, value, onChange }) => {
 
 const CreateEnvelopeFooter = ({ close, createMutation }) => <>
   <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
-  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Buat alokasi</Button>
+  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Lanjut ke kebutuhan</Button>
 </>;
 
 const CreateEnvelopeForm = ({
@@ -99,8 +99,7 @@ const CreateEnvelopeForm = ({
   createEnvelope,
 }) => (
   <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
-    <label className="field form-grid__full"><span>Nama alokasi *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
-    <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
+    <label className="field form-grid__full"><span>Untuk apa uang ini? *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
     <InlineSelectionPicker
       className="form-grid__full"
       label="Ambil dana dari"
@@ -130,10 +129,11 @@ const CreateEnvelopeForm = ({
       disabled={usersStatus === "loading"}
       helper={assigneeState.locked ? "Pemilik mengikuti rekening sumber dan tidak dapat diubah." : usersStatus === "loading" ? "Memuat pengguna aktif..." : ""}
     />
-    <div className="notice notice--info form-grid__full" role="status"><strong>Dana mengikuti Kebutuhan.</strong> Buat wadah Alokasi terlebih dahulu. Saat Kebutuhan disimpan, total nominalnya otomatis dipisahkan dari Dana Tersedia rekening ini.</div>
+    <div className="notice notice--info form-grid__full" role="status"><strong>Belum ada uang yang dipisahkan.</strong> Setelah langkah ini, tambahkan Kebutuhan. Total Kebutuhan yang disimpan akan otomatis dipisahkan dari Dana Tersedia rekening sumber.</div>
     <details className={allocationClass("allocation-advanced form-grid__full")}>
-      <summary><span><strong>Periode dan sisa</strong><small>{createForm.period_start} – {createForm.period_end}</small></span><FiChevronDown aria-hidden="true" /></summary>
+      <summary><span><strong>Pengaturan tambahan</strong><small>Penampilan, periode, dan sisa</small></span><FiChevronDown aria-hidden="true" /></summary>
       <div className={allocationClass("allocation-advanced__content")}>
+        <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
         <VisualChoiceGroup className="form-grid__full" legend="Periode alokasi" name="allocation-period" value={createForm.period_type} onChange={(period_type) => setCreateForm((current) => ({ ...current, period_type }))} options={periodOptions} columns={3} compact />
         <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
         <label className="field"><span>Mulai periode</span><TemporalInput type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
@@ -160,10 +160,10 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts,
     open={open}
     onClose={guard.requestClose}
     discardGuard={guard}
-    discardSubject="alokasi dana"
+    discardSubject="pengaturan dana"
     dismissible={!createMutation.busy}
-    title="Buat alokasi"
-    description="Buat wadahnya dulu, lalu masukkan Kebutuhan. Dana akan dihitung otomatis."
+    title="Atur uang"
+    description="Pilih tujuan dan rekening sumber. Setelah itu, tentukan Kebutuhan yang ingin disiapkan."
     footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} />}
   >
     <CreateEnvelopeForm

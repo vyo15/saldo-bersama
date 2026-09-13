@@ -45,18 +45,6 @@ export const dashboardDueLabel = (value, today = todayInJakarta()) => {
   return days === 1 ? "Besok" : `${days} hari lagi`;
 };
 
-export const dashboardInsightState = (overview = {}) => {
-  const safeToSpend = Math.max(0, Number(overview.safeToSpend || 0));
-  const cashFlow = overview.cashFlow || {};
-  const net = Number.isFinite(Number(cashFlow.net))
-    ? Number(cashFlow.net)
-    : Number(cashFlow.income || 0) + Number(cashFlow.refund || 0) - Number(cashFlow.expense || 0);
-
-  if (safeToSpend <= 0) return { kind: "limited", tone: "warning", title: "Dana tersedia perlu ditinjau" };
-  if (net < 0) return { kind: "cashflow", tone: "warning", title: "Pengeluaran perlu dipantau" };
-  return { kind: "safe", tone: "positive", title: "Dana tersedia masih terjaga" };
-};
-
 const operablePlanningAccounts = (overview = {}) => (overview.accountBalances || [])
   .filter((item) => item.account_type !== "investment" && item.can_transact !== false);
 

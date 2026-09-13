@@ -125,6 +125,8 @@ export const ACTION_POLICIES = Object.freeze({
   "notifications.status": read(),
   "notifications.preferences": read(),
   "notifications.updatePreference": write(),
+  "notifications.updateSettings": write(),
+  "notifications.markRead": write(),
   "notifications.register": write(),
   "notifications.unregister": write(),
   "notifications.test": external(),

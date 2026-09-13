@@ -419,3 +419,97 @@
     transition: none;
   }
 }
+
+.needField {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.smartMatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--positive);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
+}
+
+.smartMatch svg { width: 14px; height: 14px; flex: 0 0 14px; }
+
+.needEmpty {
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  background: color-mix(in srgb, var(--surface-soft) 68%, transparent);
+}
+
+.needEmpty > svg { width: 18px; height: 18px; color: var(--text-muted); }
+.needEmpty > span { min-width: 0; display: grid; gap: 2px; }
+.needEmpty strong { font-size: 12px; }
+.needEmpty small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
+
+.additionalDetails {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.additionalToggle {
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.additionalToggle > span { min-width: 0; display: grid; gap: 2px; }
+.additionalToggle strong { font-size: 12px; }
+.additionalToggle small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.additionalToggle > svg { width: 17px; height: 17px; flex: 0 0 17px; color: var(--text-muted); }
+.additionalToggle:focus-visible, .manualAllocationToggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+.additionalBody {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  background: color-mix(in srgb, var(--surface-soft) 54%, var(--surface));
+}
+
+.manualAllocation {
+  display: grid;
+  gap: 8px;
+}
+
+.manualAllocationToggle {
+  min-height: var(--mobile-control-height);
+  padding: 0 2px;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+.manualAllocationToggle svg { width: 15px; height: 15px; }

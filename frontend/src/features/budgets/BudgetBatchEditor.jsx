@@ -12,9 +12,9 @@ import { budgetBatchScheduleLabel } from "./budgetBatchModel.js";
 import styles from "./BudgetBatchEditor.module.css";
 
 const RECORDING_OPTIONS = Object.freeze([
-  { value: "flexible", label: "Fleksibel", icon: FiEdit3 },
+  { value: "flexible", label: "Bisa dipakai beberapa kali", icon: FiEdit3 },
   { value: "fixed_once", label: "Sekali bayar", icon: FiCheckCircle },
-  { value: "recurring", label: "Berulang", icon: FiRepeat },
+  { value: "recurring", label: "Rutin", icon: FiRepeat },
 ]);
 
 const SCHEDULE_FREQUENCY_OPTIONS = Object.freeze([
@@ -77,8 +77,8 @@ const NeedNameInput = ({ row, update }) => <label className={styles.fieldBlock}>
 </label>;
 
 const RecordingMode = ({ row, update }) => <div className={styles.modeBlock}>
-  <span className={styles.fieldLabel}>Pola kebutuhan</span>
-  <div className={styles.recordingMode} role="group" aria-label="Pola kebutuhan">
+  <span className={styles.fieldLabel}>Cara penggunaan</span>
+  <div className={styles.recordingMode} role="group" aria-label="Cara penggunaan">
     {RECORDING_OPTIONS.map(({ value, label, icon: Icon }) => <button
       key={value}
       type="button"
@@ -125,8 +125,10 @@ const BatchEditorRow = ({ row, index, categories, updateRow, removeRow, onCreate
       <CompactAmountInput row={row} onChange={(amount) => update({ amount })} />
     </div>
     <CategoryField row={row} categories={categories} update={update} onCreateCategory={onCreateCategory} categoryCreateLabel={categoryCreateLabel} />
-    <RecordingMode row={row} update={update} />
-    <ScheduleFields row={row} update={update} />
+    <details className={styles.usageDetails}>
+      <summary><span>Cara penggunaan</span><strong>{RECORDING_OPTIONS.find((option) => option.value === row.recording_mode)?.label || "Bisa dipakai beberapa kali"}</strong></summary>
+      <div className={styles.usageDetailsContent}><RecordingMode row={row} update={update} /><ScheduleFields row={row} update={update} /></div>
+    </details>
   </div>;
 };
 
@@ -172,7 +174,7 @@ const BatchFooter = ({ controller, close, funding, onAddBalance }) => <div class
     <Button disabled={controller.saveState.status === "submitting"} onClick={close}>Batal</Button>
     {funding.shortageAmount > 0
       ? <Button variant="primary" type="button" disabled={!onAddBalance || controller.saveState.status === "submitting"} onClick={() => onAddBalance?.(funding.shortageAmount)}>Tambah saldo {formatRupiah(funding.shortageAmount)}</Button>
-      : <Button variant="primary" type="submit" form="budget-batch-form" loading={controller.saveState.status === "submitting"}>Simpan</Button>}
+      : <Button variant="primary" type="submit" form="budget-batch-form" loading={controller.saveState.status === "submitting"}>Simpan dan siapkan dana</Button>}
   </div>
 </div>;
 
@@ -205,7 +207,7 @@ const BudgetBatchEditor = ({ open, controller, categories, lockedEnvelope, sourc
     discardGuard={guard}
     discardSubject="Kebutuhan"
     dismissible={!submitting}
-    title="Tambah kebutuhan"
+    title="Apa saja kebutuhannya?"
     description={lockedEnvelope?.name ? `Alokasi Dana · ${lockedEnvelope.name}` : undefined}
     footer={<BatchFooter controller={controller} close={guard.discardAndClose} funding={funding} onAddBalance={onAddBalance} />}
   >

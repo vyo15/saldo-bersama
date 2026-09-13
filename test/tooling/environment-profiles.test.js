@@ -214,7 +214,7 @@ test("production runtime check memverifikasi health backend dan frontend shell a
           ok: true,
           data: {
             status: "ok",
-            schema: { ready: true, version: 22, expectedVersion: 22, databaseEnvironment: "production" },
+            schema: { ready: true, version: 23, expectedVersion: 23, databaseEnvironment: "production" },
             maintenanceMode: false,
             coreOperationsHealthy: true,
           },
@@ -304,11 +304,11 @@ test("Google bridge pusat fail closed bila DEV/PROD lengkap tetapi drift", async
 
 test("Production core readiness memblokir core failure dan release live yang tertinggal dari source", () => {
   const ready = productionCoreReadiness({
-    schema: { ready: true, version: 22, expectedVersion: 22 },
+    schema: { ready: true, version: 23, expectedVersion: 23 },
     maintenanceMode: false,
     coreOperationsHealthy: true,
   });
-  assert.deepEqual(ready, { ready: true, blockers: [], localExpectedSchemaVersion: 22 });
+  assert.deepEqual(ready, { ready: true, blockers: [], localExpectedSchemaVersion: 23 });
 
   const blocked = productionCoreReadiness({
     schema: { ready: false, version: 18, expectedVersion: 18 },

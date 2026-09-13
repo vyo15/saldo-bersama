@@ -7,7 +7,7 @@
 
 ## Runtime canonical
 
-- **Active schema contract:** v22
+- **Active schema contract:** v23
 - Node yang didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - Turso adalah source of truth; Google Sheets hanya mirror satu arah untuk data shared.
 - Development dan Production memakai database terpisah yang ditandai `DATABASE_ENVIRONMENT`; cross-binding ditolak fail-closed.
@@ -28,9 +28,9 @@
 | Investasi/RDN | Implemented | Asset-centric manual tracking; RDN terpisah dari saldo operasional; compatibility histori tetap readable. |
 | Dashboard | Implemented | Dana Tersedia (`safeToSpend`) menjadi angka utama agar Saldo rekening tidak terbaca sebagai uang bebas; Saldo rekening non-investasi tetap konteks sekunder. Shared view model, planning/attention state, investment overview, dan notification deep-link tetap canonical. |
 | Laporan | Partial | Monthly/trend/breakdown tersedia termasuk aktivitas Komitmen (pokok, bunga/biaya, setoran/penerimaan Arisan); report document semester/tahunan masih future. |
-| Rekonsiliasi | Implemented | Ledger reconciliation + investment reconciliation terpisah. |
+| Rekonsiliasi | Implemented | Ledger reconciliation + investment reconciliation terpisah; pengingat stale configurable 0/14/30/60 hari (default 30) tanpa mengubah checkpoint reconciliation. |
 | Realtime | Implemented | `sync_revisions`, `sync.state`, dependency map, visible polling, foreground/reconnect/push/BroadcastChannel, pull-to-refresh tanpa hard reload. Multi-device Production smoke tetap wajib untuk release sync-critical. |
-| Notification Center/Web Push | Partial | In-app feed + preference + Push tersedia; server read receipt lintas perangkat dan real Android/iOS coverage masih gap. |
+| Notification Center/Web Push | Partial | Task-first in-app feed + preference + Push tersedia; read receipt server-side lintas perangkat memakai fingerprint kondisi, cadence rekonsiliasi configurable, reminder konsistensi pencatatan opt-in actor-scoped, completion Push default mati. Real Android/iOS coverage masih gap. |
 | Accessibility | Partial | Static/semantic regression kuat; axe penuh dan real-device browser coverage tetap gap. |
 
 Detail evidence dan remaining gap berada di `IMPLEMENTATION_MATRIX.md`; behavior produk canonical berada di `product/PRODUCT_REQUIREMENTS.md`.

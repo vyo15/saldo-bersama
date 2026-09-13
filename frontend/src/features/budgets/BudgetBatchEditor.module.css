@@ -15,6 +15,11 @@
 .categoryBlock { display: grid; gap: .15rem; }
 .categoryCreate { min-height: 2rem; width: fit-content; padding: 0 .15rem; border: 0; display: inline-flex; align-items: center; gap: .35rem; background: transparent; color: var(--primary-strong); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .categoryCreate svg { width: .9rem; height: .9rem; }
+.usageDetails { border: 1px solid var(--border); border-radius: .75rem; background: color-mix(in srgb,var(--surface) 92%,var(--primary-soft)); overflow: hidden; }
+.usageDetails > summary { min-height: 2.65rem; padding: .5rem .7rem; display: flex; align-items: center; justify-content: space-between; gap: .65rem; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; list-style: none; }
+.usageDetails > summary::-webkit-details-marker { display: none; }
+.usageDetails > summary strong { color: var(--text); font-size: var(--font-size-xs); text-align: right; }
+.usageDetailsContent { padding: .15rem .7rem .7rem; display: grid; gap: .55rem; }
 .modeBlock { display: grid; gap: .35rem; }
 .recordingMode { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .35rem; }
 .recordingMode button { min-height: 2.5rem; padding: .4rem .55rem; border: 1px solid var(--border); border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; background: var(--surface); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }

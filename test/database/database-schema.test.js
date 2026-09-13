@@ -24,6 +24,7 @@ const budgetLifecycleHistoryMigrationUrl = new URL("017_budget_lifecycle_history
 const envelopeDecorationMigrationUrl = new URL("018_envelope_decoration.sql", migrationDirectory);
 const budgetRecordingModeMigrationUrl = new URL("019_budget_recording_mode.sql", migrationDirectory);
 const commitmentsMigrationUrl = new URL("020_commitments.sql", migrationDirectory);
+const notificationAttentionMigrationUrl = new URL("021_notification_attention_state.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -113,9 +114,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v22 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v23 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "22");
+  assert.equal(result.schema_version, "23");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -467,5 +468,18 @@ test("migration v22 menambahkan Komitmen, ledger gerakan, dan link transaksi/jad
   assert.match(sql, /ALTER TABLE transactions[\s\S]*ADD COLUMN commitment_id/);
   assert.match(sql, /ADD COLUMN commitment_flow/);
   assert.match(sql, /value='22'/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+
+test("migration v23 menambah read-state lintas perangkat dan cadence notifikasi tanpa menyentuh ledger", async () => {
+  const sql = await readFile(notificationAttentionMigrationUrl, "utf8");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS notification_read_states/);
+  assert.match(sql, /PRIMARY KEY \(user_id, notification_key, fingerprint\)/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS notification_settings/);
+  assert.match(sql, /reconciliation_days INTEGER NOT NULL DEFAULT 30/);
+  assert.match(sql, /recording_consistency_days INTEGER NOT NULL DEFAULT 0/);
+  assert.match(sql, /value='23'/);
+  assert.doesNotMatch(sql, /ALTER TABLE transactions|ALTER TABLE accounts|ALTER TABLE recurring_rules/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
 });

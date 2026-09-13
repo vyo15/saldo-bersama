@@ -41,7 +41,7 @@ test("dashboard desktop memprioritaskan saldo, attention, aktivitas, lalu perenc
   const workspace = dashboard.indexOf('shared-dashboard__layout');
   const planning = dashboard.indexOf("<DashboardPlanning");
   assert.ok(header >= 0 && metrics > header && attention > metrics && accounts > attention && workspace > accounts && planning > workspace);
-  for (const label of ["Dana Tersedia", "Saldo rekening", "Aman dipakai / hari", "Masuk bulan ini", "Keluar bulan ini", "Alokasi", "Rekening", "Target", "Cocokkan", "Transaksi terbaru", "Perencanaan keuangan"]) assert.match(dashboard, new RegExp(label));
+  for (const label of ["Dana Tersedia", "Saldo rekening", "Aman dipakai / hari", "Masuk bulan ini", "Keluar bulan ini", "Atur Dana", "Rekening", "Target", "Cocokkan", "Transaksi terbaru", "Perencanaan keuangan"]) assert.match(dashboard, new RegExp(label));
   assert.match(dashboard, /shared-investment-widget/);
   assert.match(dashboard, /Kondisi keuangan terkendali/);
   assert.match(dashboard, /Tinjau sekarang/);

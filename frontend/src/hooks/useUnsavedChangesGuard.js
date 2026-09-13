@@ -55,9 +55,13 @@ const useUnsavedChangesGuard = ({ open, value, onClose, blocked = false }) => {
     return true;
   };
 
-  const confirmDiscard = () => {
+  const markClean = (nextValue = value) => {
     setPromptOpen(false);
-    baselineRef.current = currentFingerprint;
+    baselineRef.current = fingerprint(nextValue);
+  };
+
+  const confirmDiscard = () => {
+    markClean();
     onClose?.();
   };
 
@@ -68,6 +72,7 @@ const useUnsavedChangesGuard = ({ open, value, onClose, blocked = false }) => {
     discardAndClose,
     cancelDiscard: () => setPromptOpen(false),
     confirmDiscard,
+    markClean,
   };
 };
 

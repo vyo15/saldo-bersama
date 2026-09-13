@@ -6,6 +6,7 @@ import Modal from "../../components/common/Modal.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { formatDateTimeJakarta, todayInJakarta } from "../../domain/dates.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
+import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import { cancelManualReminder, getManualReminder, getPushNotificationState, saveManualReminder } from "../../services/notifications.js";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
@@ -139,6 +140,7 @@ const ManualReminderModal = ({ target, onClose }) => {
   const ready = loadState.status === "ready";
   const deliveryPending = Boolean(!current && lastDispatch && !["sent", "dead_letter"].includes(lastDispatch.status));
   const close = () => { if (!busy) onClose?.(); };
+  const guard = useUnsavedChangesGuard({ open: Boolean(target) && ready, value: form, onClose: close, blocked: busy });
 
   const save = async (event) => {
     event.preventDefault();
@@ -147,6 +149,7 @@ const ManualReminderModal = ({ target, onClose }) => {
       const result = await saveMutation.run(() => saveManualReminder({ entityType: target.entityType, entityId: target.entityId, scheduledLocal, rowVersion: current?.row_version || null }));
       setCurrent(result.item);
       setLastDispatch(null);
+      guard.markClean(form);
       notify({ message: "Pengingat manual berhasil dijadwalkan.", tone: "success", dedupeKey: `reminder:${target.entityType}:${target.entityId}` });
     } catch { /* mutation state menampilkan error */ }
   };
@@ -157,7 +160,9 @@ const ManualReminderModal = ({ target, onClose }) => {
       await cancelMutation.run(() => cancelManualReminder({ reminderId: current.reminder_id, rowVersion: current.row_version }));
       setCurrent(null);
       setLastDispatch(null);
-      setForm(defaultForm(target));
+      const resetForm = defaultForm(target);
+      setForm(resetForm);
+      guard.markClean(resetForm);
       notify({ message: "Pengingat manual dibatalkan.", tone: "success", dedupeKey: `reminder-cancel:${target.entityType}:${target.entityId}` });
     } catch { /* mutation state menampilkan error */ }
   };
@@ -165,11 +170,11 @@ const ManualReminderModal = ({ target, onClose }) => {
   const error = loadState.error || saveMutation.error || cancelMutation.error;
   const footer = <>
     {current ? <Button type="button" variant="danger" icon={FiTrash2} loading={cancelMutation.busy} disabled={busy || !ready} onClick={cancel}>Batalkan pengingat</Button> : null}
-    <Button type="button" disabled={busy} onClick={close}>Tutup</Button>
+    <Button type="button" disabled={busy} onClick={guard.discardAndClose}>Tutup</Button>
     <Button type="submit" form="manual-reminder-form" variant="primary" icon={FiBell} loading={saveMutation.busy} disabled={busy || !ready || deliveryPending}>{current ? "Ubah jadwal" : "Simpan pengingat"}</Button>
   </>;
 
-  return <Modal open={Boolean(target)} title="Pengingat manual" description={reminderDescription(target)} onClose={close} dismissible={!busy} mobileSwipeToClose size="sm" footer={footer}>
+  return <Modal open={Boolean(target)} title="Pengingat manual" description={reminderDescription(target)} onClose={guard.requestClose} discardGuard={guard} discardSubject="pengingat manual" dismissible={!busy} mobileSwipeToClose size="sm" footer={footer}>
     <form id="manual-reminder-form" className="form-grid" onSubmit={save}>
       <ReminderNotices current={current} activeLabel={current?.scheduled_at ? formatDateTimeJakarta(current.scheduled_at) : ""} dispatch={dispatchNotice(lastDispatch)} pushNotice={pushAvailabilityNotice(pushState)} loadState={loadState} error={error} />
       <ReminderFields form={form} setForm={setForm} maxDate={addLocalDays(todayInJakarta(), 365)} minTime={soon?.date === form.date ? soon.time : undefined} busy={busy} ready={ready} />

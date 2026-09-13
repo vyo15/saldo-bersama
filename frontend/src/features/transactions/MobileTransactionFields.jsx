@@ -1,11 +1,21 @@
-import { FiAlertTriangle, FiCalendar, FiChevronRight, FiGrid, FiLayers } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import {
+  FiAlertTriangle,
+  FiCalendar,
+  FiCheckCircle,
+  FiChevronDown,
+  FiChevronRight,
+  FiChevronUp,
+  FiGrid,
+  FiLayers,
+} from "react-icons/fi";
 import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
-import { formatDateLongIndonesia } from "../../domain/dates.js";
+import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
@@ -14,8 +24,8 @@ import { orderedEnvelopeOptions, sourceAccountPicker } from "./transactionFormSm
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, paymentMethodLabel, quickAmountLabel } from "./transactionFormPresentation.js";
 import TransactionImpactPreview from "./components/TransactionImpactPreview.jsx";
 import styles from "./MobileTransactionFields.module.css";
-
 import TemporalInput from "../../components/common/TemporalInput.jsx";
+
 const TypeSelector = ({ form, update, lockType }) => lockType ? null : (
   <VisualChoiceGroup
     className={styles.typeSelector}
@@ -33,26 +43,14 @@ const TypeSelector = ({ form, update, lockType }) => lockType ? null : (
 const AmountField = ({ form, update, errors, amountRef }) => (
   <section className={styles.section}>
     <div className={styles.amountVisual}>
-      <MoneyInput
-        ref={amountRef}
-        id="transaction-amount"
-        value={form.amount}
-        onChange={(value) => update("amount", value)}
-        error={errors.amount}
-        required
-      />
+      <MoneyInput ref={amountRef} id="transaction-amount" value={form.amount} onChange={(value) => update("amount", value)} error={errors.amount} required />
       <span className={styles.currencyBadge} aria-hidden="true">Rp</span>
       <FiGrid className={styles.amountIcon} aria-hidden="true" />
     </div>
     {form.transaction_type === TRANSACTION_TYPES.EXPENSE ? (
       <div className={styles.quickAmounts} aria-label="Nominal pengeluaran cepat">
         {QUICK_EXPENSE_AMOUNTS.map((amount) => (
-          <button
-            key={amount}
-            type="button"
-            aria-pressed={Number(form.amount || 0) === amount}
-            onClick={() => update("amount", String(amount))}
-          >
+          <button key={amount} type="button" aria-pressed={Number(form.amount || 0) === amount} onClick={() => update("amount", String(amount))}>
             {quickAmountLabel(amount)}
           </button>
         ))}
@@ -73,12 +71,7 @@ const DetailCopy = ({ label, value, meta, error, errorId }) => (
 const DateRow = ({ form, update, errors }) => (
   <label className={styles.detailRow} htmlFor="transaction-date">
     <span className={styles.detailIcon} aria-hidden="true"><FiCalendar /></span>
-    <DetailCopy
-      label="Tanggal"
-      value={formatDateLongIndonesia(form.transaction_date) || "Pilih tanggal"}
-      error={errors.transaction_date}
-      errorId="transaction-date-error"
-    />
+    <DetailCopy label="Tanggal" value={formatDateLongIndonesia(form.transaction_date) || "Pilih tanggal"} error={errors.transaction_date} errorId="transaction-date-error" />
     <FiChevronRight className={styles.chevron} aria-hidden="true" />
     <TemporalInput
       id="transaction-date"
@@ -92,18 +85,8 @@ const DateRow = ({ form, update, errors }) => (
   </label>
 );
 
-const compactAllocationHint = ({ form, candidates }) => {
-  if (!form.source_account_id) return "Pilih rekening terlebih dahulu";
-  if (!form.category_id) return "Pilih kategori terlebih dahulu";
-  if (candidates.length > 1) return `${candidates.length} Alokasi cocok`;
-  if (candidates.length === 1) return `${candidates[0].envelope.name} direkomendasikan`;
-  return "Opsional";
-};
-
 const sourceAccountOptionMeta = (item, transactionType) => {
-  if ([TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.EXPENSE].includes(transactionType)) {
-    return `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`;
-  }
+  if ([TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.EXPENSE].includes(transactionType)) return `Tersedia ${formatRupiah(item.available_balance ?? item.balance ?? 0)}`;
   return `Saldo ${formatRupiah(item.balance || 0)}`;
 };
 
@@ -111,17 +94,9 @@ const TransactionAccountField = (p) => {
   const destinationMode = p.isIncome;
   const pickerAccounts = destinationMode
     ? p.compatibleDestinationAccounts
-    : sourceAccountPicker({
-      accounts: p.accounts,
-      transactionType: p.form.transaction_type,
-      selectedAccountId: p.form.source_account_id,
-      recentTransactions: p.recentTransactions,
-    });
+    : sourceAccountPicker({ accounts: p.accounts, transactionType: p.form.transaction_type, selectedAccountId: p.form.source_account_id, recentTransactions: p.recentTransactions });
   const value = destinationMode ? p.form.destination_account_id : p.form.source_account_id;
   const label = destinationMode ? "Rekening tujuan" : "Rekening sumber";
-  const placeholderMeta = destinationMode
-    ? "Pilih rekening yang menerima dana"
-    : "Hanya rekening yang dapat dipakai ditampilkan";
   const error = destinationMode ? p.errors.destination_account_id : p.errors.source_account_id;
   const options = pickerAccounts.map((item) => ({
     value: item.account_id,
@@ -129,7 +104,6 @@ const TransactionAccountField = (p) => {
     meta: destinationMode ? `Saldo ${formatRupiah(item.balance || 0)}` : sourceAccountOptionMeta(item, p.form.transaction_type),
     ...accountOptionVisual(item),
   }));
-
   return (
     <InlineSelectionPicker
       label={label}
@@ -138,7 +112,7 @@ const TransactionAccountField = (p) => {
       onChange={destinationMode ? (accountId) => p.update("destination_account_id", accountId) : p.onSourceAccountChange}
       options={options}
       placeholder="Pilih rekening"
-      placeholderMeta={placeholderMeta}
+      placeholderMeta={destinationMode ? "Pilih rekening yang menerima dana" : "Rekening yang dapat dipakai ditampilkan terlebih dahulu"}
       placeholderOption={{ icon: AccountIcon }}
       searchable={options.length > 8}
       searchPlaceholder="Cari rekening…"
@@ -150,22 +124,14 @@ const TransactionAccountField = (p) => {
 };
 
 const envelopeOptionMeta = (item) => {
-  const assignee = item.assignee_user_id
-    ? `${item.assignee_name || "Pengguna"} · ${userRoleLabel(item.assignee_role)}`
-    : "Bersama";
+  const assignee = item.assignee_user_id ? `${item.assignee_name || "Pengguna"} · ${userRoleLabel(item.assignee_role)}` : "Bersama";
   return `${assignee} · sisa ${formatRupiah(item.remaining_amount || 0)}`;
 };
 
 const EnvelopeField = (p) => {
   const disabled = !p.form.source_account_id || !p.form.category_id;
-  const hint = compactAllocationHint({ form: p.form, candidates: p.allocationCandidates });
   const options = disabled ? [] : [
-    {
-      value: "",
-      label: "Belum dialokasikan",
-      meta: "Gunakan dana rekening tanpa mengikat ke Alokasi Dana",
-      icon: FiLayers,
-    },
+    { value: "", label: "Belum dialokasikan", meta: "Gunakan dana rekening tanpa mengikat ke Alokasi Dana", icon: FiLayers },
     ...orderedEnvelopeOptions(p.compatibleEnvelopes, p.allocationCandidates).map((item) => ({
       value: item.envelope_period_id,
       label: item.name,
@@ -173,15 +139,14 @@ const EnvelopeField = (p) => {
       icon: FiLayers,
     })),
   ];
-
   return (
     <InlineSelectionPicker
-      label="Alokasi Dana · opsional"
+      label="Alokasi Dana · manual"
       value={p.form.envelope_period_id}
       onChange={p.onEnvelopeChange}
       options={options}
       placeholder={disabled ? "Belum tersedia" : "Pilih Alokasi Dana"}
-      placeholderMeta={hint}
+      placeholderMeta="Gunakan hanya jika transaksi tidak perlu dihubungkan ke Kebutuhan tertentu."
       placeholderOption={{ icon: FiLayers }}
       searchable={options.length > 8}
       searchPlaceholder="Cari Alokasi Dana…"
@@ -191,11 +156,56 @@ const EnvelopeField = (p) => {
   );
 };
 
-const DetailGroup = (p) => (
+const needMeta = (candidate) => {
+  const amount = Math.max(0, Number(candidate.need.amount || 0));
+  const used = Math.max(0, Number(candidate.need.used_amount || 0));
+  return `${candidate.envelope.name} · sisa ${formatRupiah(Math.max(0, amount - used))}`;
+};
+
+const NeedField = (p) => {
+  if (p.form.transaction_type !== TRANSACTION_TYPES.EXPENSE || !p.form.source_account_id || !p.form.category_id) return null;
+  if (!p.allocationCandidates.length) {
+    return (
+      <div className={styles.needEmpty}>
+        <FiLayers aria-hidden="true" />
+        <span><strong>Belum ada Kebutuhan yang cocok</strong><small>Transaksi tetap dapat dicatat. Alokasi Dana dapat dipilih manual bila diperlukan.</small></span>
+      </div>
+    );
+  }
+  const options = [
+    { value: "", label: "Belum masuk Kebutuhan", meta: "Catat tanpa menghubungkan ke Kebutuhan", icon: FiLayers },
+    ...p.allocationCandidates.map((candidate) => ({
+      value: candidate.need.budget_id,
+      label: candidate.need.name || "Kebutuhan",
+      meta: needMeta(candidate),
+      icon: FiCheckCircle,
+    })),
+  ];
+  const automatic = p.allocationCandidates.length === 1 && p.form.budget_id === p.allocationCandidates[0].need.budget_id;
+  return (
+    <div className={styles.needField}>
+      <InlineSelectionPicker
+        label={p.allocationCandidates.length > 1 ? "Dipakai untuk kebutuhan mana?" : "Kebutuhan"}
+        value={p.form.budget_id}
+        onChange={p.onNeedChange}
+        options={options}
+        placeholder="Pilih Kebutuhan"
+        placeholderMeta={p.allocationCandidates.length > 1 ? `${p.allocationCandidates.length} Kebutuhan cocok dengan kategori ini` : "Kebutuhan yang cocok akan dipilih otomatis"}
+        placeholderOption={{ icon: FiLayers }}
+        searchable={options.length > 8}
+        searchPlaceholder="Cari Kebutuhan…"
+        emptyText="Belum ada Kebutuhan yang cocok."
+        disabled={p.outcomeUnknown}
+      />
+      {automatic ? <small className={styles.smartMatch}><FiCheckCircle aria-hidden="true" /> Dipilih otomatis dari Kebutuhan bulan ini.</small> : null}
+    </div>
+  );
+};
+
+const PrimaryDetails = (p) => (
   <section className={styles.section}>
-    <span className={styles.sectionLabel}>Detail transaksi</span>
+    <span className={styles.sectionLabel}>Transaksi</span>
     <div className={styles.detailStack}>
-      <DateRow form={p.form} update={p.update} errors={p.errors} />
       <TransactionAccountField {...p} />
       <MobileTransactionCategoryField
         key={`${p.form.transaction_type}:${p.form.source_account_id}`}
@@ -206,7 +216,7 @@ const DetailGroup = (p) => (
         errors={p.errors}
         outcomeUnknown={p.outcomeUnknown}
       />
-      {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField {...p} /> : null}
+      <NeedField {...p} />
     </div>
   </section>
 );
@@ -221,16 +231,7 @@ const PaymentMethods = ({ form, update }) => {
       <span className={styles.sectionLabel}>Metode pembayaran</span>
       <div className={styles.paymentChoices} aria-label="Metode pembayaran">
         {options.map((item) => (
-          <button
-            key={item.value || "unset"}
-            type="button"
-            className={item.legacy ? styles.legacyPayment : undefined}
-            aria-pressed={form.payment_method === item.value}
-            aria-disabled={item.legacy || undefined}
-            onClick={() => {
-              if (!item.legacy) update("payment_method", form.payment_method === item.value ? "" : item.value);
-            }}
-          >
+          <button key={item.value || "unset"} type="button" className={item.legacy ? styles.legacyPayment : undefined} aria-pressed={form.payment_method === item.value} aria-disabled={item.legacy || undefined} onClick={() => { if (!item.legacy) update("payment_method", form.payment_method === item.value ? "" : item.value); }}>
             {item.label}
           </button>
         ))}
@@ -249,10 +250,7 @@ const NotesField = ({ form, update, errors }) => (
       maxLength="250"
       value={form.description}
       onChange={(event) => update("description", event.target.value)}
-      onInput={(event) => {
-        event.currentTarget.style.height = "auto";
-        event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 130)}px`;
-      }}
+      onInput={(event) => { event.currentTarget.style.height = "auto"; event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 130)}px`; }}
       placeholder="Opsional"
       aria-invalid={Boolean(errors.description)}
       aria-describedby={errors.description ? "description-error" : undefined}
@@ -261,48 +259,70 @@ const NotesField = ({ form, update, errors }) => (
   </section>
 );
 
-const ValidationSummary = ({ errors }) => {
-  const messages = Object.values(errors || {}).filter(Boolean);
-  if (!messages.length) return null;
+const AdditionalDetails = (p) => {
+  const shouldOpen = p.isEditing || Boolean(p.form.payment_method || p.form.description) || p.form.transaction_date !== todayInJakarta() || Boolean(p.errors.transaction_date || p.errors.description);
+  const [open, setOpen] = useState(shouldOpen);
+  const [manualAllocationOpen, setManualAllocationOpen] = useState(Boolean(p.form.envelope_period_id && !p.form.budget_id));
+
+  useEffect(() => {
+    if (p.errors.transaction_date || p.errors.description) setOpen(true);
+  }, [p.errors.description, p.errors.transaction_date]);
+  useEffect(() => {
+    if (p.form.envelope_period_id && !p.form.budget_id) setManualAllocationOpen(true);
+  }, [p.form.budget_id, p.form.envelope_period_id]);
+
   return (
-    <div className={styles.validationNotice} role="alert" aria-live="assertive">
-      <FiAlertTriangle aria-hidden="true" />
-      <span><strong>Lengkapi data transaksi yang wajib dipilih.</strong> {messages[0]}</span>
-    </div>
+    <section className={styles.additionalDetails}>
+      <button type="button" className={styles.additionalToggle} aria-expanded={open} aria-controls="transaction-additional-details" onClick={() => setOpen((current) => !current)}>
+        <span><strong>Detail tambahan</strong><small>Tanggal, metode pembayaran, catatan</small></span>
+        {open ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}
+      </button>
+      {open ? (
+        <div id="transaction-additional-details" className={styles.additionalBody}>
+          <DateRow form={p.form} update={p.update} errors={p.errors} />
+          <PaymentMethods form={p.form} update={p.update} />
+          <NotesField form={p.form} update={p.update} errors={p.errors} />
+        </div>
+      ) : null}
+      {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? (
+        <div className={styles.manualAllocation}>
+          <button type="button" className={styles.manualAllocationToggle} aria-expanded={manualAllocationOpen} onClick={() => setManualAllocationOpen((current) => !current)}>
+            <FiLayers aria-hidden="true" />
+            <span>{manualAllocationOpen ? "Tutup pilihan Alokasi manual" : "Pilih Alokasi manual"}</span>
+          </button>
+          {manualAllocationOpen ? <EnvelopeField {...p} /> : null}
+        </div>
+      ) : null}
+    </section>
   );
 };
 
-const FundsWarning = ({ warning }) => warning ? (
-  <div className={styles.warningNotice} role="status">
-    <FiAlertTriangle aria-hidden="true" />
-    <span><strong>{warning.title}</strong> {warning.message}</span>
-  </div>
-) : null;
+const ValidationSummary = ({ errors }) => {
+  const messages = Object.values(errors || {}).filter(Boolean);
+  if (!messages.length) return null;
+  return <div className={styles.validationNotice} role="alert" aria-live="assertive"><FiAlertTriangle aria-hidden="true" /><span><strong>Lengkapi data transaksi yang wajib dipilih.</strong> {messages[0]}</span></div>;
+};
+
+const FundsWarning = ({ warning }) => warning ? <div className={styles.warningNotice} role="status"><FiAlertTriangle aria-hidden="true" /><span><strong>{warning.title}</strong> {warning.message}</span></div> : null;
 
 const SubmitFeedback = ({ confirmation, submitState }) => (
   <>
-    {confirmation ? (
-      <div className={styles.warningNotice} role="alert">
-        <FiAlertTriangle aria-hidden="true" />
-        <span>{confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span>
-      </div>
-    ) : null}
+    {confirmation ? <div className={styles.warningNotice} role="alert"><FiAlertTriangle aria-hidden="true" /><span>{confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}
     {submitState.error ? <div className={styles.failureNotice} role="alert">{submitState.error.message}</div> : null}
   </>
 );
 
 const MobileTransactionFields = (p) => (
-    <div className={styles.composer}>
-      <ValidationSummary errors={p.errors} />
-      <TypeSelector form={p.form} update={p.update} lockType={p.lockType} />
-      <AmountField form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} />
-      <DetailGroup {...p} />
-      <PaymentMethods form={p.form} update={p.update} />
-      <NotesField form={p.form} update={p.update} errors={p.errors} />
-      <FundsWarning warning={p.fundsWarning} />
-      <TransactionImpactPreview impact={p.impact} isTransfer={false} />
-      <SubmitFeedback confirmation={p.confirmation} submitState={p.submitState} />
-    </div>
-  );
+  <div className={styles.composer}>
+    <ValidationSummary errors={p.errors} />
+    <TypeSelector form={p.form} update={p.update} lockType={p.lockType} />
+    <AmountField form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} />
+    <PrimaryDetails {...p} />
+    <AdditionalDetails {...p} />
+    <FundsWarning warning={p.fundsWarning} />
+    <TransactionImpactPreview impact={p.impact} isTransfer={false} />
+    <SubmitFeedback confirmation={p.confirmation} submitState={p.submitState} />
+  </div>
+);
 
 export default MobileTransactionFields;

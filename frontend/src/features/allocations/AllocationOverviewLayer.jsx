@@ -54,7 +54,7 @@ const AllocationCards = ({ items, totalItems, onAddNeed, attentionEnvelopeId, bu
   const needs = linkedBudgetsForItem(budgets, item);
   const scheduleCount = relatedRecurringForItem(recurringItems, budgets, item).length;
   return <AllocationCard key={item.envelope_period_id} item={item} onAddNeed={onAddNeed} attention={item.envelope_period_id === attentionEnvelopeId} onOpenDetail={onOpenDetail} needs={needs} scheduleCount={scheduleCount} />;
-}) : <EmptyState className={allocationClass("allocation-empty")} variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Belum ada Alokasi Dana aktif" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Pisahkan dana berdasarkan tujuan agar sisa yang benar-benar tersedia lebih mudah dipantau." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua Alokasi</Button> : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat Alokasi Dana</Button> : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>} />}</section>;
+}) : <EmptyState className={allocationClass("allocation-empty")} variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Mulai atur uang" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Siapkan uang untuk kebutuhan agar Dana Tersedia lebih mudah dipantau." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua Alokasi</Button> : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Atur uang</Button> : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>} />}</section>;
 
 const AllocationOverviewLayer = ({
   activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, onAddNeed,
@@ -64,7 +64,7 @@ const AllocationOverviewLayer = ({
 }) => <>
   {activeItems.length ? <AllocationSummary items={activeItems} /> : null}
   {activeItems.length && canCreate ? <div className={allocationClass("allocation-header-actions allocation-header-actions--simple")}>
-    <Button className={allocationClass("allocation-header-actions__create")} icon={FiPlus} onClick={openCreate}>Alokasi baru</Button>
+    <Button className={allocationClass("allocation-header-actions__create")} icon={FiPlus} onClick={openCreate}>Atur uang</Button>
   </div> : null}
   <section className={allocationClass("allocation-active")} aria-labelledby="allocation-active-title">
     <div className={allocationClass("allocation-section-heading")}><h2 id="allocation-active-title">Alokasi aktif</h2>{activeItems.length ? <span>{filteredActiveItems.length} dari {activeItems.length}</span> : null}</div>

@@ -35,6 +35,7 @@
 .copy strong { min-width: 0; color: var(--text); font-size: var(--font-size-body-sm); line-height: 1.35; letter-spacing: -.01em; }
 .entity { min-width: 0; overflow: hidden; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }
 .copy small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.actionLabel { margin-top: 2px; color: var(--primary-strong); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 .trailing { display: grid; place-items: center; color: var(--text-muted); }
 .trailing svg { width: 17px; height: 17px; }
 .empty { min-height: 360px; padding: 72px 24px 96px; display: grid; align-content: start; justify-items: center; text-align: center; }

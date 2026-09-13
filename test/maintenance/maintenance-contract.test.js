@@ -12,6 +12,12 @@ const maintenanceSource = async () => {
   return (await Promise.all(preferredOrder.filter((name) => available.has(name)).map((name) => readFile(new URL(name, directory), "utf8")))).join("\n");
 };
 
+const withoutNotificationSettings = (snapshot) => {
+  delete snapshot.tables.notification_settings;
+  delete snapshot.manifest.tables.notification_settings;
+  return snapshot;
+};
+
 test("backup memakai snapshot transaction, checksum, gzip limit, nama unik, dan Drive bridge", async () => {
   const maintenance = await maintenanceSource();
   assert.match(maintenance, /snapshotDatabase = async \(db, \{ schemaVersion = DATABASE_SCHEMA_VERSION \} = \{\}\) => db\.transaction/);
@@ -54,9 +60,11 @@ test("restore melakukan preview, safety backup, maintenance fail-closed, transac
 
 test("restore menghapus credential runtime lama, mempertahankan audit, dan tidak mengubah authorization canonical dari backup", async () => {
   const maintenance = await maintenanceSource();
-  assert.match(maintenance, /"notification_deliveries", "notification_queue", "integration_links", "integration_outbox", "request_nonces"/);
+  assert.match(maintenance, /"notification_deliveries", "notification_queue", "notification_read_states", "integration_links", "integration_outbox", "request_nonces", "rate_limit_buckets"/);
   assert.match(maintenance, /"push_subscriptions"/);
   assert.doesNotMatch(maintenance, /BACKUP_TABLES[\s\S]{0,500}"push_subscriptions"/);
+  assert.doesNotMatch(maintenance, /BACKUP_TABLES[\s\S]{0,700}"notification_read_states"/);
+  assert.match(maintenance, /BACKUP_TABLES[\s\S]{0,700}"notification_settings"/);
   assert.doesNotMatch(maintenance, /insertRows\(tx, "push_subscriptions"/);
   assert.doesNotMatch(maintenance, /RESTORE_DELETE_ORDER[\s\S]{0,400}"audit_log"/);
   assert.match(maintenance, /currentByEmail/);
@@ -104,13 +112,14 @@ test("normalisasi restore template bank dan E-wallet menurunkan enum uppercase s
 
 
 
-test("backup schema v22 menyimpan data canonical termasuk investasi dan request kolaborasi tanpa session, binding runtime, atau bucket rate limit", async () => {
+test("backup schema v23 menyimpan data canonical termasuk pengaturan notifikasi, investasi, dan request kolaborasi tanpa session, binding runtime, atau bucket rate limit", async () => {
   const db = await createSqliteTestDatabase();
   try {
     const now = "2026-08-09T00:00:00.000Z";
     await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-pref", "firebase-pref", "pref@example.com", "Preference", "owner", "active", 1, now, now]);
     await db.execute("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["u-member", "firebase-member", "member@example.com", "Member", "member", "active", 1, now, now]);
     await db.execute("INSERT INTO notification_preferences(user_id,notification_type,enabled,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", ["u-pref", "budget_threshold", 0, 1, now, now]);
+    await db.execute("INSERT INTO notification_settings(user_id,reconciliation_days,recording_consistency_days,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?)", ["u-pref", 14, 3, 1, now, now]);
     await db.execute("INSERT INTO manual_reminders(reminder_id,user_id,entity_type,entity_id,scheduled_at,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", ["reminder-v10", "u-pref", "budget", "budget-v10", "2026-08-18T01:00:00.000Z", "scheduled", 1, now, now]);
     await db.execute("INSERT INTO accounts(account_id,name,account_type,account_number,bank_template,ewallet_template,owner_scope,owner_user_id,initial_balance,initial_balance_date,allow_negative,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ["wallet-v8", "Belanja", "ewallet", "", "generic", "gopay", "shared", null, 0, "2026-01-01", 0, "active", 1, "u-pref", now, "u-pref", now]);
     await db.execute("INSERT INTO categories(category_id,name,transaction_type,nature,icon,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", ["category-cost-v11", "Biaya Bersama", "expense", "variable", "other", "active", 1, "u-pref", now, "u-pref", now]);
@@ -119,10 +128,13 @@ test("backup schema v22 menyimpan data canonical termasuk investasi dan request 
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ["tx-cost-v11", "2026-08-09", "expense", "wallet-v8", null, "category-cost-v11", null, null, null, 100, "Shared split", "", "", "", "shared", null, "equal", costShareJson, "active", 1, "backup-cost-v11", "u-pref", now, "u-pref", now, null, null, ""]);
     await db.execute("INSERT INTO rate_limit_buckets(bucket_key,window_started_at_ms,reset_at_ms,request_count,updated_at) VALUES(?,?,?,?,?)", ["backup:test:abcdefghijklmnop", 1, 60_001, 3, now]);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 22);
+    assert.equal(snapshot.manifest.schemaVersion, 23);
     assert.equal(snapshot.manifest.tables.notification_preferences, 1);
+    assert.equal(snapshot.manifest.tables.notification_settings, 1);
     assert.equal(snapshot.manifest.tables.manual_reminders, 1);
     assert.equal(snapshot.tables.notification_preferences[0].enabled, 0);
+    assert.equal(snapshot.tables.notification_settings[0].reconciliation_days, 14);
+    assert.equal(snapshot.tables.notification_settings[0].recording_consistency_days, 3);
     assert.equal(snapshot.tables.manual_reminders[0].entity_type, "budget");
     assert.equal(snapshot.tables.accounts[0].ewallet_template, "gopay");
     assert.equal(snapshot.tables.transactions[0].cost_share_mode, "equal");
@@ -155,7 +167,7 @@ test("snapshot pre-migration memakai schema database aktual dan v18 tidak memaks
   } finally { db.close(); }
 });
 
-test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additive canonical", async () => {
+test("backup schema v3-v22 tetap dapat dimuat ke schema v23 dengan field additive canonical", async () => {
   const sourceDb = await createSqliteTestDatabase();
   const targetDb = await createSqliteTestDatabase();
   try {
@@ -166,10 +178,12 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
 
     const current = await snapshotDatabase(sourceDb);
     const legacyTables = structuredClone(current.tables);
+    delete legacyTables.notification_settings;
     delete legacyTables.notification_preferences;
     delete legacyTables.manual_reminders;
     legacyTables.accounts = legacyTables.accounts.map(({ account_number: _accountNumber, bank_template: _bankTemplate, ewallet_template: _ewalletTemplate, ...row }) => row);
     const legacyManifestTables = { ...current.manifest.tables };
+    delete legacyManifestTables.notification_settings;
     delete legacyManifestTables.notification_preferences;
     delete legacyManifestTables.manual_reminders;
     const manifest = { ...current.manifest, version: 3, schemaVersion: 3, tables: legacyManifestTables };
@@ -184,7 +198,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     v4.checksum = digest(canonicalJson({ manifest: v4.manifest, tables: v4.tables }));
     assert.equal(validateSnapshot(v4), v4.checksum);
 
-    const v5 = structuredClone(current);
+    const v5 = withoutNotificationSettings(structuredClone(current));
     v5.tables.accounts = v5.tables.accounts.map(({ ewallet_template: _ewalletTemplate, ...row }) => row);
     v5.manifest.version = 5;
     v5.manifest.schemaVersion = 5;
@@ -195,7 +209,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     v5.checksum = digest(canonicalJson({ manifest: v5.manifest, tables: v5.tables }));
     assert.equal(validateSnapshot(v5), v5.checksum);
 
-    const v6 = structuredClone(current);
+    const v6 = withoutNotificationSettings(structuredClone(current));
     v6.tables.accounts = v6.tables.accounts.map(({ ewallet_template: _ewalletTemplate, ...row }) => row);
     v6.manifest.version = 6;
     v6.manifest.schemaVersion = 6;
@@ -206,7 +220,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     v6.checksum = digest(canonicalJson({ manifest: v6.manifest, tables: v6.tables }));
     assert.equal(validateSnapshot(v6), v6.checksum);
 
-    const v7 = structuredClone(current);
+    const v7 = withoutNotificationSettings(structuredClone(current));
     v7.tables.accounts = v7.tables.accounts.map(({ ewallet_template: _ewalletTemplate, ...row }) => row);
     v7.manifest.version = 7;
     v7.manifest.schemaVersion = 7;
@@ -215,7 +229,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     v7.checksum = digest(canonicalJson({ manifest: v7.manifest, tables: v7.tables }));
     assert.equal(validateSnapshot(v7), v7.checksum);
 
-    const v8 = structuredClone(current);
+    const v8 = withoutNotificationSettings(structuredClone(current));
     v8.manifest.version = 8;
     v8.manifest.schemaVersion = 8;
     delete v8.tables.manual_reminders;
@@ -223,7 +237,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     v8.checksum = digest(canonicalJson({ manifest: v8.manifest, tables: v8.tables }));
     assert.equal(validateSnapshot(v8), v8.checksum);
 
-    const v9 = structuredClone(current);
+    const v9 = withoutNotificationSettings(structuredClone(current));
     v9.manifest.version = 9;
     v9.manifest.schemaVersion = 9;
     delete v9.tables.manual_reminders;
@@ -231,7 +245,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     v9.checksum = digest(canonicalJson({ manifest: v9.manifest, tables: v9.tables }));
     assert.equal(validateSnapshot(v9), v9.checksum);
 
-    const v10 = structuredClone(current);
+    const v10 = withoutNotificationSettings(structuredClone(current));
     v10.manifest.version = 10;
     v10.manifest.schemaVersion = 10;
     v10.tables.transactions = v10.tables.transactions.map(({ cost_share_mode: _mode, cost_share_json: _json, ...row }) => row);
@@ -239,19 +253,19 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     assert.equal(validateSnapshot(v10), v10.checksum);
     assert.deepEqual(normalizeRestoredRows("transactions", [{ transaction_id: "tx-v10" }])[0], { transaction_id: "tx-v10", cost_share_mode: "unspecified", cost_share_json: "[]" });
 
-    const v11 = structuredClone(current);
+    const v11 = withoutNotificationSettings(structuredClone(current));
     v11.manifest.version = 11;
     v11.manifest.schemaVersion = 11;
     v11.checksum = digest(canonicalJson({ manifest: v11.manifest, tables: v11.tables }));
     assert.equal(validateSnapshot(v11), v11.checksum);
 
-    const v12 = structuredClone(current);
+    const v12 = withoutNotificationSettings(structuredClone(current));
     v12.manifest.version = 12;
     v12.manifest.schemaVersion = 12;
     v12.checksum = digest(canonicalJson({ manifest: v12.manifest, tables: v12.tables }));
     assert.equal(validateSnapshot(v12), v12.checksum);
 
-    const v13 = structuredClone(current);
+    const v13 = withoutNotificationSettings(structuredClone(current));
     v13.manifest.version = 13;
     v13.manifest.schemaVersion = 13;
     v13.tables.users = v13.tables.users.map(({ photo_url: _photoUrl, ...row }) => row);
@@ -262,7 +276,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     v13.checksum = digest(canonicalJson({ manifest: v13.manifest, tables: v13.tables }));
     assert.equal(validateSnapshot(v13), v13.checksum);
 
-    const v14 = structuredClone(current);
+    const v14 = withoutNotificationSettings(structuredClone(current));
     v14.manifest.version = 14;
     v14.manifest.schemaVersion = 14;
     for (const table of ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
@@ -277,7 +291,7 @@ test("backup schema v3-v21 tetap dapat dimuat ke schema v22 dengan field additiv
     const v15Correction = normalizeRestoredRows("investment_corrections", [{ correction_id: "correction-v15" }])[0];
     assert.deepEqual(v15Correction, { correction_id: "correction-v15", correction_type: "correction", reference_price: 0, notes: "" });
 
-    const v16 = structuredClone(current);
+    const v16 = withoutNotificationSettings(structuredClone(current));
     v16.manifest.version = 16;
     v16.manifest.schemaVersion = 16;
     v16.tables.accounts = v16.tables.accounts.map(({ is_system_hidden: _hidden, ...row }) => row);

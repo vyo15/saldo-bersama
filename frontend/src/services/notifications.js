@@ -316,6 +316,21 @@ export const updateNotificationPreference = async ({ type, enabled, rowVersion =
   return result;
 };
 
+export const updateNotificationSettings = async ({ reconciliationDays, recordingConsistencyDays, rowVersion = null }) => {
+  const result = await apiClient.request(
+    "notifications.updateSettings",
+    {
+      reconciliation_days: reconciliationDays,
+      recording_consistency_days: recordingConsistencyDays,
+      row_version: rowVersion,
+    },
+    { rowVersion },
+  );
+  apiClient.invalidate(["notifications.preferences", "notifications.center"]);
+  return result;
+};
+
+
 export const getManualReminder = async ({ entityType, entityId }) => apiClient.request(
   "reminders.get",
   { entity_type: entityType, entity_id: entityId },

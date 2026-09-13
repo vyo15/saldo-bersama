@@ -36,7 +36,7 @@ test("branding assets and favicon references stay complete", async () => {
   assert.match(html, /apple-touch-icon\.png\?v=4/);
   assert.match(html, /name="mobile-web-app-capable" content="yes"/);
   assert.equal(manifest.icons.some((icon) => icon.purpose === "maskable"), true);
-  assert.match(sw, /saldo-bersama-static-v12/);
+  assert.match(sw, /saldo-bersama-static-v13/);
   assert.match(sw, /cacheAppShellAssets/);
   assert.match(sw, /html\.matchAll/);
   assert.ok(sw.includes("\\/assets\\/"));

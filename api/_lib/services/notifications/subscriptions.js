@@ -3,6 +3,7 @@ import { NOTIFICATION_TYPE_VALUES } from "../../domainConstants.js";
 import webpush from "web-push";
 import { appendAudit } from "../audit.js";
 import { appError, assertVersion, boundedInteger, nowIso, parseJson, sanitizeText, strictBoolean, uuid } from "../core.js";
+import { notificationReadStatesForUser, notificationSettingsForUser } from "./attentionState.js";
 import {
   configureWebPushClient,
   normalizePushEndpoint,
@@ -14,6 +15,8 @@ import {
 const TEST_COOLDOWN_MS = 30_000;
 export const NOTIFICATION_TYPES = NOTIFICATION_TYPE_VALUES;
 const NOTIFICATION_TYPE_SET = new Set(NOTIFICATION_TYPES);
+
+export const defaultNotificationPreferenceEnabled = (type) => type !== "recurring_completed";
 
 // Subscription ownership is proven with the current endpoint keys before a device
 // may be reassigned. Client identity alone is not enough to take over a subscription.
@@ -92,13 +95,35 @@ export const unregisterPush = async (db, context) => {
   return { unregistered: true, unregisteredAt: timestamp };
 };
 
+const notificationGuidanceId = (row) => {
+  const dedupe = String(row.dedupe_key || "");
+  const readers = [
+    [/^recurring-shortage:([^:]+):/, (id) => `recurring-funding-shortage:${id}`],
+    [/^recurring-completed:([^:]+):/, (id) => `recurring-completed:${id}`],
+    [/^recurring:([^:]+):/, (id) => `recurring-due:${id}`],
+    [/^budget:([^:]+):/, (id) => `budget:${id}`],
+    [/^envelope:([^:]+):/, (id) => `envelope:${id}`],
+    [/^goal:([^:]+):/, (id) => `goal-behind:${id}`],
+    [/^reconciliation-stale:([^:]+):/, (id) => `reconciliation-stale:${id}`],
+  ];
+  for (const [pattern, present] of readers) {
+    const match = dedupe.match(pattern);
+    if (match) return present(match[1]);
+  }
+  const unallocated = dedupe.match(/^unallocated:[^:]+:[^:]+:(\d{4}-\d{2})-\d{2}:/);
+  return unallocated ? `unallocated:${unallocated[1]}` : "";
+};
+
 export const notificationCenter = async (db, context) => {
   const limit = boundedInteger(context.payload?.limit, 80, 1, 120, "Batas notifikasi");
-  const rows = await db.all(`SELECT notification_id,notification_type,title,body,target_path,scheduled_at,status,created_at
-    FROM notification_queue
-    WHERE user_id=?
-    ORDER BY COALESCE(scheduled_at,created_at) DESC,created_at DESC
-    LIMIT ?`, [context.actor.user_id, limit]);
+  const [rows, readStates] = await Promise.all([
+    db.all(`SELECT notification_id,notification_type,title,body,target_path,scheduled_at,status,created_at,dedupe_key
+      FROM notification_queue
+      WHERE user_id=?
+      ORDER BY COALESCE(scheduled_at,created_at) DESC,created_at DESC
+      LIMIT ?`, [context.actor.user_id, limit]),
+    notificationReadStatesForUser(db, context.actor.user_id),
+  ]);
   return {
     items: rows.map((row) => ({
       id: `event:${row.notification_id}`,
@@ -111,24 +136,30 @@ export const notificationCenter = async (db, context) => {
       occurredAt: row.scheduled_at || row.created_at,
       deliveryStatus: row.status,
       severity: row.notification_type === "recurring_funding_shortage" ? "warning" : "info",
+      guidanceId: notificationGuidanceId(row),
     })),
+    readStates,
   };
 };
 
 export const notificationPreferences = async (db, context) => {
-  const rows = await db.all("SELECT notification_type,enabled,row_version,updated_at FROM notification_preferences WHERE user_id=?", [context.actor.user_id]);
+  const [rows, settings] = await Promise.all([
+    db.all("SELECT notification_type,enabled,row_version,updated_at FROM notification_preferences WHERE user_id=?", [context.actor.user_id]),
+    notificationSettingsForUser(db, context.actor.user_id),
+  ]);
   const stored = new Map(rows.map((row) => [row.notification_type, row]));
   return {
     items: NOTIFICATION_TYPES.map((type) => {
       const row = stored.get(type);
       return {
         type,
-        enabled: row ? Number(row.enabled) === 1 : true,
+        enabled: row ? Number(row.enabled) === 1 : defaultNotificationPreferenceEnabled(type),
         row_version: row ? Number(row.row_version) : null,
         updated_at: row?.updated_at || null,
         source: row ? "stored" : "default",
       };
     }),
+    settings,
   };
 };
 

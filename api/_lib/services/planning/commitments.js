@@ -1,6 +1,6 @@
 import { appendAudit } from "../audit.js";
 import { createTransactionInternal } from "../finance.js";
-import { appError, assertOwner, assertVersion, dateValue, nonNegativeInteger, nowIso, positiveInteger, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
+import { appError, assertOwner, assertVersion, dateValue, nonNegativeInteger, nowIso, positiveInteger, publicRow, sanitizeText, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { accountWithAccess, assertOperationalPlanningAccount, assertOwnedAccess, assertPlanningManageScope, dueDayValue, ruleScopeFromAccount } from "./shared.js";
 import { archiveRecurringRule, createRecurringRule, updateRecurringRule } from "./recurring.js";
@@ -62,7 +62,7 @@ const buildCommitmentUpdate = (current, payload, account, category, actorId) => 
     frequency,
     due_day: payloadValue(payload, current, "due_day", dueDayValue),
     payment_method: sanitizeText(payloadValue(payload, current, "payment_method"), 40),
-    auto_debit: payloadValue(payload, current, "auto_debit", (value) => strictBoolean(value) ? 1 : 0),
+    auto_debit: 0,
     start_date: startDate,
     end_date: endDate,
     notes: sanitizeText(payloadValue(payload, current, "notes"), 500),
@@ -73,7 +73,7 @@ const buildCommitmentUpdate = (current, payload, account, category, actorId) => 
 export const listCommitments = async (db, context) => {
   const access = visibleScopeSql(context.actor, "c");
   const rows = await db.all(`SELECT c.*,rr.recurring_rule_id,rr.row_version AS recurring_row_version,rr.status AS recurring_status,
-      rr.expected_amount AS recurring_expected_amount,rr.due_day AS recurring_due_day,
+      rr.expected_amount AS recurring_expected_amount,rr.due_day AS recurring_due_day,rr.budget_id,
       a.name AS account_name,a.account_type,cg.name AS category_name,
       (SELECT cm.principal_known FROM commitment_movements cm WHERE cm.commitment_id=c.commitment_id AND cm.status='active' AND cm.movement_type='payment' ORDER BY cm.created_at DESC,cm.commitment_movement_id DESC LIMIT 1) AS latest_principal_known,
       (SELECT cm.created_at FROM commitment_movements cm WHERE cm.commitment_id=c.commitment_id AND cm.status='active' ORDER BY cm.created_at DESC,cm.commitment_movement_id DESC LIMIT 1) AS last_movement_at
@@ -119,7 +119,7 @@ export const createCommitment = async (db, context) => {
     opening_balance: state.openingBalance, current_balance: state.openingBalance, installment_amount: state.installmentAmount,
     total_installments: state.totalInstallments, installments_paid: state.installmentsPaid, received_amount: 0, received_at: null,
     default_account_id: account.account_id, category_id: category.category_id, frequency, due_day: dueDayValue(p.due_day),
-    payment_method: sanitizeText(p.payment_method || "transfer", 40), auto_debit: strictBoolean(p.auto_debit, false) ? 1 : 0,
+    payment_method: sanitizeText(p.payment_method || "transfer", 40), auto_debit: 0,
     start_date: startDate, end_date: endDate, notes: sanitizeText(p.notes, 500), status: state.openingBalance === 0 ? "completed" : "active",
     ...newVersionStamp(context.actor.user_id, now), scope: owned.scope, owner_user_id: owned.owner_user_id,
   };
@@ -127,7 +127,7 @@ export const createCommitment = async (db, context) => {
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(row));
   const recurring = await createRecurringRule(db, recurringContext(context, {
     name, kind: "expense", category_id: category.category_id, expected_amount: state.installmentAmount, frequency, due_day: row.due_day,
-    default_account_id: account.account_id, payment_method: row.payment_method, auto_debit: Boolean(row.auto_debit), start_date: startDate, end_date: endDate,
+    default_account_id: account.account_id, budget_id: p.budget_id || null, payment_method: row.payment_method, auto_debit: false, start_date: startDate, end_date: endDate,
     priority: ["mortgage","loan"].includes(type) ? "high" : "normal",
   }));
   await db.execute("UPDATE recurring_rules SET commitment_id=? WHERE recurring_rule_id=?", [row.commitment_id, recurring.recurring_rule_id]);
@@ -152,8 +152,8 @@ export const updateCommitment = async (db, context) => {
   const rule = await db.one("SELECT * FROM recurring_rules WHERE commitment_id=?", [current.commitment_id]);
   if (!rule) throw appError("COMMITMENT_SCHEDULE_MISSING", "Jadwal Rutin Komitmen tidak ditemukan.", 409);
   await updateRecurringRule(db, recurringContext(context, { recurring_rule_id: rule.recurring_rule_id, row_version: rule.row_version, name: next.name, kind: "expense", category_id: next.category_id,
-    expected_amount: next.installment_amount, frequency: next.frequency, due_day: next.due_day, default_account_id: next.default_account_id, payment_method: next.payment_method,
-    auto_debit: Boolean(next.auto_debit), start_date: next.start_date, end_date: next.end_date, priority: ["mortgage","loan"].includes(next.commitment_type) ? "high" : "normal" }, rule.row_version));
+    expected_amount: next.installment_amount, frequency: next.frequency, due_day: next.due_day, default_account_id: next.default_account_id, budget_id: p.budget_id === undefined ? rule.budget_id : (p.budget_id || null), payment_method: next.payment_method,
+    auto_debit: false, start_date: next.start_date, end_date: next.end_date, priority: ["mortgage","loan"].includes(next.commitment_type) ? "high" : "normal" }, rule.row_version));
   const updated = await db.execute(`UPDATE commitments SET name=?,provider=?,installment_amount=?,total_installments=?,default_account_id=?,category_id=?,frequency=?,due_day=?,payment_method=?,auto_debit=?,start_date=?,end_date=?,notes=?,row_version=?,updated_by=?,updated_at=? WHERE commitment_id=? AND row_version=?`,
     [next.name,next.provider,next.installment_amount,next.total_installments,next.default_account_id,next.category_id,next.frequency,next.due_day,next.payment_method,next.auto_debit,next.start_date,next.end_date,next.notes,next.row_version,next.updated_by,next.updated_at,current.commitment_id,current.row_version]);
   if (updated.rowsAffected !== 1) throw appError("CONFLICT", "Komitmen berubah di perangkat lain.", 409);

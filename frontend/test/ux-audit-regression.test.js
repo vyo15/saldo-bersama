@@ -202,7 +202,7 @@ test("picker entity mobile memakai hierarchy logo-first, metadata, dan selected 
   assert.match(transaction, /accountDisplayLabel\(item\)/);
   assert.match(transaction, /accountOptionVisual\(item\)/);
   assert.match(transaction, /Tersedia \${formatRupiah/);
-  assert.match(transaction, /placeholderMeta=\{placeholderMeta\}/);
+  assert.match(transaction, /placeholderMeta=\{destinationMode \?/);
   assert.match(transfer, /sourceAccountPicker/);
   assert.match(transfer, /<InlineSelectionPicker/);
   assert.match(picker, /PickerVisual/);
@@ -265,9 +265,9 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
   assert.match(allocationDetail, /canManage && linkedBudgets\.length \? <Button[^>]*onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button>/);
   assert.match(allocationDetail, /title="Belum ada kebutuhan"[\s\S]*action=\{canManage \? <Button[^>]*onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button>/);
 
-  assert.match(recurringPage, /canManagePlanning && allItems\.length \? <Button[^>]*onClick=\{rules\.openCreate\}>Tambah jadwal<\/Button>/);
+  assert.match(recurringPage, /canManagePlanning && allItems\.length \? <Button[^>]*onClick=\{rules\.openCreate\}>Tambah pembayaran rutin<\/Button>/);
   assert.match(recurringView, /\{allItems\.length \? <ScheduleSummary items=\{allItems\}/);
-  assert.match(recurringSchedule, /title=\{hasAnyItems \? "Tidak ada jadwal yang sesuai" : "Belum ada jadwal"\}/);
+  assert.match(recurringSchedule, /title=\{hasAnyItems \? "Tidak ada jadwal yang sesuai" : "Punya pembayaran yang berulang\?"\}/);
   assert.match(recurringSchedule, /action=\{hasAnyItems \? <Button onClick=\{onReset\}>Tampilkan jadwal tersedia<\/Button> : canCreate \?/);
   assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleFilters/);
   assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleKindTabs/);
@@ -293,7 +293,7 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
     read("src/features/allocations/AllocationOverview.module.css"),
   ]);
 
-  assert.match(overview, />Alokasi baru<\/Button>/);
+  assert.match(overview, />Atur uang<\/Button>/);
   assert.match(overview, /allocation-header-actions allocation-header-actions--simple/);
   assert.doesNotMatch(overview, /allocation-header-actions--with-move|allocation-move-action/);
   assert.match(overview, /Belum ada kebutuhan/);

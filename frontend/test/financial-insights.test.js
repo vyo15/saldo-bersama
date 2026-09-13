@@ -63,11 +63,13 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(mobile, /MobileNextAction alerts=\{overview\.alerts\}/);
   assert.match(mobile, /to="\/notifikasi"/);
   assert.match(mobile, /useFinancialNotificationReadState/);
-  assert.match(notifications, /Perlu tindakan/);
+  assert.match(notifications, /Perlu dilakukan/);
   assert.match(notifications, /Pengingat/);
   assert.match(notifications, /financialAlertGuidance/);
   assert.match(notifications, /markAllRead/);
-  assert.match(notificationState, /READ_TTL_MS/);
+  assert.match(notificationState, /readStates/);
+  assert.match(notificationState, /markNotificationsRead/);
+  assert.match(notificationState, /notificationReadIdentity/);
   assert.match(notificationState, /financialNotificationTitle/);
   assert.match(app, /path="notifikasi"/);
 });
@@ -113,7 +115,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));
   }
-  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Pilih Alokasi Dana", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
+  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Rapikan transaksi", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
     assert.match(alertWorkflow, new RegExp(label));
   }
   assert.match(alertWorkflow, /safeTargetPath/);
@@ -216,7 +218,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /label="Ambil dana dari"/);
   assert.match(allocations, /<InlineOwnershipPicker[\s\S]{0,220}legend="Digunakan oleh"/);
   assert.match(allocations, /description: "Digunakan oleh semua anggota"/);
-  assert.match(allocations, /Dana mengikuti Kebutuhan/);
+  assert.match(allocations, /Belum ada uang yang dipisahkan/);
+  assert.match(allocations, /Lanjut ke kebutuhan/);
   assert.match(allocations, /filteredActiveItems = useMemo/);
   assert.match(allocations, /allocationFilter === "shared"/);
   assert.match(allocations, /allocationFilter === "mine"/);
@@ -273,10 +276,10 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /<MobileCashFlow overview=\{overview\} balanceVisible=\{balanceVisible\} \/>/);
   assert.doesNotMatch(setupChecklist, /usableEnvelopes|sharedAccounts|planningStep/);
   assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);
-  assert.match(mobile, /Rencana Keuangan/);
+  assert.match(mobile, /Rencana terdekat/);
   assert.doesNotMatch(mobile, /Rencana Bersama/);
   const quickActions = await source("src/features/dashboard/components/DashboardQuickActions.jsx");
-  assert.match(quickActions, /\{ to: "\/perencanaan", label: "Alokasi"/);
+  assert.match(quickActions, /\{ to: "\/perencanaan", label: "Atur Dana"/);
   assert.match(quickActions, /\{ to: "\/rekening", label: "Rekening"/);
   assert.match(quickActions, /\{ to: "\/target", label: "Target"/);
   assert.match(quickActions, /\{ to: "\/rekonsiliasi", label: "Cocokkan"/);
@@ -284,8 +287,8 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /Aman dipakai \/ hari/);
   assert.match(mobile, />Masuk<\/span>/);
   assert.match(mobile, />Keluar<\/span>/);
-  assert.match(mobile, /Jadwal Terdekat/);
-  assert.match(mobile, /Aktivitas Terbaru/);
+  assert.doesNotMatch(mobile, /Jadwal Terdekat/);
+  assert.match(mobile, /Aktivitas terbaru/);
   assert.match(mobile, /Total investasi tercatat/);
   assert.match(desktop, /SensitiveMoney/);
   assert.match(desktop, /Transaksi terbaru/);
@@ -305,11 +308,13 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(desktop, /Keluar bulan ini/);
   assert.equal((desktop.match(/>Tambah transaksi<\/Button>/g) || []).length, 1);
   assert.match(mobile, /Dana Tersedia/);
+  assert.match(mobile, /Sisa uang yang aman dipakai setelah kebutuhan dan tagihan/);
+  assert.match(mobile, /Selisih/);
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
   assert.match(mobile, /Aman dipakai \/ hari/);
   assert.match(mobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
-  assert.match(mobile, /dashboardInsightState/);
+  assert.doesNotMatch(mobile, /dashboardInsightState/);
   assert.doesNotMatch(mobile, /mobile-accounts-title|MobileAccounts|AccountVisual/);
   assert.doesNotMatch(mobile, /onOpenFilters|mobile-dashboard-filter-button|FiSliders/);
   assert.match(mobile, /recentTransactions\.slice\(0, 3\)/);

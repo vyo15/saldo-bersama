@@ -5,6 +5,7 @@ import test from "node:test";
 const source = () => Promise.all([
   "../src/features/transactions/TransactionForm.jsx",
   "../src/features/transactions/transactionFormController.js",
+  "../src/features/transactions/transactionImpact.js",
   "../src/features/transactions/transactionFormPresentation.js",
   "../src/features/transactions/components/TransactionFields.jsx",
   "../src/features/transactions/MobileTransactionFields.jsx",
@@ -24,12 +25,13 @@ test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori waji
   assert.match(text, /form\.transaction_type === "refund" && item\.transaction_type === "expense"/);
 });
 
-test("metode pembayaran tetap opsional dan tampil langsung tanpa panel detail tambahan", async () => {
+test("metode pembayaran tetap opsional dan mobile menaruhnya di Detail tambahan", async () => {
   const text = await source();
   assert.match(text, /payment_method: ""/);
   assert.match(text, /\{ value: "", label: "Belum dipilih" \}/);
   assert.match(text, /SelectionControl id="payment-method"[\s\S]*form\.payment_method/);
-  assert.doesNotMatch(text, /Detail tambahan|optional-fields__toggle/);
+  assert.match(text, /Detail tambahan/);
+  assert.match(text, /aria-controls="transaction-additional-details"/);
   assert.match(text, /100_000/);
   assert.match(text, /quickAmountLabel/);
   assert.doesNotMatch(text, /payment_method: "transfer"/);
@@ -116,7 +118,8 @@ test("pemasukan tetap memakai rekening tujuan tanpa helper gajian permanen", asy
   const text = await source();
   assert.match(text, /form\.transaction_type === TRANSACTION_TYPES\.INCOME/);
   assert.match(text, /ImpactPreview/);
-  assert.match(text, /impact\.destination/);
+  assert.match(text, /const destination = accountById\(accountBalances, form\.destination_account_id\)/);
+  assert.match(text, /destinationAfter/);
   assert.doesNotMatch(text, /Contoh gajian:/);
   assert.doesNotMatch(text, /rekening bank yang menerima gaji sebagai rekening tujuan/);
 });
@@ -152,9 +155,9 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(mobileFields, /searchable=\{accounts\.length > 8\}/);
   assert.doesNotMatch(mobileFields, /openMobileSelection|<select|type="radio"/, "transfer mobile memakai picker inline canonical, bukan subview atau native dropdown");
   assert.match(mobileFields, /Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer/);
-  assert.match(mobileFields, /Transfer memakai dana yang belum dialokasikan/);
+  assert.match(mobileFields, /Dana Tersedia/);
   assert.match(mobileFields, /Setelah transfer/);
-  assert.match(mobileFields, /Total aset tetap\. Transfer memakai dana yang belum dialokasikan/);
+  assert.match(mobileFields, /Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga/);
   assert.match(modal, /closeIcon: CloseIcon = FiX/);
   assert.match(modal, /closeLabel = "Tutup dialog"/);
 });
@@ -174,6 +177,9 @@ test("composer mobile memakai picker inline canonical untuk rekening, kategori, 
   assert.doesNotMatch(form, /MobileTransactionSelectionView|mobileSelection|openMobileSelection|closeMobileSelection/);
   assert.match(form, /closeIcon: FiChevronLeft/);
   assert.match(mobile, /styles\.detailStack/);
+  assert.match(mobile, /Detail tambahan/);
+  assert.match(mobile, /Dipakai untuk kebutuhan mana\?/);
+  assert.match(mobile, /Pilih Alokasi manual/);
   assert.match(mobile, /<InlineSelectionPicker/);
   assert.match(mobile, /sourceAccountPicker/);
   assert.match(mobile, /compatibleDestinationAccounts/);
@@ -241,9 +247,9 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   assert.match(form, /smartAllocationCandidates/);
   assert.match(form, /useSmartAllocationSelection/);
   assert.match(form, /allocationMode !== "auto"/);
-  assert.match(smart, /Dipilih dari Kebutuhan/);
+  assert.match(smart, /Kebutuhan .* dipakai untuk transaksi ini/);
   assert.match(form, /earlyFundsWarning/);
-  assert.match(form, /Setelah transaksi/);
+  assert.match(form, /Perkiraan setelah disimpan/);
   assert.doesNotMatch(form, /Lihat dampak lengkap/);
   assert.match(form, /label: "Tambah lagi"/);
   assert.match(form, /idempotencyKeyRef\.current = createTransactionIntentKey\(\)/);

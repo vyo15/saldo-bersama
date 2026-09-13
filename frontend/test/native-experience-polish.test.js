@@ -195,3 +195,19 @@ test("micro continuity menjaga nominal final langsung dan motion reduced-motion 
   assert.match(progress, /transition: inline-size var\(--motion-standard\) var\(--ease-standard\)/);
   assert.match(progress, /prefers-reduced-motion: reduce/);
 });
+
+test("planning forms yang dapat kehilangan input mengikuti lifecycle guard canonical", async () => {
+  const files = [
+    "src/features/commitments/CommitmentsPage.jsx",
+    "src/features/allocations/AllocationFundingFlow.jsx",
+    "src/features/reminders/ManualReminderModal.jsx",
+  ];
+  for (const file of files) {
+    const source = await read(file);
+    assert.match(source, /useUnsavedChangesGuard/);
+    assert.match(source, /discardGuard=/);
+    assert.match(source, /discardSubject=/);
+    assert.match(source, /discardAndClose/);
+    assert.doesNotMatch(source, /window\.location\.reload/);
+  }
+});

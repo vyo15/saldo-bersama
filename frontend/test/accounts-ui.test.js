@@ -356,7 +356,7 @@ ${accountEditors}`;
   assert.match(mobileTransferFields, /Dari rekening/);
   assert.match(mobileTransferFields, /Ke rekening/);
   assert.match(mobileTransferFields, /Setelah transfer/);
-  assert.match(mobileTransferFields, /Total aset tetap/);
+  assert.match(mobileTransferFields, /Dana Tersedia/);
   assert.doesNotMatch(mobileTransferFields, /createTransaction|updateTransaction|transactions\.create|apiClient/);
   assert.match(mobileTransfer, /pendingSavedRef/);
   assert.match(mobileTransfer, /onTransferSaved/);

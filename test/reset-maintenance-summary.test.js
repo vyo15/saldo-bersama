@@ -38,6 +38,7 @@ const trialSummaryKeys = Object.freeze({
   transfer_requests: "transferRequests",
   master_data_requests: "masterDataRequests",
   notification_deliveries: "notificationDeliveries",
+  notification_read_states: "notificationReadStates",
   manual_reminders: "manualReminders",
   notification_queue: "notificationQueue",
   integration_links: "integrationLinks",
@@ -71,11 +72,13 @@ const fullSummaryKeys = Object.freeze({
   transfer_requests: "transferRequests",
   master_data_requests: "masterDataRequests",
   notification_deliveries: "notificationDeliveries",
+  notification_read_states: "notificationReadStates",
   manual_reminders: "manualReminders",
   notification_queue: "notificationQueue",
   integration_links: "integrationLinks",
   integration_outbox: "integrationOutbox",
   notification_preferences: "notificationPreferences",
+  notification_settings: "notificationSettings",
   push_subscriptions: "pushSubscriptions",
   import_previews: "importPreviews",
   restore_previews: "restorePreviews",
@@ -102,15 +105,17 @@ test("trial reset mengekspos investasi, reminder, dan master investasi yang dipe
     investment_trades: 4,
     transactions: 5,
     manual_reminders: 6,
+    notification_read_states: 7,
   });
   assert.equal(summary.investmentReconciliations, 1);
   assert.equal(summary.investmentValuations, 2);
   assert.equal(summary.investmentCorrections, 3);
   assert.equal(summary.investmentTrades, 4);
   assert.equal(summary.manualReminders, 6);
+  assert.equal(summary.notificationReadStates, 7);
   assert.equal(summary.businessRows, 15);
-  assert.equal(summary.operationalRows, 6);
-  assert.equal(summary.totalRows, 21);
+  assert.equal(summary.operationalRows, 13);
+  assert.equal(summary.totalRows, 28);
 
   const preserved = mapPreservedCountRows([
     rowCount(10),
@@ -122,12 +127,15 @@ test("trial reset mengekspos investasi, reminder, dan master investasi yang dipe
     rowCount(16),
     rowCount(17),
     rowCount(18),
+    rowCount(19),
   ]);
   assert.equal(preserved.accounts, 10);
   assert.equal(preserved.categories, 11);
   assert.equal(preserved.investmentPortfolios, 12);
   assert.equal(preserved.investmentInstruments, 13);
   assert.equal(preserved.users, 14);
+  assert.equal(preserved.notificationPreferences, 18);
+  assert.equal(preserved.notificationSettings, 19);
 });
 
 test("full reset mengekspos aktivitas dan master investasi serta reminder", () => {
@@ -141,6 +149,8 @@ test("full reset mengekspos aktivitas dan master investasi serta reminder", () =
     accounts: 7,
     categories: 8,
     manual_reminders: 9,
+    notification_read_states: 10,
+    notification_settings: 11,
   });
   assert.equal(summary.investmentReconciliations, 1);
   assert.equal(summary.investmentValuations, 2);
@@ -149,8 +159,10 @@ test("full reset mengekspos aktivitas dan master investasi serta reminder", () =
   assert.equal(summary.investmentPortfolios, 5);
   assert.equal(summary.investmentInstruments, 6);
   assert.equal(summary.manualReminders, 9);
+  assert.equal(summary.notificationReadStates, 10);
+  assert.equal(summary.notificationSettings, 11);
   assert.equal(summary.domainRows, 10);
   assert.equal(summary.masterRows, 26);
-  assert.equal(summary.operationalRows, 9);
-  assert.equal(summary.totalRows, 45);
+  assert.equal(summary.operationalRows, 30);
+  assert.equal(summary.totalRows, 66);
 });

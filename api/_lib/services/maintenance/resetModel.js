@@ -35,6 +35,7 @@ export const RESET_OPERATIONAL_TABLES = Object.freeze([
   { table: "transfer_requests", key: "request_id" },
   { table: "master_data_requests", key: "request_id" },
   { table: "notification_deliveries", key: "delivery_id" },
+  { table: "notification_read_states", key: "notification_key", orderBy: "user_id,notification_key,fingerprint" },
   { table: "manual_reminders", key: "reminder_id" },
   { table: "notification_queue", key: "notification_id" },
   { table: "integration_links", key: "link_id" },
@@ -46,8 +47,8 @@ export const RESET_STATE_TABLES = Object.freeze([...RESET_BUSINESS_TABLES, ...RE
 export const RESET_OPERATIONAL_DELETE_ORDER = Object.freeze(RESET_OPERATIONAL_TABLES.map(({ table }) => table));
 export const RESET_BUSINESS_DELETE_ORDER = Object.freeze(RESET_BUSINESS_TABLES.map(({ table }) => table));
 
-export const RESET_STATE_STATEMENTS = Object.freeze(RESET_STATE_TABLES.map(({ table, key }) => ({
-  sql: `SELECT * FROM ${quoted(table)} ORDER BY ${quoted(key)}`,
+export const RESET_STATE_STATEMENTS = Object.freeze(RESET_STATE_TABLES.map(({ table, key, orderBy }) => ({
+  sql: `SELECT * FROM ${quoted(table)} ORDER BY ${(orderBy || key).split(",").map((column) => quoted(column)).join(",")}`,
   args: [],
 })));
 
@@ -65,17 +66,23 @@ export const RESET_COUNT_STATEMENTS = Object.freeze(RESET_STATE_TABLES.map(({ ta
   args: [],
 })));
 
-export const PRESERVED_COUNT_STATEMENTS = Object.freeze([
-  { sql: "SELECT COUNT(*) AS count FROM accounts", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM categories", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM investment_portfolios", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM investment_instruments", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM users", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM audit_log", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM backup_runs", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM push_subscriptions", args: [] },
-  { sql: "SELECT COUNT(*) AS count FROM notification_preferences", args: [] },
+const PRESERVED_COUNT_MODELS = Object.freeze([
+  { key: "accounts", table: "accounts" },
+  { key: "categories", table: "categories" },
+  { key: "investmentPortfolios", table: "investment_portfolios" },
+  { key: "investmentInstruments", table: "investment_instruments" },
+  { key: "users", table: "users" },
+  { key: "audit", table: "audit_log" },
+  { key: "backups", table: "backup_runs" },
+  { key: "pushSubscriptions", table: "push_subscriptions" },
+  { key: "notificationPreferences", table: "notification_preferences" },
+  { key: "notificationSettings", table: "notification_settings" },
 ]);
+
+export const PRESERVED_COUNT_STATEMENTS = Object.freeze(PRESERVED_COUNT_MODELS.map(({ table }) => ({
+  sql: `SELECT COUNT(*) AS count FROM ${quoted(table)}`,
+  args: [],
+})));
 
 export const accountBalanceResetStatement = (cutoffDate) => ({
   sql: `SELECT a.account_id,a.name,a.initial_balance,a.initial_balance_date,a.row_version,a.status,
@@ -145,20 +152,10 @@ export const mapResetCountRows = (resultRows) => Object.fromEntries(RESET_STATE_
   Number(resultRows[index]?.[0]?.count || 0),
 ]));
 
-export const mapPreservedCountRows = (resultRows) => {
-  const [accounts, categories, investmentPortfolios, investmentInstruments, users, audit, backups, pushSubscriptions, notificationPreferences] = resultRows.map((rows) => rows?.[0] || null);
-  return {
-    accounts: Number(accounts?.count || 0),
-    categories: Number(categories?.count || 0),
-    investmentPortfolios: Number(investmentPortfolios?.count || 0),
-    investmentInstruments: Number(investmentInstruments?.count || 0),
-    users: Number(users?.count || 0),
-    audit: Number(audit?.count || 0),
-    backups: Number(backups?.count || 0),
-    pushSubscriptions: Number(pushSubscriptions?.count || 0),
-    notificationPreferences: Number(notificationPreferences?.count || 0),
-  };
-};
+export const mapPreservedCountRows = (resultRows) => Object.fromEntries(PRESERVED_COUNT_MODELS.map(({ key }, index) => [
+  key,
+  Number(resultRows[index]?.[0]?.count || 0),
+]));
 
 export const balanceResetPreview = (accountRows = []) => {
   const accounts = accountRows
@@ -216,6 +213,7 @@ export const resetSummary = (counts) => {
     recurringOccurrences: countFor(counts, "recurring_occurrences"),
     periodClosures: countFor(counts, "period_closures"),
     notificationDeliveries: countFor(counts, "notification_deliveries"),
+    notificationReadStates: countFor(counts, "notification_read_states"),
     manualReminders: countFor(counts, "manual_reminders"),
     notificationQueue: countFor(counts, "notification_queue"),
     integrationLinks: countFor(counts, "integration_links"),

@@ -20,18 +20,18 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
   assert.match(page, /useFinance\(\)/);
   assert.match(page, /mergeNotificationCenterItems\(overview\?\.alerts \|\| \[\], eventFeed\.data\?\.items \|\| \[\]\)/);
   assert.match(page, /useApiResource\("notifications\.center"/);
-  assert.match(page, /financialAlertGuidance\(alert, \{ source: "notification-center" \}\)/);
+  assert.match(page, /financialAlertGuidance\(guidanceAlert, \{ source: "notification-center" \}\)/);
   assert.doesNotMatch(page, /notificationSource/);
   assert.match(page, /aria-label="Tandai semua dibaca"/);
   assert.match(page, /financialNotificationEntity/);
   assert.match(page, /financialNotificationFact/);
   assert.doesNotMatch(page, /<p className=\{styles\.note\}/);
-  assert.match(state, /localStorage/);
-  assert.match(state, /READ_TTL_MS = 14 \* 24 \* 60 \* 60 \* 1000/);
-  assert.match(state, /STORAGE_PREFIX = "saldo-bersama:notification-center-read:v1:"/);
-  assert.match(state, /READ_STATE_EVENT = "saldo-bersama:notification-read-state"/);
-  assert.match(state, /window\.addEventListener\(READ_STATE_EVENT, sync\)/);
-  assert.match(state, /readMapRef\.current = next/);
+  assert.doesNotMatch(state, /localStorage|READ_TTL_MS|STORAGE_PREFIX|READ_STATE_EVENT/);
+  assert.match(state, /readStates/);
+  assert.match(state, /notificationReadIdentity/);
+  assert.match(state, /markNotificationsRead/);
+  assert.match(state, /remoteRead/);
+  assert.match(state, /optimisticRead/);
   assert.match(presentation, /attentionSource: source/);
   assert.doesNotMatch(page, /notification_queue|createTransaction|adjustment|updateBalance/);
   assert.match(state, /mergeNotificationCenterItems/);
@@ -95,11 +95,11 @@ test("rekonsiliasi tidak menganggap saldo sistem sebagai saldo aktual sebelum ko
 test("presentation notifikasi ringkas memakai aksi entitas dan satu fakta untuk tipe utama", async () => {
   const module = await import("../src/shared/workflows/financialNotifications.js");
   const cases = [
-    [{ type: "budget_threshold", title: "Makan 85% terpakai", message: "Pemakaian melewati ambang 80%." }, ["Periksa anggaran", "Makan", "85% terpakai"]],
+    [{ type: "budget_threshold", title: "Makan 85% terpakai", message: "Pemakaian melewati ambang 80%." }, ["Periksa kebutuhan", "Makan", "85% terpakai"]],
     [{ type: "envelope_threshold", title: "Belanja 90% terpakai + dipesan", message: "Dana tersisa mendekati batas." }, ["Periksa Alokasi Dana", "Belanja", "90% terpakai + dipesan"]],
     [{ type: "recurring_due", title: "Internet segera jatuh tempo", message: "Jatuh tempo 2026-09-09." }, ["Jadwal segera jatuh tempo", "Internet", "Jatuh tempo 9 September 2026"]],
     [{ type: "goal_behind", title: "Dana Darurat tertinggal dari rencana", message: "Perkiraan kebutuhan setoran bulanan Rp 750.000." }, ["Target tertinggal", "Dana Darurat", "Butuh sekitar Rp 750.000/bulan"]],
-    [{ type: "unallocated_expense", title: "3 pengeluaran belum masuk Alokasi Dana", message: "Pilih Alokasi Dana agar akurat." }, ["Alokasikan pengeluaran", "3 pengeluaran", "Belum masuk Alokasi Dana"]],
+    [{ type: "unallocated_expense", title: "3 pengeluaran belum masuk kebutuhan", message: "Hubungkan pengeluaran ke kebutuhan yang sesuai." }, ["Pengeluaran belum masuk kebutuhan", "3 pengeluaran", "Belum terhubung ke Kebutuhan"]],
     [{ type: "unallocated_funds", title: "Belanja kekurangan dana", message: "Total kebutuhan Rp 1.000.000 melebihi dana alokasi Rp 250.000. Tambahkan Rp 750.000 agar kebutuhan tercakup.", fundingGap: 750000 }, ["Dana alokasi belum cukup", "Belanja", "Kurang Rp 750.000"]],
   ];
   for (const [alert, expected] of cases) {
@@ -142,7 +142,7 @@ test("Notification Center meneruskan contextual workflow dan Investasi tidak kem
   assert.match(alerts, /attentionRdnAccountId/);
   assert.match(notifications, /Cocokkan investasi/);
   assert.match(notifications, /Jadwal segera jatuh tempo/);
-  assert.match(notifications, /Periksa anggaran/);
+  assert.match(notifications, /Periksa kebutuhan/);
   assert.match(notifications, /Periksa Alokasi Dana/);
   assert.match(notifications, /Target tertinggal/);
   assert.doesNotMatch(notifications, /financialNotificationCategory/);

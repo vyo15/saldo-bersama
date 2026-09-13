@@ -17,7 +17,7 @@ import {
   applyFullDataReset, applyImport, applyRestore, applyTrialDataReset, createTechnicalBackup, integrityWithMaintenanceRecovery, previewFullDataReset, previewImport,
   previewRestore, previewTrialDataReset, readFullDataResetStatus, readTrialDataResetStatus,
 } from "../services/maintenance/index.js";
-import { notificationCenter, notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference } from "../services/notifications.js";
+import { markNotificationRead, notificationCenter, notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference, updateNotificationSettings } from "../services/notifications.js";
 import {
   buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../services/investments.js";
@@ -190,6 +190,8 @@ const ACTION_HANDLERS = Object.freeze({
   "notifications.status": notificationStatus,
   "notifications.preferences": notificationPreferences,
   "notifications.updatePreference": updateNotificationPreference,
+  "notifications.updateSettings": updateNotificationSettings,
+  "notifications.markRead": markNotificationRead,
   "notifications.register": registerPush,
   "notifications.unregister": unregisterPush,
   "notifications.test": testPush,

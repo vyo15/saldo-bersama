@@ -1,34 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
-
-const READ_TTL_MS = 14 * 24 * 60 * 60 * 1000;
-const STORAGE_PREFIX = "saldo-bersama:notification-center-read:v1:";
-const READ_STATE_EVENT = "saldo-bersama:notification-read-state";
-
-const safeStorage = () => {
-  try { return typeof window !== "undefined" ? window.localStorage : null; } catch { return null; }
-};
-
-const storageKey = (scope) => `${STORAGE_PREFIX}${String(scope || "anonymous")}`;
-
-const readStoredMap = (scope) => {
-  try {
-    const raw = safeStorage()?.getItem(storageKey(scope));
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-};
-
-const persistReadMap = (scope, value) => {
-  try { safeStorage()?.setItem(storageKey(scope), JSON.stringify(value)); } catch { /* local storage is optional UI state */ }
-  try {
-    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(READ_STATE_EVENT, { detail: { scope: String(scope || "anonymous") } }));
-  } catch { /* same-tab synchronization is best effort */ }
-};
-
-const isRecentRead = (timestamp) => Number(timestamp || 0) >= Date.now() - READ_TTL_MS;
+import { markNotificationsRead } from "../../services/notificationCenter.js";
 
 const reconciliationAccountFromTitle = (title) => String(title || "")
   .replace(/^Saldo\s+/i, "")
@@ -77,13 +49,14 @@ export const financialNotificationTitle = (alert = {}) => {
   if (alert.type === "recurring_overdue") return "Jadwal terlambat";
   if (alert.type === "recurring_due") return "Jadwal segera jatuh tempo";
   if (alert.type === "goal_behind") return "Target tertinggal";
-  if (alert.type === "budget_threshold") return "Periksa anggaran";
+  if (alert.type === "budget_threshold") return "Periksa kebutuhan";
   if (alert.type === "envelope_threshold") return "Periksa Alokasi Dana";
-  if (alert.type === "unallocated_expense") return "Alokasikan pengeluaran";
+  if (alert.type === "unallocated_expense") return "Pengeluaran belum masuk kebutuhan";
   if (alert.type === "unallocated_funds") return "Dana alokasi belum cukup";
   if (alert.type === "recurring_funding_shortage") return "Dana jadwal rutin belum cukup";
   if (alert.type === "recurring_completed") return "Jadwal rutin selesai";
   if (alert.type === "manual_reminder") return String(alert.title || "Pengingat");
+  if (alert.type === "recording_consistency") return "Ada yang belum sempat dicatat?";
   return String(alert.title || "Notifikasi");
 };
 
@@ -103,7 +76,9 @@ const ENTITY_READERS = Object.freeze({
 
 const reconciliationFact = (alert) => {
   const last = notificationDate(alert.lastReconciledAt);
-  return last ? `Terakhir ${last}` : "Belum pernah dicocokkan";
+  if (last) return `Terakhir ${last}`;
+  if (alert.source === "event" && alert.message) return String(alert.message).replace(/[.!?]+$/, "");
+  return "Belum pernah dicocokkan";
 };
 
 const percentageFact = (alert, expression, suffix, fallback) => {
@@ -123,11 +98,12 @@ const FACT_READERS = Object.freeze({
   recurring_due: recurringFact,
   recurring_overdue: recurringFact,
   goal_behind: (alert) => compactMonthlyAmount(alert.message),
-  unallocated_expense: () => "Belum masuk Alokasi Dana",
+  unallocated_expense: () => "Belum terhubung ke Kebutuhan",
   unallocated_funds: (alert) => Number(alert.fundingGap || 0) > 0 ? `Kurang Rp ${Number(alert.fundingGap).toLocaleString("id-ID")}` : "Dana alokasi belum mencukupi kebutuhan",
   recurring_funding_shortage: (alert) => String(alert.message || "Dana rekening sumber belum mencukupi").replace(/[.!?]+$/, ""),
   recurring_completed: (alert) => String(alert.message || "Pembayaran rutin sudah dicatat").replace(/[.!?]+$/, ""),
   manual_reminder: (alert) => String(alert.message || "Pengingat Anda sudah waktunya").replace(/[.!?]+$/, ""),
+  recording_consistency: (alert) => String(alert.message || "Buka Saldo Bersama kalau ada transaksi yang ingin dirapikan.").replace(/[.!?]+$/, ""),
 });
 
 export const financialNotificationEntity = (alert = {}) => {
@@ -156,58 +132,63 @@ export const mergeNotificationCenterItems = (alerts = [], events = []) => {
   });
 };
 
-export const useFinancialNotificationReadState = ({ alerts = [], scope = "anonymous" }) => {
-  const [readMap, setReadMap] = useState(() => readStoredMap(scope));
-  const readMapRef = useRef(readMap);
+export const notificationReadIdentity = (alert = {}) => {
+  const key = String(alert.id || "").slice(0, 200);
+  const checkpoint = String(alert.lastReconciledAt || alert.period || alert.guidanceId || alert.occurredAt || key).slice(0, 150);
+  const fingerprint = `v1:${String(alert.type || "unknown").slice(0, 60)}:${checkpoint}`.slice(0, 240);
+  return { key, fingerprint };
+};
+
+const identityToken = ({ key, fingerprint }) => `${key}\u0000${fingerprint}`;
+
+export const useFinancialNotificationReadState = ({ alerts = [], readStates = [] }) => {
+  const [optimisticRead, setOptimisticRead] = useState(() => new Set());
   const activeAlerts = useMemo(() => Array.isArray(alerts) ? alerts.filter((alert) => alert?.id) : [], [alerts]);
-  const isRead = useCallback((id) => isRecentRead(readMap[id]), [readMap]);
-  const unreadCount = useMemo(() => activeAlerts.filter((alert) => !isRecentRead(readMap[alert.id])).length, [activeAlerts, readMap]);
+  const remoteRead = useMemo(() => new Set((Array.isArray(readStates) ? readStates : [])
+    .filter((item) => item?.key && item?.fingerprint)
+    .map((item) => identityToken(item))), [readStates]);
 
   useEffect(() => {
-    const next = readStoredMap(scope);
-    readMapRef.current = next;
-    setReadMap(next);
-  }, [scope]);
+    setOptimisticRead((current) => {
+      const next = new Set([...current].filter((token) => !remoteRead.has(token)));
+      return next.size === current.size ? current : next;
+    });
+  }, [remoteRead]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-    const sync = (event) => {
-      const eventScope = event?.detail?.scope;
-      if (eventScope && eventScope !== String(scope || "anonymous")) return;
-      const next = readStoredMap(scope);
-      readMapRef.current = next;
-      setReadMap(next);
-    };
-    const syncStorage = (event) => {
-      if (event.key !== storageKey(scope)) return;
-      const next = readStoredMap(scope);
-      readMapRef.current = next;
-      setReadMap(next);
-    };
-    window.addEventListener(READ_STATE_EVENT, sync);
-    window.addEventListener("storage", syncStorage);
-    return () => {
-      window.removeEventListener(READ_STATE_EVENT, sync);
-      window.removeEventListener("storage", syncStorage);
-    };
-  }, [scope]);
+  const isRead = useCallback((alertOrId) => {
+    const alert = typeof alertOrId === "string" ? activeAlerts.find((item) => item.id === alertOrId) : alertOrId;
+    if (!alert) return false;
+    const token = identityToken(notificationReadIdentity(alert));
+    return remoteRead.has(token) || optimisticRead.has(token);
+  }, [activeAlerts, optimisticRead, remoteRead]);
 
-  const updateReadMap = useCallback((updater) => {
-    const next = updater(readMapRef.current);
-    readMapRef.current = next;
-    setReadMap(next);
-    persistReadMap(scope, next);
-  }, [scope]);
+  const unreadCount = useMemo(() => activeAlerts.filter((alert) => !isRead(alert)).length, [activeAlerts, isRead]);
 
-  const markRead = useCallback((id) => {
-    if (!id) return;
-    updateReadMap((current) => ({ ...current, [id]: Date.now() }));
-  }, [updateReadMap]);
+  const persistRead = useCallback(async (selected) => {
+    const identities = selected.map(notificationReadIdentity).filter((item) => item.key && item.fingerprint);
+    if (!identities.length) return;
+    const tokens = identities.map(identityToken);
+    setOptimisticRead((current) => new Set([...current, ...tokens]));
+    try {
+      for (let index = 0; index < identities.length; index += 100) {
+        await markNotificationsRead(identities.slice(index, index + 100));
+      }
+    } catch (error) {
+      setOptimisticRead((current) => {
+        const next = new Set(current);
+        for (const token of tokens) if (!remoteRead.has(token)) next.delete(token);
+        return next;
+      });
+      throw error;
+    }
+  }, [remoteRead]);
 
-  const markAllRead = useCallback(() => {
-    const now = Date.now();
-    updateReadMap((current) => ({ ...current, ...Object.fromEntries(activeAlerts.map((alert) => [alert.id, now])) }));
-  }, [activeAlerts, updateReadMap]);
+  const markRead = useCallback((alertOrId) => {
+    const alert = typeof alertOrId === "string" ? activeAlerts.find((item) => item.id === alertOrId) : alertOrId;
+    return alert ? persistRead([alert]) : Promise.resolve();
+  }, [activeAlerts, persistRead]);
+
+  const markAllRead = useCallback(() => persistRead(activeAlerts), [activeAlerts, persistRead]);
 
   return { alerts: activeAlerts, unreadCount, isRead, markRead, markAllRead };
 };
