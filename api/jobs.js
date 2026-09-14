@@ -4,6 +4,7 @@ import { fail, methodNotAllowed, ok, readJsonBody } from "./_lib/http.js";
 import { attachRequestId, logEvent, requestIdFrom, sanitizeError } from "./_lib/observability.js";
 import { verifyScheduledJobSignature } from "./_lib/security.js";
 import { cleanupExpiredEphemeralState, createTechnicalBackup } from "./_lib/services/maintenance/index.js";
+import { processFundedCommitmentPayments } from "./_lib/services/planning/automaticCommitmentPayments.js";
 import { queueDueManualReminders } from "./_lib/services/reminders.js";
 import { nowIso, todayJakarta, uuid } from "./_lib/services/core.js";
 import { recordSchedulerHeartbeat, schedulerStageFailureCode } from "./_lib/services/operationalHealth.js";
@@ -31,9 +32,10 @@ const runOptionalStage = async (name, requestId, task, fallback) => {
   }
 };
 
-const schedulerSyncResources = ({ housekeeping, integration, notificationQueue, push, backup }) => {
+const schedulerSyncResources = ({ housekeeping, automaticCommitments, integration, notificationQueue, push, backup }) => {
   const resources = ["system.health"];
   if (Number(housekeeping.userSessions || 0) > 0) resources.push("sessions.listOwn");
+  if (Number(automaticCommitments.settled || 0) > 0) resources.push("recurring.list", "commitments.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState", "notifications.center");
   if ([integration.claimed, integration.completed, integration.failed].some((value) => Number(value || 0) > 0)) resources.push("integrations.status");
   if (Number(notificationQueue.queued || 0) > 0) resources.push("notifications.center", "reminders.get");
   if ([push.claimed, push.sent, push.failed].some((value) => Number(value || 0) > 0)) resources.push("notifications.center", "notifications.status");
@@ -43,6 +45,7 @@ const schedulerSyncResources = ({ housekeeping, integration, notificationQueue, 
 
 const runScheduledJobStages = async (db, message, requestId) => {
   const housekeeping = await runOptionalStage("housekeeping", requestId, () => cleanupExpiredEphemeralState(db), { idempotencyKeys: 0, importPreviews: 0, restorePreviews: 0, userSessions: 0, rateLimitBuckets: 0 });
+  const automaticCommitments = await runOptionalStage("automatic_commitments", requestId, () => processFundedCommitmentPayments(db), { candidates: 0, settled: 0, skipped: 0, amount: 0, skip_reasons: {}, projection: { refreshed: false, period: todayJakarta().slice(0, 7), rules: 0 } });
   const integration = await runOptionalStage("integrations", requestId, () => processIntegrations(db), { claimed: 0, completed: 0, failed: 0 });
   const notificationQueue = await runOptionalStage("notification_queue", requestId, async () => {
     const automatic = await queueDueNotifications(db);
@@ -51,7 +54,7 @@ const runScheduledJobStages = async (db, message, requestId) => {
   }, { queued: 0, automatic: 0, manual: 0 });
   const push = await runOptionalStage("push", requestId, () => processPush(db), { claimed: 0, sent: 0, failed: 0, skipped: true });
   const backup = message.includeBackup === false ? { skipped: true } : await maybeDailyBackup(db);
-  return { housekeeping, integration, notificationQueue, push, backup };
+  return { housekeeping, automaticCommitments, integration, notificationQueue, push, backup };
 };
 
 const recordScheduledJobFailure = async (db, code) => {
@@ -77,17 +80,17 @@ export default async function handler(request, response) {
     await consumeScheduledNonce(db, String(message.nonce));
 
     const stages = await runScheduledJobStages(db, message, requestId);
-    const { housekeeping, integration, notificationQueue, push, backup } = stages;
-    const schedulerErrorCode = schedulerStageFailureCode({ housekeeping, integration, notificationQueue, push });
+    const { housekeeping, automaticCommitments, integration, notificationQueue, push, backup } = stages;
+    const schedulerErrorCode = schedulerStageFailureCode({ housekeeping, automaticCommitments, integration, notificationQueue, push });
     const stageFailed = Boolean(schedulerErrorCode);
     await recordSchedulerHeartbeat(db, { success: !stageFailed, errorCode: schedulerErrorCode });
-    await bumpSyncRevisions(db, schedulerSyncResources({ housekeeping, integration, notificationQueue, push, backup }));
+    await bumpSyncRevisions(db, schedulerSyncResources({ housekeeping, automaticCommitments, integration, notificationQueue, push, backup }));
 
     logEvent(stageFailed ? "warn" : "info", "jobs.request.completed", {
-      requestId, status: 200, durationMs: Date.now() - startedAt, housekeeping, integration, notificationQueue, push, schedulerDegraded: stageFailed,
+      requestId, status: 200, durationMs: Date.now() - startedAt, housekeeping, automaticCommitments, integration, notificationQueue, push, schedulerDegraded: stageFailed,
     });
     return ok(response, {
-      housekeeping, integration, notificationsQueued: Number(notificationQueue.queued || 0), notificationQueue, push, backup, timestamp: nowIso(),
+      housekeeping, automaticCommitments, integration, notificationsQueued: Number(notificationQueue.queued || 0), notificationQueue, push, backup, timestamp: nowIso(),
     });
   } catch (error) {
     const status = error.status || 500;

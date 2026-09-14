@@ -28,13 +28,13 @@
 | Cancelled | Transaksi dibatalkan secara audit-safe dan tidak memengaruhi saldo. |
 | Archived | Record tidak aktif untuk penggunaan normal tetapi tidak dihapus permanen. |
 | Alokasi Dana | Wadah perencanaan account-bound. Dana di dalamnya adalah bagian Saldo yang diikat dari Dana Tersedia, terutama sebagai hasil total Kebutuhan. Mengikat/melepas dana tidak membuat transaksi ledger baru. Manual fund/release adalah advanced/compatibility control, bukan flow utama pembuatan wadah. Implementasi internal tetap memakai `envelope_rules`/`envelope_periods`. |
-| Atur Dana | Label shortcut/pintu masuk user-facing menuju Perencanaan. Istilah ini **bukan** domain finansial baru dan tidak menggantikan `Alokasi Dana`; setelah masuk, user tetap melihat Alokasi Dana, Jadwal Rutin, dan Komitmen sesuai konteksnya. |
+| Atur Dana | Label shortcut/pintu masuk user-facing menuju Perencanaan. Istilah ini **bukan** domain finansial baru dan tidak menggantikan `Alokasi Dana`; setelah masuk, user tetap melihat Alokasi Dana, Jadwal Rutin, dan Kewajiban sesuai konteksnya. |
 | Periode Alokasi Dana | Siklus aktif satu Alokasi Dana. Saat periode ditutup, sistem selalu menyiapkan periode aktif berikutnya. Policy `unallocated` memulai periode berikutnya pada Rp0, sedangkan `carry` hanya membawa sisa aktual. |
 | Kebutuhan | Rencana nominal kategori di dalam satu Alokasi Dana. Menambah/mengubah Kebutuhan otomatis menyesuaikan dana Alokasi dari Dana Tersedia bila aman; menghapus/menurunkan hanya melepas sisa yang belum terpakai/dipesan dan tidak menyapu buffer. Jadwal/Komitmen expense yang menautkan `budget_id` memakai dana yang sudah disiapkan sehingga tidak dicadangkan kedua kali. Implementasi internal memakai `budgets` + `envelope_rule_id`. |
 | Anggaran | Istilah/domain legacy untuk record budget Kebutuhan. Tidak ada menu Anggaran terpisah; `/anggaran` hanya compatibility redirect ke Alokasi Dana. |
 | Budget | Nama internal/legacy untuk record Kebutuhan per periode; bukan surface produk terpisah. |
 | Jadwal Rutin | Pembayaran/pemasukan berulang yang menghasilkan kejadian per periode. Expense dapat memakai dana Kebutuhan yang sudah disiapkan; bila kandidat Kebutuhan ambigu user harus memilih. Implementasi internal memakai recurring rule/occurrence. |
-| Komitmen | Kewajiban/partisipasi yang dipantau sampai selesai, seperti KPR, cicilan, pinjaman, dan Arisan. Komitmen membuat satu Jadwal Rutin managed dan berbeda dari Target yang mengumpulkan uang. |
+| Kewajiban | Label user-facing untuk domain internal `commitments`: kewajiban/partisipasi yang dipantau sampai selesai, seperti KPR, cicilan, pinjaman, dan Arisan. Membuat satu Jadwal Rutin managed dan berbeda dari Target yang mengumpulkan uang. |
 | Recurring | Nama internal untuk aturan Jadwal Rutin yang menghasilkan occurrence. |
 | Occurrence | Kejadian per tanggal dari recurring rule. |
 | Target/Goal | Tujuan tabungan yang terhubung ke rekening dan mutasi. |

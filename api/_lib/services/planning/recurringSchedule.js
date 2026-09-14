@@ -48,9 +48,10 @@ const datesForRule = (rule, startPeriod, endPeriod) => {
   return dates;
 };
 export const ensureRuleOccurrences = async (db, rule, {
-  monthsAhead = 24
+  monthsAhead = 24,
+  basePeriod = periodKey(),
 } = {}) => {
-  const current = periodKey();
+  const current = periodKey(basePeriod);
   const end = addMonths(`${current}-01`, monthsAhead).slice(0, 7);
   const dates = datesForRule(rule, current, end);
   const now = nowIso();
@@ -72,6 +73,19 @@ export const ensureRuleOccurrences = async (db, rule, {
     };
     await db.execute("INSERT INTO recurring_occurrences(occurrence_id,recurring_rule_id,period_key,due_date,expected_amount,actual_amount,status,transaction_ids_json,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", Object.values(occurrence));
   }
+};
+
+export const refreshRecurringProjectionHorizon = async (db, { today = todayJakarta(), monthsAhead = 24 } = {}) => {
+  const currentPeriod = periodKey(String(today).slice(0, 7));
+  const markerKey = "recurring_projection_horizon_period";
+  const marker = await db.one("SELECT value FROM system_config WHERE key=?", [markerKey]);
+  if (marker?.value === currentPeriod) return { refreshed: false, period: currentPeriod, rules: 0 };
+
+  const rules = await db.all("SELECT * FROM recurring_rules WHERE status='active' ORDER BY recurring_rule_id");
+  for (const rule of rules) await ensureRuleOccurrences(db, rule, { monthsAhead, basePeriod: currentPeriod });
+  await db.execute(`INSERT INTO system_config(key,value,updated_at) VALUES(?,?,?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`, [markerKey, currentPeriod, nowIso()]);
+  return { refreshed: true, period: currentPeriod, rules: rules.length };
 };
 
 // Reproducible future projections are safe to remove when a schedule changes or ends.

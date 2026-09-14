@@ -171,7 +171,7 @@ export const recurringListStatement = (context) => {
     : { sql: "t.created_by=?", args: [context.actor.user_id] };
   return {
     sql: `SELECT o.*,r.name,r.kind,r.category_id,r.budget_id,r.commitment_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,a.account_type AS default_account_type,
-      c.commitment_type,c.current_balance AS commitment_current_balance,c.original_amount AS commitment_original_amount,c.total_installments AS commitment_total_installments,c.installments_paid AS commitment_installments_paid,c.auto_debit AS commitment_auto_debit,
+      c.commitment_type,c.current_balance AS commitment_current_balance,c.original_amount AS commitment_original_amount,c.installment_amount AS commitment_installment_amount,c.total_installments AS commitment_total_installments,c.installments_paid AS commitment_installments_paid,c.auto_debit AS commitment_auto_debit,
       (SELECT t.transaction_id FROM transactions t
         WHERE t.recurring_occurrence_id=o.occurrence_id AND t.status='active' AND ${reverseAccess.sql}
         ORDER BY t.created_at DESC,t.transaction_id DESC LIMIT 1) AS reverse_transaction_id
@@ -218,19 +218,47 @@ const recurringCapabilities = (row, context, status, transactionIds) => {
   };
 };
 
+const recurringCommitmentAmounts = (row) => {
+  const original = Number(row.commitment_original_amount || 0);
+  const periods = Number(row.commitment_total_installments || 0);
+  const installment = Number(row.commitment_installment_amount || row.rule_expected_amount || 0);
+  if (original <= 0 || periods <= 0) return { automaticPrincipal: false, scheduledPrincipal: 0, scheduledInterest: 0 };
+  const scheduledPrincipal = Math.max(1, Math.round(original / periods));
+  const automaticPrincipal = Boolean(row.commitment_id && row.commitment_type !== "arisan" && installment >= scheduledPrincipal);
+  const scheduledInterest = automaticPrincipal ? Math.max(0, installment - scheduledPrincipal) : 0;
+  return { automaticPrincipal, scheduledPrincipal, scheduledInterest };
+};
+
+const recurringSuggestedPayment = (row, expectedRemaining, currentBalance, automaticPrincipal, scheduledInterest) => {
+  if (!row.commitment_id) return expectedRemaining;
+  if (row.commitment_type === "arisan" && currentBalance > 0) return Math.min(expectedRemaining, currentBalance);
+  if (automaticPrincipal && currentBalance > 0) return Math.min(expectedRemaining, currentBalance + scheduledInterest);
+  return expectedRemaining;
+};
+
+const mapRecurringRow = (row, context, today) => {
+  const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
+  const status = recurringDisplayStatus(row, today);
+  const { automaticPrincipal, scheduledPrincipal, scheduledInterest } = recurringCommitmentAmounts(row);
+  const expectedRemaining = Math.max(0, Number(row.expected_amount || 0) - Number(row.actual_amount || 0));
+  const currentBalance = Math.max(0, Number(row.commitment_current_balance || 0));
+  const suggestedPayment = recurringSuggestedPayment(row, expectedRemaining, currentBalance, automaticPrincipal, scheduledInterest);
+  return {
+    ...publicRow(row, ["auto_debit", "commitment_auto_debit"]),
+    status,
+    transaction_ids: transactionIds.join(","),
+    ...recurringCapabilities(row, context, status, transactionIds),
+    transaction_type: row.kind,
+    commitment_auto_principal: automaticPrincipal,
+    commitment_scheduled_principal: automaticPrincipal ? scheduledPrincipal : 0,
+    commitment_scheduled_interest: scheduledInterest,
+    commitment_suggested_payment: suggestedPayment,
+  };
+};
+
 export const mapRecurringRows = (rows, context) => {
   const today = todayJakarta();
-  return { items: rows.map((row) => {
-    const transactionIds = JSON.parse(row.transaction_ids_json || "[]");
-    const status = recurringDisplayStatus(row, today);
-    return {
-      ...publicRow(row, ["auto_debit", "commitment_auto_debit"]),
-      status,
-      transaction_ids: transactionIds.join(","),
-      ...recurringCapabilities(row, context, status, transactionIds),
-      transaction_type: row.kind,
-    };
-  }) };
+  return { items: rows.map((row) => mapRecurringRow(row, context, today)) };
 };
 
 export const listRecurring = async (db, context) => {

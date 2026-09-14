@@ -9,9 +9,10 @@ const schedulerCodePart = (value, fallback = "FAILED") => {
   return normalized || fallback;
 };
 
-export const schedulerStageFailureCode = ({ housekeeping, integration, notificationQueue, push } = {}) => {
+export const schedulerStageFailureCode = ({ housekeeping, automaticCommitments, integration, notificationQueue, push } = {}) => {
   const directStages = [
     ["HOUSEKEEPING", housekeeping],
+    ["AUTOMATIC_COMMITMENTS", automaticCommitments],
     ["INTEGRATIONS", integration],
     ["NOTIFICATION_QUEUE", notificationQueue],
     ["PUSH", push],

@@ -61,7 +61,7 @@ test("PDF laporan menghasilkan dokumen lengkap lintas halaman tanpa memangkas Al
 
 test("Excel laporan memakai template sheet terolah dan tetap berupa workbook XLSX valid", () => {
   const sheets = reportWorkbookSheets(makeReport(), meta);
-  assert.deepEqual(Object.keys(sheets), ["Ringkasan", "Komitmen", "Alokasi", "Kebutuhan", "Transaksi", "Kategori", "Rekening"]);
+  assert.deepEqual(Object.keys(sheets), ["Ringkasan", "Kewajiban", "Alokasi", "Kebutuhan", "Transaksi", "Kategori", "Rekening"]);
   assert.equal(sheets.Alokasi.length, 35);
   assert.equal(sheets.Kebutuhan.length, 36);
   assert.equal(sheets.Transaksi.length, 62);

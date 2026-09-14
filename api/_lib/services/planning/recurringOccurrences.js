@@ -7,6 +7,7 @@ import { accountWithAccess, assertOwnedAccess, ruleScopeFromAccount } from "./sh
 import { enqueueRecurringOccurrenceSync, removeUnpaidFutureOccurrences } from "./recurringSchedule.js";
 import { completeCommitmentRecurringRule, restoreCompletedCommitmentRecurringRule } from "./recurringLifecycle.js";
 import { applyCommitmentOccurrencePayment, reverseCommitmentTransaction } from "./commitmentLedger.js";
+import { resolveBudgetEnvelopePeriodForDate, resolveRecurringBudgetForPeriod } from "./recurringBudgetLink.js";
 
 // Occurrence mutations bridge planning state to canonical transaction writes. The
 // transaction service remains authoritative for ledger/balance validation.
@@ -123,29 +124,17 @@ export const restoreOccurrence = async (db, context) => {
   return response;
 };
 
-export const payOccurrence = async (db, context) => {
-  const p = context.payload || {};
-  const occurrence = await db.one("SELECT * FROM recurring_occurrences WHERE occurrence_id=?", [p.occurrence_id]);
-  if (!occurrence) throw appError("NOT_FOUND", "Occurrence rutin tidak ditemukan.", 404);
-  const rule = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=?", [occurrence.recurring_rule_id]);
-  if (!rule) throw appError("INTEGRITY_ERROR", "Aturan rutin untuk occurrence tidak ditemukan.", 409);
-  assertOwnedAccess(context.actor, rule);
-  assertVersion(occurrence, context.rowVersion ?? p.row_version);
-  const account = await accountWithAccess(db, context.actor, p.account_id || rule.default_account_id);
-  assertOccurrencePaymentAllowed(occurrence, rule, account);
-  const amount = positiveInteger(p.amount, "Nominal aktual");
-  const remaining = Math.max(0, Number(occurrence.expected_amount) - Number(occurrence.actual_amount));
-  if (!remaining) throw appError("OCCURRENCE_ALREADY_COMPLETE", "Occurrence sudah selesai dibayar.", 409);
-  const activeBudget = rule.budget_id
-    ? await db.one("SELECT budget_id FROM budgets WHERE budget_id=? AND status='active' AND period_key=?", [rule.budget_id, occurrence.period_key])
-    : null;
-  const transaction = await createTransactionInternal(db, { ...context, action: "recurring.payOccurrence" },
-    buildOccurrencePaymentTransaction({ ...rule, budget_id: activeBudget?.budget_id || null }, occurrence, account, p, amount),
-    { allowInternalLinks: true, audit: false });
-  const { next, status } = buildPaidOccurrence(occurrence, transaction.transaction_id, amount);
+const resolveManagedOccurrenceEnvelope = async (db, { rule, activeBudget, transactionDate, account, payload }) => {
+  if (!rule.commitment_id || !activeBudget?.envelope_rule_id || payload.envelope_period_id) return null;
+  return resolveBudgetEnvelopePeriodForDate(db, activeBudget, transactionDate, account.account_id);
+};
+
+const persistPaidOccurrence = async (db, occurrence, next) => {
   const result = await db.execute("UPDATE recurring_occurrences SET actual_amount=?,status=?,transaction_ids_json=?,row_version=?,updated_at=? WHERE occurrence_id=? AND row_version=?", [next.actual_amount, next.status, next.transaction_ids_json, next.row_version, next.updated_at, occurrence.occurrence_id, occurrence.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Occurrence berubah di perangkat lain.", 409);
-  const commitmentResult = await applyCommitmentOccurrencePayment(db, context, { rule, occurrence, nextOccurrence: next, transaction, payload: p, amount });
+};
+
+const finalizeCommitmentOccurrence = async (db, context, rule, next, status, commitmentResult) => {
   let finalNext = next;
   let finalStatus = status;
   if (commitmentResult?.occurrence_completed && next.status !== "paid") {
@@ -161,13 +150,43 @@ export const payOccurrence = async (db, context) => {
       removeUnpaidFutureOccurrences,
     });
   }
+  return { finalNext, finalStatus };
+};
+
+const commitmentPaymentResponse = (commitmentResult) => {
+  if (!commitmentResult) return {};
+  return { commitment: commitmentResult.commitment, commitment_movement: commitmentResult.movement };
+};
+
+export const payOccurrence = async (db, context) => {
+  const p = context.payload || {};
+  const occurrence = await db.one("SELECT * FROM recurring_occurrences WHERE occurrence_id=?", [p.occurrence_id]);
+  if (!occurrence) throw appError("NOT_FOUND", "Occurrence rutin tidak ditemukan.", 404);
+  const rule = await db.one("SELECT * FROM recurring_rules WHERE recurring_rule_id=?", [occurrence.recurring_rule_id]);
+  if (!rule) throw appError("INTEGRITY_ERROR", "Aturan rutin untuk occurrence tidak ditemukan.", 409);
+  assertOwnedAccess(context.actor, rule);
+  assertVersion(occurrence, context.rowVersion ?? p.row_version);
+  const account = await accountWithAccess(db, context.actor, p.account_id || rule.default_account_id);
+  assertOccurrencePaymentAllowed(occurrence, rule, account);
+  const amount = positiveInteger(p.amount, "Nominal aktual");
+  const remaining = Math.max(0, Number(occurrence.expected_amount) - Number(occurrence.actual_amount));
+  if (!remaining) throw appError("OCCURRENCE_ALREADY_COMPLETE", "Occurrence sudah selesai dibayar.", 409);
+  const activeBudget = await resolveRecurringBudgetForPeriod(db, rule, occurrence.period_key);
+  const transactionDate = p.transaction_date || todayJakarta();
+  const managedEnvelope = await resolveManagedOccurrenceEnvelope(db, { rule, activeBudget, transactionDate, account, payload: p });
+  const paymentPayload = managedEnvelope ? { ...p, envelope_period_id: managedEnvelope.envelope_period_id } : p;
+  const paymentRule = { ...rule, budget_id: activeBudget?.budget_id || null };
+  const transactionPayload = buildOccurrencePaymentTransaction(paymentRule, occurrence, account, paymentPayload, amount);
+  const transaction = await createTransactionInternal(db, { ...context, action: "recurring.payOccurrence" }, transactionPayload, { allowInternalLinks: true, audit: false });
+  const { next, status } = buildPaidOccurrence(occurrence, transaction.transaction_id, amount);
+  await persistPaidOccurrence(db, occurrence, next);
+  const commitmentResult = await applyCommitmentOccurrencePayment(db, context, { rule, occurrence, nextOccurrence: next, transaction, payload: p, amount });
+  const { finalNext, finalStatus } = await finalizeCommitmentOccurrence(db, context, rule, next, status, commitmentResult);
   const response = {
     ...occurrencePaymentResponse(rule, finalNext, finalStatus, transaction),
-    ...(commitmentResult ? { commitment: commitmentResult.commitment, commitment_movement: commitmentResult.movement } : {}),
+    ...commitmentPaymentResponse(commitmentResult),
   };
-  if (finalNext.status === "paid") {
-    await cancelScheduledManualRemindersForEntity(db, context, "recurring_occurrence", occurrence.occurrence_id, "ENTITY_COMPLETED");
-  }
+  if (finalNext.status === "paid") await cancelScheduledManualRemindersForEntity(db, context, "recurring_occurrence", occurrence.occurrence_id, "ENTITY_COMPLETED");
   await appendAudit(db, context, { entityType: "recurring_occurrence", entityId: occurrence.occurrence_id, previous: publicRow(occurrence), next: response });
   await enqueueRecurringOccurrenceSync(db, context, occurrence);
   return response;

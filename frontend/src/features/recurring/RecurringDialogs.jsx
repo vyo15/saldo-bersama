@@ -89,18 +89,46 @@ const PaymentOverspendFields = ({ payment, setPayment, envelopeState }) => <>
   {envelopeState.allowsOverspend ? <CompactNotice tone="info" title="Melebihi dana alokasi" className="form-grid__full" role="status">Kebijakan alokasi ini mengizinkan overspend.</CompactNotice> : null}
 </>;
 
+const CommitmentPaymentNotice = ({ commitment, automaticPrincipal }) => {
+  if (!commitment) return null;
+  if (commitment.commitment_type === "arisan") {
+    return <CompactNotice className="form-grid__full" tone="info" title="Setoran Arisan">Setoran ini memperbarui progres Arisan. Sisa setoran saat ini {formatRupiah(commitment.commitment_current_balance || 0)}.</CompactNotice>;
+  }
+  if (automaticPrincipal) {
+    return <CompactNotice className="form-grid__full" tone="info" title="Pembayaran Kewajiban">Sisa pokok {formatRupiah(commitment.commitment_current_balance || 0)}. Untuk cicilan normal, sistem memperkirakan pokok {formatRupiah(commitment.commitment_scheduled_principal || 0)} dan bunga/biaya {formatRupiah(commitment.commitment_scheduled_interest || 0)} secara otomatis.</CompactNotice>;
+  }
+  return <CompactNotice className="form-grid__full" tone="info" title="Pembayaran Kewajiban">Sisa pokok tercatat saat ini {formatRupiah(commitment.commitment_current_balance || 0)}.</CompactNotice>;
+};
+
+const DebtCommitmentPaymentFields = ({ payment, setPayment, debtCommitment, automaticPrincipal }) => {
+  if (!debtCommitment) return null;
+  const toggleSettlement = (event) => setPayment((current) => ({ ...current, settle_commitment: event.target.checked, remaining_principal: event.target.checked ? "" : current.remaining_principal }));
+  const updateRemainingPrincipal = (remaining_principal) => setPayment((current) => ({ ...current, remaining_principal }));
+  return <>
+    <label className="checkbox-field form-grid__full"><input type="checkbox" checked={Boolean(payment.settle_commitment)} onChange={toggleSettlement} /><span>Ini pelunasan terakhir</span></label>
+    {!automaticPrincipal && !payment.settle_commitment ? <><MoneyInput id="commitment-remaining-principal" label="Sisa pokok setelah pembayaran" value={payment.remaining_principal} onChange={updateRemainingPrincipal} /><CompactNotice className="form-grid__full" tone="info">Opsional untuk kewajiban yang belum punya pola pokok flat. Isi sesuai saldo pokok terbaru bila tersedia.</CompactNotice></> : null}
+    {payment.settle_commitment ? <CompactNotice className="form-grid__full" tone="warning">Gunakan nominal pelunasan aktual dari bank/penyedia. Setelah tersimpan, sisa pokok menjadi Rp0 dan jadwal berikutnya dihentikan.</CompactNotice> : null}
+  </>;
+};
+
 const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, paymentEnvelopes, envelopeStatus, envelopeState, completeOccurrence }) => {
-  const accountLabel = payment.item?.kind === "income" ? "Rekening penerima" : "Rekening pembayaran";
-  const showEnvelope = payment.item?.kind === "expense";
+  const isIncome = payment.item?.kind === "income";
+  const isExpense = payment.item?.kind === "expense";
+  const accountLabel = isIncome ? "Rekening penerima" : "Rekening pembayaran";
   const commitment = payment.item?.commitment_id ? payment.item : null;
   const debtCommitment = Boolean(commitment && commitment.commitment_type !== "arisan");
+  const automaticPrincipal = Boolean(debtCommitment && commitment.commitment_auto_principal);
+  const amountLabel = commitment ? "Nominal pembayaran" : "Nominal aktual";
+  const updateAmount = (amount) => setPayment((current) => ({ ...current, amount }));
+  const updateAccount = (account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }));
+  const updateTransactionDate = (event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }));
   return <form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}>
-    {commitment ? <CompactNotice className="form-grid__full" tone="info" title={commitment.commitment_type === "arisan" ? "Setoran Komitmen Arisan" : "Pembayaran Komitmen"}>{commitment.commitment_auto_debit ? "Jadwal ini bertanda autodebet. Konfirmasi hanya setelah debit bank benar-benar berhasil; saldo aplikasi belum berubah sebelum aktual disimpan." : commitment.commitment_type === "arisan" ? `Setoran ini akan memperbarui progres Arisan (${Number(commitment.commitment_installments_paid || 0)} dari ${Number(commitment.commitment_total_installments || 0)} periode sudah tercatat).` : `Sisa pokok tercatat saat ini ${formatRupiah(commitment.commitment_current_balance || 0)}.`}</CompactNotice> : null}
-    <MoneyInput id="recurring-actual-amount" label="Nominal aktual" value={payment.amount} onChange={(amount) => setPayment((current) => ({ ...current, amount }))} required />
-    <AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={(account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }))} />
-    <label className="field"><span>Tanggal aktual *</span><TemporalInput required type="date" value={payment.transaction_date} onChange={(event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }))} /></label>
-    {debtCommitment ? <><MoneyInput id="commitment-remaining-principal" label="Sisa pokok setelah pembayaran" value={payment.remaining_principal} onChange={(remaining_principal) => setPayment((current) => ({ ...current, remaining_principal }))} /><CompactNotice className="form-grid__full" tone="info">Opsional. Isi sesuai saldo pokok terbaru dari bank/lembaga agar sistem dapat memisahkan pokok dan bunga/biaya. Kosongkan jika belum diketahui; pembayaran tetap dapat dicatat dan Komitmen akan ditandai perlu diperbarui.</CompactNotice></> : null}
-    {showEnvelope ? <PaymentEnvelopeField payment={payment} setPayment={setPayment} paymentEnvelopes={paymentEnvelopes} envelopeHint={paymentEnvelopeHint(envelopeStatus, paymentEnvelopes)} /> : null}
+    <CommitmentPaymentNotice commitment={commitment} automaticPrincipal={automaticPrincipal} />
+    <MoneyInput id="recurring-actual-amount" label={amountLabel} value={payment.amount} onChange={updateAmount} required />
+    <AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={updateAccount} />
+    <label className="field"><span>Tanggal aktual *</span><TemporalInput required type="date" value={payment.transaction_date} onChange={updateTransactionDate} /></label>
+    <DebtCommitmentPaymentFields payment={payment} setPayment={setPayment} debtCommitment={debtCommitment} automaticPrincipal={automaticPrincipal} />
+    {isExpense ? <PaymentEnvelopeField payment={payment} setPayment={setPayment} paymentEnvelopes={paymentEnvelopes} envelopeHint={paymentEnvelopeHint(envelopeStatus, paymentEnvelopes)} /> : null}
     <PaymentOverspendFields payment={payment} setPayment={setPayment} envelopeState={envelopeState} />
     {paymentState.error ? <div className="notice notice--danger form-grid__full" role="alert">{paymentState.error.message}</div> : null}
   </form>;

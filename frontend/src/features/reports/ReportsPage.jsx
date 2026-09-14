@@ -142,12 +142,12 @@ const CommitmentActivity = ({ activity = {} }) => {
     ["Pokok teridentifikasi", activity.identified_principal_amount, "Mengurangi sisa kewajiban"],
     ["Bunga & biaya teridentifikasi", activity.identified_interest_amount, "Bagian biaya dari pembayaran"],
     ["Pokok belum diperbarui", activity.unknown_principal_payment_amount, `${Number(activity.unknown_principal_payment_count || 0)} pembayaran perlu sisa pokok terbaru`],
-    ["Setoran Arisan", activity.arisan_contribution_amount, "Komitmen setoran pada periode ini"],
+    ["Setoran Arisan", activity.arisan_contribution_amount, "Kewajiban setoran pada periode ini"],
     ["Penerimaan Arisan", activity.arisan_receipt_amount, "Dana Arisan yang diterima"],
   ].filter(([, value]) => Number(value || 0) > 0);
   if (!rows.length) return null;
   return <section className={styles.flatSection}>
-    <div className={styles.sectionHeading}><div><h2>Aktivitas Komitmen</h2><p>Pisahkan pembayaran pokok, bunga/biaya, dan Arisan tanpa mengubah arus kas rekening.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Kelola</Link></div>
+    <div className={styles.sectionHeading}><div><h2>Aktivitas Kewajiban</h2><p>Pisahkan pembayaran pokok, bunga/biaya, dan Arisan tanpa mengubah arus kas rekening.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Kelola</Link></div>
     <div className={styles.categoryRows}>{rows.map(([label, value, note]) => <div className={styles.categoryRow} key={label}><span><strong>{label}</strong><small>{note}</small></span><span><strong>{formatCompactRupiah(value)}</strong></span></div>)}</div>
   </section>;
 };
@@ -163,8 +163,8 @@ const BreakdownDetails = ({ accountExpenses, creatorExpenses }) => <details clas
 const Documents = ({ period, scopeLabel, trendMonths, allocationRuleId }) => <section className={styles.documentsSection}>
   <div className={styles.sectionHeading}><div><h2>Dokumen laporan</h2><p>{monthLabel(period)} · {scopeLabel}</p></div></div>
   <div className={styles.documentRows}>
-    <div><FiFileText aria-hidden="true" /><span><strong>PDF rekening koran</strong><small>Ringkasan, Komitmen, Kebutuhan, dan rincian transaksi siap baca.</small></span><ReportFileButton format="pdf" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
-    <div><FiLayers aria-hidden="true" /><span><strong>Excel terolah</strong><small>Sheet Ringkasan, Komitmen, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening.</small></span><ReportFileButton format="xlsx" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+    <div><FiFileText aria-hidden="true" /><span><strong>PDF rekening koran</strong><small>Ringkasan, Kewajiban, Kebutuhan, dan rincian transaksi siap baca.</small></span><ReportFileButton format="pdf" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+    <div><FiLayers aria-hidden="true" /><span><strong>Excel terolah</strong><small>Sheet Ringkasan, Kewajiban, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening.</small></span><ReportFileButton format="xlsx" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
   </div>
 </section>;
 

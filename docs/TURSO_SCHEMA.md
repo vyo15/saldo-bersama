@@ -25,8 +25,8 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `envelope_movements`
 - `recurring_rules`
 - `recurring_occurrences`
-- `commitments` — KPR/cicilan/pinjaman/Arisan; satu Komitmen aktif memiliki satu Jadwal Rutin canonical.
-- `commitment_movements` — ledger progres pembayaran/penerimaan Komitmen dan snapshot pokok/bunga.
+- `commitments` — domain internal Kewajiban KPR/cicilan/pinjaman/Arisan; satu Kewajiban aktif memiliki satu Jadwal Rutin canonical.
+- `commitment_movements` — ledger progres pembayaran/penerimaan Kewajiban dan snapshot pokok/bunga.
 - `budgets` — Kebutuhan operasional periode terbuka.
 - `budget_history` — representasi compact Kebutuhan setelah periode ditutup; dipakai report/reopen tanpa mempertahankan row operasional aktif.
 - `savings_goals`
@@ -69,7 +69,7 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `users.photo_url` kosong atau URL HTTPS Google profile yang diawali `https://lh3.googleusercontent.com/`; browser tidak menentukan authority user dari foto.
 - `master_data_requests` dan `transfer_requests` menyimpan status lifecycle + `row_version`; request pending tidak boleh di-hard-delete sebagai jalan pintas review.
 - `commitments.commitment_type` dibatasi ke `mortgage`, `installment`, `loan`, `arisan`, atau `other`; `status` ke `active`, `completed`, atau `archived`. Jadwal terkait disimpan melalui `recurring_rules.commitment_id` yang unik.
-- `transactions.commitment_flow` hanya `payment`/`receipt` bila `commitment_id` terisi; `commitment_movements` menjaga link transaksi/occurrence, principal/interest split, reversal, dan balance before/after. Penyelesaian Komitmen mengarsipkan jadwal future reproducible; reversal pembayaran terakhir dapat mengaktifkan kembali jadwal secara internal.
+- `transactions.commitment_flow` hanya `payment`/`receipt` bila `commitment_id` terisi; `commitment_movements` menjaga link transaksi/occurrence, principal/interest split, reversal, dan balance before/after. Penyelesaian atau aksi UI **Hapus** Kewajiban menghentikan future occurrence reproducible tanpa menghapus histori transaksi; reversal pembayaran terakhir dapat mengaktifkan kembali jadwal secara internal.
 - `transactions.cost_share_mode` hanya `unspecified`, `equal`, atau `percentage`; `transactions.cost_share_json` menyimpan snapshot split integer untuk expense shared dan default `[]` untuk histori/non-split.
 - Tabel bisnis memakai `STRICT`.
 - Foreign key diaktifkan pada setiap koneksi dan diverifikasi oleh integrity check.
@@ -128,7 +128,7 @@ Current additive capabilities yang perlu diketahui reader schema:
 - `envelope_rules.decoration_key` adalah metadata presentation-only dengan default `auto`; tidak mengubah saldo/ownership/ledger.
 - `budget_history` menyimpan representasi compact Kebutuhan setelah period close dan memungkinkan report/reopen tanpa mempertahankan row operasional aktif.
 - `transactions.budget_id` dan `recurring_rules.budget_id` menautkan event/jadwal ke Kebutuhan tanpa mengharuskan row operasional tetap hidup selamanya.
-- `commitments` + `commitment_movements` menyimpan perjalanan KPR/cicilan/pinjaman/Arisan; `recurring_rules.commitment_id` membuat satu jadwal canonical dan `transactions.commitment_id`/`commitment_flow` menautkan cash event aktual.
+- `commitments` + `commitment_movements` menyimpan perjalanan KPR/cicilan/pinjaman/Arisan; `recurring_rules.commitment_id` membuat satu jadwal canonical dan `transactions.commitment_id`/`commitment_flow` menautkan cash event aktual. Opening `current_balance` menjadi truth saat mulai memakai fitur sehingga pembayaran lampau tidak perlu dibuat ulang.
 - `sync_revisions` adalah metadata invalidation realtime, bukan financial authority dan tidak masuk logical backup.
 - Investment compatibility fields (`is_system_hidden`, `cash_effect_enabled`) mempertahankan histori lama sambil menjaga flow asset-centric current.
 - Environment/session/rate-limit/collaboration tables tetap bagian current schema meskipun diperkenalkan oleh migration lebih lama.

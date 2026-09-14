@@ -145,7 +145,7 @@ test("backup schema v23 menyimpan data canonical termasuk pengaturan notifikasi,
     assert.equal(Object.hasOwn(snapshot.tables, "rate_limit_buckets"), false);
     assert.equal(Object.hasOwn(snapshot.tables, "sync_revisions"), false);
     assert.equal(snapshot.tables.system_config.some((row) => [
-      "database_environment", "maintenance_mode", "scheduler_last_run_at", "scheduler_last_success_at", "scheduler_last_failure_at", "scheduler_last_error_code",
+      "database_environment", "maintenance_mode", "scheduler_last_run_at", "scheduler_last_success_at", "scheduler_last_failure_at", "scheduler_last_error_code", "recurring_projection_horizon_period",
     ].includes(row.key)), false);
     assert.equal(validateSnapshot(snapshot), snapshot.checksum);
   } finally { db.close(); }

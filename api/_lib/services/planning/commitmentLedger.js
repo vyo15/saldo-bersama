@@ -7,6 +7,24 @@ const activeCommitment = async (db, commitmentId) => {
   return row;
 };
 
+export const flatCommitmentPaymentBreakdown = (commitment, amount) => {
+  const before = Number(commitment.current_balance || 0);
+  const original = Number(commitment.original_amount || 0);
+  const totalInstallments = Number(commitment.total_installments || 0);
+  if (before <= 0 || original <= 0 || totalInstallments <= 0) return null;
+  const scheduledPrincipal = Math.max(1, Math.round(original / totalInstallments));
+  if (Number(amount || 0) < Math.min(before, scheduledPrincipal)) return null;
+  const principal = Math.min(before, scheduledPrincipal);
+  return {
+    before,
+    after: Math.max(0, before - principal),
+    principal,
+    interest: Math.max(0, Number(amount || 0) - principal),
+    principalKnown: true,
+    scheduledPrincipal,
+  };
+};
+
 const paymentBalance = (commitment, payload, amount) => {
   const before = Number(commitment.current_balance || 0);
   if (commitment.commitment_type === "arisan") {
@@ -15,7 +33,8 @@ const paymentBalance = (commitment, payload, amount) => {
   }
   const raw = payload.remaining_principal;
   if (raw === undefined || raw === null || raw === "") {
-    return { before, after: before, principal: 0, interest: 0, principalKnown: false };
+    const inferred = flatCommitmentPaymentBreakdown(commitment, amount);
+    return inferred || { before, after: before, principal: 0, interest: 0, principalKnown: false };
   }
   const after = nonNegativeInteger(raw, "Sisa pokok");
   if (after > before) throw appError("COMMITMENT_BALANCE_INCREASE", "Sisa pokok setelah pembayaran tidak boleh lebih besar dari sebelumnya.", 409);

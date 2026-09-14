@@ -206,12 +206,11 @@ const recurringAlerts = (recurring) => {
   for (const item of recurring) {
     if (["paid", "received", "cancelled"].includes(item.status)) continue;
     const dueInDays = dayDifference(today, item.due_date);
-    const autoDebit = Boolean(item.auto_debit);
     if (item.status === "overdue" || dueInDays < 0) {
       alerts.push({
         id: `recurring-overdue:${item.occurrence_id}`, type: "recurring_overdue", severity: "danger",
-        title: autoDebit ? `${item.name} autodebet belum dikonfirmasi` : `${item.name} terlambat`,
-        message: autoDebit ? `Jadwal autodebet ${item.due_date} belum dikonfirmasi. Pastikan debit bank berhasil lalu catat aktualnya.` : `Jatuh tempo ${item.due_date} dan belum diselesaikan.`,
+        title: `${item.name} terlambat`,
+        message: `Jatuh tempo ${item.due_date} dan belum diselesaikan.`,
         targetPath: "/perencanaan/jadwal",
       });
       continue;
@@ -219,8 +218,8 @@ const recurringAlerts = (recurring) => {
     if (dueInDays <= 7) {
       alerts.push({
         id: `recurring-due:${item.occurrence_id}`, type: "recurring_due", severity: "warning",
-        title: autoDebit ? `${item.name} autodebet segera` : `${item.name} segera jatuh tempo`,
-        message: autoDebit ? `Autodebet dijadwalkan ${item.due_date}. Pastikan saldo cukup dan konfirmasi setelah debit berhasil.` : `Jatuh tempo ${item.due_date}.`,
+        title: `${item.name} segera jatuh tempo`,
+        message: `Jatuh tempo ${item.due_date}.`,
         targetPath: "/perencanaan/jadwal",
       });
     }

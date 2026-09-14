@@ -178,7 +178,7 @@ export const createReportPdf = (report, meta) => {
   const commitmentActivityRows = commitmentRows(report);
   if (commitmentActivityRows.length) pages.push(...tablePages({
     meta,
-    title: "Aktivitas Komitmen",
+    title: "Aktivitas Kewajiban",
     headers: ["Metrik", "Nominal"],
     rows: commitmentActivityRows,
     widths: [320, 187],

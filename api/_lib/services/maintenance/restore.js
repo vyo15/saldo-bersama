@@ -137,7 +137,7 @@ const restoreIdempotencyReservation = async (tx, reservation) => {
 
 const restoreSystemConfig = async (tx, snapshot) => {
   for (const row of snapshot.tables.system_config) {
-    if (["maintenance_mode", "schema_version", "database_environment", "scheduler_last_run_at", "scheduler_last_success_at", "scheduler_last_failure_at", "scheduler_last_error_code"].includes(row.key)) continue;
+    if (["maintenance_mode", "schema_version", "database_environment", "scheduler_last_run_at", "scheduler_last_success_at", "scheduler_last_failure_at", "scheduler_last_error_code", "recurring_projection_horizon_period"].includes(row.key)) continue;
     await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [row.key, row.value, row.updated_at]);
   }
   await tx.execute("INSERT INTO system_config(key,value,updated_at) VALUES('schema_version',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at", [String(DATABASE_SCHEMA_VERSION), nowIso()]);

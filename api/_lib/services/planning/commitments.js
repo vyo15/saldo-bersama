@@ -21,18 +21,41 @@ const activeIncomeCategory = async (db, categoryId) => {
   return row;
 };
 
+const explicitInstallmentsPaid = (payload) => {
+  const hasValue = payload.installments_paid !== undefined && payload.installments_paid !== null && payload.installments_paid !== "";
+  return { hasValue, value: hasValue ? nonNegativeInteger(payload.installments_paid, "Periode yang sudah dibayar") : 0 };
+};
+
+const defaultOpeningBalance = ({ type, totalInstallments, paid, originalAmount, installmentAmount }) => {
+  if (type !== "arisan" || !totalInstallments || !paid.hasValue) return originalAmount;
+  return Math.max(0, originalAmount - paid.value * installmentAmount);
+};
+
+const assertOpeningBalance = (type, openingBalance, originalAmount) => {
+  if (openingBalance < 1) throw appError("INVALID_COMMITMENT_BALANCE", "Sisa kewajiban/setoran harus lebih dari 0 saat Kewajiban dibuat.", 400);
+  if (openingBalance <= originalAmount) return;
+  const message = type === "arisan" ? "Sisa setoran Arisan tidak boleh lebih besar dari total setoran." : "Sisa kewajiban tidak boleh lebih besar dari nilai awal.";
+  throw appError("INVALID_COMMITMENT_BALANCE", message, 400);
+};
+
+const inferredInstallmentsPaid = ({ type, totalInstallments, originalAmount, openingBalance, installmentAmount }) => {
+  if (type !== "arisan" || !totalInstallments) return 0;
+  return Math.min(totalInstallments, Math.max(0, Math.floor((originalAmount - openingBalance) / installmentAmount)));
+};
+
 const normalizedState = (p, type) => {
   const installmentAmount = positiveInteger(p.installment_amount, "Nominal cicilan/setoran");
   const totalInstallments = nonNegativeInteger(p.total_installments ?? 0, "Jumlah periode");
   if (type === "arisan" && totalInstallments < 1) throw appError("INVALID_ARISAN_PERIOD", "Jumlah periode Arisan wajib lebih dari 0.", 400);
-  const installmentsPaid = nonNegativeInteger(p.installments_paid ?? 0, "Periode yang sudah dibayar");
-  if (totalInstallments && installmentsPaid > totalInstallments) throw appError("INVALID_COMMITMENT_PROGRESS", "Periode terbayar tidak boleh melebihi jumlah periode.", 400);
   const computedTotal = installmentAmount * Math.max(1, totalInstallments || 1);
   const originalAmount = positiveInteger(p.original_amount || computedTotal, "Nilai awal");
-  const defaultBalance = type === "arisan" && totalInstallments ? Math.max(0, installmentAmount * (totalInstallments - installmentsPaid)) : originalAmount;
+  const paid = explicitInstallmentsPaid(p);
+  const defaultBalance = defaultOpeningBalance({ type, totalInstallments, paid, originalAmount, installmentAmount });
   const openingBalance = nonNegativeInteger(p.current_balance ?? defaultBalance, "Sisa kewajiban");
-  if (openingBalance < 1) throw appError("INVALID_COMMITMENT_BALANCE", "Sisa kewajiban/setoran harus lebih dari 0 saat Komitmen dibuat.", 400);
-  if (type !== "arisan" && openingBalance > originalAmount) throw appError("INVALID_COMMITMENT_BALANCE", "Sisa kewajiban tidak boleh lebih besar dari nilai awal.", 400);
+  assertOpeningBalance(type, openingBalance, originalAmount);
+  const inferredPaid = inferredInstallmentsPaid({ type, totalInstallments, originalAmount, openingBalance, installmentAmount });
+  const installmentsPaid = paid.hasValue ? paid.value : inferredPaid;
+  if (totalInstallments && installmentsPaid > totalInstallments) throw appError("INVALID_COMMITMENT_PROGRESS", "Periode terbayar tidak boleh melebihi jumlah periode.", 400);
   return { installmentAmount, totalInstallments, installmentsPaid, originalAmount, openingBalance };
 };
 
@@ -70,30 +93,67 @@ const buildCommitmentUpdate = (current, payload, account, category, actorId) => 
   };
 };
 
+
+const commitmentFlatAmounts = (row) => {
+  const totalInstallments = Number(row.total_installments || 0);
+  const originalAmount = Number(row.original_amount || 0);
+  const installmentAmount = Number(row.installment_amount || 0);
+  if (totalInstallments <= 0 || originalAmount <= 0) return { flatPrincipal: 0, flatInterest: 0 };
+  const flatPrincipal = Math.max(1, Math.round(originalAmount / totalInstallments));
+  const flatInterest = installmentAmount >= flatPrincipal ? Math.max(0, installmentAmount - flatPrincipal) : 0;
+  return { flatPrincipal, flatInterest };
+};
+
+const commitmentProgressPercent = (row) => {
+  const originalAmount = Number(row.original_amount || 0);
+  const currentBalance = Number(row.current_balance || 0);
+  if (row.commitment_type === "arisan" && !originalAmount) return 0;
+  const denominator = row.commitment_type === "arisan" ? originalAmount : Math.max(1, originalAmount || 1);
+  return Math.min(100, Math.max(0, Math.round((originalAmount - currentBalance) / denominator * 100)));
+};
+
+const commitmentCapabilities = (row, actor) => {
+  const owner = actor.role === "owner";
+  const active = row.status !== "archived";
+  const canManage = owner || row.scope === "shared" || row.owner_user_id === actor.user_id;
+  const canRecordReceipt = row.commitment_type === "arisan" && active && Number(row.received_amount || 0) < Number(row.original_amount || 0);
+  return { can_manage: canManage, can_archive: owner && active, can_delete: owner && active, can_record_receipt: canRecordReceipt };
+};
+
+const commitmentListItem = (row, actor) => {
+  const { flatPrincipal, flatInterest } = commitmentFlatAmounts(row);
+  const debtType = ["mortgage", "installment", "loan", "other"].includes(row.commitment_type);
+  return {
+    ...publicRow(row, ["auto_debit"]),
+    ...commitmentCapabilities(row, actor),
+    balance_needs_update: Boolean(debtType && row.last_movement_at && Number(row.latest_principal_known || 0) === 0),
+    flat_principal_amount: flatPrincipal,
+    flat_interest_amount: flatInterest,
+    next_due_remaining: Math.max(0, Number(row.next_expected_amount || 0) - Number(row.next_actual_amount || 0)),
+    progress_percent: commitmentProgressPercent(row),
+  };
+};
+
 export const listCommitments = async (db, context) => {
   const access = visibleScopeSql(context.actor, "c");
   const rows = await db.all(`SELECT c.*,rr.recurring_rule_id,rr.row_version AS recurring_row_version,rr.status AS recurring_status,
       rr.expected_amount AS recurring_expected_amount,rr.due_day AS recurring_due_day,rr.budget_id,
+      nx.occurrence_id AS next_occurrence_id,nx.due_date AS next_due_date,nx.expected_amount AS next_expected_amount,nx.actual_amount AS next_actual_amount,nx.status AS next_occurrence_status,
       a.name AS account_name,a.account_type,cg.name AS category_name,
       (SELECT cm.principal_known FROM commitment_movements cm WHERE cm.commitment_id=c.commitment_id AND cm.status='active' AND cm.movement_type='payment' ORDER BY cm.created_at DESC,cm.commitment_movement_id DESC LIMIT 1) AS latest_principal_known,
       (SELECT cm.created_at FROM commitment_movements cm WHERE cm.commitment_id=c.commitment_id AND cm.status='active' ORDER BY cm.created_at DESC,cm.commitment_movement_id DESC LIMIT 1) AS last_movement_at
     FROM commitments c
     LEFT JOIN recurring_rules rr ON rr.commitment_id=c.commitment_id
+    LEFT JOIN recurring_occurrences nx ON nx.occurrence_id=(
+      SELECT ro.occurrence_id FROM recurring_occurrences ro
+      WHERE ro.recurring_rule_id=rr.recurring_rule_id AND ro.status<>'cancelled' AND ro.actual_amount<ro.expected_amount
+      ORDER BY ro.due_date,ro.occurrence_id LIMIT 1
+    )
     LEFT JOIN accounts a ON a.account_id=c.default_account_id
     LEFT JOIN categories cg ON cg.category_id=c.category_id
     WHERE ${access.sql} AND c.status<>'archived'
     ORDER BY CASE c.status WHEN 'active' THEN 0 ELSE 1 END,c.due_day,c.name COLLATE NOCASE`, access.args);
-  const items = rows.map((row) => ({
-    ...publicRow(row, ["auto_debit"]),
-    can_manage: context.actor.role === "owner" || row.scope === "shared" || row.owner_user_id === context.actor.user_id,
-    can_archive: context.actor.role === "owner" && row.status !== "archived",
-    can_record_receipt: row.commitment_type === "arisan" && row.status !== "archived" && Number(row.received_amount || 0) < Number(row.original_amount || 0),
-    balance_needs_update: ["mortgage","installment","loan","other"].includes(row.commitment_type) && row.last_movement_at && Number(row.latest_principal_known || 0) === 0,
-    progress_percent: row.commitment_type === "arisan"
-      ? (Number(row.total_installments || 0) ? Math.min(100, Math.round(Number(row.installments_paid || 0) / Number(row.total_installments) * 100)) : 0)
-      : Math.min(100, Math.max(0, Math.round((Number(row.original_amount || 0) - Number(row.current_balance || 0)) / Math.max(1, Number(row.original_amount || 1)) * 100))),
-  }));
-  return { items };
+  return { items: rows.map((row) => commitmentListItem(row, context.actor)) };
 };
 
 export const createCommitment = async (db, context) => {
@@ -110,7 +170,7 @@ export const createCommitment = async (db, context) => {
   const frequency = String(p.frequency || "monthly");
   if (!FREQUENCIES.has(frequency)) throw appError("INVALID_COMMITMENT_FREQUENCY", "Frekuensi Komitmen tidak valid.", 400);
   const state = normalizedState(p, type);
-  const startDate = dateValue(p.start_date, "Tanggal mulai");
+  const startDate = dateValue(p.start_date || nowIso().slice(0, 10), "Tanggal mulai");
   const endDate = p.end_date ? dateValue(p.end_date, "Tanggal akhir") : null;
   if (endDate && endDate < startDate) throw appError("INVALID_DATE_RANGE", "Tanggal akhir sebelum tanggal mulai.", 400);
   const now = nowIso();

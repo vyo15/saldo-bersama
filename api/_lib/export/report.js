@@ -23,7 +23,7 @@ export const reportWorkbookSheets = (report, meta) => {
   }
   return {
     Ringkasan: summaryRows,
-    Komitmen: [
+    Kewajiban: [
       { Metrik: "Pembayaran KPR/cicilan", Nominal: amount(report.commitmentActivity?.debt_payment_amount), Keterangan: "Arus kas keluar ke kewajiban" },
       { Metrik: "Pokok teridentifikasi", Nominal: amount(report.commitmentActivity?.identified_principal_amount), Keterangan: "Mengurangi sisa kewajiban" },
       { Metrik: "Bunga & biaya teridentifikasi", Nominal: amount(report.commitmentActivity?.identified_interest_amount), Keterangan: "Bagian biaya dari pembayaran" },

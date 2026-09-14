@@ -73,6 +73,7 @@ test("heartbeat sukses membuat scheduler sehat dan failure terbaru membuatnya de
 });
 
 test("scheduler menyimpan kode stage spesifik agar STAGE_FAILED generik tidak kembali", () => {
+  assert.equal(schedulerStageFailureCode({ automaticCommitments: { failed: true, code: "FUNDED_PAYMENT_FAILED" } }), "AUTOMATIC_COMMITMENTS:FUNDED_PAYMENT_FAILED");
   assert.equal(schedulerStageFailureCode({ integration: { failed: true, code: "GOOGLE_BRIDGE_NOT_CONFIGURED" } }), "INTEGRATIONS:GOOGLE_BRIDGE_NOT_CONFIGURED");
   assert.equal(schedulerStageFailureCode({ integration: { failed: 2, errorCode: "upstream timeout" } }), "INTEGRATIONS:UPSTREAM_TIMEOUT");
   assert.equal(schedulerStageFailureCode({ push: { partial: 1 } }), "PUSH:PARTIAL_DELIVERY");
@@ -178,6 +179,6 @@ test("operational health membaca status database tanpa membocorkan payload dan p
 
 test("scheduler menganggap partial Push delivery sebagai run degraded", async () => {
   const jobs = await readFile(new URL("../../api/jobs.js", import.meta.url), "utf8");
-  assert.match(jobs, /schedulerStageFailureCode\(\{ housekeeping, integration, notificationQueue, push \}\)/);
+  assert.match(jobs, /schedulerStageFailureCode\(\{ housekeeping, automaticCommitments, integration, notificationQueue, push \}\)/);
   assert.equal(schedulerStageFailureCode({ push: { partial: 1 } }), "PUSH:PARTIAL_DELIVERY");
 });

@@ -128,6 +128,7 @@ const TRANSIENT_SYSTEM_CONFIG_KEYS = new Set([
   "scheduler_last_success_at",
   "scheduler_last_failure_at",
   "scheduler_last_error_code",
+  "recurring_projection_horizon_period",
 ]);
 
 const backupTablesForSchemaVersion = (schemaVersion = DATABASE_SCHEMA_VERSION) => {

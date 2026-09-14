@@ -58,7 +58,7 @@ const actionableNotificationReadPlan = ({ today, dueEndDate, period }) => {
   add("settings", { sql: "SELECT user_id,reconciliation_days,recording_consistency_days FROM notification_settings", args: [] });
   add("recurringDue", {
     sql: `SELECT o.occurrence_id,o.due_date,o.expected_amount,o.actual_amount,o.status,o.updated_at,
-      r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,r.auto_debit,r.commitment_id,
+      r.name,r.kind,r.scope,r.owner_user_id,r.default_account_id,r.commitment_id,
       a.account_id,a.name AS account_name,a.status AS account_status
     FROM recurring_occurrences o
     JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id
@@ -141,7 +141,6 @@ const recurringDueBody = (item, remaining) => {
   const nominal = notificationRupiah(remaining);
   const account = shortName(item.account_name, item.kind === "income" ? "rekening tujuan" : "rekening sumber");
   if (item.kind === "income") return `${nominal} dijadwalkan masuk ke ${account}.`;
-  if (Number(item.auto_debit || 0) === 1) return `Pastikan autodebet ${nominal} dari ${account} sudah berhasil. Saldo aplikasi berubah setelah transaksi aktual dikonfirmasi.`;
   return `${nominal} perlu dibayar dari ${account}.`;
 };
 

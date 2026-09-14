@@ -17,7 +17,7 @@ import {
 const recurringRefreshKeys = Object.freeze(["recurring.list", "commitments.list", "reports.monthly", "app.initialState"]);
 const recurringLedgerRefreshKeys = Object.freeze(["recurring.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState"]);
 const initialRuleForm = () => ({ name: "", kind: "expense", expected_amount: "", due_day: 20, category_id: "", budget_id: "", default_account_id: "", payment_method: "transfer", frequency: "monthly", start_date: todayInJakarta() });
-const initialPayment = () => ({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "", remaining_principal: "" });
+const initialPayment = () => ({ item: null, account_id: "", amount: "", transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "", remaining_principal: "", settle_commitment: false });
 const refreshRecurring = async ({ invalidate, resource, refreshOverview, keys = recurringRefreshKeys }) => { invalidate([...new Set([...keys, "commitments.list"])]); await Promise.allSettled([resource.reload(), refreshOverview()]); };
 
 export const useRecurringRuleActions = (shared) => {
@@ -46,7 +46,7 @@ export const useRecurringPaymentActions = (shared) => {
   const [reverseTarget, setReverseTarget] = useState(null);
   const [incomeSuccess, setIncomeSuccess] = useState(null);
   const [reverseState, setReverseState] = useState({ status: "idle", error: null });
-  const openPayment = useCallback((item) => { const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""; setPayment({ item, account_id: item.default_account_id || "", amount: String(remaining), transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "", remaining_principal: "", cost_share_mode: "unspecified", cost_share_percentages: [] }); setPaymentState({ status: "idle", error: null }); }, []);
+  const openPayment = useCallback((item) => { const remaining = Math.max(0, Number(item.expected_amount || 0) - Number(item.actual_amount || 0)) || item.expected_amount || ""; const suggested = item.commitment_id && Number(item.commitment_suggested_payment || 0) > 0 ? Number(item.commitment_suggested_payment) : remaining; setPayment({ item, account_id: item.default_account_id || "", amount: String(suggested), transaction_date: todayInJakarta(), envelope_period_id: "", overspend_reason: "", remaining_principal: "", settle_commitment: false, cost_share_mode: "unspecified", cost_share_percentages: [] }); setPaymentState({ status: "idle", error: null }); }, []);
   const completeOccurrence = (event) => {
     event.preventDefault();
     if (!payment.item) return;
@@ -65,7 +65,11 @@ export const useRecurringPaymentActions = (shared) => {
         overspend_reason: payment.item.kind === "expense" ? payment.overspend_reason : "",
         cost_share_mode: "unspecified",
         cost_share_percentages: [],
-        ...(payment.item.commitment_id && payment.item.commitment_type !== "arisan" && payment.remaining_principal !== "" ? { remaining_principal: Number(payment.remaining_principal) } : {}),
+        ...(payment.item.commitment_id && payment.item.commitment_type !== "arisan" && payment.settle_commitment
+          ? { remaining_principal: 0 }
+          : payment.item.commitment_id && payment.item.commitment_type !== "arisan" && !payment.item.commitment_auto_principal && payment.remaining_principal !== ""
+            ? { remaining_principal: Number(payment.remaining_principal) }
+            : {}),
       }, { rowVersion: payment.item.row_version });
       const allocated = Boolean(payment.item.kind === "expense" && payment.envelope_period_id);
       setPayment(initialPayment());

@@ -34,8 +34,8 @@ const PlanningPage = () => {
   return <div className={`page-stack ${styles.page}`}>
     <PageHeader
       title="Perencanaan"
-      description="Atur Alokasi Dana, Jadwal Rutin, dan Komitmen dalam satu tempat."
-      help="Alokasi Dana memisahkan dana berdasarkan tujuan. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Komitmen memantau KPR, cicilan, pinjaman, dan Arisan sampai selesai. Saldo hanya berubah setelah transaksi aktual disimpan."
+      description="Atur Alokasi Dana, Jadwal Rutin, dan Kewajiban dalam satu tempat."
+      help="Alokasi Dana memisahkan dana berdasarkan tujuan. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Kewajiban memantau KPR, cicilan, pinjaman, dan Arisan sampai selesai. Kewajiban yang dananya sudah siap di Alokasi dapat tercatat otomatis saat jatuh tempo."
     />
     <div className={styles.tabs} role="tablist" aria-label="Perencanaan keuangan">
       <button id="planning-tab-allocation" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "allocation"} tabIndex={activeTab === "allocation" ? 0 : -1} className={`${styles.tab}${activeTab === "allocation" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("allocation")} onKeyDown={handleTabKeyDown}>
@@ -45,7 +45,7 @@ const PlanningPage = () => {
         <strong>Jadwal Rutin</strong><span>Transaksi berulang dan konfirmasi aktual</span>
       </button>
       <button id="planning-tab-komitmen" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "komitmen"} tabIndex={activeTab === "komitmen" ? 0 : -1} className={`${styles.tab}${activeTab === "komitmen" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("komitmen")} onKeyDown={handleTabKeyDown}>
-        <strong>Komitmen</strong><span>KPR, cicilan, pinjaman, dan Arisan</span>
+        <strong>Kewajiban</strong><span>KPR, cicilan, pinjaman, dan Arisan</span>
       </button>
     </div>
     <section id="planning-tabpanel" role="tabpanel" aria-labelledby={`planning-tab-${activeTab}`}>
