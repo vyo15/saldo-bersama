@@ -22,4 +22,6 @@ test("form Kewajiban hanya menampilkan data penting dan tidak menghidupkan lagi 
   assert.doesNotMatch(page, /Sudah dibayar berapa kali/);
   assert.doesNotMatch(page, /Arsipkan/);
   assert.doesNotMatch(page, /Autodebet/i);
+  assert.doesNotMatch(page, /auto_debit/);
+  assert.doesNotMatch(page, /start_date/);
 });

@@ -22,7 +22,7 @@ import { assertPositiveRupiah, formatRupiah } from "../../domain/money.js";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta, formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
-import { archiveCommitment as deleteCommitment, createCommitment, recordCommitmentReceipt, updateCommitment } from "./commitments.api.js";
+import { createCommitment, deleteCommitment, recordCommitmentReceipt, updateCommitment } from "./commitments.api.js";
 import { applyFlatEstimate, flatLoanEstimate, inferFlatAnnualRate, isDebtCommitment } from "./commitmentModel.js";
 import styles from "./CommitmentsPage.module.css";
 
@@ -170,8 +170,6 @@ const CommitmentsPage = () => {
       frequency: "monthly",
       due_day: Number(form.due_day),
       payment_method: "transfer",
-      auto_debit: false,
-      start_date: todayInJakarta(),
     });
     const name = form.name || "Kewajiban";
     setCreateOpen(false); setForm(emptyForm()); notify({ message: `${name} berhasil dibuat. Jadwal pembayaran berikutnya sudah disiapkan.`, tone: "success", dedupeKey: "commitments:create" }); await reloadAll();
@@ -184,7 +182,7 @@ const CommitmentsPage = () => {
   };
 
   const submitEdit = (event) => { event.preventDefault(); if (!edit) return; return mutation.run(async () => {
-    await updateCommitment({ commitment_id: edit.commitment_id, row_version: edit.row_version, name: edit.name, provider: edit.provider, installment_amount: assertPositiveRupiah(edit.installment_amount), total_installments: Number(edit.total_installments), default_account_id: edit.default_account_id, category_id: edit.category_id, budget_id: edit.budget_id || null, frequency: "monthly", due_day: Number(edit.due_day), payment_method: "transfer", auto_debit: false }, { rowVersion: edit.row_version });
+    await updateCommitment({ commitment_id: edit.commitment_id, row_version: edit.row_version, name: edit.name, provider: edit.provider, installment_amount: assertPositiveRupiah(edit.installment_amount), total_installments: Number(edit.total_installments), default_account_id: edit.default_account_id, category_id: edit.category_id, budget_id: edit.budget_id || null, frequency: "monthly", due_day: Number(edit.due_day), payment_method: "transfer" }, { rowVersion: edit.row_version });
     const name = edit.name || "Kewajiban";
     setEdit(null); notify({ message: `${name} diperbarui. Jadwal berikutnya ikut menyesuaikan.`, tone: "success", dedupeKey: "commitments:update" }); await reloadAll();
   }).catch(() => undefined); };

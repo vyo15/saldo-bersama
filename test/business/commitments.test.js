@@ -124,6 +124,8 @@ test("KPR membuat Jadwal Rutin terkelola, pembayaran memisahkan pokok/bunga, dan
       due_day: 11,
     }, current.row_version));
     assert.equal(updated.installment_amount, 5_900_000);
+    const commitmentAuditCount = Number((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE entity_type='commitment' AND entity_id=?", [created.commitment_id])).count || 0);
+    assert.equal(commitmentAuditCount, 2, "create + satu update hanya boleh menghasilkan dua audit Kewajiban, bukan audit update ganda");
     const updatedRule = await db.one("SELECT expected_amount,budget_id,auto_debit FROM recurring_rules WHERE commitment_id=?", [created.commitment_id]);
     assert.equal(updatedRule.expected_amount, 5_900_000);
     assert.equal(updatedRule.budget_id, "commitment-budget-home", "edit tanpa budget_id mempertahankan link Kebutuhan");
