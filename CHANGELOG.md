@@ -2,6 +2,7 @@
 
 ## Unreleased — Production migration recovery hardening
 
+- Memperkeras rendered browser smoke di GitHub Actions: Chrome DevTools kini memakai port ephemeral resmi melalui `--remote-debugging-port=0`/`DevToolsActivePort`, mendukung `CHROME_PATH`/`CHROME_BIN`/`GOOGLE_CHROME_BIN`, dan menampilkan diagnostic browser bila startup gagal. Ini menghilangkan ketergantungan pada port random 19000–19999 yang dapat membuat quality check silang meski build Vercel sukses.
 - Menambahkan **Batch 5 Smart Notification & Proactive Guidance** pada schema v23: Notification Center task-first kini memakai read receipt server-side lintas perangkat (`notification_read_states`) dengan fingerprint kondisi agar read tidak disamakan dengan resolved dan kondisi yang berubah dapat muncul unread kembali. `notifications.markRead` tetap presentation-only dan tidak menyentuh ledger/planning.
 - Menambahkan `notification_settings` + `notifications.updateSettings` untuk cadence rekonsiliasi 0/14/30/60 hari (default 30) dan reminder konsistensi pencatatan actor-scoped 0/3/5/7 hari (default mati). Scheduler source-read tetap dibatch, reminder memakai dedupe/timezone canonical, dan completion Push default mati agar tidak menduplikasi feedback in-app.
 - Merapikan pengaturan notifikasi menjadi kelompok Tagihan & pembayaran, Pengaturan uang, dan Target; mempertahankan privacy-safe lock-screen payload, contextual deep-link, manual reminder, dan queue/delivery Web Push existing. Service worker cache dinaikkan ke v13 untuk rollout copy push baru.

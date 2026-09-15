@@ -18,12 +18,14 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const browserCandidates = () => {
-  const env = String(process.env.CHROME_PATH || "").trim();
+  const env = [process.env.CHROME_PATH, process.env.CHROME_BIN, process.env.GOOGLE_CHROME_BIN]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
   const home = process.env.LOCALAPPDATA || "";
   const pf = process.env.PROGRAMFILES || "C:\\Program Files";
   const pf86 = process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)";
   return [
-    env,
+    ...env,
     "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser",
     path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
     path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
@@ -80,18 +82,52 @@ class Cdp {
   }
 }
 
-const connectCdp = async (port) => {
+const browserDiagnostic = (browser, child, stderr) => {
+  const status = child.exitCode === null
+    ? "masih berjalan"
+    : `exit ${child.exitCode}${child.signalCode ? ` (${child.signalCode})` : ""}`;
+  const detail = String(stderr || "").trim().split(/\r?\n/).slice(-12).join("\n");
+  return [`Browser: ${browser}`, `Status: ${status}`, detail ? `Log browser terakhir:\n${detail}` : ""].filter(Boolean).join("\n");
+};
+
+const waitForDevToolsPort = async ({ profile, child, browser, stderr }) => {
+  const activePortFile = path.join(profile, "DevToolsActivePort");
+  for (let attempt = 0; attempt < 150; attempt += 1) {
+    if (existsSync(activePortFile)) {
+      const [portLine] = readFileSync(activePortFile, "utf8").trim().split(/\r?\n/);
+      const port = Number.parseInt(portLine, 10);
+      if (Number.isInteger(port) && port > 0) return port;
+    }
+    const stderrPort = String(stderr() || "").match(/DevTools listening on ws:\/\/[^:]+:(\d+)\//)?.[1];
+    if (stderrPort) return Number.parseInt(stderrPort, 10);
+    if (child.exitCode !== null) break;
+    await sleep(100);
+  }
+  throw new Error(`Chrome DevTools gagal mulai.\n${browserDiagnostic(browser, child, stderr())}`);
+};
+
+const connectCdp = async ({ port, child, browser, stderr }) => {
   let target;
-  for (let attempt = 0; attempt < 80; attempt += 1) {
+  let lastError = "";
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/json/list`);
+      const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(1000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const targets = await response.json();
       target = targets.find((item) => item.type === "page");
       if (target?.webSocketDebuggerUrl) break;
-    } catch { /* browser not ready */ }
+      lastError = "Target page belum tersedia.";
+    } catch (error) {
+      lastError = error?.message || String(error);
+    }
+    if (child.exitCode !== null) break;
     await sleep(100);
   }
-  assert(target?.webSocketDebuggerUrl, "Chrome DevTools endpoint tidak siap.");
+  if (!target?.webSocketDebuggerUrl) {
+    throw new Error(
+      `Chrome DevTools endpoint tidak siap di port ${port}. ${lastError}\n${browserDiagnostic(browser, child, stderr())}`,
+    );
+  }
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
@@ -121,17 +157,25 @@ const main = async () => {
   const server = staticServer();
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const serverPort = server.address().port;
-  const debugPort = 19000 + Math.floor(Math.random() * 1000);
   const profile = mkdtempSync(path.join(tmpdir(), "saldo-bersama-browser-"));
+  let browserStderr = "";
   const child = spawn(browser, [
-    "--headless=new", `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`,
+    "--headless=new", "--remote-debugging-port=0", "--remote-debugging-address=127.0.0.1", "--remote-allow-origins=*", `--user-data-dir=${profile}`,
     "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--no-proxy-server", "--proxy-bypass-list=<-loopback>",
-    `http://127.0.0.1:${serverPort}/`,
-  ], { stdio: "ignore", windowsHide: true });
+    "about:blank",
+  ], { stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
+  child.stderr?.setEncoding("utf8");
+  child.stderr?.on("data", (chunk) => {
+    browserStderr = `${browserStderr}${chunk}`.slice(-24_000);
+  });
+  child.on("error", (error) => {
+    browserStderr = `${browserStderr}\nGagal menjalankan browser: ${error.message}`.slice(-24_000);
+  });
 
   let socket;
   try {
-    const connected = await connectCdp(debugPort);
+    const debugPort = await waitForDevToolsPort({ profile, child, browser, stderr: () => browserStderr });
+    const connected = await connectCdp({ port: debugPort, child, browser, stderr: () => browserStderr });
     const cdp = connected.cdp; socket = connected.socket;
     await cdp.send("Page.enable");
     await cdp.send("Runtime.enable");

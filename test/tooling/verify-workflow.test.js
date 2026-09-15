@@ -68,6 +68,10 @@ test("browser smoke memeriksa rendered login tanpa auth bypass atau dependency t
   assert.match(browser, /prefers-reduced-motion/);
   assert.match(browser, /wcag-text-spacing-smoke/);
   assert.match(browser, /\/api\/session/);
+  assert.match(browser, /--remote-debugging-port=0/);
+  assert.match(browser, /DevToolsActivePort/);
+  assert.match(browser, /browserDiagnostic/);
+  assert.doesNotMatch(browser, /19000 \+ Math\.floor/);
   assert.doesNotMatch(browser, /firebaseIdToken|mock(?:ed)?User|testSessionCookie/i);
 });
 
