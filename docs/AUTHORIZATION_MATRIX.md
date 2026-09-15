@@ -80,6 +80,7 @@
 | `transactions.restore` | Ya | Tidak |
 | `envelopes.list` | Ya | Ya |
 | `envelopes.create` | Ya | Ya |
+| `envelopes.createWithNeeds` | Ya | Ya |
 | `envelopes.adjustAllocation` | Ya | Ya |
 | `envelopes.move` | Ya | Ya |
 | `envelopes.close` | Ya | Tidak |

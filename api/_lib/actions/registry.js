@@ -23,7 +23,7 @@ import {
 } from "../services/investments.js";
 import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
-  adjustEnvelopeAllocation, archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createBudgetsBatch, createEnvelope, createGoal, createRecurringRule, deleteUnusedBudget,
+  adjustEnvelopeAllocation, archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createBudgetsBatch, createEnvelope, createEnvelopeWithNeeds, createGoal, createRecurringRule, deleteUnusedBudget,
   deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence,
   previewBudgetLifecycle, previewEnvelopeRuleLifecycle, previewGoalLifecycle, previewRecurringRuleLifecycle, removeBudget, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
   reverseEnvelopeMovement, reverseGoalMovement, reverseOccurrencePayment, updateGoal, updateRecurringRule, upsertBudget,
@@ -138,6 +138,7 @@ const ACTION_HANDLERS = Object.freeze({
   "transactions.restore": restoreTransaction,
   "envelopes.list": listEnvelopes,
   "envelopes.create": createEnvelope,
+  "envelopes.createWithNeeds": createEnvelopeWithNeeds,
   "envelopes.adjustAllocation": adjustEnvelopeAllocation,
   "envelopes.move": moveEnvelope,
   "envelopes.close": closeEnvelope,

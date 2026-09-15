@@ -110,6 +110,56 @@ test("batch Kebutuhan membuat beberapa budget dan jadwal dalam satu mutation ide
   }
 });
 
+test("buat Alokasi dan Kebutuhan dalam satu mutation tanpa meninggalkan Alokasi kosong", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const bounds = monthBounds(period);
+    const result = await dispatchNamed(db, "envelopes.createWithNeeds", {
+      name: "Rumah Tangga",
+      source_account_id: "batch-shared-account",
+      assignee_user_id: null,
+      period_type: "monthly",
+      period_start: bounds.start,
+      period_end: bounds.end,
+      rollover_policy: "carry",
+      overspend_policy: "confirm",
+      decoration_key: "home",
+      period_key: period,
+      needs: [
+        { name: "Belanja bulanan", category_id: "batch-food", amount: 600_000, recording_mode: "flexible" },
+        { name: "Internet rumah", category_id: "batch-internet", amount: 250_000, recording_mode: "flexible" },
+      ],
+    });
+    assert.equal(result.rule.name, "Rumah Tangga");
+    assert.equal(result.rule.rollover_policy, "carry");
+    assert.equal(result.rule.decoration_key, "home");
+    assert.equal(result.budgets.count, 2);
+    assert.equal(Number(result.period.allocated_amount), 0);
+    const storedPeriod = await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id=?", [result.rule.envelope_rule_id]);
+    assert.equal(Number(storedPeriod.allocated_amount), 850_000);
+
+    await assert.rejects(
+      dispatchNamed(db, "envelopes.createWithNeeds", {
+        name: "Tidak boleh tersisa",
+        source_account_id: "batch-shared-account",
+        period_type: "monthly",
+        period_start: bounds.start,
+        period_end: bounds.end,
+        rollover_policy: "unallocated",
+        overspend_policy: "confirm",
+        decoration_key: "auto",
+        period_key: period,
+        needs: [{ name: "Kategori rusak", category_id: "missing-category", amount: 100_000, recording_mode: "flexible" }],
+      }),
+      (error) => error?.code === "INVALID_CATEGORY",
+    );
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM envelope_rules WHERE name='Tidak boleh tersisa'")).count), 0);
+  } finally {
+    db.close();
+  }
+});
+
 test("batch Kebutuhan mengizinkan kategori sama selama nama kebutuhan berbeda", async () => {
   const db = await createSqliteTestDatabase();
   try {
@@ -224,27 +274,26 @@ test("batch Kebutuhan rollback seluruh write bila jadwal tidak konsisten dengan 
 });
 
 
-test("batch Kebutuhan menjelaskan kekurangan dana dan rollback tanpa partial write", async () => {
+test("batch Kebutuhan tetap menyimpan rencana saat Dana Tersedia kurang dan mendanai sebanyak yang tersedia", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
     await db.execute("UPDATE accounts SET initial_balance=300000 WHERE account_id='batch-shared-account'");
     await insertEnvelope(db, { ruleId: "batch-insufficient-rule", sourceAccountId: "batch-shared-account" });
-    await assert.rejects(
-      dispatch(db, {
-        ...basePayload("batch-insufficient-rule"),
-        items: [
-          { name: "Belanja bulanan", category_id: "batch-food", amount: 200_000, recording_mode: "flexible" },
-          { name: "Internet rumah", category_id: "batch-internet", amount: 250_000, recording_mode: "flexible" },
-        ],
-      }),
-      (error) => error?.code === "BUDGET_FUNDING_INSUFFICIENT"
-        && error?.status === 409
-        && Number(error?.details?.shortageAmount || 0) === 150_000
-        && Number(error?.details?.availableAmount || 0) === 300_000,
-    );
-    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM budgets WHERE envelope_rule_id='batch-insufficient-rule'")).count), 0);
-    assert.equal(Number((await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id='batch-insufficient-rule'")).allocated_amount), 0);
+    const result = await dispatch(db, {
+      ...basePayload("batch-insufficient-rule"),
+      items: [
+        { name: "Belanja bulanan", category_id: "batch-food", amount: 200_000, recording_mode: "flexible" },
+        { name: "Internet rumah", category_id: "batch-internet", amount: 250_000, recording_mode: "flexible" },
+      ],
+    });
+    assert.equal(result.count, 2);
+    assert.equal(Number(result.funding?.requestedAmount || 0), 450_000);
+    assert.equal(Number(result.funding?.amount || 0), 300_000);
+    assert.equal(Number(result.funding?.shortageAmount || 0), 150_000);
+    assert.equal(Number(result.funding?.availableAmount || 0), 300_000);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM budgets WHERE envelope_rule_id='batch-insufficient-rule'")).count), 2);
+    assert.equal(Number((await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id='batch-insufficient-rule'")).allocated_amount), 300_000);
   } finally {
     db.close();
   }

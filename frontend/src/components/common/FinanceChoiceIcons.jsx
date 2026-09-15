@@ -28,12 +28,6 @@ export const OtherIcon = (props) => <IconBase {...props}><circle cx="5" cy="12" 
 export const SharedIcon = (props) => <IconBase {...props}><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.3" /><path d="M3 20a6 6 0 0 1 12 0M14 16a5 5 0 0 1 7 4" /></IconBase>;
 export const PersonIcon = (props) => <IconBase {...props}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></IconBase>;
 export const AdminIcon = (props) => <IconBase {...props}><path d="M12 3 19 6v5c0 4.5-2.6 8-7 10-4.4-2-7-5.5-7-10V6l7-3Z" /><circle cx="12" cy="10" r="2" /><path d="M8.8 16a3.5 3.5 0 0 1 6.4 0" /></IconBase>;
-export const DailyIcon = (props) => <IconBase {...props}><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /><circle cx="12" cy="15" r="2.3" /></IconBase>;
-export const WeeklyIcon = (props) => <IconBase {...props}><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7 3v4M17 3v4M3.5 10h17M8 14h8M8 17h5" /></IconBase>;
-export const BiweeklyIcon = (props) => <IconBase {...props}><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7 3v4M17 3v4M3.5 10h17" /><path d="M8 14h3M13 14h3M8 17h3M13 17h3" /></IconBase>;
-export const MonthlyIcon = (props) => <IconBase {...props}><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7 3v4M17 3v4M3.5 10h17" /><path d="M8 14h8M8 17h8" /></IconBase>;
-export const PaycycleIcon = (props) => <IconBase {...props}><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /><circle cx="12" cy="15.5" r="2.6" /><path d="M12 13.8v3.4" /></IconBase>;
-export const CustomPeriodIcon = (props) => <IconBase {...props}><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /><path d="M9 15h6M12 12v6" /></IconBase>;
 export const ReturnRemainderIcon = (props) => <IconBase {...props}><path d="M5 7.5h9.5a4.5 4.5 0 0 1 0 9H9" /><path d="m8 4.5-3 3 3 3" /><path d="M15.5 12h3.5M17.25 10.25v3.5" /></IconBase>;
 export const CarryForwardIcon = (props) => <IconBase {...props}><path d="M4.5 8h11" /><path d="m12.5 5 3 3-3 3" /><path d="M8.5 16h11" /><path d="m16.5 13 3 3-3 3" /><circle cx="6.5" cy="16" r="1.4" /></IconBase>;
 export const TargetIcon = (props) => <IconBase {...props}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /><path d="m15 9 5-5" /></IconBase>;

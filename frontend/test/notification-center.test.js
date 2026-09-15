@@ -96,7 +96,7 @@ test("presentation notifikasi ringkas memakai aksi entitas dan satu fakta untuk 
   const module = await import("../src/shared/workflows/financialNotifications.js");
   const cases = [
     [{ type: "budget_threshold", title: "Makan 85% terpakai", message: "Pemakaian melewati ambang 80%." }, ["Periksa kebutuhan", "Makan", "85% terpakai"]],
-    [{ type: "envelope_threshold", title: "Belanja 90% terpakai + dipesan", message: "Dana tersisa mendekati batas." }, ["Periksa Alokasi Dana", "Belanja", "90% terpakai + dipesan"]],
+    [{ type: "envelope_threshold", title: "Belanja 90% terpakai + disiapkan", message: "Dana tersisa mendekati batas." }, ["Periksa Alokasi Dana", "Belanja", "90% terpakai + disiapkan"]],
     [{ type: "recurring_due", title: "Internet segera jatuh tempo", message: "Jatuh tempo 2026-09-09." }, ["Jadwal segera jatuh tempo", "Internet", "Jatuh tempo 9 September 2026"]],
     [{ type: "goal_behind", title: "Dana Darurat tertinggal dari rencana", message: "Perkiraan kebutuhan setoran bulanan Rp 750.000." }, ["Target tertinggal", "Dana Darurat", "Butuh sekitar Rp 750.000/bulan"]],
     [{ type: "unallocated_expense", title: "3 pengeluaran belum masuk kebutuhan", message: "Hubungkan pengeluaran ke kebutuhan yang sesuai." }, ["Pengeluaran belum masuk kebutuhan", "3 pengeluaran", "Belum terhubung ke Kebutuhan"]],

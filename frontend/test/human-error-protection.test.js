@@ -104,8 +104,11 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
     assert.match(api, new RegExp(previewAction.replace(".", "\\.")));
     assert.match(api, new RegExp(deleteAction.replace(".", "\\.")));
     assert.match(page, /preview\.canDeleteUnused/);
-    assert.match(page, /Hapus permanen/);
   }
+  assert.match(allocations, /title="Hapus Alokasi\?"/);
+  assert.match(allocations, /belum pernah digunakan sehingga dapat dihapus permanen/);
+  assert.match(recurring, /Hapus permanen/);
+  assert.match(goals, /Hapus permanen/);
   assert.match(budgetsApi, /budgets\.previewLifecycle/);
   assert.match(budgetsApi, /budgets\.remove/);
   assert.match(budgets, /preview\.canDeleteUnused/);

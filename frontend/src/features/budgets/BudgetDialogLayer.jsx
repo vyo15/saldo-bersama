@@ -47,13 +47,11 @@ const PAYMENT_METHOD_OPTIONS = Object.freeze([
   { value: "ewallet", label: "E-wallet" },
 ]);
 
-const BudgetModalFooter = ({ saveState, close, pendingSchedule, existingBudget, funding, onAddBalance }) => {
+const BudgetModalFooter = ({ saveState, close, pendingSchedule, existingBudget }) => {
   const submitLabel = pendingSchedule ? "Simpan jadwal" : existingBudget ? "Simpan perubahan" : "Simpan kebutuhan";
   return <>
     <Button type="button" disabled={saveState.status === "submitting"} onClick={close}>Batal</Button>
-    {funding.shortageAmount > 0
-      ? <Button variant="primary" type="button" disabled={!onAddBalance || saveState.status === "submitting"} onClick={() => onAddBalance?.(funding.shortageAmount)}>Tambah saldo {formatRupiah(funding.shortageAmount)}</Button>
-      : <Button variant="primary" icon={pendingSchedule ? FiCalendar : FiPlus} type="submit" form="budget-form" loading={saveState.status === "submitting"}>{submitLabel}</Button>}
+    <Button variant="primary" icon={pendingSchedule ? FiCalendar : FiPlus} type="submit" form="budget-form" loading={saveState.status === "submitting"}>{submitLabel}</Button>
   </>;
 };
 
@@ -103,8 +101,8 @@ const budgetEditFundingState = ({ form, existingBudget, lockedEnvelope, sourceAc
   };
 };
 
-const BudgetFundingNotices = ({ funding, sourceAccount }) => <>
-  {funding.shortageAmount > 0 ? <CompactNotice className="form-grid__full" tone="danger" title={`Dana belum mencukupi ${formatRupiah(funding.shortageAmount)}`}>Tambahan kebutuhan memerlukan {formatRupiah(funding.additionalAmount)}, sementara Dana Tersedia {sourceAccount?.name || "rekening sumber"} {formatRupiah(funding.availableAmount)}. Tambahkan saldo atau kurangi nominal.</CompactNotice> : null}
+const BudgetFundingNotices = ({ funding }) => <>
+  {funding.shortageAmount > 0 ? <CompactNotice className="form-grid__full" tone="warning" title={`Masih kurang ${formatRupiah(funding.shortageAmount)}`}>Kebutuhan tetap dapat disimpan. Dana yang tersedia dialokasikan sekarang dan kekurangannya dapat dipenuhi nanti.</CompactNotice> : null}
   {funding.additionalAmount > 0 && funding.shortageAmount === 0 ? <CompactNotice className="form-grid__full" tone="info" title={`Tambahan ${formatRupiah(funding.additionalAmount)} akan dialokasikan otomatis`}>Dana Tersedia setelah perubahan menjadi {formatRupiah(funding.afterAmount)}. Saldo rekening fisik baru berubah saat transaksi dicatat.</CompactNotice> : null}
 </>;
 
@@ -130,15 +128,9 @@ const BudgetSaveError = ({ saveState }) => saveState.status === "error"
   ? <div className="notice notice--danger form-grid__full" role="alert">{saveState.error?.message || "Kebutuhan belum dapat disimpan."}</div>
   : null;
 
-const handleBudgetSubmit = (event, funding, saveBudget) => {
-  if (funding.shortageAmount > 0) {
-    event.preventDefault();
-    return;
-  }
-  saveBudget(event);
-};
+const handleBudgetSubmit = (event, saveBudget) => saveBudget(event);
 
-const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, saveBudget, form, setForm, categories, users, usersStatus, selectCategory, selectOwnership, lockedEnvelope, sourceAccount, onAddBalance, canLifecycle, onLifecycle, onReminder, onCreateCategory, categoryCreateLabel }) => {
+const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, saveBudget, form, setForm, categories, users, usersStatus, selectCategory, selectOwnership, lockedEnvelope, sourceAccount, canLifecycle, onLifecycle, onReminder, onCreateCategory, categoryCreateLabel }) => {
   const ownershipOptions = budgetOwnershipOptions(users);
   const title = existingBudget ? "Edit kebutuhan" : "Tambah kebutuhan";
   const linksLegacyBudget = Boolean(lockedEnvelope && existingBudget && !existingBudget.envelope_rule_id);
@@ -149,14 +141,14 @@ const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, 
   const categoryOptions = categories.map((item) => ({ value: item.category_id, label: item.name, meta: "Kategori pengeluaran", ...categoryOptionVisual(item) }));
   const categoryFooter = !existingBudget && onCreateCategory ? <Button type="button" icon={FiPlus} onClick={onCreateCategory}>{categoryCreateLabel}</Button> : null;
 
-  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Kebutuhan" dismissible={!submitting} title={title} footer={<BudgetModalFooter saveState={saveState} close={guard.discardAndClose} pendingSchedule={pendingSchedule} existingBudget={existingBudget} funding={funding} onAddBalance={onAddBalance} />}>
-    <form id="budget-form" className="form-grid" onSubmit={(event) => handleBudgetSubmit(event, funding, saveBudget)}>
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Kebutuhan" dismissible={!submitting} title={title} footer={<BudgetModalFooter saveState={saveState} close={guard.discardAndClose} pendingSchedule={pendingSchedule} existingBudget={existingBudget} />}>
+    <form id="budget-form" className="form-grid" onSubmit={(event) => handleBudgetSubmit(event, saveBudget)}>
       <BudgetModalNotices pendingSchedule={pendingSchedule} lockedEnvelope={lockedEnvelope} linksLegacyBudget={linksLegacyBudget} />
       <label className="field"><span>Nama kebutuhan *</span><input required maxLength="100" placeholder="Contoh: Arisan PT" value={form.name || ""} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
       <MoneyInput id="budget-amount" label="Nominal" value={form.amount} onChange={(value) => setForm((current) => ({ ...current, amount: value }))} required />
       <InlineSelectionPicker className="form-grid__full" label="Kategori" required value={form.category_id} onChange={selectCategory} locked={Boolean(existingBudget)} placeholder="Pilih kategori" placeholderMeta="Gunakan kategori master, misalnya Arisan" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categoryOptions} footer={categoryFooter} />
       <BudgetOwnershipField lockedEnvelope={lockedEnvelope} form={form} selectOwnership={selectOwnership} ownershipOptions={ownershipOptions} usersStatus={usersStatus} />
-      <BudgetFundingNotices funding={funding} sourceAccount={sourceAccount} />
+      <BudgetFundingNotices funding={funding} />
       <BudgetRecordingModeField existingBudget={existingBudget} form={form} setForm={setForm} />
       {showSchedule ? <BudgetScheduleFields form={form} setForm={setForm} /> : null}
       <BudgetThresholdField lockedEnvelope={lockedEnvelope} form={form} setForm={setForm} />
@@ -220,7 +212,7 @@ const useExpenseCategoryCreator = ({ onCreated } = {}) => {
 
 const BudgetLifecycleModal = ({ archiveTarget, archiveState, setArchiveTarget, applyBudgetLifecycle }) => <ConfirmationModal open={Boolean(archiveTarget)} title="Hapus kebutuhan?" description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.budget.name || archiveTarget.budget.category_id} belum memiliki histori finansial, jadi dapat dibersihkan tanpa meninggalkan data operasional.` : `${archiveTarget.budget.name || archiveTarget.budget.category_id} akan hilang dari daftar aktif. Transaksi dan konteks laporan historis tetap tersimpan.`) : ""} confirmLabel="Hapus kebutuhan" reasonLabel="Alasan penghapusan" requireReason busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyBudgetLifecycle}>{archiveTarget ? <div className="notice notice--info">Terpakai {Number(archiveTarget.preview.used_amount || 0).toLocaleString("id-ID")} · dana yang aman dilepas {Number(archiveTarget.preview.releasable_amount || 0).toLocaleString("id-ID")} · transaksi histori {archiveTarget.preview.dependencies.transactions}.</div> : null}</ConfirmationModal>;
 
-const BudgetDialogLayer = ({ canManage, canLifecycle = false, categories, users, usersStatus, formController, lifecycleController, lockedEnvelope = null, sourceAccount = null, onAddBalance = null, onReminder }) => {
+const BudgetDialogLayer = ({ canManage, canLifecycle = false, categories, users, usersStatus, formController, lifecycleController, lockedEnvelope = null, sourceAccount = null, onReminder }) => {
   const batchCreateOpen = formController.formOpen && canManage && formController.formMode === "create-batch" && Boolean(lockedEnvelope);
   const selectCreatedCategory = (categoryId) => {
     if (!categoryId) return;
@@ -242,8 +234,8 @@ const BudgetDialogLayer = ({ canManage, canLifecycle = false, categories, users,
   const categoryCreateLabel = categoryCreator.requestMode ? "Ajukan kategori baru" : "Tambah kategori baru";
   return <>
     {batchCreateOpen
-      ? <BudgetBatchEditor open controller={formController} categories={categories} lockedEnvelope={lockedEnvelope} sourceAccount={sourceAccount} onAddBalance={onAddBalance} onCreateCategory={categoryCreator.openModal} categoryCreateLabel={categoryCreateLabel} />
-      : <BudgetModal open={formController.formOpen && canManage} close={formController.closeBudgetForm} existingBudget={formController.existingBudget} saveState={formController.saveState} pendingSchedule={formController.pendingSchedule} saveBudget={formController.saveBudget} form={formController.form} setForm={formController.setForm} categories={categories} users={users} usersStatus={usersStatus} selectCategory={formController.selectCategory} selectOwnership={formController.selectOwnership} lockedEnvelope={lockedEnvelope} sourceAccount={sourceAccount} onAddBalance={onAddBalance} canLifecycle={canLifecycle} onLifecycle={openLifecycle} onReminder={openReminder} onCreateCategory={categoryCreator.openModal} categoryCreateLabel={categoryCreateLabel} />}
+      ? <BudgetBatchEditor open controller={formController} categories={categories} lockedEnvelope={lockedEnvelope} sourceAccount={sourceAccount} onCreateCategory={categoryCreator.openModal} categoryCreateLabel={categoryCreateLabel} />
+      : <BudgetModal open={formController.formOpen && canManage} close={formController.closeBudgetForm} existingBudget={formController.existingBudget} saveState={formController.saveState} pendingSchedule={formController.pendingSchedule} saveBudget={formController.saveBudget} form={formController.form} setForm={formController.setForm} categories={categories} users={users} usersStatus={usersStatus} selectCategory={formController.selectCategory} selectOwnership={formController.selectOwnership} lockedEnvelope={lockedEnvelope} sourceAccount={sourceAccount} canLifecycle={canLifecycle} onLifecycle={openLifecycle} onReminder={openReminder} onCreateCategory={categoryCreator.openModal} categoryCreateLabel={categoryCreateLabel} />}
     <ExpenseCategoryCreateModal state={categoryCreator} />
     {canLifecycle ? <BudgetLifecycleModal archiveTarget={lifecycleController.archiveTarget} archiveState={lifecycleController.archiveState} setArchiveTarget={lifecycleController.setArchiveTarget} applyBudgetLifecycle={lifecycleController.applyBudgetLifecycle} /> : null}
   </>;

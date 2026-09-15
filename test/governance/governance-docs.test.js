@@ -210,14 +210,14 @@ test("allocation and needs documentation matches automatic funding source contra
   const matrix = read("docs/IMPLEMENTATION_MATRIX.md");
 
   assert.match(fundingSource, /adjustEnvelopeForBudgetDelta/);
-  assert.match(fundingSource, /BUDGET_FUNDING_INSUFFICIENT/);
+  assert.match(fundingSource, /shortageAmount/);
   assert.match(requirements, /otomatis.*Dana Tersedia|Dana Tersedia.*otomatis/is);
-  assert.match(requirements, /BUDGET_FUNDING_INSUFFICIENT/);
-  assert.match(testPlan, /tidak meminta budget awal/i);
-  assert.match(testPlan, /tidak ada partial budget\/recurring\/funding write/i);
+  assert.match(requirements, /kekurangan dana|shortageAmount/i);
+  assert.match(testPlan, /satu flow|Kebutuhan awal/i);
+  assert.match(testPlan, /Kebutuhan tetap tersimpan|tetap dapat disimpan/i);
   assert.match(matrix, /delta Kebutuhan otomatis fund\/release/i);
   assert.doesNotMatch(requirements, /Menambah atau mengedit Kebutuhan tidak boleh otomatis memindahkan dana/i);
-  assert.doesNotMatch(design, /Dana yang disiapkan|Susun kebutuhan/);
+  assert.match(design, /Total yang perlu disiapkan|Simpan Alokasi/);
 });
 
 test("legacy cutover is historical and no longer an active root runbook", () => {

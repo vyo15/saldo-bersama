@@ -156,29 +156,27 @@ const budgetFundingState = (controller, sourceAccount) => {
   return { requiredAmount, availableAmount, shortageAmount, afterAmount: Math.max(0, availableAmount - requiredAmount) };
 };
 
-const BatchFundingNotice = ({ funding, sourceAccount }) => {
+const BatchFundingNotice = ({ funding }) => {
   if (funding.requiredAmount <= 0) return null;
   if (funding.shortageAmount > 0) return <div className={styles.fundingWarning} role="alert">
-    <strong>Dana belum mencukupi {formatRupiah(funding.shortageAmount)}</strong>
-    <small>Kebutuhan membutuhkan {formatRupiah(funding.requiredAmount)}, sementara Dana Tersedia {sourceAccount?.name || "rekening sumber"} {formatRupiah(funding.availableAmount)}.</small>
+    <strong>Masih kurang {formatRupiah(funding.shortageAmount)}</strong>
+    <small>Kebutuhan tetap dapat disimpan. Dana yang tersedia akan dialokasikan sekarang, sisanya dapat dipenuhi nanti.</small>
   </div>;
   return <div className={styles.fundingReady} role="status"><span>Dana Tersedia setelah dialokasikan</span><strong>{formatRupiah(funding.afterAmount)}</strong></div>;
 };
 
-const BatchFooter = ({ controller, close, funding, onAddBalance }) => <div className={styles.footer}>
+const BatchFooter = ({ controller, close, funding }) => <div className={styles.footer}>
   <div className={styles.summary}>
     <span>{funding.shortageAmount > 0 ? `Kurang ${formatRupiah(funding.shortageAmount)}` : `${controller.batchRows.length} kebutuhan`}</span>
     <strong><Money value={controller.batchTotal} /></strong>
   </div>
   <div className={styles.footerActions}>
     <Button disabled={controller.saveState.status === "submitting"} onClick={close}>Batal</Button>
-    {funding.shortageAmount > 0
-      ? <Button variant="primary" type="button" disabled={!onAddBalance || controller.saveState.status === "submitting"} onClick={() => onAddBalance?.(funding.shortageAmount)}>Tambah saldo {formatRupiah(funding.shortageAmount)}</Button>
-      : <Button variant="primary" type="submit" form="budget-batch-form" loading={controller.saveState.status === "submitting"}>Simpan dan siapkan dana</Button>}
+    <Button variant="primary" type="submit" form="budget-batch-form" loading={controller.saveState.status === "submitting"}>Simpan kebutuhan</Button>
   </div>
 </div>;
 
-const BudgetBatchEditor = ({ open, controller, categories, lockedEnvelope, sourceAccount = null, onAddBalance = null, onCreateCategory = null, categoryCreateLabel = "Tambah kategori" }) => {
+const BudgetBatchEditor = ({ open, controller, categories, lockedEnvelope, sourceAccount = null, onCreateCategory = null, categoryCreateLabel = "Tambah kategori" }) => {
   const submitting = controller.saveState.status === "submitting";
   const funding = budgetFundingState(controller, sourceAccount);
   const addDisabled = controller.batchRows.length >= controller.batchLimit;
@@ -209,14 +207,11 @@ const BudgetBatchEditor = ({ open, controller, categories, lockedEnvelope, sourc
     dismissible={!submitting}
     title="Apa saja kebutuhannya?"
     description={lockedEnvelope?.name ? `Alokasi Dana · ${lockedEnvelope.name}` : undefined}
-    footer={<BatchFooter controller={controller} close={guard.discardAndClose} funding={funding} onAddBalance={onAddBalance} />}
+    footer={<BatchFooter controller={controller} close={guard.discardAndClose} funding={funding} />}
   >
-    <form id="budget-batch-form" className={styles.form} onSubmit={(event) => {
-      if (funding.shortageAmount > 0) { event.preventDefault(); return; }
-      controller.saveBudget(event);
-    }}>
+    <form id="budget-batch-form" className={styles.form} onSubmit={controller.saveBudget}>
       <BatchRows controller={controller} categories={categories} onCreateCategory={onCreateCategory} categoryCreateLabel={categoryCreateLabel} />
-      <BatchFundingNotice funding={funding} sourceAccount={sourceAccount} />
+      <BatchFundingNotice funding={funding} />
       <button type="button" className={styles.addButton} onClick={controller.addBatchRow} disabled={addDisabled}><FiPlus aria-hidden="true" /><span>Tambah kebutuhan lain</span></button>
       {controller.saveState.status === "error" ? <div className="notice notice--danger" role="alert">{controller.saveState.error?.message || "Kebutuhan belum dapat disimpan."}</div> : null}
     </form>

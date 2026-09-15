@@ -3,22 +3,34 @@ import {
   adjustEnvelopeAllocation,
   archiveEnvelopeRule,
   closeEnvelope,
-  createEnvelope,
+  createEnvelopeWithNeeds,
   deleteUnusedEnvelopeRule,
   moveEnvelope,
   previewEnvelopeRuleLifecycle,
   reverseEnvelopeMovement,
 } from "./allocations.api.js";
 
-export const runCreateAllocation = async ({ createForm, resetForm, setCreateForm, onCreated, notify, refreshAfterMutation }) => {
+export const runCreateAllocation = async ({ createForm, createNeeds, resetForm, resetNeeds, setCreateForm, onCreated, notify, refreshAfterMutation, period }) => {
   const name = String(createForm.name || "").trim();
   if (!name) throw new Error("Tujuan dana wajib diisi.");
   if (!createForm.source_account_id) throw new Error("Rekening sumber wajib dipilih.");
-  const created = await createEnvelope({ ...createForm, name, default_amount: 0, allocated_amount: 0 }, {});
+  const needs = (createNeeds || []).map((need, index) => {
+    const needName = String(need.name || "").trim();
+    const amount = Number(String(need.amount || "").replace(/\D/g, ""));
+    if (!needName) throw new Error(`Isi nama kebutuhan ${index + 1}.`);
+    if (!need.category_id) throw new Error(`Pilih kategori untuk kebutuhan ${index + 1}.`);
+    if (!Number.isInteger(amount) || amount <= 0) throw new Error(`Nominal kebutuhan ${index + 1} harus lebih dari Rp0.`);
+    return { name: needName, category_id: need.category_id, amount, recording_mode: "flexible" };
+  });
+  if (!needs.length) throw new Error("Tambahkan minimal satu kebutuhan.");
+  const created = await createEnvelopeWithNeeds({ ...createForm, name, default_amount: 0, allocated_amount: 0, period_key: period, needs }, {});
   setCreateForm(resetForm());
-  notify({ message: "Alokasi berhasil dibuat. Tambahkan Kebutuhan agar dana dipisahkan otomatis." });
+  resetNeeds?.();
+  const shortage = Number(created?.budgets?.funding?.shortageAmount || 0);
+  notify({ message: shortage > 0 ? `Alokasi berhasil dibuat. Masih kurang Rp ${shortage.toLocaleString("id-ID")} untuk memenuhi seluruh kebutuhan.` : "Alokasi dan kebutuhan berhasil dibuat." });
   await refreshAfterMutation();
   onCreated?.(created);
+  return created;
 };
 
 export const runMoveAllocation = async ({ move, lookup, setMove, onMoved, notify, refreshAfterMutation }) => {
@@ -93,7 +105,7 @@ export const runApplyAllocationLifecycle = async ({ archiveTarget, reason, confi
     notify({ message: "Alokasi yang belum pernah digunakan berhasil dihapus permanen." });
   } else {
     await archiveEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version });
-    notify({ message: "Aturan alokasi diarsipkan. Riwayat periode dan mutasi tetap tersimpan." });
+    notify({ message: "Alokasi dihapus dari daftar aktif. Riwayat transaksi dan mutasi tetap tersimpan." });
   }
   setArchiveTarget(null);
   setArchiveState({ status: "idle", error: null });

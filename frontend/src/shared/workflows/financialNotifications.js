@@ -64,7 +64,7 @@ const entityFromPattern = (alert, expression, group = 1) => titleMatch(alert, ex
 
 const ENTITY_READERS = Object.freeze({
   budget_threshold: (alert) => entityFromPattern(alert, /^(.*)\s+(\d+)%\s+terpakai$/i),
-  envelope_threshold: (alert) => entityFromPattern(alert, /^(.*)\s+(\d+)%\s+terpakai \+ dipesan$/i),
+  envelope_threshold: (alert) => entityFromPattern(alert, /^(.*)\s+(\d+)%\s+terpakai \+ disiapkan$/i),
   recurring_overdue: (alert) => entityFromPattern(alert, /^(.*)\s+terlambat$/i),
   recurring_due: (alert) => entityFromPattern(alert, /^(.*)\s+segera jatuh tempo$/i),
   goal_behind: (alert) => entityFromPattern(alert, /^(.*)\s+tertinggal dari rencana$/i),
@@ -94,7 +94,7 @@ const recurringFact = (alert) => {
 
 const FACT_READERS = Object.freeze({
   budget_threshold: (alert) => percentageFact(alert, /\s(\d+)%\s+terpakai$/i, "terpakai", "Pemakaian melewati ambang"),
-  envelope_threshold: (alert) => percentageFact(alert, /\s(\d+)%\s+terpakai \+ dipesan$/i, "terpakai + dipesan", "Dana mendekati batas"),
+  envelope_threshold: (alert) => percentageFact(alert, /\s(\d+)%\s+terpakai \+ disiapkan$/i, "terpakai + disiapkan", "Dana mendekati batas"),
   recurring_due: recurringFact,
   recurring_overdue: recurringFact,
   goal_behind: (alert) => compactMonthlyAmount(alert.message),

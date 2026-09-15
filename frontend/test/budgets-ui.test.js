@@ -78,11 +78,11 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /Catat pembayaran|Lihat jadwal/);
   assert.doesNotMatch(detail, /Jadwal Terkait/);
   assert.doesNotMatch(detail, /AllocationScheduleContinuation/);
-  assert.match(detail, /Pengaturan alokasi/);
+  assert.match(detail, /Kelola dana/);
   assert.match(styles, /allocation-detail-shell/);
   assert.match(styles, /allocation-limit-row/);
 });
-test("Alokasi baru menjadi wadah Rp0 dan Kebutuhan mendanai Alokasi otomatis", async () => {
+test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia", async () => {
   const [page, dialogs, detail, batchEditor, presentation, runner, backend] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/AllocationDialogLayer.jsx"),
@@ -90,24 +90,27 @@ test("Alokasi baru menjadi wadah Rp0 dan Kebutuhan mendanai Alokasi otomatis", a
     read("src/features/budgets/BudgetBatchEditor.jsx"),
     read("src/features/allocations/allocationPresentation.js"),
     read("src/features/allocations/allocationActionRunners.js"),
-    Promise.all(["budgets.js", "budgetShared.js", "budgetQueries.js", "budgetMutations.js", "budgetLifecycle.js", "budgetHistory.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
+    Promise.all(["envelopes.js", "budgetFunding.js", "budgetMutations.js", "budgetQueries.js", "budgetShared.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
-  assert.doesNotMatch(dialogs, /Dana yang disiapkan|AllocationNeedEstimate|Susun kebutuhan/);
-  assert.match(dialogs, /Belum ada uang yang dipisahkan/);
-  assert.match(dialogs, /Lanjut ke kebutuhan/);
+  assert.match(dialogs, /Total yang perlu disiapkan/);
+  assert.match(dialogs, /Pemanis kartu/);
+  assert.match(dialogs, /Kembalikan ke dana tersedia/);
+  assert.match(dialogs, /Tetap di alokasi berikutnya/);
+  assert.match(dialogs, /Simpan Alokasi/);
+  assert.doesNotMatch(dialogs, /Periode alokasi|Mulai periode|Akhir periode/);
+  assert.match(runner, /createEnvelopeWithNeeds/);
   assert.match(runner, /default_amount: 0/);
   assert.match(runner, /allocated_amount: 0/);
-  assert.match(page, /setDetailAction\("add-need"\)/);
-  assert.match(detail, /Jumlah kebutuhan/);
-  assert.match(detail, /Dialokasikan/);
-  assert.match(detail, /Dana Alokasi lama belum mengikuti total Kebutuhan/);
-  assert.match(detail, /Pulihkan dana/);
-  assert.doesNotMatch(detail, /showStandardAdjustAction|>Atur dana</);
-  assert.match(batchEditor, /Dana belum mencukupi/);
-  assert.match(batchEditor, /Tambah saldo/);
-  assert.match(batchEditor, /setelah dialokasikan/);
-  assert.match(presentation, /allocationNeedsFundingSummary/);
+  assert.doesNotMatch(page, /setDetailAction\("add-need"\).*createdRuleId/s);
+  assert.match(detail, /Masih tersedia/);
+  assert.match(detail, /Total disiapkan/);
+  assert.match(detail, /Untuk jadwal/);
+  assert.doesNotMatch(detail, /Jumlah kebutuhan/);
+  assert.match(batchEditor, /Kebutuhan tetap dapat disimpan/);
+  assert.doesNotMatch(batchEditor, />Tambah saldo</);
   assert.match(backend, /adjustEnvelopeForBudgetDelta/);
+  assert.match(backend, /createEnvelopeWithNeeds/);
+  assert.match(backend, /shortageAmount/);
   assert.doesNotMatch(detail, /requestAdjustEnvelopeAllocation|adjustEnvelopeAllocation/);
 });
 test("detail Alokasi Dana dan dialog Kebutuhan tetap lazy agar route planning memiliki headroom bundle", async () => {
@@ -125,7 +128,7 @@ test("detail Alokasi Dana dan dialog Kebutuhan tetap lazy agar route planning me
 test("kategori yang sama dapat dipakai pada beberapa Alokasi Dana tanpa menduplikasi master kategori", async () => {
   const [controller, backend] = await Promise.all([
     read("src/features/budgets/useBudgetActions.js"),
-    Promise.all(["budgets.js", "budgetShared.js", "budgetQueries.js", "budgetMutations.js", "budgetLifecycle.js", "budgetHistory.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
+    Promise.all(["envelopes.js", "budgetFunding.js", "budgetMutations.js", "budgetQueries.js", "budgetShared.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
 
   assert.match(controller, /String\(item\.envelope_rule_id \|\| ""\) === String\(form\.envelope_rule_id \|\| ""\)/);
@@ -147,10 +150,9 @@ test("penutupan Alokasi Dana menjaga continuity periode dan Kebutuhan tetap opt-
   ]);
   assert.match(actions, /reuse_needs: closeReuseNeeds/);
   assert.match(actions, /released_amount/);
-  assert.match(dialogs, /Periode berikutnya tetap disiapkan agar alokasi tidak terputus/);
-  assert.match(dialogs, /Pakai lagi \{p\.closeNeedsCount\} kebutuhan di periode berikutnya/);
-  assert.match(dialogs, /dana yang dibutuhkan dipisahkan otomatis dari Dana Tersedia/);
-  assert.match(dialogs, /Jika dana belum cukup, penutupan dibatalkan tanpa perubahan sebagian/);
+  assert.doesNotMatch(dialogs, /Tutup periode|Pakai lagi .* kebutuhan di periode berikutnya/);
+  assert.match(dialogs, /Kembalikan ke dana tersedia/);
+  assert.match(dialogs, /Tetap di alokasi berikutnya/);
   assert.match(detail, /budgetVisualState\(budget, periodMeta\)/);
   assert.doesNotMatch(detail, /const needStatus/);
 });

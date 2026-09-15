@@ -192,7 +192,7 @@ const envelopeAlerts = (envelopes) => {
       id: `envelope:${item.envelope_period_id}:${crossed.threshold}`,
       type: "envelope_threshold",
       severity: crossed.severity,
-      title: `${item.name} ${percentage}% terpakai + dipesan`,
+      title: `${item.name} ${percentage}% terpakai + disiapkan`,
       message: percentage >= 100 ? "Dana pada Alokasi Dana sudah habis atau terlampaui." : `Dana tersisa pada Alokasi Dana mendekati batas ${crossed.threshold}%.`,
       targetPath: "/perencanaan/kantong",
     });

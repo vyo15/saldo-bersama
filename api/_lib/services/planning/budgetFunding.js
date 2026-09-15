@@ -23,18 +23,18 @@ const fundingPeriodRow = async (db, { envelopeRuleId, periodKey, envelopePeriodI
   return rows[0];
 };
 
-const assertFundingAvailable = async (db, account, amount) => {
+const fundingAvailability = async (db, account, amount) => {
   const balance = await accountBalanceAsOf(db, account, todayJakarta());
   const allocatedRemaining = await accountAllocatedRemaining(db, account.account_id);
-  const availableAmount = balance - allocatedRemaining;
-  if (amount <= availableAmount) return { balance, allocatedRemaining, availableAmount };
-  const shortageAmount = Math.max(0, amount - availableAmount);
-  throw appError(
-    "BUDGET_FUNDING_INSUFFICIENT",
-    `Dana belum mencukupi Rp ${shortageAmount.toLocaleString("id-ID")}. Kebutuhan memerlukan tambahan Rp ${amount.toLocaleString("id-ID")}, sementara dana yang tersedia Rp ${Math.max(0, availableAmount).toLocaleString("id-ID")}. Tambahkan saldo atau kurangi nominal Kebutuhan.`,
-    409,
-    { requiredAmount: amount, availableAmount, shortageAmount, accountBalance: balance, allocatedRemaining },
-  );
+  const availableAmount = Math.max(0, balance - allocatedRemaining);
+  const fundedAmount = Math.min(Math.max(0, amount), availableAmount);
+  return {
+    balance,
+    allocatedRemaining,
+    availableAmount,
+    fundedAmount,
+    shortageAmount: Math.max(0, amount - fundedAmount),
+  };
 };
 
 
@@ -112,15 +112,31 @@ export const adjustEnvelopeForBudgetDelta = async (db, context, {
   assertOperationalPlanningAccount(account, "Alokasi Dana");
 
   if (normalizedDelta > 0) {
-    await assertFundingAvailable(db, account, normalizedDelta);
-    return updateFundingPeriod(db, context, period, Number(period.allocated_amount || 0) + normalizedDelta, {
+    const availability = await fundingAvailability(db, account, normalizedDelta);
+    if (availability.fundedAmount <= 0) {
+      return {
+        period: publicRow(period),
+        direction: "fund",
+        amount: 0,
+        requestedAmount: normalizedDelta,
+        shortageAmount: availability.shortageAmount,
+        availableAmount: availability.availableAmount,
+        reason: sanitizeText(reason, 180),
+        automatic: true,
+        source: "budget",
+      };
+    }
+    const updated = await updateFundingPeriod(db, context, period, Number(period.allocated_amount || 0) + availability.fundedAmount, {
       direction: "fund",
-      amount: normalizedDelta,
+      amount: availability.fundedAmount,
       requestedAmount: normalizedDelta,
+      shortageAmount: availability.shortageAmount,
+      availableAmount: availability.availableAmount,
       reason: sanitizeText(reason, 180),
       automatic: true,
       source: "budget",
     });
+    return updated;
   }
 
   const requestedAmount = Math.abs(normalizedDelta);

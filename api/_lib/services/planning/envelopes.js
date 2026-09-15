@@ -6,6 +6,7 @@ import { newVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
 import { accountWithAccess, assertEnvelopeAssigneeAccess, assertOperationalPlanningAccount, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
 import { assertAllocationAvailable, envelopeRuleLifecycleImpact } from "./envelopeLifecycle.js";
+import { createBudgetsBatch } from "./budgetMutations.js";
 
 const PERIOD_TYPES = new Set(["daily", "weekly", "biweekly", "monthly", "paycycle", "custom"]);
 const ROLLOVER_POLICIES = new Set(["unallocated", "carry"]);
@@ -180,6 +181,25 @@ export const createEnvelope = async (db, context) => {
   });
   await context.enqueueMirror?.(db, "envelope", period.envelope_period_id);
   return result;
+};
+
+export const createEnvelopeWithNeeds = async (db, context) => {
+  const payload = context.payload || {};
+  const needs = Array.isArray(payload.needs) ? payload.needs : [];
+  if (!needs.length) throw appError("ENVELOPE_NEEDS_REQUIRED", "Tambahkan minimal satu kebutuhan agar Alokasi Dana langsung siap dipakai.", 400);
+  const envelope = await createEnvelope(db, { ...context, payload });
+  const budgets = await createBudgetsBatch(db, {
+    ...context,
+    payload: {
+      period_key: String(payload.period_key || payload.period_start || "").slice(0, 7),
+      envelope_rule_id: envelope.rule.envelope_rule_id,
+      envelope_period_id: envelope.period.envelope_period_id,
+      scope: envelope.rule.scope,
+      owner_user_id: envelope.rule.owner_user_id,
+      items: needs,
+    },
+  });
+  return { ...envelope, budgets };
 };
 export const deleteUnusedEnvelopeRule = async (db, context) => {
   assertOwner(context.actor);

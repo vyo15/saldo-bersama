@@ -1,13 +1,13 @@
-import { FiArrowLeft, FiArrowRight, FiChevronDown, FiGrid, FiPlus } from "react-icons/fi";
+import { FiArrowLeft, FiArrowRight, FiGrid, FiPlus, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
-import { AccountIcon, BiweeklyIcon, CarryForwardIcon, CustomPeriodIcon, DailyIcon, MonthlyIcon, PaycycleIcon, ReturnRemainderIcon, SharedIcon, WeeklyIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { AccountIcon, CarryForwardIcon, ReturnRemainderIcon, SharedIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import InlineOwnershipPicker from "../../components/common/InlineOwnershipPicker.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
-import { accountOptionVisual, allocationOptionVisual } from "../../components/common/selectionOptionVisuals.js";
+import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { allocationAssigneeLabel } from "./allocationPresentation.js";
 import { formatRupiah } from "../../domain/money.js";
@@ -16,7 +16,6 @@ import { userRoleLabel } from "../../shared/presentation/user.js";
 import { allocationClass } from "./allocationStyles.js";
 import { ALLOCATION_DECORATIONS, allocationDecoration } from "./allocationDecorations.js";
 
-import TemporalInput from "../../components/common/TemporalInput.jsx";
 const envelopeAssigneeOptions = (form, accounts, users) => {
   const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
   if (source?.owner_scope !== "personal") return { options: users, locked: false };
@@ -28,15 +27,6 @@ const envelopeAssigneeOptions = (form, accounts, users) => {
   };
   return { options: fallback.user_id ? [fallback] : [], locked: true };
 };
-
-const periodOptions = [
-  { value: "daily", label: "Harian", icon: DailyIcon },
-  { value: "weekly", label: "Mingguan", icon: WeeklyIcon },
-  { value: "biweekly", label: "Dua mingguan", icon: BiweeklyIcon },
-  { value: "monthly", label: "Bulanan", icon: MonthlyIcon },
-  { value: "paycycle", label: "Periode gajian", icon: PaycycleIcon },
-  { value: "custom", label: "Khusus", icon: CustomPeriodIcon },
-];
 
 const rolloverOptions = [
   { value: "unallocated", label: "Kembalikan ke dana tersedia", icon: ReturnRemainderIcon, description: "Sisa dilepas dari alokasi" },
@@ -82,14 +72,49 @@ const AllocationDecorationPicker = ({ name, value, onChange }) => {
   </fieldset>;
 };
 
+const createNeedsTotal = (needs) => (needs || []).reduce((total, need) => {
+  const amount = Number(String(need.amount || "").replace(/\D/g, ""));
+  return total + (Number.isFinite(amount) ? amount : 0);
+}, 0);
+
 const CreateEnvelopeFooter = ({ close, createMutation }) => <>
   <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
-  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Lanjut ke kebutuhan</Button>
+  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Simpan Alokasi</Button>
 </>;
+
+const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) => {
+  const total = createNeedsTotal(needs);
+  const available = Math.max(0, Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0));
+  const funded = Math.min(total, available);
+  const shortage = Math.max(0, total - available);
+  const updateNeed = (id, updates) => setNeeds((current) => current.map((need) => need.id === id ? { ...need, ...updates } : need));
+  const removeNeed = (id) => setNeeds((current) => current.length <= 1 ? current : current.filter((need) => need.id !== id));
+  const addNeed = () => setNeeds((current) => [...current, { id: `allocation-create-need-${Date.now()}-${current.length}`, name: "", category_id: "", amount: "" }]);
+  return <section className={allocationClass("allocation-create-needs form-grid__full")} aria-labelledby="allocation-create-needs-title">
+    <div className={allocationClass("allocation-create-needs__header")}><div><h3 id="allocation-create-needs-title">Kebutuhan</h3><p>Tambahkan kebutuhan utama. Totalnya menjadi dana yang perlu disiapkan.</p></div><Button type="button" icon={FiPlus} onClick={addNeed}>Tambah kebutuhan</Button></div>
+    <div className={allocationClass("allocation-create-needs__list")}>
+      {needs.map((need, index) => <div className={allocationClass("allocation-create-need")} key={need.id}>
+        <label className="field"><span>Nama kebutuhan {index + 1}</span><input required maxLength="100" value={need.name} onChange={(event) => updateNeed(need.id, { name: event.target.value })} placeholder="Contoh: Belanja bulanan" /></label>
+        <InlineSelectionPicker label="Kategori" required value={need.category_id} onChange={(category_id) => updateNeed(need.id, { category_id })} placeholder="Pilih kategori" placeholderMeta="Kategori pengeluaran" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((category) => ({ value: category.category_id, label: category.name, ...categoryOptionVisual(category) }))} />
+        <MoneyInput id={`allocation-create-need-amount-${need.id}`} label="Nominal" value={need.amount} onChange={(amount) => updateNeed(need.id, { amount })} required />
+        {needs.length > 1 ? <Button className={allocationClass("allocation-create-need__remove")} type="button" icon={FiTrash2} onClick={() => removeNeed(need.id)}>Hapus</Button> : null}
+      </div>)}
+    </div>
+    <div className={allocationClass("allocation-create-funding")}>
+      <div><span>Total yang perlu disiapkan</span><strong>{formatRupiah(total)}</strong></div>
+      <div><span>Dana tersedia di {sourceAccount?.name || "rekening"}</span><strong>{formatRupiah(available)}</strong></div>
+      <div><span>Akan dialokasikan sekarang</span><strong>{formatRupiah(funded)}</strong></div>
+      {shortage > 0 ? <p role="status"><strong>Masih kurang {formatRupiah(shortage)}.</strong> Alokasi tetap dapat disimpan; pembayaran otomatis hanya berjalan saat dana sudah cukup.</p> : <p role="status">Dana mencukupi. Sisa Dana Tersedia setelah disiapkan {formatRupiah(Math.max(0, available - total))}.</p>}
+    </div>
+  </section>;
+};
 
 const CreateEnvelopeForm = ({
   createForm,
   setCreateForm,
+  createNeeds,
+  setCreateNeeds,
+  categories,
   accounts,
   usersStatus,
   assigneeState,
@@ -97,86 +122,29 @@ const CreateEnvelopeForm = ({
   onChangeSource,
   message,
   createEnvelope,
-}) => (
-  <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
+}) => {
+  const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
+  return <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
     <label className="field form-grid__full"><span>Untuk apa uang ini? *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
-    <InlineSelectionPicker
-      className="form-grid__full"
-      label="Ambil dana dari"
-      required
-      value={createForm.source_account_id}
-      onChange={onChangeSource}
-      placeholder="Pilih rekening"
-      placeholderMeta="Pilih rekening sumber dana"
-      placeholderOption={{ icon: AccountIcon }}
-      searchable={accounts.length > 8}
-      searchPlaceholder="Cari rekening…"
-      options={accounts.map((account) => ({
-        value: account.account_id,
-        label: accountDisplayLabel(account),
-        meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`,
-        ...accountOptionVisual(account),
-      }))}
-    />
-    <InlineOwnershipPicker
-      className="form-grid__full"
-      legend="Digunakan oleh"
-      required
-      value={createForm.assignee_user_id}
-      onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))}
-      options={assigneeOptions}
-      locked={assigneeState.locked}
-      disabled={usersStatus === "loading"}
-      helper={assigneeState.locked ? "Pemilik mengikuti rekening sumber dan tidak dapat diubah." : usersStatus === "loading" ? "Memuat pengguna aktif..." : ""}
-    />
-    <div className="notice notice--info form-grid__full" role="status"><strong>Belum ada uang yang dipisahkan.</strong> Setelah langkah ini, tambahkan Kebutuhan. Total Kebutuhan yang disimpan akan otomatis dipisahkan dari Dana Tersedia rekening sumber.</div>
-    <details className={allocationClass("allocation-advanced form-grid__full")}>
-      <summary><span><strong>Pengaturan tambahan</strong><small>Penampilan, periode, dan sisa</small></span><FiChevronDown aria-hidden="true" /></summary>
-      <div className={allocationClass("allocation-advanced__content")}>
-        <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
-        <VisualChoiceGroup className="form-grid__full" legend="Periode alokasi" name="allocation-period" value={createForm.period_type} onChange={(period_type) => setCreateForm((current) => ({ ...current, period_type }))} options={periodOptions} columns={3} compact />
-        <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
-        <label className="field"><span>Mulai periode</span><TemporalInput type="date" value={createForm.period_start} onChange={(event) => setCreateForm((current) => ({ ...current, period_start: event.target.value }))} /></label>
-        <label className="field"><span>Akhir periode</span><TemporalInput type="date" value={createForm.period_end} onChange={(event) => setCreateForm((current) => ({ ...current, period_end: event.target.value }))} /></label>
-      </div>
-    </details>
+    <InlineSelectionPicker className="form-grid__full" label="Ambil dana dari" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderMeta="Pilih rekening sumber dana" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
+{!assigneeState.locked ? <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : ""} /> : null}
+    <AllocationCreateNeeds needs={createNeeds} setNeeds={setCreateNeeds} categories={categories} sourceAccount={sourceAccount} />
+    <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
+    <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
     {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
-  </form>
-);
+  </form>;
+};
 
-const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
+const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNeeds, setCreateNeeds, categories, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
   const assigneeState = envelopeAssigneeOptions(createForm, accounts, users);
   const assigneeOptions = buildAssigneeOptions(assigneeState);
-  const guard = useUnsavedChangesGuard({ open, value: createForm, onClose: close, blocked: createMutation.busy });
+  const guard = useUnsavedChangesGuard({ open, value: { createForm, createNeeds }, onClose: close, blocked: createMutation.busy });
   const changeSource = (sourceAccountId) => {
     const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
-    setCreateForm((current) => ({
-      ...current,
-      source_account_id: sourceAccountId,
-      assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : current.assignee_user_id,
-    }));
+    setCreateForm((current) => ({ ...current, source_account_id: sourceAccountId, assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : "" }));
   };
-  return <Modal
-    open={open}
-    onClose={guard.requestClose}
-    discardGuard={guard}
-    discardSubject="pengaturan dana"
-    dismissible={!createMutation.busy}
-    title="Atur uang"
-    description="Pilih tujuan dan rekening sumber. Setelah itu, tentukan Kebutuhan yang ingin disiapkan."
-    footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} />}
-  >
-    <CreateEnvelopeForm
-      createForm={createForm}
-      setCreateForm={setCreateForm}
-      accounts={accounts}
-      usersStatus={usersStatus}
-      assigneeState={assigneeState}
-      assigneeOptions={assigneeOptions}
-      onChangeSource={changeSource}
-      message={message}
-      createEnvelope={createEnvelope}
-    />
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Alokasi Dana" dismissible={!createMutation.busy} title="Tambah Alokasi" description="Tentukan tujuan, kebutuhan, dan sumber dana dalam satu langkah." footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} />}>
+    <CreateEnvelopeForm createForm={createForm} setCreateForm={setCreateForm} createNeeds={createNeeds} setCreateNeeds={setCreateNeeds} categories={categories} accounts={accounts} usersStatus={usersStatus} assigneeState={assigneeState} assigneeOptions={assigneeOptions} onChangeSource={changeSource} message={message} createEnvelope={createEnvelope} />
   </Modal>;
 };
 
@@ -204,7 +172,7 @@ const AdjustAllocationModal = ({ target, close, form, setForm, submit, mutation,
       <form id="adjust-envelope-form" className="form-grid" onSubmit={submit}>
         <VisualChoiceGroup className="form-grid__full" legend="Aksi" name="allocation-adjustment-direction" value={form.direction} onChange={(direction) => setForm((current) => ({ ...current, direction, amount: "", reason: "" }))} options={[{ value: "fund", label: "Tambah dana", icon: FiPlus, description: "Dana tersedia → alokasi" }, { value: "release", label: "Kembalikan", icon: FiArrowLeft, description: "Alokasi → dana tersedia" }]} columns={2} descriptive />
         <MoneyInput id="allocation-adjustment-amount" label="Nominal" value={form.amount} onChange={(amount) => setForm((current) => ({ ...current, amount }))} required />
-        <div className="notice notice--info form-grid__full" role="status">{funding ? "Dana diambil dari saldo rekening yang belum dialokasikan. Saldo rekening tidak berubah." : `Maksimal ${formatRupiah(removable)} dapat dikembalikan tanpa menyentuh dana terpakai atau dipesan.`}</div>
+        <div className="notice notice--info form-grid__full" role="status">{funding ? "Dana diambil dari saldo rekening yang belum dialokasikan. Saldo rekening tidak berubah." : `Maksimal ${formatRupiah(removable)} dapat dikembalikan tanpa menyentuh dana terpakai atau yang disiapkan untuk jadwal.`}</div>
         <label className="field form-grid__full"><span>Catatan</span><input maxLength="180" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} placeholder={funding ? "Contoh: tambah dana bulan ini" : "Contoh: sisa tidak dibutuhkan"} /></label>
         {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
       </form>
@@ -213,37 +181,17 @@ const AdjustAllocationModal = ({ target, close, form, setForm, submit, mutation,
 };
 
 
-const ClosePeriodModal = (p) => {
-  const target = p.closeTarget;
-  const carrying = target?.rollover_policy === "carry";
-  const close = () => {
-    if (p.closeState.status === "submitting") return;
-    p.setCloseReuseNeeds(false);
-    p.setCloseTarget(null);
-  };
-  const description = target
-    ? `${target.name} (${target.period_start}–${target.period_end}) akan dikunci. ${carrying ? "Sisa dana akan dibawa ke periode berikutnya." : "Sisa dana akan kembali menjadi dana tersedia."} Periode berikutnya tetap disiapkan agar alokasi tidak terputus.`
-    : "";
-  return <ConfirmationModal open={Boolean(target)} title="Tutup periode alokasi?" description={description} confirmLabel="Tutup periode" busy={p.closeState.status === "submitting"} error={p.closeState.error} onCancel={close} onConfirm={p.closeEnvelope}>
-    {target ? <div className="notice notice--info" role="status">{p.closeReuseNeeds ? "Kebutuhan yang dipakai lagi akan mendanai periode berikutnya otomatis dari Dana Tersedia. Jika dana belum cukup, penutupan dibatalkan tanpa perubahan sebagian." : carrying ? "Tanpa menyalin Kebutuhan, hanya sisa dana periode ini yang diteruskan." : "Tanpa menyalin Kebutuhan, periode berikutnya dimulai dengan Rp0."}</div> : null}
-    {p.closeCanReuseNeeds ? <label className="checkbox-field">
-      <input type="checkbox" checked={p.closeReuseNeeds} disabled={p.closeState.status === "submitting"} onChange={(event) => p.setCloseReuseNeeds(event.target.checked)} />
-      <span><strong>Pakai lagi {p.closeNeedsCount} kebutuhan di periode berikutnya</strong><small>Kategori dan nominal disalin, lalu dana yang dibutuhkan dipisahkan otomatis dari Dana Tersedia. Transaksi lama tidak ikut disalin.</small></span>
-    </label> : null}
-  </ConfirmationModal>;
-};
-
-const AllocationModals = (p) => <><ClosePeriodModal {...p} /><ConfirmationModal open={Boolean(p.archiveTarget)} title={p.archiveTarget?.preview.canDeleteUnused ? "Hapus alokasi yang belum dipakai?" : "Arsipkan aturan alokasi?"} description={p.archiveTarget ? (p.archiveTarget.preview.canDeleteUnused ? `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} hanya memiliki periode awal kosong dan belum pernah memiliki transaksi, mutasi, penutupan, atau Kebutuhan terkait.` : `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} sudah memiliki histori atau dependency. Data tidak dihapus permanen dan hanya diarsipkan.`) : ""} confirmLabel={p.archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan aturan"} reasonLabel={p.archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan arsip"} requireReason acknowledgementLabel={p.archiveTarget?.preview.canDeleteUnused ? "Saya memahami alokasi ini belum pernah digunakan dan penghapusan bersifat permanen." : ""} busy={p.archiveState.status === "submitting"} error={p.archiveState.error} onCancel={() => p.archiveState.status !== "submitting" && p.setArchiveTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveTarget ? <div className="notice notice--info">Periode {p.archiveTarget.preview.dependencies.periods} · transaksi {p.archiveTarget.preview.dependencies.transactions} · mutasi/rollover {p.archiveTarget.preview.dependencies.movements} · Kebutuhan {p.archiveTarget.preview.dependencies.budgets} · periode ditutup {p.archiveTarget.preview.dependencies.closed_periods}.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan pemindahan dana?" description={p.reverseTarget ? `${p.reverseTarget.from_name} → ${p.reverseTarget.to_name}. Dana akan dikembalikan hanya jika belum terpakai atau dipesan.` : ""} confirmLabel="Batalkan mutasi" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reverseMovement} /></>;
+const AllocationModals = (p) => <><ConfirmationModal open={Boolean(p.archiveTarget)} title="Hapus Alokasi?" description={p.archiveTarget ? (p.archiveTarget.preview.canDeleteUnused ? `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} belum pernah digunakan sehingga dapat dihapus permanen.` : `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} akan dihapus dari daftar aktif. Transaksi dan riwayat yang sudah terjadi tetap dipertahankan agar saldo historis tidak berubah.`) : ""} confirmLabel="Hapus Alokasi" reasonLabel="Alasan penghapusan" requireReason acknowledgementLabel={p.archiveTarget?.preview.canDeleteUnused ? "Saya memahami alokasi yang belum pernah digunakan ini akan dihapus permanen." : ""} busy={p.archiveState.status === "submitting"} error={p.archiveState.error} onCancel={() => p.archiveState.status !== "submitting" && p.setArchiveTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveTarget && !p.archiveTarget.preview.canDeleteUnused ? <div className="notice notice--info">Data historis tetap tersimpan. Jadwal dan penggunaan masa depan dari Alokasi ini dihentikan.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan pemindahan dana?" description={p.reverseTarget ? `${p.reverseTarget.from_name} → ${p.reverseTarget.to_name}. Dana akan dikembalikan hanya jika belum terpakai atau disiapkan untuk jadwal.` : ""} confirmLabel="Batalkan mutasi" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reverseMovement} /></>;
 
 
 const AllocationDialogLayer = ({
-  createOpen, closeCreate, createForm, setCreateForm, accounts, activeUsers, usersStatus, createEnvelope, createMutation, message,
+  createOpen, closeCreate, createForm, setCreateForm, createNeeds, setCreateNeeds, expenseCategories, accounts, activeUsers, usersStatus, createEnvelope, createMutation, message,
   moveOpen, closeMove, move, setMove, movableItems, destinations, submitMove, moveMutation,
   adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment, adjustMutation,
   modalProps,
 }) => (
   <>
-    <CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} users={activeUsers} usersStatus={usersStatus} createEnvelope={createEnvelope} createMutation={createMutation} message={message} />
+    <CreateEnvelopeModal open={createOpen} close={closeCreate} createForm={createForm} setCreateForm={setCreateForm} createNeeds={createNeeds} setCreateNeeds={setCreateNeeds} categories={expenseCategories} accounts={accounts} users={activeUsers} usersStatus={usersStatus} createEnvelope={createEnvelope} createMutation={createMutation} message={message} />
     <MoveEnvelopeModal open={moveOpen} close={closeMove} move={move} setMove={setMove} items={movableItems} destinations={destinations} submitMove={submitMove} moveMutation={moveMutation} message={message} />
     <AdjustAllocationModal target={adjustTarget} close={closeAdjust} form={adjustForm} setForm={setAdjustForm} submit={submitAdjustment} mutation={adjustMutation} message={message} />
     <AllocationModals {...modalProps} />

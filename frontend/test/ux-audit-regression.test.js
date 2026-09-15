@@ -293,13 +293,13 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
     read("src/features/allocations/AllocationOverview.module.css"),
   ]);
 
-  assert.match(overview, />Atur uang<\/Button>/);
+  assert.match(overview, />Tambah Alokasi<\/Button>/);
   assert.match(overview, /allocation-header-actions allocation-header-actions--simple/);
   assert.doesNotMatch(overview, /allocation-header-actions--with-move|allocation-move-action/);
   assert.match(overview, /Belum ada kebutuhan/);
   assert.match(overview, />Tambah kebutuhan<\/Button>/);
   assert.match(overview, /allocation-card__expand/);
-  assert.match(overview, />Buka alokasi/);
+  assert.match(overview, />Lihat detail/);
   assert.doesNotMatch(overview, /FiSliders|allocation-card__planning-actions|allocationCardActionState/);
   assert.match(detail, /FiSliders[\s\S]*>Pulihkan dana<\/Button>/);
   assert.doesNotMatch(detail, /showStandardAdjustAction|>Atur dana<\/Button>/);

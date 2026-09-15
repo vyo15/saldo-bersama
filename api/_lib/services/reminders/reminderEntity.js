@@ -129,7 +129,7 @@ const resolveEnvelopePeriod = async (db, actor, entityId) => {
     name: sanitizeText(row.name, 100) || "Alokasi Dana",
     targetPath: "/perencanaan/kantong",
     title: `Cek Alokasi Dana ${sanitizeText(row.name, 67) || "aktif"}`,
-    body: `Terpakai + dipesan ${notificationRupiah(committed)} dari ${notificationRupiah(allocated)}. Sisa ${notificationRupiah(remaining)}.`,
+    body: `Terpakai + disiapkan ${notificationRupiah(committed)} dari ${notificationRupiah(allocated)}. Sisa ${notificationRupiah(remaining)}.`,
   };
 };
 

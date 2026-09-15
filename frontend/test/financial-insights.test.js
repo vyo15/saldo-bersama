@@ -152,7 +152,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(allocations, /Setor ke Target/);
   assert.match(allocations, /released_amount/);
   assert.match(allocations, /reuse_needs: closeReuseNeeds/);
-  assert.match(allocations, /Periode berikutnya tetap disiapkan/);
+  assert.match(allocations, /Kembalikan ke dana tersedia|Tetap di alokasi berikutnya/);
 });
 
 test("target menampilkan sisa, kebutuhan setoran bulanan, status proyeksi, dan blocker movement dari backend", async () => {
@@ -207,7 +207,7 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
 
   assert.match(allocations, /activeItems = useMemo/);
   assert.match(allocations, /historicalItems = useMemo/);
-  assert.match(allocations, /Riwayat periode/);
+  assert.match(allocations, /Riwayat/);
   assert.match(allocations, /Digunakan oleh/);
   assert.match(allocations, /assignee_user_id/);
   assert.match(allocations, /useApiResource\("users\.list"/);
@@ -218,12 +218,11 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /label="Ambil dana dari"/);
   assert.match(allocations, /<InlineOwnershipPicker[\s\S]{0,220}legend="Digunakan oleh"/);
   assert.match(allocations, /description: "Digunakan oleh semua anggota"/);
-  assert.match(allocations, /Belum ada uang yang dipisahkan/);
-  assert.match(allocations, /Lanjut ke kebutuhan/);
+  assert.match(allocations, /Total yang perlu disiapkan/);
+  assert.match(allocations, /Simpan Alokasi/);
   assert.match(allocations, /filteredActiveItems = useMemo/);
   assert.match(allocations, /allocationFilter === "shared"/);
   assert.match(allocations, /allocationFilter === "mine"/);
-  assert.match(allocations, /allocationFilter === "unused"/);
   assert.match(allocations, /Dana terlampaui/);
   assert.match(allocations, /Kebutuhan/);
   assert.match(allocations, /recurringScheduleForBudget/);

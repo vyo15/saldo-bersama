@@ -137,12 +137,23 @@ const connectCdp = async ({ port, child, browser, stderr }) => {
 };
 
 const waitReady = async (cdp) => {
+  let lastState = null;
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const ready = await cdp.evaluate(`document.readyState === "complete" && Boolean(document.querySelector("button, a, input, [tabindex]"))`);
-    if (ready) return;
+    const state = await cdp.evaluate(`(() => ({
+      ready: document.readyState === "complete" && Boolean(document.querySelector("button, a, input, [tabindex]")),
+      url: location.href,
+      title: document.title,
+      readyState: document.readyState,
+      controls: document.querySelectorAll("button, a, input, [tabindex]").length,
+    }))()`);
+    lastState = state;
+    if (state?.ready) return;
+    if (String(state?.url || "").startsWith("chrome-error://")) {
+      throw new Error(`Browser gagal membuka rendered smoke page. ${JSON.stringify(state)}`);
+    }
     await sleep(100);
   }
-  throw new Error("Login UI tidak selesai dirender untuk browser smoke.");
+  throw new Error(`Login UI tidak selesai dirender untuk browser smoke. State terakhir: ${JSON.stringify(lastState)}`);
 };
 
 const viewportMatrix = [
@@ -179,6 +190,7 @@ const main = async () => {
     const cdp = connected.cdp; socket = connected.socket;
     await cdp.send("Page.enable");
     await cdp.send("Runtime.enable");
+    await cdp.send("Page.bringToFront");
 
     for (const [width, height] of viewportMatrix) {
       await cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width <= 820 });
@@ -202,15 +214,53 @@ const main = async () => {
     await cdp.send("Emulation.setDeviceMetricsOverride", { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
     await cdp.send("Page.navigate", { url: `http://127.0.0.1:${serverPort}/` });
     await waitReady(cdp);
-    const focus = await cdp.evaluate(`(() => {
-      const candidate = [...document.querySelectorAll('button,a,input,select,textarea,[tabindex]')].find((el) => {
-        const r=el.getBoundingClientRect(); return r.width>0 && r.height>0 && !el.disabled;
-      });
-      candidate?.focus();
-      const style = candidate ? getComputedStyle(candidate) : null;
-      return { tag: candidate?.tagName || null, width: parseFloat(style?.outlineWidth || '0'), style: style?.outlineStyle || 'none' };
+    await cdp.evaluate(`(() => {
+      document.activeElement?.blur?.();
+      window.scrollTo(0, 0);
+      return true;
     })()`);
-    assert(focus.tag && focus.style !== "none" && focus.width >= 2, "Rendered focus indicator tidak terlihat pada login mobile.");
+    const focusAttempts = [];
+    let focus = null;
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+      await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+      await sleep(25);
+      const state = await cdp.evaluate(`(() => {
+        const candidate = document.activeElement;
+        if (!candidate || candidate === document.body || candidate === document.documentElement) {
+          return { tag: null, visible: false, focusVisible: false, outlineWidth: 0, outlineStyle: 'none', outlineColor: 'transparent' };
+        }
+        const rect = candidate.getBoundingClientRect();
+        const style = getComputedStyle(candidate);
+        const outlineWidth = Number.parseFloat(style.outlineWidth || '0');
+        const outlineColor = String(style.outlineColor || '').toLowerCase();
+        const focusVisible = typeof candidate.matches === 'function' && candidate.matches(':focus-visible');
+        const visible = rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+        const outlineVisible = style.outlineStyle !== 'none'
+          && outlineWidth >= 2
+          && outlineColor !== 'transparent'
+          && outlineColor !== 'rgba(0, 0, 0, 0)';
+        return {
+          tag: candidate.tagName,
+          label: candidate.textContent?.trim().slice(0, 80) || candidate.getAttribute('aria-label') || candidate.getAttribute('name') || '',
+          visible,
+          focusVisible,
+          outlineVisible,
+          outlineWidth,
+          outlineStyle: style.outlineStyle,
+          outlineColor,
+        };
+      })()`);
+      focusAttempts.push(state);
+      if (state.visible && state.focusVisible && state.outlineVisible) {
+        focus = state;
+        break;
+      }
+    }
+    assert(
+      focus,
+      `Rendered keyboard focus indicator tidak terlihat pada login mobile setelah Tab navigation. Percobaan: ${JSON.stringify(focusAttempts)}`,
+    );
 
     const spacing = await cdp.evaluate(`(() => {
       const style=document.createElement('style'); style.id='wcag-text-spacing-smoke';

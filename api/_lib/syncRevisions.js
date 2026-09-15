@@ -121,6 +121,7 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
   "transactions.restore": TRANSACTION_DEPENDENCIES,
 
   "envelopes.create": ENVELOPE_DEPENDENCIES,
+  "envelopes.createWithNeeds": unique(ENVELOPE_DEPENDENCIES, BUDGET_DEPENDENCIES, RECURRING_DEPENDENCIES),
   "envelopes.adjustAllocation": ENVELOPE_DEPENDENCIES,
   "envelopes.move": ENVELOPE_DEPENDENCIES,
   "envelopes.close": ENVELOPE_DEPENDENCIES,

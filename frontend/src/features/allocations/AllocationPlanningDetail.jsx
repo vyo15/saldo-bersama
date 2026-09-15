@@ -64,8 +64,7 @@ const BudgetLimitActions = ({ budget, schedule, canManage, onRecord, onOpenSched
   const hasPrimaryAction = Boolean(schedule || onRecord);
   if (!hasPrimaryAction && !canManage) return null;
   return <div className={allocationClass("allocation-limit-row__actions")}>
-    {schedule ? <Button variant={schedule.canPay ? "primary" : undefined} onClick={() => onOpenSchedule(schedule.item, schedule.canPay)}>{schedule.canPay ? "Catat pembayaran" : "Lihat jadwal"}</Button> : onRecord ? <Button variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat</Button> : null}
-    {schedule && onRecord ? <Button icon={FiPlus} onClick={() => onRecord(budget)}>Catat tambahan</Button> : null}
+    {schedule ? <Button variant={schedule.canPay ? "primary" : undefined} onClick={() => onOpenSchedule(schedule.item, schedule.canPay)}>{schedule.canPay ? "Bayar" : "Lihat jadwal"}</Button> : onRecord ? <Button variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat pengeluaran</Button> : null}
     {canManage ? <Button icon={FiEdit2} onClick={() => onEdit(budget)}>Edit</Button> : null}
   </div>;
 };
@@ -86,7 +85,7 @@ const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onR
     <div className={allocationClass("allocation-limit-row__main")}>
       <div className={allocationClass("allocation-limit-row__identity")}>
         <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" /></span>
-        <div><strong>{budget.name}</strong><small>Terpakai <Money value={used} /> dari nominal <Money value={amount} /></small><small>Sisa kebutuhan <Money value={remaining} /></small><small>{patternLabel}</small></div>
+        <div><strong>{budget.name}</strong><small><Money value={remaining} /> tersisa dari <Money value={amount} /></small><small>{patternLabel}</small></div>
       </div>
       <span className={allocationClass(tone)}>{status.label}</span>
     </div>
@@ -154,7 +153,7 @@ const AllocationNeedsPanel = ({
   </section>;
 };
 
-const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleController, canManage, canLifecycle, expenseCategories, budgets, users, usersStatus, item, sourceAccount, onAddBalance, onBudgetReminder }) => {
+const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleController, canManage, canLifecycle, expenseCategories, budgets, users, usersStatus, item, sourceAccount, onBudgetReminder }) => {
   if (!budgetFormController.formOpen && !budgetLifecycleController.archiveTarget) return null;
   return <Suspense fallback={<LazyActionFallback surface="modal" title="Kebutuhan" label="Menyiapkan form Kebutuhan..." />}><BudgetDialogLayer
     canManage={canManage}
@@ -167,7 +166,6 @@ const AllocationBudgetDialog = ({ budgetFormController, budgetLifecycleControlle
     lifecycleController={budgetLifecycleController}
     lockedEnvelope={item}
     sourceAccount={sourceAccount}
-    onAddBalance={onAddBalance}
     onReminder={onBudgetReminder}
   /></Suspense>;
 };
@@ -244,12 +242,12 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         <div><span>Alokasi Dana</span><h2 id="allocation-detail-title">{item.name}</h2><p>{state.sourceLabel} · {state.assigneeLabel} · {state.periodLabel}</p></div>
         {showGlobalExpenseAction(state.canRecordExpense, linkedBudgets) ? <div className={allocationClass("allocation-detail-hero__action")}><Button variant="primary" icon={FiPlus} onClick={() => state.recordExpense()}>Catat pengeluaran</Button></div> : null}
         <div className={allocationClass("allocation-detail-hero__metrics")}>
-          <div><span>Dialokasikan</span><strong><Money value={state.usage.allocated} /></strong></div>
-          <div><span>Terpakai</span><strong><Money value={state.usage.used} /></strong></div>
-          <div><span>Tersisa</span><strong><Money value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /></strong></div>
-          <div><span>Jumlah kebutuhan</span><strong>{linkedBudgets.length} kebutuhan</strong></div>
+          <div><span>Masih tersedia</span><strong><Money value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /></strong></div>
+          <div><span>Total disiapkan</span><strong><Money value={state.usage.allocated} /></strong></div>
+          <div><span>Sudah dipakai</span><strong><Money value={state.usage.used} /></strong></div>
+          <div><span>Untuk jadwal</span><strong><Money value={state.usage.reserved} /></strong></div>
         </div>
-        {state.usage.reserved > 0 ? <p className={allocationClass("allocation-detail-reserved-note")}>Dipesan <Money value={state.usage.reserved} /> untuk transaksi terjadwal. Nilai ini sudah mengurangi dana yang tersisa.</p> : null}
+        {state.usage.reserved > 0 ? <p className={allocationClass("allocation-detail-reserved-note")}>Dana untuk jadwal belum menjadi transaksi, tetapi sudah disiapkan sehingga tidak lagi bebas digunakan.</p> : null}
       </section>
       <AllocationNeedsPanel
         item={item}
@@ -268,11 +266,11 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         editBudget={state.editBudget}
       />
       <section className={allocationClass("allocation-detail-section allocation-detail-section--management")} aria-labelledby="allocation-management-title">
-        <div className={allocationClass("allocation-detail-panel__header")}><div><h3 id="allocation-management-title">Pengaturan alokasi</h3><p>Tindakan yang jarang dipakai dipusatkan di sini agar halaman utama tetap ringkas.</p></div></div>
+        <div className={allocationClass("allocation-detail-panel__header")}><div><h3 id="allocation-management-title">Kelola dana</h3><p>Sesuaikan dana atau pengingat tanpa mengubah transaksi yang sudah tercatat.</p></div></div>
         <div className="form-actions">
           {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}
           {item.can_set_reminder ? <Button icon={FiBell} onClick={() => onAllocationReminder(item)}>Pengingat</Button> : null}
-          {item.can_close || item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Kelola alokasi</Button> : null}
+          {item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Hapus Alokasi</Button> : null}
         </div>
       </section>
     </Card>
@@ -288,7 +286,6 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
     usersStatus={usersStatus}
     item={item}
     sourceAccount={state.sourceAccount}
-    onAddBalance={state.addBalance}
     onBudgetReminder={onBudgetReminder}
   />
 </>;

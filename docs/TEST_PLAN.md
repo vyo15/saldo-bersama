@@ -85,8 +85,8 @@ Minimum contract:
 
 ### Flow Alokasi canonical
 
-- Create Alokasi meminta nama, rekening sumber, pengguna/penerima, dan optional pengaturan periode/rollover; **tidak meminta budget awal** sebagai flow utama.
-- Alokasi baru tanpa Kebutuhan memiliki `allocated_amount=0`.
+- Create Alokasi canonical memakai **satu flow**: nama, rekening sumber, pengguna/penerima bila relevan, Kebutuhan awal, **Pemanis kartu**, serta pilihan sisa periode **Kembalikan ke dana tersedia / Tetap di alokasi berikutnya**. Periode awal bulanan dan tanggal periodenya diturunkan sistem.
+- `envelopes.createWithNeeds` menyimpan rule + periode + Kebutuhan awal atomic sehingga kegagalan validasi tidak meninggalkan Alokasi kosong.
 - Manual fund/release tetap diuji sebagai advanced/compatibility control dan tidak membuat transaksi ledger.
 - Realokasi antar rekening tidak boleh menjadi envelope movement lintas account; gunakan Transfer canonical.
 
@@ -95,10 +95,10 @@ Minimum contract:
 - `budgets.batchCreate` mendukung maksimal 20 item dan atomic. Identitas item memakai **nama kebutuhan** pada periode/ownership/Alokasi, sehingga beberapa kebutuhan boleh memakai kategori yang sama; nama kebutuhan duplikat pada Alokasi yang sama ditolak. Pola `recurring` dapat membuat Jadwal Rutin dalam transaction yang sama.
 - Menambah Kebutuhan otomatis menaikkan dana Alokasi sebesar delta dari Dana Tersedia tanpa mengubah saldo fisik.
 - Edit nominal hanya menyesuaikan delta; nominal tidak boleh turun di bawah usage aktual.
-- Bila Dana Tersedia kurang, backend mengembalikan `BUDGET_FUNDING_INSUFFICIENT` dengan `requiredAmount`, `availableAmount`, `shortageAmount`; **tidak ada partial budget/recurring/funding write**.
-- Frontend tetap boleh menyimpan input sebagai draft lokal, menampilkan `Butuh`, `Dana tersedia`, dan `Kurang`, serta menawarkan tambah saldo tanpa kehilangan draft; tombol Simpan tidak menjalankan mutation saat shortage.
+- Bila Dana Tersedia kurang, Kebutuhan tetap tersimpan dan funding hanya mengikat jumlah yang tersedia. Response wajib menjelaskan `requestedAmount`, `amount`, `availableAmount`, dan `shortageAmount`; saldo fisik tidak berubah dan tidak boleh ada ledger fiktif.
+- Frontend menampilkan total yang perlu disiapkan, dana tersedia, jumlah yang dapat dialokasikan sekarang, dan kekurangan; **Simpan tetap diperbolehkan** saat shortage.
 - Archive/delete melepaskan hanya remaining need yang aman. Dana terpakai, reserved/committed, kebutuhan lain, dan inferred buffer tidak boleh ikut dilepas.
-- Restore Kebutuhan mendanai ulang remaining need dan gagal atomic bila dana tidak cukup.
+- Restore Kebutuhan mendanai ulang remaining need sebanyak dana yang tersedia dan tetap mempertahankan rencana bila masih kurang.
 - Copy Kebutuhan saat period close bersifat opt-in; histori transaksi/usage tidak disalin dan funding periode tujuan mengikuti rule current.
 - `/anggaran` hanya compatibility redirect; tidak boleh menghidupkan surface Anggaran kedua.
 
@@ -107,7 +107,7 @@ Minimum contract:
 - Recurring occurrence mengikuti timezone Asia/Jakarta, idempotency, account capability, completion/skip/restore, dan shortage rule.
 - Kebutuhan `recurring` yang dibuat bersama batch harus memakai ownership/source account kompatibel; satu pelanggaran me-rollback seluruh batch.
 - Kebutuhan `fixed_once` harus mem-prefill sisa nominal saat aksi **Catat** dan tidak menampilkan aksi Catat lagi ketika sisa sudah Rp0.
-- Create Alokasi user-facing **Atur uang** tetap menghasilkan wadah Rp0 lalu langsung membuka batch Kebutuhan; dekorasi/periode/rollover berada di progressive detail dan batch memakai CTA **Simpan dan siapkan dana**.
+- Create Alokasi user-facing memakai **Tambah Alokasi** dan langsung memuat Kebutuhan awal dalam modal yang sama. **Pemanis kartu** dan pilihan **Kembalikan ke dana tersedia / Tetap di alokasi berikutnya** tetap terlihat; period type/start/end tidak diminta user. CTA canonical **Simpan Alokasi**.
 - Jadwal Rutin expense: tepat satu Kebutuhan kompatibel auto-link `budget_id`; lebih dari satu kandidat meminta pilihan; nol kandidat tetap dapat disimpan mandiri. Perubahan kategori/rekening harus melepas/menyesuaikan link yang tidak lagi valid dan backend tetap memvalidasi kategori + ownership + rekening sumber.
 - Kewajiban (domain internal `commitments`) dapat membawa `budget_id` ke recurring rule managed; edit tanpa `budget_id` mempertahankan link existing, write `auto_debit=true` legacy dari client tetap disimpan sebagai false, dan `listCommitments` mengembalikan `budget_id` recurring untuk edit UI. Resolver wajib mengikuti salinan Kebutuhan periode berjalan berdasarkan identity kategori + Alokasi + nama + scope agar link tidak putus setelah rollover. Dashboard tidak boleh menambah `reservedBills` untuk Jadwal/Kewajiban yang Kebutuhannya sudah didanai.
 - Lifecycle UI planning: create/edit/penerimaan Kewajiban, Bagi Dana manual, dan Pengingat manual memakai dirty guard canonical; dismiss dirty meminta konfirmasi, Batal/Tutup eksplisit langsung menutup, dan open→close→open tidak memerlukan refresh. Setelah save reminder yang modalnya tetap terbuka, baseline draft harus kembali clean.
