@@ -25,7 +25,6 @@ const AccountPicker = ({ accounts, selectedAccount, disabled, onSelect }) => (
     }}
     disabled={disabled}
     placeholder="Pilih rekening"
-    placeholderMeta="Pilih rekening yang akan dicocokkan"
     placeholderOption={{ icon: AccountIcon }}
     searchable={accounts.length > 8}
     searchPlaceholder="Cari rekening…"
@@ -65,7 +64,6 @@ const SystemBalance = ({ selectedAccount, accountSystemBalance }) => {
     <section className={styles.systemBalanceCard} aria-label="Saldo tercatat di aplikasi">
       <span>Saldo tercatat di aplikasi</span>
       <strong><Money value={accountSystemBalance(selectedAccount)} /></strong>
-      <small>Angka ini berasal dari transaksi yang sudah Anda catat di Saldo Bersama.</small>
     </section>
   );
 };

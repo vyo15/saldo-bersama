@@ -37,7 +37,6 @@ const InstrumentField = ({ form, onFieldChange, instruments, error }) => <Inline
   value={form.instrument_id || ""}
   onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)}
   placeholder="Pilih saham atau reksa dana"
-  placeholderMeta="Cari dan pilih aset investasi"
   placeholderOption={{ mark: "IDX" }}
   searchable
   searchPlaceholder="Cari kode atau nama aset…"

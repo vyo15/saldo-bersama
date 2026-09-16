@@ -87,11 +87,6 @@ const RecordingMode = ({ row, update }) => <div className={styles.modeBlock}>
       onClick={() => update({ recording_mode: value })}
     ><Icon aria-hidden="true" /><span>{label}</span></button>)}
   </div>
-  <small className={styles.modeHelper}>
-    {row.recording_mode === "fixed_once" ? `${formatRupiah(row.amount || 0)} otomatis diisi saat kebutuhan dicatat.`
-      : row.recording_mode === "recurring" ? "Nominal menjadi bawaan setiap jadwal pembayaran."
-        : "Bisa dicatat beberapa kali sesuai transaksi aktual."}
-  </small>
 </div>;
 
 const ScheduleFields = ({ row, update }) => row.recording_mode === "recurring" ? <div className={styles.scheduleGrid}>
@@ -108,7 +103,6 @@ const CategoryField = ({ row, categories, update, onCreateCategory, categoryCrea
     value={row.category_id}
     onChange={(category_id) => update({ category_id })}
     placeholder="Pilih kategori"
-    placeholderMeta="Gunakan kategori master, misalnya Arisan"
     searchable={categories.length > 8}
     searchPlaceholder="Cari kategori…"
     options={buildCategoryOptions(categories)}

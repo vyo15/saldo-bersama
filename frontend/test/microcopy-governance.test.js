@@ -51,3 +51,33 @@ test("design system dan QA mempertahankan aturan anti-duplikasi microcopy", asyn
   assert.match(qa, /satu fakta edukatif tidak diulang/i);
   assert.match(testPlan, /Copy tersebut tidak boleh diduplikasi lagi pada helper field\/list/);
 });
+
+test("surface finansial normal tetap outcome-first dan bebas jargon implementasi", async () => {
+  const [allocations, budgets, recurring, transactions, reconciliation, valuation, designSystem, qa, testPlan] = await Promise.all([
+    read("src/features/allocations/AllocationDialogLayer.jsx"),
+    read("src/features/budgets/BudgetDialogLayer.jsx"),
+    Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/transactions/MobileTransferFields.jsx"), read("src/features/transactions/components/TransactionPostSaveModal.jsx")]).then((parts) => parts.join("\n")),
+    read("src/features/reconciliations/components/ReconciliationFeedback.jsx"),
+    read("src/features/investments/InvestmentValuationDialog.jsx"),
+    read("../docs/UI_DESIGN_SYSTEM.md"),
+    read("../docs/QA_CHECKLIST.md"),
+    read("../docs/TEST_PLAN.md"),
+  ]);
+
+  assert.doesNotMatch(allocations, /kategori master|Tentukan tujuan, kebutuhan, dan sumber dana|Pilih rekening sumber dana/i);
+  assert.match(allocations, /Perlu disiapkan/);
+  assert.match(allocations, /Sisa setelah dialokasikan/);
+  assert.doesNotMatch(budgets, /kategori master|Nominal menjadi bawaan pada jadwal pembayaran/i);
+  assert.match(budgets, /Bisa dipakai beberapa kali/);
+  assert.match(budgets, /Sekali bayar/);
+  assert.match(budgets, /Rutin/);
+  assert.doesNotMatch(recurring, /ke ledger|Ledger dan saldo tidak berubah|menunggu konfirmasi aktual/i);
+  assert.doesNotMatch(transactions, /setelah server|dikonfirmasi server|Backend akan/i);
+  assert.doesNotMatch(reconciliation, /menunggu konfirmasi server|tersimpan di server|Simpan ke server/i);
+  assert.doesNotMatch(valuation, /snapshot valuasi/i);
+
+  assert.match(designSystem, /Bahasa user-facing menjelaskan keputusan dan hasil, bukan arsitektur/i);
+  assert.match(qa, /UI finansial normal tidak membocorkan jargon implementasi/i);
+  assert.match(testPlan, /Success state finansial memvalidasi hasil yang dipahami user/i);
+});

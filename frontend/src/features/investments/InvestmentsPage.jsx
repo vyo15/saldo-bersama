@@ -79,7 +79,7 @@ const EmptyInvestmentState = ({ onAdd }) => <section className={styles.firstInve
     <div className={styles.firstInvestmentVisual} aria-hidden="true"><span /><span /><span /></div>
     <div>
       <h2 id="investment-first-title">Mulai catat aset investasi</h2>
-      <p>Tambahkan saham atau reksa dana yang sudah Anda miliki. Tidak perlu membuat broker, portfolio, atau RDN terlebih dahulu.</p>
+      <p>Tambahkan saham atau reksa dana yang sudah Anda miliki. Catat aset langsung tanpa setup tambahan.</p>
     </div>
   </div>
   <div className={styles.firstInvestmentChips} aria-label="Yang dapat dicatat"><span>Saham LQ45</span><span>Reksa Dana</span><span>Nilai & aktivitas</span></div>

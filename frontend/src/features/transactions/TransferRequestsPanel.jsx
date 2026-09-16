@@ -44,7 +44,7 @@ const TransferDecisionModal = ({ target, lookup, busyId, onApprove, onReject, on
   return <ConfirmationModal
     open={Boolean(target)}
     title={approving ? "Setujui transfer dana Bersama?" : "Tolak pengajuan transfer?"}
-    description={request ? `${sourceLabel} → ${destinationLabel}. Saldo hanya berubah jika persetujuan berhasil diproses server.` : ""}
+    description={request ? `${sourceLabel} → ${destinationLabel}. Saldo berubah setelah persetujuan berhasil.` : ""}
     confirmLabel={approving ? "Setujui dan transfer" : "Tolak pengajuan"}
     reasonLabel={approving ? "Catatan persetujuan (opsional)" : "Alasan penolakan"}
     requireReason={!approving}

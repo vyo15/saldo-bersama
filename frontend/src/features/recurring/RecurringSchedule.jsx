@@ -59,7 +59,7 @@ const duePresentation = (item) => {
   if (due === null || today === null) return { label: "Terjadwal", tone: "muted" };
   const delta = due - today;
   if (delta < 0) return { label: `Terlambat ${Math.abs(delta)} hari`, tone: "negative" };
-  if (delta === 0) return { label: "Menunggu konfirmasi", tone: "warning" };
+  if (delta === 0) return { label: "Jatuh tempo hari ini", tone: "warning" };
   if (delta === 1) return { label: "Besok", tone: "warning" };
   return { label: `${delta} hari lagi`, tone: "muted" };
 };
@@ -93,22 +93,22 @@ const attentionGuidance = (item) => {
   const remaining = Math.max(0, expected - actual);
   if (item.status === "partial") {
     return {
-      title: "Aktual belum lengkap",
+      title: "Transaksi belum lengkap",
       description: <>Masih ada <Money value={remaining} /> dari nominal rencana yang belum tercatat pada periode ini.</>,
-      primaryLabel: "Lengkapi aktual",
+      primaryLabel: item.kind === "income" ? "Lengkapi pemasukan" : "Lengkapi pembayaran",
     };
   }
   if (dueToday) {
     return {
-      title: "Menunggu konfirmasi",
-      description: "Pastikan transaksi rutin ini benar-benar terjadi, lalu simpan nominal aktualnya.",
-      primaryLabel: "Konfirmasi aktual",
+      title: "Jatuh tempo hari ini",
+      description: "Catat transaksi jika sudah terjadi.",
+      primaryLabel: item.kind === "income" ? "Catat pemasukan" : "Catat pembayaran",
     };
   }
   return {
     title: "Jadwal melewati jatuh tempo",
-    description: "Catat aktual jika transaksi terjadi, atau lewati periode jika tidak.",
-    primaryLabel: "Catat aktual",
+    description: "Catat transaksi jika sudah terjadi, atau lewati periode jika tidak.",
+    primaryLabel: item.kind === "income" ? "Catat pemasukan" : "Catat pembayaran",
   };
 };
 
@@ -132,7 +132,7 @@ const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false })
   return (
     <div className={styles.actions}>
       <div className={styles.actionPrimary}>
-        {item.can_pay && !hidePay ? <Button variant="primary" onClick={() => actions.openPayment(item)}>Catat aktual</Button> : null}
+        {item.can_pay && !hidePay ? <Button variant="primary" onClick={() => actions.openPayment(item)}>{item.kind === "income" ? "Catat pemasukan" : "Catat pembayaran"}</Button> : null}
         {canRemind ? <Button icon={FiBell} onClick={() => actions.openReminder(item)}>Pengingat</Button> : null}
         {item.can_restore_occurrence ? <Button icon={FiRotateCcw} onClick={() => actions.openRestore(item)}>Pulihkan periode</Button> : null}
         {completedStatuses.has(item.status) ? <span className={styles.completedMark}><FiCheckCircle aria-hidden="true" /> Sudah tercatat</span> : null}
@@ -148,8 +148,8 @@ const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false })
         <div className={styles.managePanel}>
           {item.can_edit_rule ? <Button className={styles.manageAction} icon={FiEdit2} onClick={() => actions.openRuleEditor(item)}>Edit jadwal</Button> : null}
           {item.can_cancel_occurrence ? <Button className={styles.manageAction} onClick={() => actions.openSkip(item)}>Lewati periode</Button> : null}
-          {item.can_reverse ? <Button className={styles.manageAction} icon={FiRotateCcw} onClick={() => actions.openReverse(item)}>Batalkan aktual terakhir</Button> : null}
-          {item.can_archive_rule ? <Button className={styles.manageAction} variant="danger" icon={FiArchive} onClick={() => actions.openArchive(item)}>Kelola data</Button> : null}
+          {item.can_reverse ? <Button className={styles.manageAction} icon={FiRotateCcw} onClick={() => actions.openReverse(item)}>Batalkan catatan terakhir</Button> : null}
+          {item.can_archive_rule ? <Button className={styles.manageAction} variant="danger" icon={FiArchive} onClick={() => actions.openArchive(item)}>Kelola status</Button> : null}
         </div>
       ) : null}
     </div>
@@ -182,7 +182,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories,
 
       <div className={styles.amountBlock}>
         <span>Rencana <Money value={item.expected_amount} /></span>
-        {actual > 0 ? <small>Aktual <Money value={actual} /></small> : null}
+        {actual > 0 ? <small>Tercatat <Money value={actual} /></small> : null}
       </div>
 
       <div className={styles.metaGrid}>

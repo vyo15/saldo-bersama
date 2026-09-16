@@ -53,10 +53,10 @@ export const budgetVisualState = (item = {}, periodMeta = {}) => {
     && usedPercent > Number(periodMeta.elapsedPercent || 0) + 8;
 
   if (usedPercent > 100) {
-    return { key: "danger", label: "Melebihi anggaran", attention: true, usedPercent, warningThreshold, remaining };
+    return { key: "danger", label: "Melebihi rencana", attention: true, usedPercent, warningThreshold, remaining };
   }
   if (usedPercent >= 100) {
-    return { key: "danger", label: "Anggaran habis", attention: true, usedPercent, warningThreshold, remaining };
+    return { key: "danger", label: "Rencana habis", attention: true, usedPercent, warningThreshold, remaining };
   }
   if (usedPercent >= warningThreshold) {
     return { key: "warning", label: "Hampir habis", attention: true, usedPercent, warningThreshold, remaining };

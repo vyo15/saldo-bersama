@@ -166,7 +166,7 @@ const InvestmentValuationDialog = ({ portfolios = [], onClose, onSuccess }) => {
       <div className={styles.assetList}>
         {rows.map((row) => <AssetPriceRow key={row.key} row={row} value={prices[row.key]} error={errors[row.key]} disabled={busy || outcomeUnknown} onChange={(value) => updatePrice(row.key, value)} />)}
       </div>
-      <p className={styles.helper}>Pembaruan ini hanya membuat snapshot valuasi. Lot saham, unit reksa dana, modal tercatat, dan histori beli/jual tidak diubah.</p>
+      <p className={styles.helper}>Jumlah kepemilikan, modal tercatat, dan histori beli/jual tidak berubah.</p>
     </form>
   </Modal>;
 };

@@ -138,7 +138,7 @@ export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, s
       <button type="button" className={`${styles.iconFilter}${filters.query ? ` ${styles.iconFilterActive}` : ""}`} onClick={() => setSearchOpen(true)} aria-label={filters.query ? `Cari transaksi, filter aktif: ${filters.query}` : "Cari transaksi"}><FiSearch aria-hidden="true" /></button>
       <button type="button" className={`${styles.iconFilter}${filterCount ? ` ${styles.iconFilterActive}` : ""}`} onClick={openAdvanced} aria-label={filterCount ? `Filter lainnya, ${filterCount} aktif` : "Filter lainnya"}><FiFilter aria-hidden="true" />{filterCount ? <span>{filterCount}</span> : null}</button>
     </div>
-    <Modal open={searchOpen} onClose={() => setSearchOpen(false)} title="Cari transaksi" description="Cari berdasarkan keterangan, merchant, atau kategori." size="sm">
+    <Modal open={searchOpen} onClose={() => setSearchOpen(false)} title="Cari transaksi" size="sm">
       <form className={styles.searchForm} onSubmit={submitMobileSearch}>
         <label className="search-field"><FiSearch aria-hidden="true" /><input autoFocus type="search" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari transaksi" /><span className="sr-only">Cari transaksi</span></label>
         <div className={styles.modalActions}>{filters.query ? <Button type="button" onClick={() => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", offset: 0 })); setSearchOpen(false); }}>Hapus pencarian</Button> : null}<Button type="submit" variant="primary">Cari</Button></div>
@@ -148,7 +148,6 @@ export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, s
       open={advancedOpen}
       onClose={() => setAdvancedOpen(false)}
       title="Filter transaksi"
-      description="Tampilkan transaksi yang ingin dilihat."
       size="sm"
       className={styles.filterModal}
       footer={<div className={styles.filterFooterActions}><Button type="button" className={styles.filterResetButton} onClick={resetAdvancedDraft}>Reset</Button><Button type="button" className={styles.filterApplyButton} variant="primary" onClick={applyAdvanced}>Terapkan filter</Button></div>}

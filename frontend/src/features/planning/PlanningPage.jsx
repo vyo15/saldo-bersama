@@ -42,7 +42,7 @@ const PlanningPage = () => {
         <strong>Alokasi Dana</strong><span>Dana berdasarkan tujuan dan kebutuhan</span>
       </button>
       <button id="planning-tab-jadwal" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "jadwal"} tabIndex={activeTab === "jadwal" ? 0 : -1} className={`${styles.tab}${activeTab === "jadwal" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("jadwal")} onKeyDown={handleTabKeyDown}>
-        <strong>Jadwal Rutin</strong><span>Transaksi berulang dan konfirmasi aktual</span>
+        <strong>Jadwal Rutin</strong><span>Pembayaran dan pemasukan berulang</span>
       </button>
       <button id="planning-tab-komitmen" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "komitmen"} tabIndex={activeTab === "komitmen" ? 0 : -1} className={`${styles.tab}${activeTab === "komitmen" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("komitmen")} onKeyDown={handleTabKeyDown}>
         <strong>Kewajiban</strong><span>KPR, cicilan, pinjaman, dan Arisan</span>

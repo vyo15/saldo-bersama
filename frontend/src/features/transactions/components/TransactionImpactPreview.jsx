@@ -41,7 +41,7 @@ const impactFootnote = (impact) => {
   if (impact.transactionType === TRANSACTION_TYPES.TRANSFER && safeDelta > 0) {
     return "Dana kembali ke rekening operasional, sehingga Dana Tersedia bertambah.";
   }
-  return impact.isEdit ? "Ini perkiraan perubahan dari kondisi transaksi yang tersimpan saat ini." : "Angka aktual akan mengikuti hasil yang dikonfirmasi server setelah disimpan.";
+  return impact.isEdit ? "Perkiraan perubahan dari transaksi yang tersimpan saat ini." : "Perkiraan setelah transaksi disimpan.";
 };
 
 const TransactionImpactPreview = ({ impact }) => {

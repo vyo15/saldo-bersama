@@ -13,6 +13,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain/dates.js";
 import { filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
 import { allocationClass } from "./allocationStyles.js";
+import { createAllocationNeedDraft } from "./allocationNeedDraft.js";
 import AllocationNoticesLayer from "./AllocationNoticesLayer.jsx";
 import { scrollWindowToWithMotionPreference } from "../../shared/motion.js";
 const AllocationOverlayLayer = lazy(() => import("./AllocationOverlayLayer.jsx"));
@@ -25,9 +26,7 @@ const defaultCreateForm = () => {
   return { name: "", decoration_key: "auto", source_account_id: "", assignee_user_id: "", period_type: "monthly", period_start: start, period_end: end, rollover_policy: "unallocated", overspend_policy: "confirm" };
 };
 
-let createNeedSequence = 0;
-const createNeedRow = () => ({ id: `allocation-create-need-${createNeedSequence += 1}`, name: "", category_id: "", amount: "" });
-const defaultCreateNeeds = () => [createNeedRow()];
+const defaultCreateNeeds = () => [createAllocationNeedDraft()];
 
 const useAllocationCreateMove = ({ resource, refreshOverview, invalidate, createMutation, moveMutation, createForm, createNeeds, setCreateForm, resetCreateNeeds, move, setMove, lookup, notify, setMessage, onCreated, onMoved, period }) => {
   const refreshAfterMutation = async () => { invalidate(["accounts.list", "envelopes.list", "reports.monthly", "dashboard.overview", "app.initialState"]); await Promise.allSettled([resource.reload(), refreshOverview()]); };

@@ -79,7 +79,7 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/reports/ReportsPage.module.css"),
   ]);
-  for (const label of ["Penggunaan Alokasi", "Kebutuhan vs Aktual", "Pengeluaran per kategori", "Transaksi terbaru", "Dokumen laporan", "Rincian lainnya"]) {
+  for (const label of ["Penggunaan Alokasi", "Kebutuhan vs Pengeluaran", "Pengeluaran per kategori", "Transaksi terbaru", "Dokumen laporan", "Rincian lainnya"]) {
     assert.match(reports, new RegExp(label));
   }
   assert.match(reports, /allocation_rule_id/);
@@ -115,7 +115,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));
   }
-  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Rapikan transaksi", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Tambah dana target"]) {
+  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Rapikan transaksi", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Setor dana target"]) {
     assert.match(alertWorkflow, new RegExp(label));
   }
   assert.match(alertWorkflow, /safeTargetPath/);
@@ -215,10 +215,11 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /Boolean\(item\?\.can_adjust\)/);
   assert.match(allocations, /bootstrap\?\.user \|\| user/);
   assert.match(allocations, /hasSameAssignee/);
-  assert.match(allocations, /label="Ambil dana dari"/);
+  assert.match(allocations, /label="Dari rekening"/);
   assert.match(allocations, /<InlineOwnershipPicker[\s\S]{0,220}legend="Digunakan oleh"/);
   assert.match(allocations, /description: "Digunakan oleh semua anggota"/);
-  assert.match(allocations, /Total yang perlu disiapkan/);
+  assert.match(allocations, /Perlu disiapkan/);
+  assert.match(allocations, /Sisa setelah dialokasikan/);
   assert.match(allocations, /Simpan Alokasi/);
   assert.match(allocations, /filteredActiveItems = useMemo/);
   assert.match(allocations, /allocationFilter === "shared"/);

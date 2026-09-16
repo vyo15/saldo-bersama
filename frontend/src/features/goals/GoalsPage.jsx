@@ -121,7 +121,7 @@ const useGoalMovement = ({ accounts, transferRoutes, resource, refreshOverview, 
       if (movementType === "deposit" && result?.goal) {
         setAchievement({ goalBefore, goalAfter: result.goal, amount });
       } else {
-        notify({ message: movementType === "deposit" ? "Dana target dan transfer rekening berhasil dicatat." : "Penarikan target dan transfer rekening berhasil dicatat.", tone: "success", dedupeKey: "goals:move" });
+        notify({ message: movementType === "deposit" ? "Setoran target berhasil." : "Penarikan target berhasil.", tone: "success", dedupeKey: "goals:move" });
       }
       invalidate(goalLedgerRefreshKeys);
       await Promise.allSettled([resource.reload(), refreshOverview()]);
@@ -280,7 +280,7 @@ const GoalsPage = () => {
   const headerActions = goalHeaderActions({ canCreate, itemCount: items.length, openCreate: creation.openCreate });
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Target" help="Target membantu memantau progres dana menuju nominal tujuan. Setoran dan penarikan tetap mengikuti saldo rekening serta konfirmasi server." actions={headerActions} />{setupCreated ? <div><CompactNotice tone="success" title="Target sudah siap." role="status">Target berdiri terpisah dari Alokasi Dana dan dipakai untuk dana yang masih dikumpulkan menuju tujuan.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Catat transaksi</Button></div></div> : null}{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}{workflowPrefill ? <CompactNotice tone="success" title="Dana tersedia siap diarahkan ke Target." role="status">Pilih Target lalu tekan Setor dana. Rekening sumber dan nominal akan diprefill bila masih valid.</CompactNotice> : null}
+    <PageHeader title="Target" help="Pantau uang yang sedang dikumpulkan untuk tujuan tertentu." actions={headerActions} />{setupCreated ? <div><CompactNotice tone="success" title="Target sudah siap." role="status">Target berdiri terpisah dari Alokasi Dana dan dipakai untuk dana yang masih dikumpulkan menuju tujuan.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Catat transaksi</Button></div></div> : null}{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}{workflowPrefill ? <CompactNotice tone="success" title="Dana tersedia siap diarahkan ke Target." role="status">Pilih Target lalu tekan Setor dana. Rekening sumber dan nominal akan diprefill bila masih valid.</CompactNotice> : null}
     {items.length ? <GoalSummary items={items} /> : null}
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
     {(reminderTarget || creation.open || lifecycle.editGoal || movement.movement.goal || lifecycle.reverseTarget || lifecycle.archiveTarget || lifecycle.statusTarget) ? (

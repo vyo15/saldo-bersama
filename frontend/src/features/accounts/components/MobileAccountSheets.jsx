@@ -17,7 +17,6 @@ const MobileAccountSheets = ({
       open={sheet === "detail" && Boolean(selectedAccount)}
       onClose={onClose}
       title={selectedAccount?.name || "Detail rekening"}
-      description="Detail rekening hanya ditampilkan setelah kartu aktif ditekan."
       size="sm"
     >
       {selectedAccount ? (

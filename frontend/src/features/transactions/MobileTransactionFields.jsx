@@ -112,7 +112,6 @@ const TransactionAccountField = (p) => {
       onChange={destinationMode ? (accountId) => p.update("destination_account_id", accountId) : p.onSourceAccountChange}
       options={options}
       placeholder="Pilih rekening"
-      placeholderMeta={destinationMode ? "Pilih rekening yang menerima dana" : "Rekening yang dapat dipakai ditampilkan terlebih dahulu"}
       placeholderOption={{ icon: AccountIcon }}
       searchable={options.length > 8}
       searchPlaceholder="Cari rekening…"
@@ -146,7 +145,6 @@ const EnvelopeField = (p) => {
       onChange={p.onEnvelopeChange}
       options={options}
       placeholder={disabled ? "Belum tersedia" : "Pilih Alokasi Dana"}
-      placeholderMeta="Gunakan hanya jika transaksi tidak perlu dihubungkan ke Kebutuhan tertentu."
       placeholderOption={{ icon: FiLayers }}
       searchable={options.length > 8}
       searchPlaceholder="Cari Alokasi Dana…"
@@ -190,7 +188,6 @@ const NeedField = (p) => {
         onChange={p.onNeedChange}
         options={options}
         placeholder="Pilih Kebutuhan"
-        placeholderMeta={p.allocationCandidates.length > 1 ? `${p.allocationCandidates.length} Kebutuhan cocok dengan kategori ini` : "Kebutuhan yang cocok akan dipilih otomatis"}
         placeholderOption={{ icon: FiLayers }}
         searchable={options.length > 8}
         searchPlaceholder="Cari Kebutuhan…"

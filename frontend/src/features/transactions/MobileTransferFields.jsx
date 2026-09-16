@@ -201,7 +201,6 @@ const MobileTransferFields = ({
         onChange={onSourceAccountChange}
         accounts={sourceAccounts}
         balanceMode="available"
-        placeholderMeta="Hanya rekening dengan dana tersedia yang dapat dipakai"
         error={errors.source_account_id}
         disabled={outcomeUnknown}
         emptyText="Belum ada rekening sumber dengan dana yang dapat digunakan."
@@ -212,7 +211,7 @@ const MobileTransferFields = ({
         onChange={(accountId) => update("destination_account_id", accountId)}
         accounts={compatibleDestinationAccounts}
         balanceMode="balance"
-        placeholderMeta={compatibleDestinationAccounts.length ? "Pilih rekening penerima" : "Tidak ada rekening tujuan yang kompatibel"}
+        placeholderMeta={compatibleDestinationAccounts.length ? undefined : "Tidak ada rekening tujuan yang kompatibel"}
         error={errors.destination_account_id}
         disabled={outcomeUnknown || compatibleDestinationAccounts.length === 0}
         emptyText="Belum ada rekening tujuan yang kompatibel."
@@ -222,7 +221,7 @@ const MobileTransferFields = ({
       <TransferDate form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
       <ImpactPreview impact={impact} />
       <TransferStatus confirmation={confirmation} submitState={submitState} />
-      <p className={styles.guard}>{outcomeUnknown ? "Data transfer dikunci sementara. Tekan tombol transfer lagi untuk mencoba request yang sama; jangan ubah nominal atau rekening sampai server memberi hasil definitif." : "Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer dan aplikasi menyegarkan data rekening."}</p>
+      {outcomeUnknown ? <p className={styles.guard}>Data transfer dikunci sementara. Coba lagi dengan data yang sama agar tidak membuat transaksi ganda.</p> : null}
     </div>
   );
 };

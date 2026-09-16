@@ -360,7 +360,7 @@ ${accountEditors}`;
   assert.doesNotMatch(mobileTransferFields, /createTransaction|updateTransaction|transactions\.create|apiClient/);
   assert.match(mobileTransfer, /pendingSavedRef/);
   assert.match(mobileTransfer, /onTransferSaved/);
-  assert.match(mobileTransfer, /Transfer memerlukan rekening sumber aktif/);
+  assert.match(mobileTransfer, /Transfer memerlukan rekening sumber dan tujuan yang aktif dan kompatibel/);
   assert.match(mobileTransfer, /FinancialSuccessOverlay/);
   assert.doesNotMatch(mobileTransfer, /createTransaction|transactions\.create/);
   assert.match(mobileActivity, /useApiResource\("transactions\.list"/);

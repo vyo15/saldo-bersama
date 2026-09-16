@@ -79,7 +79,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
   const presentation = type === TRANSACTION_TYPES.INCOME
     ? {
       title: "Pemasukan berhasil",
-      description: "Dana sudah masuk ke rekening. Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru. Ringkasan di bawah memakai kondisi terbaru yang telah dikonfirmasi server.",
+      description: "Dana sudah masuk ke rekening. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti.",
       summaryRows,
       secondaryActions: [
         { label: "Tambah pemasukan lagi", onClick: onAddAnother },
@@ -98,13 +98,13 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
       : type === TRANSACTION_TYPES.REFUND
         ? {
           title: "Refund berhasil",
-          description: "Refund sudah tercatat. Ringkasan memakai kondisi terbaru yang telah dikonfirmasi server.",
+          description: "Refund sudah tercatat.",
           summaryRows,
           secondaryActions: [],
         }
         : {
           title: "Pengeluaran berhasil",
-          description: "Pengeluaran sudah tercatat. Ringkasan memakai kondisi terbaru yang telah dikonfirmasi server.",
+          description: "Pengeluaran sudah tercatat.",
           summaryRows,
           secondaryActions: [{ label: "Tambah lagi", onClick: onAddAnother }],
         };
@@ -118,7 +118,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     secondaryActions={presentation.secondaryActions}
     onClose={closeAction}
     doneLabel={doneLabel}
-    footerNote={postSave.snapshot ? "Saldo dan Dana Tersedia sudah disegarkan." : "Transaksi tersimpan. Ringkasan terbaru akan dimuat kembali dari server."}
+    footerNote={postSave.snapshot ? undefined : "Transaksi tersimpan."}
   />;
 };
 

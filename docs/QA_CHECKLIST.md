@@ -54,13 +54,20 @@
 - [ ] Mobile global `Catat` tetap khusus transaksi dan tidak diduplikasi oleh CTA transaksi lokal pada true-empty Dashboard/Transaksi.
 - [ ] Detail object dengan sub-item erat memakai section/list hierarchy, bukan tumpukan card setara tanpa kebutuhan.
 - [ ] Satu fakta edukatif tidak diulang pada description, helper, card, dan notice di surface yang sama.
+- [ ] Normal state tidak memakai helper/notice hanya untuk mengulang label, placeholder, value, atau state yang sudah jelas.
+- [ ] UI finansial normal tidak membocorkan jargon implementasi (`server`, `backend`, `ledger`, `snapshot`, `master`) atau narasi refresh/sinkronisasi yang tidak membantu keputusan user.
+- [ ] Success feedback finansial menjawab hasil tindakan dan dampak relevan; warning/destructive/recovery/error/conflict tetap eksplisit.
 - [ ] Warning finansial/destructive/recovery/error/conflict tetap dekat dengan dampaknya dan tidak disembunyikan demi minimalisme.
 - [ ] Celebration finansial hanya muncul setelah write dikonfirmasi server, tidak menggandakan toast/progress global, finite/non-blocking, reduced-motion safe, dan copy tidak mempermalukan kondisi finansial.
+- [ ] Honest Action Contract: label aksi, confirmation, mutation aktual, success feedback, dan recovery semantics konsisten; `Hapus permanen` hanya muncul setelah preview membuktikan entity belum pernah dipakai, sedangkan record berhistori memakai `Arsipkan`/`Hentikan`.
+- [ ] Smart default/otomatisasi finansial tidak diam-diam: pilihan otomatis dan perubahan Dana Tersedia/Alokasi/saldo terlihat sebelum Simpan.
+- [ ] User-facing normal tidak menghidupkan kembali istilah legacy yang sudah dipensiunkan (`Anggaran` sebagai menu/surface kedua, hierarchy `portfolio`/RDN pada Investasi asset-centric).
 
 ## 6. Auth, PWA, dan device
 
 - [ ] Production OAuth/session diuji bila auth/session berubah; localhost fallback tidak dianggap evidence Production.
 - [ ] PWA update/install/Push diuji pada device relevan bila scope menyentuh PWA/notification.
+- [ ] Aktivasi Notifikasi perangkat menjelaskan sebelum aksi bahwa satu notifikasi uji otomatis dikirim untuk verifikasi perangkat; permission tetap berasal dari user gesture.
 - [ ] Offline tidak mengizinkan financial write queue.
 - [ ] Responsive surface yang berubah diperiksa pada viewport/device target, bukan hanya CSS source.
 

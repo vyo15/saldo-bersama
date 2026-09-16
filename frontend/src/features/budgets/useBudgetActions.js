@@ -276,8 +276,8 @@ export const useBudgetLifecycleController = ({ notify, refresh, setForm, setForm
       const released = Number(result?.released_amount_this_action ?? result?.released_amount ?? preview.releasable_amount ?? 0);
       notify({
         message: result?.outcome === "deleted_unused"
-          ? "Kebutuhan yang belum pernah digunakan berhasil dihapus."
-          : `Kebutuhan dihapus dari daftar aktif. Histori tetap tersimpan${released > 0 ? ` dan Rp ${released.toLocaleString("id-ID")} kembali menjadi Dana Tersedia` : ""}.`,
+          ? "Kebutuhan yang belum pernah digunakan berhasil dihapus permanen."
+          : `Kebutuhan berhasil diarsipkan. Histori tetap tersimpan${released > 0 ? ` dan Rp ${released.toLocaleString("id-ID")} kembali menjadi Dana Tersedia` : ""}.`,
         tone: "success",
         dedupeKey: "budgets:remove",
       });

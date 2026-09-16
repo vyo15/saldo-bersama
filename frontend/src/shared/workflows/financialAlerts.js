@@ -45,14 +45,14 @@ const entityState = (key, value) => (value ? { [key]: value } : {});
 
 const ALERT_GUIDANCE_BUILDERS = Object.freeze({
   investment_reconciliation_difference: ({ to, baseState, entityId }) => guidance({
-    instruction: "Portfolio akan dipilih otomatis. Cocokkan Saldo RDN dan holding aktual dari aplikasi investasi Anda.",
+    instruction: "Buka Investasi dan periksa nilai aset yang tercatat. Pencocokan investasi lama tetap tersedia sebagai histori bila alert ini berasal dari data lama.",
     actionLabel: "Cocokkan investasi",
     to,
     baseState,
     state: entityState("attentionRdnAccountId", entityId),
   }),
   investment_reconciliation_stale: ({ to, baseState, entityId }) => guidance({
-    instruction: "Portfolio akan dipilih otomatis. Verifikasi Saldo RDN dan holding aktual dari aplikasi investasi Anda.",
+    instruction: "Buka Investasi dan periksa apakah nilai aset yang tercatat masih sesuai. Alert pencocokan lama tidak diperlukan untuk pencatatan investasi baru.",
     actionLabel: "Cocokkan investasi",
     to,
     baseState,
@@ -96,8 +96,8 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
   }),
   budget_threshold: ({ alert, to, baseState, entityId }) => guidance({
     instruction: alert.severity === "danger"
-      ? "Periksa transaksi yang membuat anggaran terlampaui. Ubah anggaran kebutuhan hanya jika rencana memang berubah."
-      : "Periksa pemakaian kategori ini dan pastikan sisa anggaran cukup sampai akhir periode.",
+      ? "Periksa transaksi yang membuat kebutuhan melewati rencana. Ubah nominal kebutuhan hanya jika rencana memang berubah."
+      : "Periksa pemakaian kebutuhan ini dan pastikan sisa rencana cukup sampai akhir periode.",
     actionLabel: "Periksa kebutuhan",
     to,
     baseState,
@@ -147,8 +147,8 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
     baseState,
   }),
   goal_behind: ({ to, baseState, entityId }) => guidance({
-    instruction: "Target berada di bawah ritme rencana. Tambahkan dana jika kondisi keuangan memungkinkan; jangan mengambil dana dari rekening yang tidak sesuai.",
-    actionLabel: "Tambah dana target",
+    instruction: "Target berada di bawah ritme rencana. Setor dana jika kondisi keuangan memungkinkan; jangan mengambil dana dari rekening yang tidak sesuai.",
+    actionLabel: "Setor dana target",
     to,
     baseState,
     state: { ...entityState("attentionGoalId", entityId), attentionAction: "deposit" },

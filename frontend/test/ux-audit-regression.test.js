@@ -202,7 +202,7 @@ test("picker entity mobile memakai hierarchy logo-first, metadata, dan selected 
   assert.match(transaction, /accountDisplayLabel\(item\)/);
   assert.match(transaction, /accountOptionVisual\(item\)/);
   assert.match(transaction, /Tersedia \${formatRupiah/);
-  assert.match(transaction, /placeholderMeta=\{destinationMode \?/);
+  assert.doesNotMatch(transaction, /placeholderMeta=\{destinationMode \?/);
   assert.match(transfer, /sourceAccountPicker/);
   assert.match(transfer, /<InlineSelectionPicker/);
   assert.match(picker, /PickerVisual/);
@@ -291,8 +291,9 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(categories, /actions=\{items\.length \? <Button[^>]*>\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}<\/Button> : null\}/);
   assert.match(categories, /emptyState === EMPTY_COLLECTION_STATE\.FILTERED && filtersActive \? <Button onClick=\{clearFilters\}>Reset pencarian<\/Button> : initialEmpty \? <Button variant="primary"/);
   assert.match(budgets, /Sekali bayar/);
-  assert.match(budgets, /Berulang/);
-  assert.match(budgets, /Nominal menjadi bawaan pada jadwal pembayaran/);
+  assert.match(budgets, /Rutin/);
+  assert.match(budgets, /Bisa dipakai beberapa kali/);
+  assert.doesNotMatch(budgets, /Nominal menjadi bawaan pada jadwal pembayaran/);
   assert.match(investments, /const assetCount = useMemo/);
   assert.match(investments, /assetCount === 0 \? <EmptyInvestmentState/);
   assert.match(investments, /actions=\{assetCount > 0 \? <Button[\s\S]*aria-label="Tambah investasi">Tambah investasi<\/Button> : null\}/);

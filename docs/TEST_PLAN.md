@@ -114,7 +114,7 @@ Minimum contract:
 - Jika dua kebutuhan aktif memakai kategori master yang sama pada Alokasi yang sama, transaksi legacy tanpa `budget_id` tidak boleh dihitung ke keduanya; transaksi baru dari detail kebutuhan wajib membawa `budget_id`.
 - Target movement tidak boleh memanipulasi saldo tanpa transaksi/movement canonical dan reversal harus audit-safe.
 - Setoran Target yang sukses baru boleh memicu achievement in-app setelah response server definitif; progress/milestone diturunkan dari `goal.current_amount` hasil server, 100% tidak auto-mengubah lifecycle menjadi `completed`, feedback tidak dobel dengan global process indicator, dan reduced-motion tetap menyampaikan copy/progress tanpa animasi dekoratif.
-- Kewajiban KPR/cicilan/pinjaman membuat tepat satu `recurring_rule`; jadwal tertaut tidak dapat diedit/dihapus langsung dari Jadwal Rutin dan berhenti otomatis saat kewajiban selesai. Reversal pembayaran terakhir mengaktifkan kembali Kewajiban + jadwal tanpa kehilangan histori. UI Kewajiban memakai aksi **Hapus**; backend mempertahankan ledger/transaksi historis dan hanya menghentikan future projection yang reproducible. Rolling horizon 24 bulan harus direfresh sekali per periode sehingga tenor panjang tidak dipregenerate sampai akhir dan tidak berhenti setelah horizon awal.
+- Kewajiban KPR/cicilan/pinjaman membuat tepat satu `recurring_rule`; jadwal tertaut tidak dapat diedit/dihapus langsung dari Jadwal Rutin dan berhenti otomatis saat kewajiban selesai. Reversal pembayaran terakhir mengaktifkan kembali Kewajiban + jadwal tanpa kehilangan histori. UI Kewajiban memakai aksi **Hentikan kewajiban** untuk `commitments.archive`; backend mempertahankan ledger/transaksi historis dan hanya menghentikan future projection yang reproducible. Tidak ada hard-delete atau restore manual yang disamarkan sebagai Hapus. Rolling horizon 24 bulan harus direfresh sekali per periode sehingga tenor panjang tidak dipregenerate sampai akhir dan tidak berhenti setelah horizon awal.
 - Pembayaran KPR/cicilan dengan `remaining_principal` menghitung pokok = saldo sebelum - saldo sesudah dan bunga/biaya = pembayaran - pokok. Tanpa sisa pokok, pembayaran tetap valid tetapi `principal_known=0` dan UI/report wajib menandainya perlu diperbarui.
 - Arisan mengurangi sisa setoran lewat occurrence pembayaran, dapat mencatat penerimaan income terpisah sampai maksimal nilai hak Arisan, dan penerimaan tidak menutup sisa setoran yang masih berjalan.
 - UI tidak menawarkan Autodebet pada Kewajiban/Jadwal Rutin; kolom legacy tetap readable dan write baru selalu `false`. Khusus Jadwal managed Kewajiban yang menaut ke Kebutuhan + Alokasi aktif, scheduler mulai **tanggal jatuh tempo** mencatat pembayaran canonical otomatis hanya bila sisa Kebutuhan dan Alokasi sama-sama cukup. Jika dana baru siap setelah lewat jatuh tempo, occurrence overdue harus dapat dikejar otomatis tepat sekali. Tidak ada partial debit; bila syarat tidak terpenuhi, saldo tidak berubah. Cicilan flat terakhir tidak boleh overpay dan nominal otomatis dibatasi pada sisa pokok + bunga flat periode itu.
@@ -148,6 +148,7 @@ Minimum contract:
 
 - Notification Center menggunakan feed/action canonical yang sama untuk mobile/desktop dan status baca server-side actor yang sinkron lintas perangkat. Read receipt memakai fingerprint kondisi; menandai dibaca tidak menyelesaikan alert aktif, sedangkan perubahan fingerprint harus tampil unread kembali.
 - Lock-screen Push tidak memuat nominal, rekening, merchant, atau nama objek finansial sensitif.
+- Flow aktivasi Web Push harus memberi disclosure sebelum register bahwa satu notifikasi uji otomatis akan dikirim; test/preview manual tetap terpisah dan permission tidak diminta tanpa user gesture.
 - Preference user dihormati; `recurring_completed` default mati, cadence rekonsiliasi default 30 hari, reminder konsistensi pencatatan default mati/opt-in, dan VAPID incomplete menonaktifkan Push fail-closed tanpa merusak in-app notifications.
 - Cadence rekonsiliasi menerima hanya 0/14/30/60 hari; reminder konsistensi pencatatan hanya 0/3/5/7 hari, actor-scoped, dedupe, dan tidak menganggap hari tanpa transaksi sebagai error. Scheduler membaca users/settings/recurring/budget/alokasi/target/unallocated/reconciliation/activity/balance dalam satu batch source read.
 - Funding/recurring shortage menjelaskan kondisi actionable tanpa membuat mutation finansial otomatis.
@@ -177,13 +178,20 @@ Minimum contract:
 - True-empty hanya memiliki satu primary next action dan tidak membuat record palsu.
 - Regression action-ownership mencakup Kewajiban, Investasi, Alokasi Dana, Jadwal Rutin, Target, Rekening, Kategori, Transaksi, dan Dashboard: header create tidak boleh tampil bersamaan dengan create CTA true-empty; filtered-empty hanya menawarkan reset/show-all; mobile transaksi memakai quick-add global `Catat` tanpa CTA lokal kedua.
 - Detail object dengan sub-item erat memakai hierarchy section/list, bukan tumpukan card setara tanpa kebutuhan.
+- Honest Action Contract diuji lintas Rekening, Kategori, Alokasi, Kebutuhan, Jadwal Rutin, Target, dan Kewajiban: entry lifecycle boleh `Kelola status` sebelum preview; `Hapus permanen` hanya untuk `canDeleteUnused=true`; record berhistori harus memakai `Arsipkan`, sedangkan `commitments.archive` memakai `Hentikan kewajiban`.
+- Regression harus menolak facade/action berlabel `delete/hapus` yang sebenarnya memanggil archive, serta menolak success copy yang menyatakan data dihapus bila server hanya mengarsipkan.
+- Smart default/otomatisasi yang mengubah atau mengikat dana harus mempunyai disclosure/impact sebelum mutation; pilihan otomatis tetap terlihat dan dapat dikoreksi saat ambigu.
 
 ### Microcopy
 
 - Satu fakta edukatif memiliki satu tempat utama pada satu surface.
 - Copy tersebut tidak boleh diduplikasi lagi pada helper field/list bila sudah dijelaskan pada description/info canonical.
+- Normal state tidak menampilkan helper/notice yang hanya mengulang label, placeholder, value, atau state. Exception, warning finansial, destructive impact, recovery, error, dan conflict tetap eksplisit.
+- Surface finansial normal tidak memakai jargon implementasi seperti `server`, `backend`, `ledger`, `snapshot`, `master`, atau narasi sinkronisasi/refresh kecuali konteksnya memang admin/diagnostic.
+- Success state finansial memvalidasi hasil yang dipahami user: tindakan, nominal relevan, serta saldo/Dana Tersedia/status sesudahnya bila tersedia; bukan detail proses internal.
 - Helper field menjelaskan field; warning finansial/destructive/recovery/error/conflict tetap dekat dengan dampaknya.
 - Istilah Saldo, Dana Tersedia, Dialokasikan, Alokasi Dana, Kebutuhan, dan RDN mengikuti `product/GLOSSARY.md`.
+- Normal user surface tidak menghidupkan kembali `Anggaran` sebagai fitur terpisah atau hierarchy `portfolio`/RDN pada Investasi asset-centric; istilah teknis legacy hanya boleh muncul pada compatibility/admin/maintenance yang memang membutuhkannya.
 
 ## Security, maintenance, dan recovery
 

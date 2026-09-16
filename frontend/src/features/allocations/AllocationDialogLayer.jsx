@@ -1,4 +1,5 @@
-import { FiArrowLeft, FiArrowRight, FiGrid, FiPlus, FiTrash2 } from "react-icons/fi";
+import { useState } from "react";
+import { FiArrowLeft, FiArrowRight, FiCheckCircle, FiEdit3, FiGrid, FiPlus, FiRepeat, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
@@ -7,14 +8,19 @@ import Modal from "../../components/common/Modal.jsx";
 import InlineOwnershipPicker from "../../components/common/InlineOwnershipPicker.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { allocationAssigneeLabel } from "./allocationPresentation.js";
-import { formatRupiah } from "../../domain/money.js";
+import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 import { allocationClass } from "./allocationStyles.js";
 import { ALLOCATION_DECORATIONS, allocationDecoration } from "./allocationDecorations.js";
+import { ALLOCATION_CREATE_NEED_LIMIT, createAllocationNeedDraft } from "./allocationNeedDraft.js";
+import { budgetBatchScheduleLabel } from "../budgets/budgetBatchModel.js";
+import needStyles from "../budgets/BudgetBatchEditor.module.css";
 
 const envelopeAssigneeOptions = (form, accounts, users) => {
   const source = accounts.find((item) => item.account_id === form.source_account_id) || null;
@@ -68,7 +74,6 @@ const AllocationDecorationPicker = ({ name, value, onChange }) => {
         </button>;
       })}
     </div>
-    <small>Pemanis hanya membedakan kartu secara visual. Warna, saldo, dan tema aplikasi tidak berubah.</small>
   </fieldset>;
 };
 
@@ -82,29 +87,155 @@ const CreateEnvelopeFooter = ({ close, createMutation }) => <>
   <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Simpan Alokasi</Button>
 </>;
 
+const NEED_RECORDING_OPTIONS = Object.freeze([
+  { value: "flexible", label: "Bisa dipakai beberapa kali", icon: FiEdit3 },
+  { value: "fixed_once", label: "Sekali bayar", icon: FiCheckCircle },
+  { value: "recurring", label: "Rutin", icon: FiRepeat },
+]);
+
+const NEED_FREQUENCY_OPTIONS = Object.freeze([
+  { value: "weekly", label: "Mingguan" },
+  { value: "biweekly", label: "Dua mingguan" },
+  { value: "monthly", label: "Bulanan" },
+  { value: "bimonthly", label: "Dua bulanan" },
+  { value: "quarterly", label: "Tiga bulanan" },
+  { value: "semiannual", label: "Semester" },
+  { value: "annual", label: "Tahunan" },
+]);
+
+const NEED_PAYMENT_METHOD_OPTIONS = Object.freeze([
+  { value: "transfer", label: "Transfer" },
+  { value: "cash", label: "Tunai" },
+  { value: "ewallet", label: "E-wallet" },
+]);
+
+const allocationNeedScheduleLabel = (need) => {
+  if (need?.recording_mode === "fixed_once") return "Sekali bayar";
+  if (need?.recording_mode === "recurring") return "Rutin";
+  return "Bisa dipakai beberapa kali";
+};
+
+const AllocationNeedAmountInput = ({ need, update }) => {
+  const numeric = need.amount === "" ? "" : Number(need.amount || 0);
+  const value = numeric === "" ? "" : String(numeric).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return <label className={needStyles.fieldBlock}>
+    <span>Nominal</span>
+    <span className={needStyles.amountField}>
+      <span className={needStyles.currency} aria-hidden="true">Rp</span>
+      <input
+        inputMode="numeric"
+        autoComplete="off"
+        value={value}
+        placeholder="0"
+        aria-label="Nominal kebutuhan"
+        onChange={(event) => {
+          const raw = event.target.value;
+          if (!raw) return update({ amount: "" });
+          try { return update({ amount: parseRupiah(raw) }); } catch { return update({ amount: raw.replace(/[^0-9]/g, "") }); }
+        }}
+      />
+    </span>
+  </label>;
+};
+
+const AllocationNeedUsageFields = ({ need, update }) => <>
+  <details className={needStyles.usageDetails}>
+    <summary><span>Cara penggunaan</span><strong>{allocationNeedScheduleLabel(need)}</strong></summary>
+    <div className={needStyles.usageDetailsContent}>
+      <div className={needStyles.modeBlock}>
+        <span className={needStyles.fieldLabel}>Cara penggunaan</span>
+        <div className={needStyles.recordingMode} role="group" aria-label="Cara penggunaan">
+          {NEED_RECORDING_OPTIONS.map(({ value, label, icon: Icon }) => <button
+            key={value}
+            type="button"
+            className={need.recording_mode === value ? needStyles.recordingActive : ""}
+            aria-pressed={need.recording_mode === value}
+            onClick={() => update({ recording_mode: value })}
+          ><Icon aria-hidden="true" /><span>{label}</span></button>)}
+        </div>
+      </div>
+      {need.recording_mode === "recurring" ? <div className={needStyles.scheduleGrid}>
+        <SelectionField compact label="Frekuensi" value={need.schedule_frequency} onChange={(schedule_frequency) => update({ schedule_frequency })} options={NEED_FREQUENCY_OPTIONS} />
+        <label className="field"><span>Jatuh tempo *</span><input type="number" min="1" max="31" value={need.schedule_due_day ?? ""} onChange={(event) => update({ schedule_due_day: event.target.value })} /></label>
+        <label className="field"><span>Mulai *</span><TemporalInput type="date" value={need.schedule_start_date || ""} onChange={(event) => update({ schedule_start_date: event.target.value })} /></label>
+        <SelectionField compact label="Metode" value={need.schedule_payment_method} onChange={(schedule_payment_method) => update({ schedule_payment_method })} options={NEED_PAYMENT_METHOD_OPTIONS} />
+      </div> : null}
+    </div>
+  </details>
+</>;
+
+const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNeed }) => {
+  const update = (updates) => updateNeed(need.id, updates);
+  return <div className={needStyles.editor} data-allocation-create-need={need.id}>
+    <div className={needStyles.editorTopline}><span>Kebutuhan {index + 1}</span><button type="button" className={needStyles.trashButton} onClick={() => removeNeed(need.id)} aria-label={`Hapus kebutuhan ${index + 1}`}><FiTrash2 aria-hidden="true" /></button></div>
+    <div className={needStyles.primaryFields}>
+      <label className={needStyles.fieldBlock}>
+        <span>Nama kebutuhan</span>
+        <input className={needStyles.nameInput} required maxLength="100" value={need.name || ""} placeholder="Contoh: Arisan PT" autoComplete="off" onChange={(event) => update({ name: event.target.value })} />
+      </label>
+      <AllocationNeedAmountInput need={need} update={update} />
+    </div>
+    <div className={needStyles.categoryBlock}>
+      <InlineSelectionPicker
+        label="Kategori"
+        required
+        value={need.category_id}
+        onChange={(category_id) => update({ category_id })}
+        placeholder="Pilih kategori"
+        searchable={categories.length > 8}
+        searchPlaceholder="Cari kategori…"
+        options={categories.map((category) => ({ value: category.category_id, label: category.name, ...categoryOptionVisual(category) }))}
+      />
+    </div>
+    <AllocationNeedUsageFields need={need} update={update} />
+  </div>;
+};
+
+const AllocationNeedCompactRow = ({ need, category, onEdit, onRemove }) => <div className={needStyles.compactRow}>
+  <button type="button" className={needStyles.compactMain} onClick={onEdit}>
+    <span className={needStyles.compactCopy}><strong>{need.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetBatchScheduleLabel(need)}</small></span>
+    <strong className={needStyles.compactAmount}>{formatRupiah(need.amount || 0)}</strong>
+  </button>
+  <button type="button" className={needStyles.compactRemove} onClick={onRemove} aria-label={`Hapus ${need.name || "kebutuhan"}`}><FiTrash2 aria-hidden="true" /></button>
+</div>;
+
 const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) => {
+  const [activeNeedId, setActiveNeedId] = useState(() => needs[0]?.id || "");
   const total = createNeedsTotal(needs);
   const available = Math.max(0, Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0));
-  const funded = Math.min(total, available);
   const shortage = Math.max(0, total - available);
   const updateNeed = (id, updates) => setNeeds((current) => current.map((need) => need.id === id ? { ...need, ...updates } : need));
-  const removeNeed = (id) => setNeeds((current) => current.length <= 1 ? current : current.filter((need) => need.id !== id));
-  const addNeed = () => setNeeds((current) => [...current, { id: `allocation-create-need-${Date.now()}-${current.length}`, name: "", category_id: "", amount: "" }]);
-  return <section className={allocationClass("allocation-create-needs form-grid__full")} aria-labelledby="allocation-create-needs-title">
-    <div className={allocationClass("allocation-create-needs__header")}><div><h3 id="allocation-create-needs-title">Kebutuhan</h3><p>Tambahkan kebutuhan utama. Totalnya menjadi dana yang perlu disiapkan.</p></div><Button type="button" icon={FiPlus} onClick={addNeed}>Tambah kebutuhan</Button></div>
-    <div className={allocationClass("allocation-create-needs__list")}>
-      {needs.map((need, index) => <div className={allocationClass("allocation-create-need")} key={need.id}>
-        <label className="field"><span>Nama kebutuhan {index + 1}</span><input required maxLength="100" value={need.name} onChange={(event) => updateNeed(need.id, { name: event.target.value })} placeholder="Contoh: Belanja bulanan" /></label>
-        <InlineSelectionPicker label="Kategori" required value={need.category_id} onChange={(category_id) => updateNeed(need.id, { category_id })} placeholder="Pilih kategori" placeholderMeta="Kategori pengeluaran" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((category) => ({ value: category.category_id, label: category.name, ...categoryOptionVisual(category) }))} />
-        <MoneyInput id={`allocation-create-need-amount-${need.id}`} label="Nominal" value={need.amount} onChange={(amount) => updateNeed(need.id, { amount })} required />
-        {needs.length > 1 ? <Button className={allocationClass("allocation-create-need__remove")} type="button" icon={FiTrash2} onClick={() => removeNeed(need.id)}>Hapus</Button> : null}
-      </div>)}
+  const removeNeed = (id) => {
+    if (needs.length <= 1) {
+      const replacement = createAllocationNeedDraft();
+      setNeeds([replacement]);
+      setActiveNeedId(replacement.id);
+      return;
+    }
+    const next = needs.filter((need) => need.id !== id);
+    setNeeds(next);
+    if (activeNeedId === id) setActiveNeedId(next.at(-1)?.id || "");
+  };
+  const addNeed = () => {
+    if (needs.length >= ALLOCATION_CREATE_NEED_LIMIT) return;
+    const next = createAllocationNeedDraft();
+    setNeeds((current) => [...current, next]);
+    setActiveNeedId(next.id);
+  };
+  const categoryLookup = new Map(categories.map((category) => [category.category_id, category]));
+  return <section className={allocationClass("allocation-create-needs form-grid__full")} aria-label="Kebutuhan">
+    <div className={needStyles.rows}>
+      {needs.map((need, index) => need.id === activeNeedId
+        ? <AllocationNeedEditorRow key={need.id} need={need} index={index} categories={categories} updateNeed={updateNeed} removeNeed={removeNeed} />
+        : <AllocationNeedCompactRow key={need.id} need={need} category={categoryLookup.get(need.category_id)} onEdit={() => setActiveNeedId(need.id)} onRemove={() => removeNeed(need.id)} />)}
     </div>
+    <button type="button" className={needStyles.addButton} onClick={addNeed} disabled={needs.length >= ALLOCATION_CREATE_NEED_LIMIT}><FiPlus aria-hidden="true" /><span>Tambah kebutuhan lain</span></button>
     <div className={allocationClass("allocation-create-funding")}>
-      <div><span>Total yang perlu disiapkan</span><strong>{formatRupiah(total)}</strong></div>
-      <div><span>Dana tersedia di {sourceAccount?.name || "rekening"}</span><strong>{formatRupiah(available)}</strong></div>
-      <div><span>Akan dialokasikan sekarang</span><strong>{formatRupiah(funded)}</strong></div>
-      {shortage > 0 ? <p role="status"><strong>Masih kurang {formatRupiah(shortage)}.</strong> Alokasi tetap dapat disimpan; pembayaran otomatis hanya berjalan saat dana sudah cukup.</p> : <p role="status">Dana mencukupi. Sisa Dana Tersedia setelah disiapkan {formatRupiah(Math.max(0, available - total))}.</p>}
+      <div><span>Perlu disiapkan</span><strong>{formatRupiah(total)}</strong></div>
+      <div><span>Tersedia di {sourceAccount?.name || "rekening"}</span><strong>{formatRupiah(available)}</strong></div>
+      {shortage > 0
+        ? <div role="status"><span>Masih kurang</span><strong>{formatRupiah(shortage)}</strong></div>
+        : <div role="status"><span>Sisa setelah dialokasikan</span><strong>{formatRupiah(Math.max(0, available - total))}</strong></div>}
     </div>
   </section>;
 };
@@ -126,7 +257,7 @@ const CreateEnvelopeForm = ({
   const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
   return <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
     <label className="field form-grid__full"><span>Untuk apa uang ini? *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
-    <InlineSelectionPicker className="form-grid__full" label="Ambil dana dari" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderMeta="Pilih rekening sumber dana" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
+    <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
 {!assigneeState.locked ? <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : ""} /> : null}
     <AllocationCreateNeeds needs={createNeeds} setNeeds={setCreateNeeds} categories={categories} sourceAccount={sourceAccount} />
     <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
@@ -143,7 +274,7 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
     const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
     setCreateForm((current) => ({ ...current, source_account_id: sourceAccountId, assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : "" }));
   };
-  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Alokasi Dana" dismissible={!createMutation.busy} title="Tambah Alokasi" description="Tentukan tujuan, kebutuhan, dan sumber dana dalam satu langkah." footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} />}>
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Alokasi Dana" dismissible={!createMutation.busy} title="Tambah Alokasi" footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} />}>
     <CreateEnvelopeForm createForm={createForm} setCreateForm={setCreateForm} createNeeds={createNeeds} setCreateNeeds={setCreateNeeds} categories={categories} accounts={accounts} usersStatus={usersStatus} assigneeState={assigneeState} assigneeOptions={assigneeOptions} onChangeSource={changeSource} message={message} createEnvelope={createEnvelope} />
   </Modal>;
 };
@@ -152,8 +283,8 @@ const MoveEnvelopeModal = ({ open, close, move, setMove, items, destinations, su
   const guard = useUnsavedChangesGuard({ open, value: move, onClose: close, blocked: moveMutation.busy });
   return <>
     <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="pemindahan dana" dismissible={!moveMutation.busy} title="Pindahkan dana" footer={<><Button type="button" disabled={moveMutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiArrowRight} type="submit" form="move-envelope-form" loading={moveMutation.busy}>Pindahkan dana</Button></>}><form id="move-envelope-form" className="form-grid" onSubmit={submitMove}>
-      <InlineSelectionPicker label="Dari alokasi" required value={move.fromEnvelopePeriodId} onChange={(fromEnvelopePeriodId) => setMove((current) => ({ ...current, fromEnvelopePeriodId, toEnvelopePeriodId: "" }))} placeholder="Pilih sumber" placeholderMeta="Pilih Alokasi Dana sumber" placeholderOption={allocationOptionVisual()} searchable={items.length > 8} searchPlaceholder="Cari Alokasi Dana…" options={items.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: `${item.source_account_name || "Sumber belum ditentukan"} · ${allocationAssigneeLabel(item)} · sisa ${formatRupiah(item.remaining_amount || 0)}`, ...allocationOptionVisual() }))} />
-      <InlineSelectionPicker label="Ke alokasi" required value={move.toEnvelopePeriodId} onChange={(toEnvelopePeriodId) => setMove((current) => ({ ...current, toEnvelopePeriodId }))} placeholder="Pilih tujuan" placeholderMeta="Pilih Alokasi Dana tujuan" placeholderOption={allocationOptionVisual()} searchable={destinations.length > 8} searchPlaceholder="Cari Alokasi Dana…" options={destinations.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: `${item.source_account_name || "Sumber belum ditentukan"} · ${allocationAssigneeLabel(item)}`, ...allocationOptionVisual() }))} />
+      <InlineSelectionPicker label="Dari alokasi" required value={move.fromEnvelopePeriodId} onChange={(fromEnvelopePeriodId) => setMove((current) => ({ ...current, fromEnvelopePeriodId, toEnvelopePeriodId: "" }))} placeholder="Pilih sumber" placeholderOption={allocationOptionVisual()} searchable={items.length > 8} searchPlaceholder="Cari Alokasi Dana…" options={items.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: `${item.source_account_name || "Sumber belum ditentukan"} · ${allocationAssigneeLabel(item)} · sisa ${formatRupiah(item.remaining_amount || 0)}`, ...allocationOptionVisual() }))} />
+      <InlineSelectionPicker label="Ke alokasi" required value={move.toEnvelopePeriodId} onChange={(toEnvelopePeriodId) => setMove((current) => ({ ...current, toEnvelopePeriodId }))} placeholder="Pilih tujuan" placeholderOption={allocationOptionVisual()} searchable={destinations.length > 8} searchPlaceholder="Cari Alokasi Dana…" options={destinations.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: `${item.source_account_name || "Sumber belum ditentukan"} · ${allocationAssigneeLabel(item)}`, ...allocationOptionVisual() }))} />
       <MoneyInput id="move-amount" label="Nominal dipindahkan" value={move.amount} onChange={(amount) => setMove((current) => ({ ...current, amount }))} />
       <label className="field form-grid__full"><span>Alasan *</span><input required value={move.reason} maxLength="160" onChange={(event) => setMove((current) => ({ ...current, reason: event.target.value }))} placeholder="Contoh: prioritas kebutuhan berubah" /></label>
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
@@ -181,7 +312,7 @@ const AdjustAllocationModal = ({ target, close, form, setForm, submit, mutation,
 };
 
 
-const AllocationModals = (p) => <><ConfirmationModal open={Boolean(p.archiveTarget)} title="Hapus Alokasi?" description={p.archiveTarget ? (p.archiveTarget.preview.canDeleteUnused ? `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} belum pernah digunakan sehingga dapat dihapus permanen.` : `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} akan dihapus dari daftar aktif. Transaksi dan riwayat yang sudah terjadi tetap dipertahankan agar saldo historis tidak berubah.`) : ""} confirmLabel="Hapus Alokasi" reasonLabel="Alasan penghapusan" requireReason acknowledgementLabel={p.archiveTarget?.preview.canDeleteUnused ? "Saya memahami alokasi yang belum pernah digunakan ini akan dihapus permanen." : ""} busy={p.archiveState.status === "submitting"} error={p.archiveState.error} onCancel={() => p.archiveState.status !== "submitting" && p.setArchiveTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveTarget && !p.archiveTarget.preview.canDeleteUnused ? <div className="notice notice--info">Data historis tetap tersimpan. Jadwal dan penggunaan masa depan dari Alokasi ini dihentikan.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan pemindahan dana?" description={p.reverseTarget ? `${p.reverseTarget.from_name} → ${p.reverseTarget.to_name}. Dana akan dikembalikan hanya jika belum terpakai atau disiapkan untuk jadwal.` : ""} confirmLabel="Batalkan mutasi" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reverseMovement} /></>;
+const AllocationModals = (p) => <><ConfirmationModal open={Boolean(p.archiveTarget)} title={p.archiveTarget?.preview.canDeleteUnused ? "Hapus Alokasi yang belum dipakai?" : "Arsipkan Alokasi?"} description={p.archiveTarget ? (p.archiveTarget.preview.canDeleteUnused ? `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} belum pernah digunakan sehingga dapat dihapus permanen.` : `${p.archiveTarget.item.rule_name || p.archiveTarget.item.name} sudah memiliki histori. Alokasi akan diarsipkan dari daftar aktif tanpa menghapus transaksi atau mutasi lama.`) : ""} confirmLabel={p.archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan Alokasi"} reasonLabel={p.archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={p.archiveTarget?.preview.canDeleteUnused ? "Saya memahami alokasi yang belum pernah digunakan ini akan dihapus permanen." : ""} busy={p.archiveState.status === "submitting"} error={p.archiveState.error} onCancel={() => p.archiveState.status !== "submitting" && p.setArchiveTarget(null)} onConfirm={p.applyRuleLifecycle}>{p.archiveTarget && !p.archiveTarget.preview.canDeleteUnused ? <div className="notice notice--info">Data historis tetap tersimpan. Jadwal dan penggunaan masa depan dari Alokasi ini dihentikan.</div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(p.reverseTarget)} title="Batalkan pemindahan dana?" description={p.reverseTarget ? `${p.reverseTarget.from_name} → ${p.reverseTarget.to_name}. Dana akan dikembalikan hanya jika belum terpakai atau disiapkan untuk jadwal.` : ""} confirmLabel="Batalkan mutasi" reasonLabel="Alasan pembatalan" requireReason busy={p.reverseState.status === "submitting"} error={p.reverseState.error} onCancel={() => p.reverseState.status !== "submitting" && p.setReverseTarget(null)} onConfirm={p.reverseMovement} /></>;
 
 
 const AllocationDialogLayer = ({

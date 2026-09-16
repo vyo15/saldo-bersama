@@ -77,9 +77,9 @@ const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onR
   const CategoryIcon = categoryIcon(category?.icon, "expense");
   const remaining = Math.max(0, amount - used);
   const patternLabel = schedule?.label
-    || (budget.recording_mode === "fixed_once" ? "Sekali bayar · nominal otomatis saat dicatat"
-      : budget.recording_mode === "recurring" ? "Berulang · mengikuti jadwal pembayaran"
-        : "Fleksibel · dapat dicatat berkali-kali");
+    || (budget.recording_mode === "fixed_once" ? "Sekali bayar"
+      : budget.recording_mode === "recurring" ? "Rutin · mengikuti jadwal pembayaran"
+        : "Bisa dipakai beberapa kali");
   const recordAction = budget.recording_mode === "fixed_once" && remaining <= 0 ? null : onRecord;
   return <div className={allocationClass("allocation-limit-row")} data-budget-id={budget.budget_id}>
     <div className={allocationClass("allocation-limit-row__main")}>
@@ -270,7 +270,7 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         <div className="form-actions">
           {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}
           {item.can_set_reminder ? <Button icon={FiBell} onClick={() => onAllocationReminder(item)}>Pengingat</Button> : null}
-          {item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Hapus Alokasi</Button> : null}
+          {item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Kelola status</Button> : null}
         </div>
       </section>
     </Card>

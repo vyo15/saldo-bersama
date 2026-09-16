@@ -17,10 +17,21 @@ export const runCreateAllocation = async ({ createForm, createNeeds, resetForm, 
   const needs = (createNeeds || []).map((need, index) => {
     const needName = String(need.name || "").trim();
     const amount = Number(String(need.amount || "").replace(/\D/g, ""));
+    const recordingMode = String(need.recording_mode || "flexible");
     if (!needName) throw new Error(`Isi nama kebutuhan ${index + 1}.`);
     if (!need.category_id) throw new Error(`Pilih kategori untuk kebutuhan ${index + 1}.`);
     if (!Number.isInteger(amount) || amount <= 0) throw new Error(`Nominal kebutuhan ${index + 1} harus lebih dari Rp0.`);
-    return { name: needName, category_id: need.category_id, amount, recording_mode: "flexible" };
+    if (!["flexible", "fixed_once", "recurring"].includes(recordingMode)) throw new Error(`Cara penggunaan kebutuhan ${index + 1} tidak valid.`);
+    return {
+      name: needName,
+      category_id: need.category_id,
+      amount,
+      recording_mode: recordingMode,
+      schedule_frequency: need.schedule_frequency || "monthly",
+      schedule_due_day: Number(need.schedule_due_day || 20),
+      schedule_start_date: need.schedule_start_date || undefined,
+      schedule_payment_method: need.schedule_payment_method || "transfer",
+    };
   });
   if (!needs.length) throw new Error("Tambahkan minimal satu kebutuhan.");
   const created = await createEnvelopeWithNeeds({ ...createForm, name, default_amount: 0, allocated_amount: 0, period_key: period, needs }, {});
@@ -105,7 +116,7 @@ export const runApplyAllocationLifecycle = async ({ archiveTarget, reason, confi
     notify({ message: "Alokasi yang belum pernah digunakan berhasil dihapus permanen." });
   } else {
     await archiveEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason }, { rowVersion: item.rule_row_version });
-    notify({ message: "Alokasi dihapus dari daftar aktif. Riwayat transaksi dan mutasi tetap tersimpan." });
+    notify({ message: "Alokasi berhasil diarsipkan. Riwayat transaksi dan mutasi tetap tersimpan." });
   }
   setArchiveTarget(null);
   setArchiveState({ status: "idle", error: null });

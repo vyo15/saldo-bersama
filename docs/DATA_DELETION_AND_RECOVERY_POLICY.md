@@ -23,12 +23,19 @@ Kebijakan ini mencegah kehilangan histori, saldo tidak konsisten, dan kesalahan 
 | Kategori | Arsipkan bila pernah dipakai | Administrator dapat mengaktifkan kembali | Hanya `categories.deleteUnused` bila transaksi/recurring/budget semua status = 0 |
 | Alokasi Dana (`envelope` rule) | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `envelopes.deleteUnusedRule` bila hanya ada satu initial empty period dan tidak ada transaksi/movement/budget/closed history |
 | Tagihan rutin/recurring rule | Arsipkan bila pernah dipakai | Administrator dapat memulihkan rule | Hanya `recurring.deleteUnusedRule` bila semua child hanyalah future generated projections yang belum pernah materialized/paid/skipped/cancelled |
-| Kewajiban (KPR/cicilan/pinjaman/Arisan; domain internal `commitments`) | UI memakai **Hapus**; record domain dinonaktifkan internal dan jadwal managed dihentikan | Reversal pembayaran memulihkan progres/jadwal bila completion otomatis dibatalkan | Transaksi dan `commitment_movements` historis tidak di-hard-delete; hanya future occurrence reproducible dari jadwal managed yang boleh dibersihkan |
+| Kewajiban (KPR/cicilan/pinjaman/Arisan; domain internal `commitments`) | **Hentikan kewajiban**; record domain diarsipkan internal dan jadwal managed berikutnya dihentikan | Tidak ada restore manual dari UI saat ini; reversal pembayaran terakhir tetap dapat memulihkan progres/jadwal bila completion otomatis dibatalkan | Transaksi dan `commitment_movements` historis tidak di-hard-delete; hanya future occurrence reproducible dari jadwal managed yang boleh dibersihkan |
 | Target tabungan | Arsipkan bila pernah dipakai | Administrator dapat memulihkan goal | Hanya `goals.deleteUnused` bila saldo progres = 0 dan tidak ada movement/transaksi semua status |
 | Kebutuhan | `budgets.remove` menghapus permanen hanya bila benar-benar history-free; selain itu status menjadi dihentikan/archived, transaksi dan report tetap utuh, serta hanya sisa dana Alokasi yang aman yang dilepas | Compatibility restore tetap Administrator-only; periode yang dibuka kembali merehidrasi row operasional dari `budget_history` | `budgets.deleteUnused` tetap Administrator-only untuk compatibility; setelah period close row operasional dipadatkan ke `budget_history` + snapshot `period_closures` |
 | Member | Nonaktifkan | Reaktivasi eksplisit oleh Administrator dengan row version + alasan + audit | Dilarang dari UI harian |
 | Periode | Tutup | Buka kembali berurutan dengan alasan | Dilarang |
 | Audit dan rekonsiliasi | Tambah record koreksi baru | Tidak berlaku | Dilarang |
+
+## Honest lifecycle contract
+
+- Label tindakan harus sesuai dengan konsekuensi server. **Hapus permanen** hanya dipakai ketika preview server membuktikan entity belum pernah digunakan dan benar-benar dapat dihapus; **Arsipkan** dipakai ketika histori tetap dipertahankan.
+- Sebelum preview lifecycle tersedia, UI boleh memakai label netral **Kelola status**. Label netral tidak boleh diganti dengan `Hapus` bila server masih mungkin memilih archive.
+- Kewajiban memakai istilah **Hentikan kewajiban** karena action `commitments.archive` menghentikan future schedule tanpa menghapus histori dan saat ini tidak memiliki restore manual di UI.
+- Success feedback dan recovery copy harus mengikuti hasil aktual (`deleted_unused`, archived/stopped, restored), bukan nama action generik yang dipanggil client.
 
 ## Pengecualian: hapus permanen master/config yang benar-benar belum dipakai
 
@@ -70,7 +77,7 @@ Semua action `deleteUnused` wajib memenuhi aturan berikut:
 Alokasi Dana dan Jadwal Rutin mempunyai child yang dapat tercipta otomatis. Child tersebut tidak otomatis dianggap histori:
 
 - envelope rule baru boleh menghapus **satu initial empty period** bersamaan dengan rule bila tidak ada transaksi, movement, budget, reserved amount, closed/archived period, atau histori lain;
-- recurring rule boleh membersihkan **future generated projections yang reproducible** hanya bila status masih `expected`, `actual_amount=0`, tidak mempunyai transaction link, belum menjadi keputusan user seperti cancelled/skipped, dan bukan occurrence masa lalu. Paid/partial/past/cancelled/linked occurrence selalu memblokir hard delete rule; helper schedule yang sama dipakai saat Kewajiban selesai/dihapus dari daftar untuk menghentikan proyeksi masa depan tanpa menghapus histori.
+- recurring rule boleh membersihkan **future generated projections yang reproducible** hanya bila status masih `expected`, `actual_amount=0`, tidak mempunyai transaction link, belum menjadi keputusan user seperti cancelled/skipped, dan bukan occurrence masa lalu. Paid/partial/past/cancelled/linked occurrence selalu memblokir hard delete rule; helper schedule yang sama dipakai saat Kewajiban selesai/dihentikan dari daftar untuk menghentikan proyeksi masa depan tanpa menghapus histori.
 
 ### Global destructive-SQL allowlist
 

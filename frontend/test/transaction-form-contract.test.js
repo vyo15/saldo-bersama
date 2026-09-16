@@ -154,7 +154,8 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(mobileFields, /accountDisplayLabel\(account\)/);
   assert.match(mobileFields, /searchable=\{accounts\.length > 8\}/);
   assert.doesNotMatch(mobileFields, /openMobileSelection|<select|type="radio"/, "transfer mobile memakai picker inline canonical, bukan subview atau native dropdown");
-  assert.match(mobileFields, /Saldo dan dana tersedia baru berubah setelah server mengonfirmasi transfer/);
+  assert.doesNotMatch(mobileFields, /server mengonfirmasi|Saldo dan dana tersedia baru berubah/);
+  assert.match(mobileFields, /Tidak ada rekening tujuan yang kompatibel/);
   assert.match(mobileFields, /Dana Tersedia/);
   assert.match(mobileFields, /Setelah transfer/);
   assert.match(mobileFields, /Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga/);
@@ -229,7 +230,7 @@ test("income sukses menawarkan Alokasi Dana hanya setelah mutation sukses tanpa 
   assert.match(text, /workflowSource: "transaction-income"/);
   assert.match(text, /workflowAction: "fund"/);
   assert.match(text, /label: "Bagi ke Alokasi Dana"/);
-  assert.match(text, /Anda dapat membagi sebagian atau seluruh dana tersedia ke Alokasi Dana tanpa membuat transaksi baru/);
+  assert.match(text, /Dana sudah masuk ke rekening\. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti\./);
   assert.doesNotMatch(text, /envelopes\.adjustAllocation|adjustAllocation\(/, "TransactionForm tidak boleh membuat allocation mutation sendiri");
 });
 

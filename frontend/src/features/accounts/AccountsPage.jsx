@@ -92,7 +92,7 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
       setAccountForm(emptyAccountForm());
       setCreateDialogOpen(false);
       setDialogState({ status: "idle", error: null });
-      notify({ message: ownerMode ? "Rekening berhasil dibuat dan daftar telah diperbarui." : "Pengajuan rekening dikirim ke Administrator.", tone: "success", dedupeKey: ownerMode ? "accounts:create" : "accounts:request-create" });
+      notify({ message: ownerMode ? "Rekening berhasil dibuat." : "Pengajuan rekening dikirim ke Administrator.", tone: "success", dedupeKey: ownerMode ? "accounts:create" : "accounts:request-create" });
       if (ownerMode) await reloadAccounts();
       else await reloadRequests?.();
       onCreateComplete?.({ ownerMode, saved, payload });
@@ -207,7 +207,7 @@ const AccountEditors = ({ createDialogOpen, editAccount, closeCreateDialog, acco
 
 const AccountArchiveConfirmation = ({ archiveTarget, dialogState, setArchiveTarget, archiveSelectedAccount }) => (
   <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus rekening belum dipakai?" : "Arsipkan rekening?"}
-    description={archiveTarget ? `${archiveTarget.account.name} telah diperiksa ulang oleh server.` : ""}
+    description={archiveTarget ? archiveTarget.account.name : ""}
     confirmLabel={archiveTarget?.preview.canDeleteUnused ? `Hapus permanen ${archiveTarget.account.name}` : "Arsipkan rekening"}
     reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason
     expectedConfirmation={archiveTarget?.preview.canDeleteUnused ? archiveTarget.preview.deleteConfirmation : ""}

@@ -22,7 +22,7 @@ export const MOBILE_ONBOARDING = Object.freeze([
   {
     id: "budget",
     eyebrow: "Lebih terencana",
-    title: "Atur anggaran,",
+    title: "Atur kebutuhan,",
     accent: "tetap terkendali.",
     description: "Tetapkan batas belanja dan target agar setiap rencana keuangan lebih mudah dijaga.",
     asset: {
@@ -57,7 +57,7 @@ export const MOBILE_MONEY_NOTES = Object.freeze([
   { denomination: "50000", tone: "blue", left: "9%", rotation: "7deg", delay: "var(--motion-stagger-6)", drift: "31px" },
 ]);
 
-export const MOBILE_PAGE_LABELS = Object.freeze(["Catat keuangan", "Atur anggaran", "Keuangan bersama", "Login"]);
+export const MOBILE_PAGE_LABELS = Object.freeze(["Catat keuangan", "Atur kebutuhan", "Keuangan bersama", "Login"]);
 
 export const mobileOAuthErrorFromSearch = (search) => {
   const code = new URLSearchParams(search || "").get("authError");

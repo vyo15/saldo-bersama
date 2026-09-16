@@ -69,7 +69,7 @@ const CategoryActionMenu = ({ category, menuOpen, activeMenuRef, menuTriggerRefs
   const menu = menuOpen && typeof document !== "undefined" ? createPortal(
     <div ref={activeMenuRef} className={styles.categoryMenu} style={categoryMenuAnchorStyle(trigger)} role="menu" aria-label={`Aksi kategori ${category.name}`}>
       <button type="button" role="menuitem" onClick={() => openEdit(category)}><FiEdit2 aria-hidden="true" />Edit</button>
-      <button type="button" role="menuitem" className={styles.categoryMenuDanger} aria-label={`Kelola data kategori ${category.name}`} onClick={() => openArchivePreview(category)}><FiArchive aria-hidden="true" />Kelola data</button>
+      <button type="button" role="menuitem" className={styles.categoryMenuDanger} aria-label={`Kelola status kategori ${category.name}`} onClick={() => openArchivePreview(category)}><FiArchive aria-hidden="true" />Kelola status</button>
     </div>,
     document.body,
   ) : null;

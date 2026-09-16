@@ -48,7 +48,7 @@ const GoalSummary = ({ items }) => {
 
 const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, openStatusChange, openReminder }) => {
   const primaryAction = goal.can_deposit
-    ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Tambah dana</Button>
+    ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Setor dana</Button>
     : goal.can_complete
       ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button>
       : goal.can_reopen
@@ -60,7 +60,7 @@ const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, o
   return (
     <div className={goalClass("goal-card__actions")}>
       <div className={goalClass("goal-card__quick-actions")}>{primaryAction}{canRemind ? <Button icon={FiBell} onClick={() => openReminder(goal)}>Pengingat</Button> : null}</div>
-      {hasSecondaryActions ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}{goal.can_complete && goal.can_deposit ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Kelola data</Button> : null}</div></details> : null}
+      {hasSecondaryActions ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}{goal.can_complete && goal.can_deposit ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Kelola status</Button> : null}</div></details> : null}
     </div>
   );
 };

@@ -25,7 +25,7 @@ const FullResetPreview = ({ preview }) => (
     <div className={styles.resetPreviewSection}>
       <div className={styles.resetPreviewSectionHeading}>
         <FiTrash2 aria-hidden="true" />
-        <div><strong>Master aplikasi</strong><small>Rekening, kategori, portfolio, dan instrumen investasi ikut dihapus. Setelah reset, aplikasi kembali tanpa master finansial.</small></div>
+        <div><strong>Master aplikasi</strong><small>Rekening, kategori, data investasi, dan instrumen investasi ikut dihapus. Setelah reset, aplikasi kembali tanpa master finansial.</small></div>
       </div>
       <SummaryGrid labels={RESET_MASTER_LABELS} summary={preview.summary} ariaLabel="Master data yang akan dihapus" />
     </div>
@@ -58,7 +58,7 @@ const FullResetConfirmation = ({ preview, open, busy, error, onCancel, onConfirm
   <ConfirmationModal
     open={open}
     title="Reset semua data?"
-    description="Rekening, kategori, portfolio investasi, saldo, transaksi, perencanaan, dan data operasional pada preview akan dihapus setelah safety backup. Pengguna, audit, backup, dan struktur database tetap disimpan."
+    description="Rekening, kategori, data investasi, saldo, transaksi, perencanaan, dan data operasional pada preview akan dihapus setelah safety backup. Pengguna, audit, backup, dan struktur database tetap disimpan."
     confirmLabel="Reset semua data"
     reasonLabel="Alasan full reset"
     reasonPlaceholder="Contoh: Mengembalikan aplikasi ke kondisi awal sebelum mulai digunakan"

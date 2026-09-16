@@ -20,8 +20,9 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compa
   assert.match(allocationPage, /useApiResource\("budgets\.list", \{ period \}\)/);
   assert.match(allocationPage, /lockedEnvelope=\{item\}/);
   assert.match(allocationPage, /Kebutuhan/);
-  assert.match(allocationPage, /Sekali bayar · nominal otomatis saat dicatat/);
-  assert.match(allocationPage, /Berulang · mengikuti jadwal pembayaran/);
+  assert.match(allocationPage, /Sekali bayar/);
+  assert.match(allocationPage, /Bisa dipakai beberapa kali/);
+  assert.match(allocationPage, /Rutin · mengikuti jadwal pembayaran/);
   assert.match(allocationPage, /createPlanningPaymentSchedule/);
   assert.match(allocationPage, /recurring\.createRule/);
   assert.match(api, /budgets\.upsert/);
@@ -34,7 +35,7 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compa
   const mobileSecondary = navigation.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   assert.doesNotMatch(mobileSecondary, /to: "\/notifikasi"/);
 });
-test("form Kebutuhan memisahkan nama kebutuhan, kategori master, pola pencatatan, dan pembuatan kategori berikon", async () => {
+test("form Kebutuhan memisahkan nama kebutuhan, kategori, pola pencatatan, dan pembuatan kategori berikon", async () => {
   const [page, moneyInput] = await Promise.all([
     Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js"), read("src/shared/workflows/categoryCreation.js")]).then((parts) => parts.join("\n")),
     read("src/components/common/MoneyInput.jsx"),
@@ -57,7 +58,10 @@ test("form Kebutuhan memisahkan nama kebutuhan, kategori master, pola pencatatan
   assert.match(page, /recurring\.createRule/);
   assert.doesNotMatch(page, /<select\b/);
   assert.match(page, /budgetOwnershipUpdates/);
-  assert.match(page, /kategori master/);
+  assert.doesNotMatch(page, /kategori master/i);
+  assert.match(page, /Bisa dipakai beberapa kali/);
+  assert.match(page, /Sekali bayar/);
+  assert.match(page, /Rutin/);
   assert.match(page, /envelope_rule_id/);
   assert.match(moneyInput, /required=\{required\}/);
 });
@@ -92,13 +96,22 @@ test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia"
     read("src/features/allocations/allocationActionRunners.js"),
     Promise.all(["envelopes.js", "budgetFunding.js", "budgetMutations.js", "budgetQueries.js", "budgetShared.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
-  assert.match(dialogs, /Total yang perlu disiapkan/);
+  assert.match(dialogs, /Perlu disiapkan/);
+  assert.match(dialogs, /Sisa setelah dialokasikan/);
+  assert.match(dialogs, /BudgetBatchEditor\.module\.css/);
+  assert.match(dialogs, /Kebutuhan \{index \+ 1\}/);
+  assert.match(dialogs, /Tambah kebutuhan lain/);
+  assert.match(dialogs, /Cara penggunaan/);
+  assert.match(dialogs, /fixed_once/);
+  assert.match(dialogs, /recurring/);
   assert.match(dialogs, /Pemanis kartu/);
   assert.match(dialogs, /Kembalikan ke dana tersedia/);
   assert.match(dialogs, /Tetap di alokasi berikutnya/);
   assert.match(dialogs, /Simpan Alokasi/);
   assert.doesNotMatch(dialogs, /Periode alokasi|Mulai periode|Akhir periode/);
   assert.match(runner, /createEnvelopeWithNeeds/);
+  assert.match(runner, /recording_mode: recordingMode/);
+  assert.match(runner, /schedule_frequency/);
   assert.match(runner, /default_amount: 0/);
   assert.match(runner, /allocated_amount: 0/);
   assert.doesNotMatch(page, /setDetailAction\("add-need"\).*createdRuleId/s);

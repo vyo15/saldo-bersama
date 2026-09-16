@@ -11,7 +11,7 @@ export const absoluteAmount = (value) => Math.abs(Number(value || 0));
 
 export const dashboardSyncLabel = (value) => {
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Sinkronisasi belum tersedia";
+  if (Number.isNaN(parsed.getTime())) return "Pembaruan belum tersedia";
   const time = new Intl.DateTimeFormat("id-ID", {
     hour: "2-digit",
     minute: "2-digit",

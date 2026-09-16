@@ -8,8 +8,8 @@ import styles from "./ReconciliationFeedback.module.css";
 
 const ProgressSteps = ({ phase }) => (
   <div className={styles.progressSteps} aria-hidden="true">
-    <span className={phase === "syncing" ? styles.stepDone : styles.stepActive}><i />Simpan ke server</span>
-    <span className={phase === "syncing" ? styles.stepActive : styles.stepQueued}><i />Perbarui tampilan</span>
+    <span className={phase === "syncing" ? styles.stepDone : styles.stepActive}><i />Simpan hasil</span>
+    <span className={phase === "syncing" ? styles.stepActive : styles.stepQueued}><i />Perbarui ringkasan</span>
   </div>
 );
 
@@ -21,7 +21,7 @@ export const ReconciliationSubmitProgress = ({ phase }) => {
       <span className={styles.progressSpinner} aria-hidden="true"><FiLoader /></span>
       <span className={styles.progressCopy}>
         <strong>{syncing ? "Memperbarui tampilan" : "Menyimpan pencocokan saldo"}</strong>
-        <small>{syncing ? "Server sudah mengonfirmasi hasil. Memuat riwayat dan ringkasan terbaru." : "Mengirim saldo aktual dan menunggu konfirmasi server."}</small>
+        <small>{syncing ? "Memuat riwayat dan ringkasan terbaru." : "Menyimpan saldo yang Anda cocokkan."}</small>
         <ProgressSteps phase={phase} />
       </span>
     </div>
@@ -48,7 +48,7 @@ const ReconciliationDifferenceOverlay = ({ result, onClose, onReviewTransactions
 
   const description = `Ada selisih Rp ${Math.abs(result.difference).toLocaleString("id-ID")}. Periksa transaksi tertinggal sebelum membuat penyesuaian.`;
   const refreshNote = result.refreshIncomplete
-    ? "Pencocokan sudah tersimpan di server, tetapi sebagian ringkasan belum berhasil dimuat ulang. Muat ulang halaman bila angka belum berubah."
+    ? "Pencocokan sudah tersimpan, tetapi sebagian ringkasan belum berhasil dimuat ulang. Muat ulang halaman bila angka belum berubah."
     : "Riwayat pencocokan sudah diperbarui.";
 
   return createPortal(

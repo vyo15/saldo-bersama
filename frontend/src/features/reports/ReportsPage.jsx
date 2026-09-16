@@ -122,7 +122,7 @@ const BudgetRows = ({ budgets }) => {
   if (!budgets.length) return <EmptyState variant="inline" title="Belum ada Kebutuhan" description="Kebutuhan pada scope ini akan tampil setelah dibuat dari Alokasi." />;
   return <div className={styles.budgetRows}>{budgets.map((budget) => {
     const status = usageStatus(budget);
-    return <div className={styles.budgetRow} key={budget.budget_id}><span><strong>{budget.name}</strong>{budget.envelope_name ? <small>{budget.envelope_name}</small> : null}</span><span><small>Rencana</small><strong>{formatCompactRupiah(budget.amount)}</strong></span><span><small>Aktual</small><strong>{formatCompactRupiah(budget.used_amount)}</strong></span><em data-tone={status.tone}>{status.label}</em></div>;
+    return <div className={styles.budgetRow} key={budget.budget_id}><span><strong>{budget.name}</strong>{budget.envelope_name ? <small>{budget.envelope_name}</small> : null}</span><span><small>Rencana</small><strong>{formatCompactRupiah(budget.amount)}</strong></span><span><small>Terpakai</small><strong>{formatCompactRupiah(budget.used_amount)}</strong></span><em data-tone={status.tone}>{status.label}</em></div>;
   })}</div>;
 };
 
@@ -147,7 +147,7 @@ const CommitmentActivity = ({ activity = {} }) => {
   ].filter(([, value]) => Number(value || 0) > 0);
   if (!rows.length) return null;
   return <section className={styles.flatSection}>
-    <div className={styles.sectionHeading}><div><h2>Aktivitas Kewajiban</h2><p>Pisahkan pembayaran pokok, bunga/biaya, dan Arisan tanpa mengubah arus kas rekening.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Kelola</Link></div>
+    <div className={styles.sectionHeading}><div><h2>Aktivitas Kewajiban</h2><p>Lihat pembayaran pokok, bunga/biaya, dan Arisan yang sudah tercatat.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Buka Kewajiban</Link></div>
     <div className={styles.categoryRows}>{rows.map(([label, value, note]) => <div className={styles.categoryRow} key={label}><span><strong>{label}</strong><small>{note}</small></span><span><strong>{formatCompactRupiah(value)}</strong></span></div>)}</div>
   </section>;
 };
@@ -191,10 +191,10 @@ const ReportsContent = ({ data, period, setPeriod, trendMonths, setTrendMonths, 
     <ReportHeader period={period} setPeriod={setPeriod} trendMonths={trendMonths} allocationRuleId={allocationRuleId} setAllocationRuleId={setAllocationRuleId} allocationOptions={data.allocationOptions || []} />
     <SummaryStrip summary={data.reportSummary} />
     <div className={styles.primaryGrid}>
-      {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Kelola</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan di {scope.label}</h2><p>Rencana dibanding realisasi pengeluaran.</p></div></div><BudgetRows budgets={data.budgets || []} /></section>}
+      {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Buka Alokasi</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan di {scope.label}</h2><p>Rencana dibanding realisasi pengeluaran.</p></div></div><BudgetRows budgets={data.budgets || []} /></section>}
       <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Tren pengeluaran</h2><p>{trendMonths === 1 ? "Harian pada bulan terpilih" : `${trendMonths} bulan terakhir`}</p></div><SelectionField className={styles.inlineTrend} label="Rentang tren" hideLabel compact value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} options={trendOptions} ariaLabel="Pilih rentang tren" /></div><TrendView trend={data.trend} period={period} /></section>
     </div>
-    {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan vs Aktual</h2><p>Rencana pengeluaran dan realisasinya.</p></div></div><BudgetRows budgets={data.budgets || []} /></section> : null}
+    {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan vs Pengeluaran</h2><p>Rencana dan pemakaian dana pada periode ini.</p></div></div><BudgetRows budgets={data.budgets || []} /></section> : null}
     <CommitmentActivity activity={data.commitmentActivity || {}} />
     <div className={styles.secondaryGrid}>
       <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada scope aktif.</p></div></div><CategoryRows items={data.categoryExpenses || []} /></section>

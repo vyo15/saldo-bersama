@@ -37,7 +37,7 @@ const MobileTransferSuccess = ({ transaction, bootstrap, onClose, onViewTransact
     open
     title="Transfer berhasil"
     amount={transaction.amount || 0}
-    description="Dana sudah berhasil dipindahkan ke rekening tujuan dan server telah mengonfirmasi transaksi."
+    description="Dana sudah dipindahkan ke rekening tujuan."
     summaryRows={[
       { label: "Dari rekening", value: sourceLabel },
       { label: "Ke rekening", value: destinationLabel },
@@ -88,7 +88,7 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
       >
         <TransferArrowsIcon /><span>Transfer</span>
       </button>
-      {!canTransfer ? <span id={unavailableId} className="sr-only">Transfer memerlukan rekening sumber aktif dan rekening tujuan aktif yang kompatibel dengan ledger.</span> : null}
+      {!canTransfer ? <span id={unavailableId} className="sr-only">Transfer memerlukan rekening sumber dan tujuan yang aktif dan kompatibel.</span> : null}
 
       {transferOpen ? <Suspense fallback={<LazyActionFallback surface="modal" title="Transfer" label="Menyiapkan transfer..." />}><TransactionForm
         open
@@ -98,7 +98,6 @@ const MobileAccountTransferAction = ({ bootstrap, selectedAccount, onTransferSav
         lockType
         onSaved={handleSaved}
         title="Transfer antar rekening"
-        description="Pilih rekening tujuan dan nominal. Saldo baru berubah setelah server mengonfirmasi transfer."
         submitLabel="Transfer sekarang"
         submittingLabel="Memproses transfer..."
         notifyOnSuccess={false}

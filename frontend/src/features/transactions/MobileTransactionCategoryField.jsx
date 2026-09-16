@@ -32,7 +32,6 @@ const MobileTransactionCategoryField = ({ form, update, visibleCategories, recen
       onChange={(categoryId) => update("category_id", categoryId)}
       groups={groups}
       placeholder="Pilih kategori"
-      placeholderMeta="Kategori menyesuaikan jenis transaksi"
       placeholderOption={{ icon: FiTag }}
       searchable={visibleCategories.length > 6}
       searchPlaceholder="Cari kategori…"

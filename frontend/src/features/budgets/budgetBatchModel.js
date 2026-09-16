@@ -110,7 +110,7 @@ export const budgetBatchTotal = (rows) => (rows || []).reduce((total, row) => {
 
 export const budgetBatchScheduleLabel = (row) => {
   if (row?.recording_mode === "fixed_once") return "Sekali bayar";
-  if (row?.recording_mode !== "recurring") return "Fleksibel";
+  if (row?.recording_mode !== "recurring") return "Bisa dipakai beberapa kali";
   const labels = {
     weekly: "Mingguan",
     biweekly: "Dua mingguan",
@@ -120,6 +120,6 @@ export const budgetBatchScheduleLabel = (row) => {
     semiannual: "Semester",
     annual: "Tahunan",
   };
-  const frequency = labels[row.schedule_frequency] || "Berulang";
+  const frequency = labels[row.schedule_frequency] || "Rutin";
   return `${frequency} · tgl ${Number(row.schedule_due_day || 0) || "—"}`;
 };

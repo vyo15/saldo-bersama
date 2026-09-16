@@ -93,7 +93,7 @@ export const allocationSelectionHint = ({ form, candidates, selectedEnvelopeId }
   if (!form.category_id) return "Pilih kategori terlebih dahulu.";
   const selected = candidates.find((item) => item.envelope.envelope_period_id === selectedEnvelopeId && (!form.budget_id || item.need.budget_id === form.budget_id));
   if (selected) return `Kebutuhan ${selected.need.name || selected.need.category_id} dipakai untuk transaksi ini.`;
-  if (selectedEnvelopeId) return "Alokasi Dana dipilih manual. Server tetap memvalidasi rekening, periode, dan hak akses saat disimpan.";
+  if (selectedEnvelopeId) return "Alokasi Dana dipilih manual untuk transaksi ini.";
   if (candidates.length > 1) return `${candidates.length} Kebutuhan cocok. Pilih kebutuhan yang benar.`;
   if (candidates.length === 1) return `Kebutuhan ${candidates[0].need.name || candidates[0].need.category_id} cocok dan dapat dipilih otomatis.`;
   return "Belum ada Kebutuhan aktif yang cocok. Transaksi tetap dapat dicatat atau Alokasi Dana dapat dipilih manual.";

@@ -60,7 +60,7 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
   assert.match(sources[1], /mobileColumns=\{2\}/);
   assert.match(sources[1], /SelectionField/);
   assert.match(sources[2], /label="Kategori"/);
-  assert.match(sources[3], /<InlineSelectionPicker[\s\S]*label="Ambil dana dari"/);
+  assert.match(sources[3], /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.match(sources[4], /label = "Rekening default"/);
   assert.match(sources[5], /label="Rekening tujuan"/);
   assert.match(sources[6], /SelectionField/);
@@ -76,7 +76,10 @@ test("descriptive fixed choices keep explanatory decisions calm and consistent",
     read("features/allocations/AllocationDialogLayer.jsx"),
   ]);
   assert.match(budgets, /legend="Pola kebutuhan"[\s\S]*columns=\{3\}[\s\S]*mobileColumns=\{3\}/);
-  assert.match(budgets, /Nominal otomatis terisi saat kebutuhan dicatat/);
+  assert.match(budgets, /Bisa dipakai beberapa kali/);
+  assert.match(budgets, /Sekali bayar/);
+  assert.match(budgets, /Rutin/);
+  assert.doesNotMatch(budgets, /Nominal otomatis terisi saat kebutuhan dicatat/);
   assert.match(budgets, /<InlineOwnershipPicker[\s\S]*legend="Berlaku untuk"/);
   assert.match(recurring, /legend="Jenis"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
   assert.match(allocations, /legend="Aksi"[\s\S]*columns=\{2\}[\s\S]*descriptive/);
@@ -155,8 +158,8 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(css, /\.options::-webkit-scrollbar/);
   assert.match(css, /@media \(max-width: 520px\)/);
   assert.match(css, /prefers-reduced-motion/);
-  assert.match(allocations, /<InlineSelectionPicker[\s\S]*label="Ambil dana dari"/);
-  assert.match(allocations, /placeholderMeta="Pilih rekening sumber dana"/);
+  assert.match(allocations, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
+  assert.doesNotMatch(allocations, /placeholderMeta="Pilih rekening sumber dana"/);
   assert.match(funding, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.match(accounts, /<InlineOwnershipPicker[\s\S]*legend="Pemegang rekening"/);
   assert.match(accounts, /badge: `\$\{userRoleLabel\(member\.role\)\}/);

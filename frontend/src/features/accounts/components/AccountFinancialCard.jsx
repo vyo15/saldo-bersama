@@ -225,7 +225,7 @@ const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTran
       </div>
       {account.status === "active" && canManage ? (
         <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
-          <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Kelola data</button>
+          <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Kelola status</button>
         </div>
       ) : null}
     </>
@@ -236,7 +236,7 @@ const MobileDetailCard = ({ account, model, embedded, copied, onCopy, onEdit, on
   <section className={styles.mobileDetail} aria-labelledby={`mobile-account-${account.account_id}`} aria-label={`Detail rekening ${account.name}`}>
     <MobileDetailHeading account={account} displayLabel={model.displayLabel} embedded={embedded} readOnly={model.readOnly} />
     <MobileDetailData account={account} model={model} copied={copied} onCopy={onCopy} />
-    {model.readOnly ? <p className={styles.readOnlyNotice}>Semua rekening transparan untuk keluarga. Rekening ini hanya dapat dioperasikan sesuai pemegang dan capability yang diberikan server.</p> : null}
+    {model.readOnly ? <p className={styles.readOnlyNotice}>Semua rekening transparan untuk keluarga. Tindakan pada rekening ini mengikuti hak akses pemegangnya.</p> : null}
     <MobileDetailActions account={account} canManage={model.canManage} onEdit={onEdit} onArchive={onArchive} onViewTransactions={onViewTransactions} onViewInvestment={onViewInvestment} />
   </section>
 );

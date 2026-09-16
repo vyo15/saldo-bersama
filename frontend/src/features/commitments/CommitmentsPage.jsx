@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FiCheckCircle, FiEdit2, FiHome, FiPlus, FiTrash2, FiUsers } from "react-icons/fi";
+import { FiArchive, FiCheckCircle, FiEdit2, FiHome, FiPlus, FiUsers } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -22,7 +22,7 @@ import { assertPositiveRupiah, formatRupiah } from "../../domain/money.js";
 import { currentMonthBoundsInJakarta, currentMonthInJakarta, formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
-import { createCommitment, deleteCommitment, recordCommitmentReceipt, updateCommitment } from "./commitments.api.js";
+import { archiveCommitment, createCommitment, recordCommitmentReceipt, updateCommitment } from "./commitments.api.js";
 import { applyFlatEstimate, flatLoanEstimate, inferFlatAnnualRate, isDebtCommitment } from "./commitmentModel.js";
 import styles from "./CommitmentsPage.module.css";
 
@@ -63,17 +63,18 @@ const CommitmentMeta = ({ item, arisan }) => <dl className={styles.meta}>
   <div><dt>{arisan ? "Setoran" : "Cicilan"}</dt><dd>{formatRupiah(item.installment_amount || 0)} / bulan</dd></div>
   <div><dt>Berikutnya</dt><dd>{nextDueLabel(item)}</dd></div>
   <div><dt>Dibayar dari</dt><dd>{item.account_name || "Rekening"}</dd></div>
+  {item.budget_id ? <div><dt>Pembayaran</dt><dd>Otomatis dari Alokasi</dd></div> : null}
   {!arisan && Number(item.flat_principal_amount || 0) > 0 ? <div><dt>Pokok + bunga/biaya</dt><dd>{formatRupiah(item.flat_principal_amount)} + {formatRupiah(item.flat_interest_amount || 0)}</dd></div> : null}
   {arisan && Number(item.received_amount || 0) > 0 ? <div><dt>Sudah diterima</dt><dd>{formatRupiah(item.received_amount)}</dd></div> : null}
 </dl>;
 
-const CommitmentActions = ({ item, arisan, onEdit, onDelete, onReceipt }) => <div className={styles.actions}>
+const CommitmentActions = ({ item, arisan, onEdit, onStop, onReceipt }) => <div className={styles.actions}>
   {arisan && item.can_record_receipt ? <Button variant="primary" onClick={() => onReceipt(item)}>Catat penerimaan</Button> : null}
   {item.can_manage && item.status === "active" ? <Button icon={FiEdit2} onClick={() => onEdit(item)}>Edit</Button> : null}
-  {item.can_delete ? <Button icon={FiTrash2} variant="danger" onClick={() => onDelete(item)}>Hapus</Button> : null}
+  {item.can_delete ? <Button icon={FiArchive} variant="danger" onClick={() => onStop(item)}>Hentikan</Button> : null}
 </div>;
 
-const CommitmentCard = ({ item, onEdit, onDelete, onReceipt, compact = false }) => {
+const CommitmentCard = ({ item, onEdit, onStop, onReceipt, compact = false }) => {
   const arisan = item.commitment_type === "arisan";
   const completed = item.status === "completed";
   const progress = Number(item.progress_percent || 0);
@@ -83,8 +84,8 @@ const CommitmentCard = ({ item, onEdit, onDelete, onReceipt, compact = false }) 
     <div className={styles.amountBlock}><span>{arisan ? "Sisa setoran" : "Sisa pokok"}</span><strong>{formatRupiah(item.current_balance || 0)}</strong><small>{completed ? "Lunas / selesai" : `${progress}% selesai`}</small></div>
     <ProgressBar value={completed ? 100 : progress} />
     {!compact ? <CommitmentMeta item={item} arisan={arisan} /> : null}
-    {item.balance_needs_update ? <CompactNotice tone="info" title="Sisa pokok belum pasti">Pembayaran sebelumnya tercatat tanpa rincian pokok. Pembayaran flat berikutnya akan dihitung otomatis bila nilai awal dan tenor tersedia.</CompactNotice> : null}
-    <CommitmentActions item={item} arisan={arisan} onEdit={onEdit} onDelete={onDelete} onReceipt={onReceipt} />
+    {item.balance_needs_update ? <CompactNotice tone="info" title="Sisa pokok belum pasti">Pembayaran sebelumnya belum memiliki rincian pokok. Periksa kembali sebelum pembayaran berikutnya.</CompactNotice> : null}
+    <CommitmentActions item={item} arisan={arisan} onEdit={onEdit} onStop={onStop} onReceipt={onReceipt} />
   </article>;
 };
 
@@ -102,7 +103,7 @@ const FlatInterestField = ({ form, setForm }) => {
   const estimate = flatLoanEstimate({ originalAmount: form.original_amount, totalInstallments: form.total_installments, annualRatePercent: form.flat_interest_rate });
   return <>
     <label className="field"><span>Bunga flat / tahun (%)</span><input type="number" min="0" step="0.01" inputMode="decimal" value={form.flat_interest_rate} onChange={(event) => setForm((current) => applyFlatEstimate(current, { flat_interest_rate: event.target.value }))} /></label>
-    {estimate.installment > 0 ? <CompactNotice className="form-grid__full" tone="info" title={`Perkiraan cicilan ${formatRupiah(estimate.installment)}`}>Pokok {formatRupiah(estimate.principal)} + bunga flat {formatRupiah(estimate.interest)} per bulan. Nominal cicilan tetap bisa disesuaikan bila angka dari penyedia berbeda.</CompactNotice> : null}
+    {estimate.installment > 0 ? <CompactNotice className="form-grid__full" tone="info" title={`Perkiraan cicilan ${formatRupiah(estimate.installment)}`}>Pokok {formatRupiah(estimate.principal)} · bunga {formatRupiah(estimate.interest)} per bulan.</CompactNotice> : null}
   </>;
 };
 
@@ -122,7 +123,7 @@ const CommitmentForm = ({ form, setForm, accounts, categories, budgets, error, e
     <label className="field"><span>Bayar setiap tanggal *</span><input type="number" min="1" max="31" required value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>
     <AccountPicker value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => planningPatch(current, budgets, { default_account_id }))} />
     <CategoryPicker value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => planningPatch(current, budgets, { category_id }))} />
-    {form.budget_id ? <CompactNotice className="form-grid__full" tone="success" title="Dana sudah cocok dengan Alokasi Dana">Jika dana Alokasi cukup saat jatuh tempo, pembayaran Kewajiban akan dicatat otomatis dan saldo rekening ikut berkurang tanpa tombol Bayar.</CompactNotice> : null}
+    {form.budget_id ? <CompactNotice className="form-grid__full" tone="success" title="Pembayaran otomatis aktif">Dana akan dibayar dari Alokasi saat jatuh tempo jika mencukupi.</CompactNotice> : null}
     {editing && debt ? <CompactNotice className="form-grid__full" tone="info">Nilai awal dan sisa pokok tidak diubah dari form ini agar histori pembayaran tetap konsisten.</CompactNotice> : null}
     {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
   </div>;
@@ -146,8 +147,8 @@ const CommitmentsPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [receipt, setReceipt] = useState(emptyReceipt);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
+  const [stopTarget, setStopTarget] = useState(null);
+  const [stopError, setStopError] = useState(null);
   const accounts = useMemo(() => (bootstrap?.accounts || []).filter((item) => item.status === "active" && item.account_type !== "investment").map((item) => ({ ...item, ...(overview?.accountBalances || []).find((row) => row.account_id === item.account_id) })), [bootstrap?.accounts, overview?.accountBalances]);
   const expenseCategories = useMemo(() => (bootstrap?.categories || []).filter((item) => item.status === "active" && item.transaction_type === "expense"), [bootstrap?.categories]);
   const incomeCategories = useMemo(() => (bootstrap?.categories || []).filter((item) => item.status === "active" && item.transaction_type === "income"), [bootstrap?.categories]);
@@ -198,15 +199,15 @@ const CommitmentsPage = () => {
     setReceipt(emptyReceipt()); notify({ message: `${formatRupiah(receipt.amount)} penerimaan Arisan berhasil dicatat.`, tone: "success", dedupeKey: "commitments:receipt" }); await reloadAll();
   }).catch(() => undefined); };
 
-  const submitDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleteError(null);
+  const submitStop = async () => {
+    if (!stopTarget) return;
+    setStopError(null);
     try {
-      await mutation.run(() => deleteCommitment({ commitment_id: deleteTarget.commitment_id, row_version: deleteTarget.row_version, reason: "Dihapus dari daftar Kewajiban" }, { rowVersion: deleteTarget.row_version }));
-      setDeleteTarget(null);
-      notify({ message: "Kewajiban dihapus dari daftar. Transaksi yang sudah tercatat tetap disimpan.", tone: "success", dedupeKey: "commitments:delete" });
+      await mutation.run(() => archiveCommitment({ commitment_id: stopTarget.commitment_id, row_version: stopTarget.row_version, reason: "Dihentikan dari Kewajiban" }, { rowVersion: stopTarget.row_version }));
+      setStopTarget(null);
+      notify({ message: "Kewajiban dihentikan. Jadwal berikutnya tidak dibuat; transaksi lama tetap tersimpan.", tone: "success", dedupeKey: "commitments:archive" });
       await reloadAll();
-    } catch (error) { setDeleteError(error); }
+    } catch (error) { setStopError(error); }
   };
 
   const resourceGate = commitmentResourceGate(resource);
@@ -215,7 +216,7 @@ const CommitmentsPage = () => {
   const activeItems = items.filter((item) => item.status === "active");
   const completedItems = items.filter((item) => item.status === "completed");
   const openCreate = () => { mutation.reset(); setForm(emptyForm()); setCreateOpen(true); };
-  const cardProps = { onEdit: openEdit, onDelete: (target) => { setDeleteError(null); setDeleteTarget(target); }, onReceipt: (target) => { mutation.reset(); setReceipt({ ...emptyReceipt(), item: target, amount: String(Math.max(0, Number(target.original_amount || 0) - Number(target.received_amount || 0)) || ""), account_id: target.default_account_id || "" }); } };
+  const cardProps = { onEdit: openEdit, onStop: (target) => { setStopError(null); setStopTarget(target); }, onReceipt: (target) => { mutation.reset(); setReceipt({ ...emptyReceipt(), item: target, amount: String(Math.max(0, Number(target.original_amount || 0) - Number(target.received_amount || 0)) || ""), account_id: target.default_account_id || "" }); } };
 
   return <div className={styles.page}>
     <RefreshWarning error={resource.refreshError || budgetResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), budgetResource.reload()])} />
@@ -226,10 +227,10 @@ const CommitmentsPage = () => {
       {completedItems.length ? <section className={styles.completed}><div className={styles.sectionHeading}><div><h3>Selesai</h3><p>Kewajiban yang sudah lunas tetap ringan dan tersimpan sebagai histori.</p></div><span>{completedItems.length}</span></div><div className={styles.grid}>{completedItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} compact {...cardProps} />)}</div></section> : null}
     </> : <EmptyState icon={FiHome} title="Punya cicilan, KPR, pinjaman, atau Arisan?" description="Mulai dari sisa dan cicilan sekarang. Pembayaran lama tidak perlu dibuat ulang; jadwal berikutnya disiapkan otomatis." action={<Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button>} />}
 
-    <Modal open={createOpen} onClose={createGuard.requestClose} discardGuard={createGuard} discardSubject="kewajiban baru" dismissible={!mutation.busy} title="Tambah kewajiban" description="Isi kondisi sekarang. Pembayaran yang sudah lewat tidak perlu dimasukkan satu per satu." footer={<><Button disabled={mutation.busy} onClick={createGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-create-form" loading={mutation.busy}>Simpan {typeLabel(form.commitment_type)}</Button></>}><form id="commitment-create-form" onSubmit={submitCreate}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={expenseCategories} budgets={budgets} error={mutation.error} /></form></Modal>
+    <Modal open={createOpen} onClose={createGuard.requestClose} discardGuard={createGuard} discardSubject="kewajiban baru" dismissible={!mutation.busy} title="Tambah kewajiban" footer={<><Button disabled={mutation.busy} onClick={createGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-create-form" loading={mutation.busy}>Simpan {typeLabel(form.commitment_type)}</Button></>}><form id="commitment-create-form" onSubmit={submitCreate}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={expenseCategories} budgets={budgets} error={mutation.error} /></form></Modal>
     <Modal open={Boolean(edit)} onClose={editGuard.requestClose} discardGuard={editGuard} discardSubject="perubahan kewajiban" dismissible={!mutation.busy} title={edit ? `Edit ${typeLabel(edit.commitment_type)}` : "Edit kewajiban"} description="Perubahan berlaku untuk jadwal berikutnya tanpa mengubah histori pembayaran." footer={<><Button disabled={mutation.busy} onClick={editGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-edit-form" loading={mutation.busy}>Simpan perubahan</Button></>}><form id="commitment-edit-form" onSubmit={submitEdit}>{edit ? <CommitmentForm form={edit} setForm={setEdit} accounts={accounts} categories={expenseCategories} budgets={budgets} error={mutation.error} editing /> : null}</form></Modal>
     <Modal open={Boolean(receipt.item)} onClose={receiptGuard.requestClose} discardGuard={receiptGuard} discardSubject="penerimaan Arisan" dismissible={!mutation.busy} title="Catat penerimaan Arisan" description={receipt.item ? receipt.item.name : ""} footer={<><Button disabled={mutation.busy} onClick={receiptGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-receipt-form" loading={mutation.busy}>Catat penerimaan</Button></>}><form id="commitment-receipt-form" className="form-grid" onSubmit={submitReceipt}><MoneyInput id="commitment-receipt-amount" label="Nominal diterima" value={receipt.amount} onChange={(amount) => setReceipt((current) => ({ ...current, amount }))} required /><AccountPicker label="Masuk ke" value={receipt.account_id} accounts={accounts} onChange={(account_id) => setReceipt((current) => ({ ...current, account_id }))} /><CategoryPicker label="Kategori penerimaan" value={receipt.category_id} categories={incomeCategories} onChange={(category_id) => setReceipt((current) => ({ ...current, category_id }))} /><label className="field"><span>Tanggal diterima *</span><TemporalInput required type="date" value={receipt.transaction_date} onChange={(event) => setReceipt((current) => ({ ...current, transaction_date: event.target.value }))} /></label>{mutation.error ? <div className="notice notice--danger form-grid__full" role="alert">{mutation.error.message}</div> : null}</form></Modal>
-    <ConfirmationModal open={Boolean(deleteTarget)} title="Hapus kewajiban?" description={deleteTarget ? `${deleteTarget.name} tidak lagi tampil di Kewajiban dan jadwal berikutnya dihentikan. Transaksi yang sudah tercatat tetap disimpan agar saldo dan laporan tetap benar.` : ""} confirmLabel="Hapus" busy={mutation.busy} error={deleteError} onCancel={() => !mutation.busy && setDeleteTarget(null)} onConfirm={submitDelete} />
+    <ConfirmationModal open={Boolean(stopTarget)} title="Hentikan kewajiban?" description={stopTarget ? `${stopTarget.name} tidak lagi aktif dan jadwal berikutnya dihentikan. Transaksi yang sudah tercatat tetap disimpan agar saldo dan laporan tetap benar.` : ""} confirmLabel="Hentikan kewajiban" busy={mutation.busy} error={stopError} onCancel={() => !mutation.busy && setStopTarget(null)} onConfirm={submitStop} />
   </div>;
 };
 

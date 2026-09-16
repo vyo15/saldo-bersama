@@ -74,7 +74,7 @@ export const useRecurringPaymentActions = (shared) => {
       const allocated = Boolean(payment.item.kind === "expense" && payment.envelope_period_id);
       setPayment(initialPayment());
       setPaymentState({ status: "idle", error: null, fieldErrors: {} });
-      shared.notify({ message: allocated ? "Aktual berhasil dicatat ke ledger dan sisa alokasi diperbarui." : received ? "Penerimaan rutin berhasil dicatat." : "Pembayaran aktual berhasil dicatat ke ledger." });
+      shared.notify({ message: allocated ? "Pembayaran rutin tercatat dan sisa Alokasi diperbarui." : received ? "Penerimaan rutin berhasil dicatat." : "Pembayaran rutin berhasil dicatat." });
       if (received) setIncomeSuccess({ sourceAccountId: incomeSourceAccountId, suggestedAmount: actualAmount });
       await refreshRecurring({ ...shared, keys: recurringLedgerRefreshKeys });
     }).catch((error) => setPaymentState({ status: "error", error, fieldErrors: {} }));
@@ -91,7 +91,7 @@ export const useRecurringOccurrenceRecovery = (shared) => {
   const [skipError, setSkipError] = useState(null);
   const [restoreOccurrenceTarget, setRestoreOccurrenceTarget] = useState(null);
   const [restoreOccurrenceError, setRestoreOccurrenceError] = useState(null);
-  const skipOccurrence = (reason) => { if (!skipTarget) return Promise.resolve(); setSkipError(null); return skipMutation.run(async () => { await cancelRecurringOccurrence({ occurrence_id: skipTarget.occurrence_id, row_version: skipTarget.row_version, reason }, { rowVersion: skipTarget.row_version }); setSkipTarget(null); shared.notify({ message: "Periode rutin dilewati. Ledger dan saldo tidak berubah.", tone: "info" }); await refreshRecurring({ ...shared, keys: ["recurring.list", "app.initialState"] }); }).catch(setSkipError); };
+  const skipOccurrence = (reason) => { if (!skipTarget) return Promise.resolve(); setSkipError(null); return skipMutation.run(async () => { await cancelRecurringOccurrence({ occurrence_id: skipTarget.occurrence_id, row_version: skipTarget.row_version, reason }, { rowVersion: skipTarget.row_version }); setSkipTarget(null); shared.notify({ message: "Periode rutin dilewati. Saldo tidak berubah.", tone: "info" }); await refreshRecurring({ ...shared, keys: ["recurring.list", "app.initialState"] }); }).catch(setSkipError); };
   const restoreSkippedOccurrence = (reason) => { if (!restoreOccurrenceTarget) return Promise.resolve(); setRestoreOccurrenceError(null); return restoreOccurrenceMutation.run(async () => { await restoreRecurringOccurrence({ occurrence_id: restoreOccurrenceTarget.occurrence_id, row_version: restoreOccurrenceTarget.row_version, reason }, { rowVersion: restoreOccurrenceTarget.row_version }); setRestoreOccurrenceTarget(null); shared.notify({ message: "Periode rutin berhasil dipulihkan.", tone: "info" }); await refreshRecurring({ ...shared, keys: ["recurring.list", "app.initialState"] }); }).catch(setRestoreOccurrenceError); };
   const openSkip = (item) => { setSkipTarget(item); setSkipError(null); };
   const openRestore = (item) => { setRestoreOccurrenceTarget(item); setRestoreOccurrenceError(null); };

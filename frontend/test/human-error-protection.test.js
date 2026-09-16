@@ -74,7 +74,7 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
   assert.match(categories, /dependencies\.transactions/);
   assert.match(categories, /dependencies\.recurring/);
   assert.match(categories, /dependencies\.budgets/);
-  assert.match(categories, /aria-label=\{`Kelola data kategori \$\{category\.name\}`\}/);
+  assert.match(categories, /aria-label=\{`Kelola status kategori \$\{category\.name\}`\}/);
   assert.match(categories, /reasonLabel=\{archiveTarget\?\.preview\.canDeleteUnused \? "Alasan penghapusan" : "Alasan pengarsipan"\}/);
   assert.match(categories, /"archive\.list"/);
   assert.match(transactionApi, /transactions\.restore/);
@@ -105,14 +105,15 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
     assert.match(api, new RegExp(deleteAction.replace(".", "\\.")));
     assert.match(page, /preview\.canDeleteUnused/);
   }
-  assert.match(allocations, /title="Hapus Alokasi\?"/);
+  assert.match(allocations, /title=\{(?:p\.)?archiveTarget\?\.preview\.canDeleteUnused \? "Hapus Alokasi yang belum dipakai\?" : "Arsipkan Alokasi\?"\}/);
   assert.match(allocations, /belum pernah digunakan sehingga dapat dihapus permanen/);
   assert.match(recurring, /Hapus permanen/);
   assert.match(goals, /Hapus permanen/);
   assert.match(budgetsApi, /budgets\.previewLifecycle/);
   assert.match(budgetsApi, /budgets\.remove/);
   assert.match(budgets, /preview\.canDeleteUnused/);
-  assert.match(budgets, /Hapus kebutuhan/);
+  assert.match(budgets, /Hapus permanen/);
+  assert.match(budgets, /Arsipkan kebutuhan/);
   assert.doesNotMatch(budgets, /requestDeleteUnusedBudget|requestArchiveBudget/);
 
   assert.match(allocations, /acknowledgementLabel=\{(?:p\.)?archiveTarget\?\.preview\.canDeleteUnused/);
@@ -371,7 +372,8 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(recurringApi, /recurring\.restoreOccurrence/);
   assert.match(recurring, /Lewati periode/);
   assert.match(recurring, /Pulihkan periode/);
-  assert.match(recurring, /Ledger dan saldo tidak berubah/);
+  assert.match(recurring, /Saldo tidak berubah/);
+  assert.doesNotMatch(recurring, /Ledger dan saldo tidak berubah/);
   assert.match(recurring, /useGuardedMutation/);
 
   assert.match(recurring, /Kelola jadwal/);
@@ -383,14 +385,14 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(recurring, /setKind\(item\.kind === "income"/);
   assert.doesNotMatch(recurring, /const SchedulePanel/);
   assert.match(recurring, /Edit jadwal/);
-  assert.match(recurring, /Kelola data/);
+  assert.match(recurring, /Kelola status/);
   assert.match(recurring, /id: "attention"/);
   assert.match(recurring, /Perlu perhatian/);
   assert.match(recurring, /Lihat tindakan/);
-  assert.match(recurring, /Lengkapi aktual/);
+  assert.match(recurring, /Lengkapi pembayaran|Lengkapi pemasukan/);
   assert.doesNotMatch(recurring, /Periksa auto-debit|Penanda auto-debit/);
-  assert.match(recurring, /Menunggu konfirmasi/);
-  assert.match(recurring, /Konfirmasi aktual/);
+  assert.match(recurring, /Jatuh tempo hari ini/);
+  assert.match(recurring, /Catat transaksi jika sudah terjadi/);
   assert.match(recurring, /ScheduleAttention/);
   assert.match(feedback, /aria-live="polite"/);
   assert.match(feedback, /dedupeKey/);
@@ -466,9 +468,9 @@ test("aksi lifecycle rekening memakai label jujur sebelum server menentukan hapu
     read("src/features/accounts/components/DesktopAccountsWorkspace.jsx"),
     read("src/features/accounts/components/AccountFinancialCard.jsx"),
   ]);
-  assert.match(desktop, />Kelola data<\/Button>/);
-  assert.equal((card.match(/Kelola data/g) || []).length, 1);
-  assert.equal((`${desktop}\n${card}`.match(/Kelola data/g) || []).length, 2);
+  assert.match(desktop, />Kelola status<\/Button>/);
+  assert.equal((card.match(/Kelola status/g) || []).length, 1);
+  assert.equal((`${desktop}\n${card}`.match(/Kelola status/g) || []).length, 2);
   assert.doesNotMatch(`${desktop}\n${card}`, />Arsipkan<\/(?:Button|button)>/);
 });
 

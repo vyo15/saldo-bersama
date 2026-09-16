@@ -6,7 +6,7 @@ export const RESET_DOMAIN_LABELS = freezeLabels([
   ["investmentTrades", "Transaksi saham"],
   ["investmentCorrections", "Koreksi investasi"],
   ["investmentValuations", "Harga investasi"],
-  ["investmentReconciliations", "Pencocokan portfolio"],
+  ["investmentReconciliations", "Pencocokan investasi lama"],
   ["goals", "Target"],
   ["goalMovements", "Mutasi target"],
   ["budgets", "Kebutuhan"],
@@ -23,7 +23,7 @@ export const RESET_DOMAIN_LABELS = freezeLabels([
 export const RESET_MASTER_LABELS = freezeLabels([
   ["accounts", "Rekening"],
   ["categories", "Kategori"],
-  ["investmentPortfolios", "Portfolio investasi"],
+  ["investmentPortfolios", "Data investasi"],
   ["investmentInstruments", "Instrumen investasi"],
 ]);
 
