@@ -96,8 +96,9 @@ test("quick add transaksi mobile selalu tersedia sementara aksi floating desktop
   assert.match(shell, /desktopTransactionQuickAddVisible/);
   assert.match(shell, /<MobileNavigation[\s\S]*quickAddDisabled=\{offline\}/);
   assert.match(mobileNavigation, /className="mobile-navigation__add"/);
-  assert.match(mobileNavigation, /aria-label="Tambah transaksi"/);
-  assert.match(mobileNavigation, /title="Tambah transaksi"/);
+  assert.match(mobileNavigation, /aria-label="Catat transaksi"/);
+  assert.match(mobileNavigation, /title="Catat transaksi"/);
+  assert.match(responsiveCss, /\.mobile-navigation__add::after \{ content: "Catat";/);
   assert.doesNotMatch(mobileNavigation, /quickAddVisible|mobile-navigation--without-add/);
   assert.doesNotMatch(responsiveCss, /mobile-navigation--without-add/);
 });

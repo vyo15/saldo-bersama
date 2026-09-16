@@ -133,7 +133,7 @@ const DesktopAppHeader = ({ isRefreshing, notificationState, user, onLogout }) =
 );
 
 const DesktopFloatingTransactionAdd = ({ visible, offline, onClick }) => visible ? (
-  <button type="button" className="floating-add" data-preload-action="transaction" disabled={offline} onClick={onClick} aria-label="Tambah transaksi"><FiPlus aria-hidden="true" /></button>
+  <button type="button" className="floating-add" data-preload-action="transaction" disabled={offline} onClick={onClick} aria-label="Catat transaksi"><FiPlus aria-hidden="true" /></button>
 ) : null;
 
 const AppContentNotices = ({ dashboardRoute, installPrompt, logoutError, refreshError, syncWarning, refreshAll, manualRefresh }) => (

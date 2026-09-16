@@ -243,17 +243,23 @@ test("mobile task surfaces memakai pressed state dan hover capability-aware", as
   assert.match(settings, /\.settingsListRow:active/);
 });
 
-test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary nol ganda", async () => {
-  const [allocation, allocationDetail, recurringPage, recurringView, recurringSchedule, goals, budgets, investments, transactions] = await Promise.all([
+test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ganda", async () => {
+  const [allocation, allocationDetail, recurringPage, recurringView, recurringSchedule, commitments, goals, goalCards, accounts, categories, budgets, investments, transactions, mobileDashboard, mobileNavigation] = await Promise.all([
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
     read("src/features/recurring/RecurringPage.jsx"),
     read("src/features/recurring/RecurringScheduleView.jsx"),
     read("src/features/recurring/RecurringSchedule.jsx"),
+    read("src/features/commitments/CommitmentsPage.jsx"),
     read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/goals/components/GoalCards.jsx"),
+    read("src/features/accounts/AccountsPage.jsx"),
+    read("src/features/categories/CategoriesPage.jsx"),
     read("src/features/budgets/BudgetDialogLayer.jsx"),
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("src/components/navigation/MobileNavigation.jsx"),
   ]);
 
   assert.match(allocation, /if \(!items\.length\) return null;/);
@@ -272,17 +278,32 @@ test("true-empty planning dan investasi memiliki satu primary CTA tanpa summary 
   assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleFilters/);
   assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleKindTabs/);
 
+  assert.match(commitments, /\{items\.length \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
+  assert.match(commitments, /action=\{<Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button>\}/);
+  assert.equal((commitments.match(/>Tambah kewajiban<\/Button>/g) || []).length, 2, "label boleh ada di dua branch source, tetapi branch header wajib kondisional terhadap items.length");
+
   assert.match(goals, /\{items\.length \? <GoalSummary items=\{items\} \/> : null\}/);
+  assert.match(goals, /const goalHeaderActions = \(\{ canCreate, itemCount, openCreate \}\) => \(canCreate && itemCount/);
+  assert.match(goalCards, /title=\{canCreate \? "Belum ada target keuangan"/);
+  assert.match(goalCards, /action=\{canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
+  assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>\{ownerMode \? "Tambah rekening" : "Ajukan rekening"\}<\/Button> : null\}/);
+  assert.match(accounts, /action=\{emptyState === EMPTY_COLLECTION_STATE\.FILTERED \?[\s\S]*?Tampilkan semua<\/Button> : <Button variant="primary"/);
+  assert.match(categories, /actions=\{items\.length \? <Button[^>]*>\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}<\/Button> : null\}/);
+  assert.match(categories, /emptyState === EMPTY_COLLECTION_STATE\.FILTERED && filtersActive \? <Button onClick=\{clearFilters\}>Reset pencarian<\/Button> : initialEmpty \? <Button variant="primary"/);
   assert.match(budgets, /Sekali bayar/);
   assert.match(budgets, /Berulang/);
   assert.match(budgets, /Nominal menjadi bawaan pada jadwal pembayaran/);
   assert.match(investments, /const assetCount = useMemo/);
   assert.match(investments, /assetCount === 0 \? <EmptyInvestmentState/);
-  assert.match(investments, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
+  assert.match(investments, /actions=\{assetCount > 0 \? <Button[\s\S]*aria-label="Tambah investasi">Tambah investasi<\/Button> : null\}/);
   assert.match(investments, /<EmptyInvestmentState onAdd=\{\(\) => setSetupOpen\(true\)\} \/>/);
   assert.match(transactions, /const showHeaderCreate = !mobileLayout && \(resource\.status !== "ready" \|\| items\.length > 0 \|\| filtersActive\);/);
-  assert.match(transactions, /mobileLayout \? "Gunakan tombol \+ pada navigasi bawah untuk mencatat transaksi pertama\."/);
-  assert.match(transactions, /action=\{filteredEmpty \? <Button[^>]*>Reset filter<\/Button> : mobileLayout \? null : <Button variant="primary" onClick=\{openTransactionComposer\}>Tambah transaksi<\/Button>\}/);
+  assert.match(transactions, /mobileLayout \? "Gunakan tombol Catat pada navigasi bawah untuk mencatat transaksi pertama\."/);
+  assert.match(transactions, /action=\{filteredEmpty \? <Button[^>]*>Reset filter<\/Button> : mobileLayout \? null : <Button variant="primary" onClick=\{openTransactionComposer\}>Catat transaksi<\/Button>\}/);
+  assert.match(mobileDashboard, /Belum ada aktivitas/);
+  assert.match(mobileDashboard, /Gunakan tombol Catat di navigasi bawah untuk mencatat transaksi pertama\./);
+  assert.doesNotMatch(mobileDashboard, /onClick=\{onOpenTransaction\}/);
+  assert.match(mobileNavigation, /aria-label="Catat transaksi"/);
 });
 
 test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB global", async () => {

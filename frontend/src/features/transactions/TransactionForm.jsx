@@ -62,7 +62,7 @@ const resolveTransactionPresentation = ({
     };
   }
 
-  const resolvedTitle = title || (transaction ? "Edit transaksi" : "Tambah transaksi");
+  const resolvedTitle = title || (transaction ? "Edit transaksi" : "Catat transaksi");
   const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
   const progressLabel = submitting ? submittingLabel || "Menyimpan..." : outcomeUnknown ? "Coba lagi data yang sama" : idleSubmitLabel;
   const modalTitle = (

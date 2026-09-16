@@ -175,6 +175,7 @@ Minimum contract:
 - Modal: buka → tutup/batal → buka lagi serta modal A → B → kembali tidak meninggalkan overlay/history/body-lock/focus stale.
 - Browser Back menutup modal lebih dulu bila contract modal berlaku.
 - True-empty hanya memiliki satu primary next action dan tidak membuat record palsu.
+- Regression action-ownership mencakup Kewajiban, Investasi, Alokasi Dana, Jadwal Rutin, Target, Rekening, Kategori, Transaksi, dan Dashboard: header create tidak boleh tampil bersamaan dengan create CTA true-empty; filtered-empty hanya menawarkan reset/show-all; mobile transaksi memakai quick-add global `Catat` tanpa CTA lokal kedua.
 - Detail object dengan sub-item erat memakai hierarchy section/list, bukan tumpukan card setara tanpa kebutuhan.
 
 ### Microcopy

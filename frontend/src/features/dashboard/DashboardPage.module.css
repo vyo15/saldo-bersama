@@ -132,6 +132,12 @@
 .mobile-empty-action__copy strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .mobile-empty-action__copy small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
 .mobile-empty-action__hint { color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+.mobile-empty-guidance { width: 100%; min-height: 64px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 16px; display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 10px; background: color-mix(in srgb, var(--surface) 78%, transparent); color: var(--text); }
+.mobile-empty-guidance__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: var(--primary); background: var(--primary-soft); }
+.mobile-empty-guidance__icon svg { width: 18px; height: 18px; }
+.mobile-empty-guidance > span:last-child { min-width: 0; display: grid; gap: 3px; }
+.mobile-empty-guidance strong { font-size: 12px; }
+.mobile-empty-guidance small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
 
 .mobile-transaction-list { overflow: hidden; border: 1px solid var(--border); border-radius: 17px; background: var(--surface); }
 .mobile-transaction-item { width: 100%; min-height: 60px; padding: 9px 12px; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; color: inherit; background: transparent; text-align: left; cursor: pointer; }

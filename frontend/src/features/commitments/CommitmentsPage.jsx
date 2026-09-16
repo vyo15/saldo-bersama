@@ -130,6 +130,12 @@ const CommitmentForm = ({ form, setForm, accounts, categories, budgets, error, e
 
 const receiptDraft = (receipt) => ({ amount: receipt.amount, account_id: receipt.account_id, category_id: receipt.category_id, transaction_date: receipt.transaction_date });
 
+const commitmentResourceGate = (resource) => {
+  if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat Kewajiban…" />;
+  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  return null;
+};
+
 const CommitmentsPage = () => {
   const resource = useApiResource("commitments.list", {});
   const budgetResource = useApiResource("budgets.list", { period: currentMonthInJakarta() });
@@ -203,21 +209,22 @@ const CommitmentsPage = () => {
     } catch (error) { setDeleteError(error); }
   };
 
-  if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat Kewajiban…" />;
-  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  const resourceGate = commitmentResourceGate(resource);
+  if (resourceGate) return resourceGate;
   const items = resource.data?.items || [];
   const activeItems = items.filter((item) => item.status === "active");
   const completedItems = items.filter((item) => item.status === "completed");
+  const openCreate = () => { mutation.reset(); setForm(emptyForm()); setCreateOpen(true); };
   const cardProps = { onEdit: openEdit, onDelete: (target) => { setDeleteError(null); setDeleteTarget(target); }, onReceipt: (target) => { mutation.reset(); setReceipt({ ...emptyReceipt(), item: target, amount: String(Math.max(0, Number(target.original_amount || 0) - Number(target.received_amount || 0)) || ""), account_id: target.default_account_id || "" }); } };
 
   return <div className={styles.page}>
     <RefreshWarning error={resource.refreshError || budgetResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), budgetResource.reload()])} />
-    <div className={styles.header}><div><h2>Cicilan &amp; Kewajiban</h2><p>Pantau KPR, cicilan, pinjaman, dan Arisan sampai selesai. Dana yang sudah cocok dengan Alokasi dapat tercatat otomatis saat jatuh tempo.</p></div><Button variant="primary" icon={FiPlus} onClick={() => { mutation.reset(); setForm(emptyForm()); setCreateOpen(true); }}>Tambah kewajiban</Button></div>
+    <div className={styles.header}><div><h2>Cicilan &amp; Kewajiban</h2><p>{items.length ? "Pantau sisa, jatuh tempo, dan pembayaran kewajiban yang masih berjalan." : "Catat kewajiban yang masih berjalan dari kondisi sekarang."}</p></div>{items.length ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button> : null}</div>
     {items.length ? <>
       <CommitmentSummary items={items} />
       {activeItems.length ? <section className={styles.grid}>{activeItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} {...cardProps} />)}</section> : <EmptyState icon={FiCheckCircle} title="Semua kewajiban selesai" description="Belum ada cicilan atau kewajiban aktif yang perlu dipantau." />}
       {completedItems.length ? <section className={styles.completed}><div className={styles.sectionHeading}><div><h3>Selesai</h3><p>Kewajiban yang sudah lunas tetap ringan dan tersimpan sebagai histori.</p></div><span>{completedItems.length}</span></div><div className={styles.grid}>{completedItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} compact {...cardProps} />)}</div></section> : null}
-    </> : <EmptyState icon={FiHome} title="Punya cicilan, KPR, pinjaman, atau Arisan?" description="Catat kondisi sekarang saja. Pembayaran lama tidak perlu dibuat ulang dan jadwal berikutnya akan disiapkan otomatis." action={<Button variant="primary" icon={FiPlus} onClick={() => { mutation.reset(); setForm(emptyForm()); setCreateOpen(true); }}>Tambah kewajiban</Button>} />}
+    </> : <EmptyState icon={FiHome} title="Punya cicilan, KPR, pinjaman, atau Arisan?" description="Mulai dari sisa dan cicilan sekarang. Pembayaran lama tidak perlu dibuat ulang; jadwal berikutnya disiapkan otomatis." action={<Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button>} />}
 
     <Modal open={createOpen} onClose={createGuard.requestClose} discardGuard={createGuard} discardSubject="kewajiban baru" dismissible={!mutation.busy} title="Tambah kewajiban" description="Isi kondisi sekarang. Pembayaran yang sudah lewat tidak perlu dimasukkan satu per satu." footer={<><Button disabled={mutation.busy} onClick={createGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-create-form" loading={mutation.busy}>Simpan {typeLabel(form.commitment_type)}</Button></>}><form id="commitment-create-form" onSubmit={submitCreate}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={expenseCategories} budgets={budgets} error={mutation.error} /></form></Modal>
     <Modal open={Boolean(edit)} onClose={editGuard.requestClose} discardGuard={editGuard} discardSubject="perubahan kewajiban" dismissible={!mutation.busy} title={edit ? `Edit ${typeLabel(edit.commitment_type)}` : "Edit kewajiban"} description="Perubahan berlaku untuk jadwal berikutnya tanpa mengubah histori pembayaran." footer={<><Button disabled={mutation.busy} onClick={editGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-edit-form" loading={mutation.busy}>Simpan perubahan</Button></>}><form id="commitment-edit-form" onSubmit={submitEdit}>{edit ? <CommitmentForm form={edit} setForm={setEdit} accounts={accounts} categories={expenseCategories} budgets={budgets} error={mutation.error} editing /> : null}</form></Modal>

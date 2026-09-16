@@ -7,6 +7,7 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () => {
   const [
     reconciliation,
+    commitments,
     investmentsPage,
     investmentOverview,
     investmentHoldingDetail,
@@ -15,10 +16,12 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     accountStyles,
     dashboard,
     dashboardQuickActions,
+    mobileNavigation,
     settingsNavigation,
     settingsLayout,
   ] = await Promise.all([
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
+    read("src/features/commitments/CommitmentsPage.jsx"),
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/investments/InvestmentOverview.jsx"),
     read("src/features/investments/InvestmentHoldingDetail.jsx"),
@@ -27,11 +30,15 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     read("src/features/accounts/components/MobileAccountsExperience.module.css"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     read("src/features/dashboard/components/DashboardQuickActions.jsx"),
+    read("src/components/navigation/MobileNavigation.jsx"),
     read("src/features/settings/settingsNavigation.js"),
     read("src/features/settings/SettingsLayout.jsx"),
   ]);
 
   assert.match(reconciliation, /account\.account_type !== "investment"/);
+
+  assert.match(commitments, /\{items\.length \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
+  assert.match(commitments, /action=\{<Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button>\}/);
 
   assert.match(investmentOverview, /aria-label=\{`Buka rincian \$\{holding\.ticker \|\| "aset"\}`\}/);
   assert.match(investmentOverview, /role="button"/);
@@ -41,7 +48,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.match(investmentHoldingDetail, />Jual<\/Button>/);
 
   assert.match(investmentsPage, /assetCount === 0 \? <EmptyInvestmentState/);
-  assert.match(investmentsPage, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
+  assert.match(investmentsPage, /actions=\{assetCount > 0 \? <Button[\s\S]*aria-label="Tambah investasi">Tambah investasi<\/Button> : null\}/);
 
   assert.match(allocationDetail, /onAdjustAllocation\(item, summary\.gap\)/);
   assert.doesNotMatch(allocationDetail, /showStandardAdjustAction|>Atur dana<\/Button>/);
@@ -64,6 +71,9 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   }
   assert.doesNotMatch(dashboardQuickActions, /label: "Kategori"|label: "Jadwal Rutin"/);
   assert.match(dashboard, /<DashboardQuickActions \/>/);
+  assert.match(dashboard, /Belum ada aktivitas/);
+  assert.doesNotMatch(dashboard, /onClick=\{onOpenTransaction\}/);
+  assert.match(mobileNavigation, /aria-label="Catat transaksi"/);
 
   assert.match(settingsNavigation, /label: "Notifikasi perangkat"/);
   assert.match(settingsLayout, /title: "Notifikasi perangkat"/);

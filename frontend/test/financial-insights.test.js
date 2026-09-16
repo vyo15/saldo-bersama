@@ -305,7 +305,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.doesNotMatch(desktop, /shared-quick-actions/);
   assert.match(desktop, /Masuk bulan ini/);
   assert.match(desktop, /Keluar bulan ini/);
-  assert.equal((desktop.match(/>Tambah transaksi<\/Button>/g) || []).length, 1);
+  assert.equal((desktop.match(/>Catat transaksi<\/Button>/g) || []).length, 1);
   assert.match(mobile, /Dana Tersedia/);
   assert.match(mobile, /Sisa uang yang aman dipakai setelah kebutuhan dan tagihan/);
   assert.match(mobile, /Selisih/);
@@ -368,7 +368,7 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
   assert.doesNotMatch(setup, /label: "Target"/);
 });
 
-test("dashboard empty state tampil sebagai aksi tambah dan membuka workflow canonical", async () => {
+test("dashboard empty state menjaga satu aksi canonical dan mobile transaksi memakai quick-add global", async () => {
   const [mobile, desktop, page, allocations, recurring, goals, css] = await Promise.all([
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     readDesktopDashboardSource(),
@@ -404,9 +404,11 @@ test("dashboard empty state tampil sebagai aksi tambah dan membuka workflow cano
   assert.match(mobile, /const MobileEmptyAction/);
   assert.match(mobile, /dashboardNeedEmptyAction\(overview\)/);
   assert.match(mobile, /dashboardRecurringEmptyAction\(overview\)/);
-  assert.match(mobile, /Catat transaksi/);
+  assert.match(mobile, /Belum ada aktivitas/);
+  assert.match(mobile, /Gunakan tombol Catat di navigasi bawah/);
+  assert.doesNotMatch(mobile, /onClick=\{onOpenTransaction\}/);
   assert.doesNotMatch(mobile, /mobile-compact-empty|Belum ada kebutuhan aktif|Belum ada jadwal mendatang|Belum ada aktivitas bulan ini/);
-  assert.match(page, /onOpenTransaction=\{openTransactionComposer\}/);
+  assert.doesNotMatch(page, /<MobileFinanceDashboard[\s\S]*onOpenTransaction=\{openTransactionComposer\}/);
   assert.match(desktop, /shared-widget-empty-action/);
   assert.match(desktop, /dashboardGoalEmptyAction\(overview\)/);
   assert.match(allocations, /"create-allocation", "add-need", "choose-need-allocation"/);

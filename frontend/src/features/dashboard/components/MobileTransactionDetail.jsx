@@ -28,7 +28,7 @@ const MobileTransactionDetail = ({
     footer={transaction ? (
       <>
         <ButtonLink className={dashboardClass("mobile-detail-link")} to="/transaksi" onClick={onClose} icon={FiExternalLink}>Lihat semua</ButtonLink>
-        <Button variant="primary" icon={FiPlus} onClick={onOpenTransaction}>Tambah transaksi</Button>
+        <Button variant="primary" icon={FiPlus} onClick={onOpenTransaction}>Catat transaksi</Button>
       </>
     ) : null}
   >

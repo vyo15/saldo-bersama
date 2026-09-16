@@ -86,7 +86,7 @@ export const TransactionComposerProvider = ({ children }) => {
   return (
     <TransactionComposerContext.Provider value={value}>
       {children}
-      {composer.open ? <Suspense fallback={<LazyActionFallback surface="modal" title="Tambah transaksi" label="Menyiapkan form transaksi..." />}><TransactionForm
+      {composer.open ? <Suspense fallback={<LazyActionFallback surface="modal" title="Catat transaksi" label="Menyiapkan form transaksi..." />}><TransactionForm
         open
         onClose={closeComposer}
         initialType={composer.initialType}

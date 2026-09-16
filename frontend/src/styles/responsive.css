@@ -71,8 +71,10 @@
   .mobile-navigation__add:active { transform: scale(.96); }
   .mobile-navigation a svg,
   .mobile-navigation__more svg { width: var(--mobile-navigation-icon-size); height: var(--mobile-navigation-icon-size); }
-  .mobile-navigation__add { width: var(--mobile-navigation-add-size); height: var(--mobile-navigation-add-size); min-height: var(--mobile-navigation-add-size); justify-self: center; align-self: start; margin-top: calc(var(--mobile-navigation-add-lift) * -1); border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 28%, transparent); touch-action: manipulation; transition: box-shadow var(--motion-control) var(--motion-easing), transform var(--motion-control) var(--motion-easing); }
+  .mobile-navigation__add { width: var(--mobile-navigation-add-size); height: var(--mobile-navigation-add-size); min-height: var(--mobile-navigation-add-size); justify-self: center; align-self: start; margin-top: calc(var(--mobile-navigation-add-lift) * -1); position: relative; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 28%, transparent); touch-action: manipulation; transition: box-shadow var(--motion-control) var(--motion-easing), transform var(--motion-control) var(--motion-easing); }
   .mobile-navigation__add svg { width: var(--mobile-navigation-icon-size); height: var(--mobile-navigation-icon-size); }
+  .mobile-navigation__add::after { content: "Catat"; position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%); color: var(--primary); font-size: var(--mobile-navigation-label-size); font-weight: var(--font-weight-semibold); line-height: 1; white-space: nowrap; }
+  .mobile-navigation__add:disabled::after { color: var(--muted); }
 
   .app-shell--accounts {
     --accounts-mobile-background:

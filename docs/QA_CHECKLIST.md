@@ -50,6 +50,8 @@
 - [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
 - [ ] Modal diuji buka → tutup/batal → buka lagi; Browser Back/focus/body scroll lock tidak stale.
 - [ ] True-empty hanya memiliki satu primary next action; filtered-empty menawarkan reset/show-all, bukan membuat entity baru.
+- [ ] Create CTA pada true-empty tidak muncul bersamaan di header/toolbar dan empty state. Kewajiban/Investasi/collection lain hanya mengembalikan header create setelah data pertama ada.
+- [ ] Mobile global `Catat` tetap khusus transaksi dan tidak diduplikasi oleh CTA transaksi lokal pada true-empty Dashboard/Transaksi.
 - [ ] Detail object dengan sub-item erat memakai section/list hierarchy, bukan tumpukan card setara tanpa kebutuhan.
 - [ ] Satu fakta edukatif tidak diulang pada description, helper, card, dan notice di surface yang sama.
 - [ ] Warning finansial/destructive/recovery/error/conflict tetap dekat dengan dampaknya dan tidak disembunyikan demi minimalisme.

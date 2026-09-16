@@ -198,7 +198,7 @@ const TransactionResourceStates = ({ resource, items, filtersActive, openTransac
     {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
     {resource.status === "loading" ? <NativePageSkeleton kind="transactions" variant="panel" label="Memuat transaksi…" /> : null}
     {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
-    {resource.status === "ready" && !items.length ? <EmptyState className={`${styles.emptyState} ${filteredEmpty ? styles.emptyStateFiltered : ""}`} title={filteredEmpty ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filteredEmpty ? "Ubah atau reset filter untuk melihat transaksi lain." : mobileLayout ? "Gunakan tombol + pada navigasi bawah untuk mencatat transaksi pertama." : "Tambahkan transaksi pertama untuk mulai mencatat aktivitas keuangan."} action={filteredEmpty ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : mobileLayout ? null : <Button variant="primary" onClick={openTransactionComposer}>Tambah transaksi</Button>} /> : null}
+    {resource.status === "ready" && !items.length ? <EmptyState className={`${styles.emptyState} ${filteredEmpty ? styles.emptyStateFiltered : ""}`} title={filteredEmpty ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filteredEmpty ? "Ubah atau reset filter untuk melihat transaksi lain." : mobileLayout ? "Gunakan tombol Catat pada navigasi bawah untuk mencatat transaksi pertama." : "Catat transaksi pertama untuk mulai merekam aktivitas keuangan."} action={filteredEmpty ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : mobileLayout ? null : <Button variant="primary" onClick={openTransactionComposer}>Catat transaksi</Button>} /> : null}
   </>;
 };
 
@@ -276,7 +276,7 @@ const TransactionsPage = () => {
 
   return <div className={`page-stack ${styles.page}`}>
     <RefreshWarning error={resource.refreshError || reportResource.refreshError} onRetry={() => Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])])} />
-    <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} help="Catat pemasukan, pengeluaran, dan transfer di sini. Perubahan saldo baru dianggap selesai setelah server mengonfirmasi transaksi." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Tambah transaksi</Button> : null} />
+    <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} help="Catat pemasukan, pengeluaran, dan transfer di sini. Perubahan saldo baru dianggap selesai setelah server mengonfirmasi transaksi." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Catat transaksi</Button> : null} />
     <MemberTransferRequests role={bootstrap?.user?.role} resource={transferRequests} accounts={bootstrap?.accounts} />
     {mobileLayout ? (
       <Suspense fallback={<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan riwayat transaksi…" />}>

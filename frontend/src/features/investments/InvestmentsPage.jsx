@@ -129,8 +129,8 @@ const InvestmentsPage = () => {
     <RefreshWarning error={overview.refreshError} onRetry={() => overview.reload().catch(() => {})} />
     <PageHeader
       title="Investasi"
-      description="Catat saham dan reksa dana langsung sebagai aset, tanpa wadah broker atau portfolio di tampilan."
-      actions={<Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => setSetupOpen(true)} aria-label="Tambah investasi">Tambah investasi</Button>}
+      description={assetCount ? "Pantau nilai dan aktivitas saham serta reksa dana yang Anda catat." : undefined}
+      actions={assetCount > 0 ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => setSetupOpen(true)} aria-label="Tambah investasi">Tambah investasi</Button> : null}
       help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak memindahkan saldo rekening, dan tidak mengambil harga pasar live."
     />
     {assetCount === 0 ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>

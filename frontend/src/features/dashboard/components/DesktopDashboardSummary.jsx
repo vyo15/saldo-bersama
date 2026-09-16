@@ -32,7 +32,7 @@ export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggl
       >
         {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
       </button>
-      <Button variant="primary" icon={FiPlus} onClick={onOpenTransaction}>Tambah transaksi</Button>
+      <Button variant="primary" icon={FiPlus} onClick={onOpenTransaction}>Catat transaksi</Button>
     </div>
   </header>
 );

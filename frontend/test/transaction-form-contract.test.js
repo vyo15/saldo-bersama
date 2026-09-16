@@ -101,13 +101,13 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   ]);
   assert.match(form, /invalidate\(\["transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly"/);
   assert.match(page, /useTransactionComposer/);
-  assert.match(page, /onClick=\{openTransactionComposer\}>Tambah transaksi/);
+  assert.match(page, /onClick=\{openTransactionComposer\}>Catat transaksi/);
   assert.doesNotMatch(page, /formOpen|setFormOpen/, "halaman Transaksi tidak boleh memiliki composer create kedua");
   assert.match(page, /<TransactionForm open=\{Boolean\(editingTransaction\)\} transaction=\{editingTransaction\}/, "form lokal hanya untuk edit transaksi");
   assert.match(page, /"budgets\.list"/, "cancel/restore transaksi juga harus menginvalidasi pemakaian anggaran");
   assert.match(hook, /subscribeToInvalidation\(action/);
   assert.match(composer, /const TransactionForm = lazy\(\(\) => loadActionModule\("transaction"\)\)/, "composer global tetap memuat form transaksi sebagai action chunk lazy");
-  assert.match(composer, /composer\.open \? <Suspense fallback=\{<LazyActionFallback surface="modal" title="Tambah transaksi" label="Menyiapkan form transaksi\.\.\." \/>\}>/);
+  assert.match(composer, /composer\.open \? <Suspense fallback=\{<LazyActionFallback surface="modal" title="Catat transaksi" label="Menyiapkan form transaksi\.\.\." \/>\}>/);
   assert.match(composer, /compose/);
   assert.match(composer, /beforeunload/);
   assert.match(composer, /onDirtyChange=\{setComposerDirty\}/);

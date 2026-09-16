@@ -47,7 +47,7 @@
   ],
   "shortcuts": [
     {
-      "name": "Tambah transaksi",
+      "name": "Catat transaksi",
       "short_name": "Tambah",
       "url": "/transaksi?compose=1",
       "icons": [
