@@ -22,7 +22,7 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compa
   assert.match(allocationPage, /Kebutuhan/);
   assert.match(allocationPage, /Sekali bayar/);
   assert.match(allocationPage, /Bisa dipakai beberapa kali/);
-  assert.match(allocationPage, /Rutin · mengikuti jadwal pembayaran/);
+  assert.match(allocationPage, /Rutin/);
   assert.match(allocationPage, /createPlanningPaymentSchedule/);
   assert.match(allocationPage, /recurring\.createRule/);
   assert.match(api, /budgets\.upsert/);
@@ -80,6 +80,13 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /<h3 id="allocation-needs-title">Kebutuhan<\/h3>/);
   assert.match(detail, /recurringScheduleForBudget/);
   assert.match(detail, /Catat pembayaran|Lihat jadwal/);
+  assert.match(detail, /status\.attention \? <span/);
+  assert.match(detail, /"Fleksibel"/);
+  assert.match(detail, /Belum digunakan/);
+  assert.match(detail, /Kelola kebutuhan \${budget\.name}/);
+  assert.match(detail, />Edit kebutuhan<\/Button>/);
+  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) auto/);
+  assert.doesNotMatch(styles, /repeat\(3, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(detail, /Jadwal Terkait/);
   assert.doesNotMatch(detail, /AllocationScheduleContinuation/);
   assert.match(detail, /Kelola dana/);

@@ -210,12 +210,9 @@
   white-space: nowrap;
 }
 
-.allocation-needs-add{
-  justify-self: end;
-}
-
 .allocation-needs-add {
   width: min(100%, 22rem);
+  justify-self: end;
 }
 
 .allocation-needs-gap {
@@ -255,23 +252,33 @@
   min-height: 44px;
 }
 
-.allocation-limit-list{
+.allocation-limit-list {
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   background: var(--surface-elevated);
 }
 
 .allocation-limit-row {
+  position: relative;
   padding: 14px;
   border-bottom: 1px solid var(--border);
   display: grid;
-  gap: 10px;
+  gap: 11px;
 }
 
-.allocation-limit-row:last-child{
+.allocation-limit-row:first-child {
+  border-radius: 15px 15px 0 0;
+}
+
+.allocation-limit-row:last-child {
   border-bottom: 0;
+  border-radius: 0 0 15px 15px;
+}
+
+.allocation-limit-row:only-child {
+  border-radius: 15px;
 }
 
 .allocation-limit-row__main {
@@ -289,10 +296,10 @@
   gap: 11px;
 }
 
-.allocation-limit-row__identity > div {
+.allocation-limit-row__content {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 5px;
 }
 
 .allocation-limit-row__icon {
@@ -311,7 +318,16 @@
   height: 18px;
 }
 
-.allocation-limit-row__identity strong {
+.allocation-limit-row__title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.allocation-limit-row__title > strong {
+  min-width: 0;
   overflow: hidden;
   color: var(--text);
   font-size: var(--font-size-body-sm);
@@ -319,58 +335,161 @@
   white-space: nowrap;
 }
 
-.allocation-limit-row__identity small {
+.allocation-limit-row__pattern {
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.allocation-limit-row__balance {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-wrap: wrap;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.35;
 }
 
-.allocation-limit-row__identity small :global(.money) {
+.allocation-limit-row__balance > strong {
+  color: var(--text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.allocation-limit-row__balance :global(.money) {
   color: inherit;
   font-size: inherit;
 }
 
-.allocation-limit-row__main > span {
+.allocation-limit-row__status {
   flex: 0 0 auto;
   padding: 5px 8px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--positive) 10%, var(--surface));
-  color: var(--positive);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  color: var(--warning);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   white-space: nowrap;
 }
 
-.allocation-limit-row__main > span.is-warning {
-  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
-  color: var(--warning);
-}
-
-.allocation-limit-row__main > span.is-danger {
+.allocation-limit-row__status.is-danger {
   background: color-mix(in srgb, var(--negative) 10%, var(--surface));
   color: var(--negative);
 }
 
-.allocation-limit-row > :global(.progress) {
+.allocation-limit-row__progress {
+  display: grid;
+  gap: 5px;
+}
+
+.allocation-limit-row__progress-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.3;
+}
+
+.allocation-limit-row__progress-meta :global(.money) {
+  color: inherit;
+  font-size: inherit;
+}
+
+.allocation-limit-row__progress-meta > strong {
+  color: var(--text-soft);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.allocation-limit-row__progress > :global(.progress) {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.allocation-limit-row > :global(.progress) > span {
+.allocation-limit-row__progress > :global(.progress) > span {
   display: none;
 }
 
 .allocation-limit-row__actions {
+  position: relative;
   min-width: 0;
   display: flex;
   align-items: stretch;
   gap: 7px;
-  flex-wrap: wrap;
+}
+
+.allocation-limit-row__primary-action {
+  min-width: 0;
 }
 
 .allocation-limit-row__actions :global(.button) {
   min-height: 44px;
   padding-inline: 11px;
   font-size: var(--font-size-xs);
+}
+
+.allocation-limit-row__menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.allocation-limit-row__menu > summary {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  list-style: none;
+}
+
+.allocation-limit-row__menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.allocation-limit-row__menu > summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.allocation-limit-row__menu > summary svg {
+  width: 18px;
+  height: 18px;
+}
+
+.allocation-limit-row__menu-items {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  width: max-content;
+  min-width: 10.5rem;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-control);
+}
+
+.allocation-limit-row__menu-items :global(.button) {
+  width: 100%;
+  justify-content: flex-start;
+  border-color: transparent;
+  background: transparent;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -386,7 +505,8 @@
 
   .allocation-detail-back,
   .allocation-needs-gap :global(.button),
-  .allocation-limit-row__actions :global(.button){
+  .allocation-limit-row__actions :global(.button),
+  .allocation-limit-row__menu > summary {
     min-height: var(--mobile-control-height);
   }
 
@@ -418,13 +538,13 @@
 
   .allocation-detail-panel__header p,
   .allocation-needs-gap > div > span,
-  .allocation-limit-row__identity small,
-  .allocation-limit-row__main > span,
-  .allocation-limit-row__actions :global(.button){
+  .allocation-limit-row__balance,
+  .allocation-limit-row__status,
+  .allocation-limit-row__actions :global(.button) {
     font-size: var(--font-size-xs);
   }
 
-  .allocation-needs-add{
+  .allocation-needs-add {
     width: 100%;
     justify-self: stretch;
     justify-content: center;
@@ -446,17 +566,21 @@
 
   .allocation-limit-row__actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .allocation-limit-row__actions :global(.button){
+  .allocation-limit-row__primary-action {
     width: 100%;
-    min-width: 0;
   }
 
   .allocation-limit-row__actions :global(.button) {
+    min-width: 0;
     padding-inline: 8px;
     justify-content: center;
+  }
+
+  .allocation-limit-row__menu-items :global(.button) {
+    justify-content: flex-start;
   }
 }
 
@@ -489,10 +613,10 @@
   }
 
   .allocation-limit-row__actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .allocation-limit-row__actions :global(.button) span{
+  .allocation-limit-row__primary-action span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -268,8 +268,9 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Tampilkan semua Alokasi<\/Button> : canCreate \?/);
   assert.doesNotMatch(allocation, /canMove|openMove|allocation-move-action/);
 
-  assert.match(allocationDetail, /canManage && linkedBudgets\.length \? <Button[^>]*onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button>/);
+  assert.match(allocationDetail, /linkedBudgets\.length \? <>[\s\S]*\{canManage \? <Button className=\{allocationClass\("allocation-needs-add"\)\} variant="secondary" icon=\{FiPlus\} onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button> : null\}[\s\S]*<\/> : <EmptyState/);
   assert.match(allocationDetail, /title="Belum ada kebutuhan"[\s\S]*action=\{canManage \? <Button[^>]*onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button>/);
+  assert.equal((allocationDetail.match(/>Tambah kebutuhan<\/Button>/g) || []).length, 2, "CTA Tambah kebutuhan boleh ada pada branch daftar dan empty state, tetapi hanya satu branch dirender pada satu waktu");
 
   assert.match(recurringPage, /canManagePlanning && allItems\.length \? <Button[^>]*onClick=\{rules\.openCreate\}>Tambah pembayaran rutin<\/Button>/);
   assert.match(recurringView, /\{allItems\.length \? <ScheduleSummary items=\{allItems\}/);

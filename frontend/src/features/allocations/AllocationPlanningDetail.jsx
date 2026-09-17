@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useNavigate } from "react-router";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
-import { FiArrowLeft, FiArrowRight, FiBell, FiEdit2, FiPlus, FiSliders } from "react-icons/fi";
+import { FiArrowLeft, FiArrowRight, FiBell, FiEdit2, FiMoreHorizontal, FiPlus, FiSliders } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import Card from "../../components/common/Card.jsx";
@@ -64,8 +64,11 @@ const BudgetLimitActions = ({ budget, schedule, canManage, onRecord, onOpenSched
   const hasPrimaryAction = Boolean(schedule || onRecord);
   if (!hasPrimaryAction && !canManage) return null;
   return <div className={allocationClass("allocation-limit-row__actions")}>
-    {schedule ? <Button variant={schedule.canPay ? "primary" : undefined} onClick={() => onOpenSchedule(schedule.item, schedule.canPay)}>{schedule.canPay ? "Bayar" : "Lihat jadwal"}</Button> : onRecord ? <Button variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat pengeluaran</Button> : null}
-    {canManage ? <Button icon={FiEdit2} onClick={() => onEdit(budget)}>Edit</Button> : null}
+    {schedule ? <Button className={allocationClass("allocation-limit-row__primary-action")} variant={schedule.canPay ? "primary" : undefined} onClick={() => onOpenSchedule(schedule.item, schedule.canPay)}>{schedule.canPay ? "Bayar" : "Lihat jadwal"}</Button> : onRecord ? <Button className={allocationClass("allocation-limit-row__primary-action")} variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat pengeluaran</Button> : null}
+    {canManage ? <details className={allocationClass("allocation-limit-row__menu")}>
+      <summary aria-label={`Kelola kebutuhan ${budget.name}`}><FiMoreHorizontal aria-hidden="true" /></summary>
+      <div className={allocationClass("allocation-limit-row__menu-items")}><Button icon={FiEdit2} onClick={() => onEdit(budget)}>Edit kebutuhan</Button></div>
+    </details> : null}
   </div>;
 };
 
@@ -78,18 +81,25 @@ const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onR
   const remaining = Math.max(0, amount - used);
   const patternLabel = schedule?.label
     || (budget.recording_mode === "fixed_once" ? "Sekali bayar"
-      : budget.recording_mode === "recurring" ? "Rutin · mengikuti jadwal pembayaran"
-        : "Bisa dipakai beberapa kali");
+      : budget.recording_mode === "recurring" ? "Rutin"
+        : "Fleksibel");
   const recordAction = budget.recording_mode === "fixed_once" && remaining <= 0 ? null : onRecord;
+  const usedPercent = Math.max(0, Math.round(status.usedPercent));
   return <div className={allocationClass("allocation-limit-row")} data-budget-id={budget.budget_id}>
     <div className={allocationClass("allocation-limit-row__main")}>
       <div className={allocationClass("allocation-limit-row__identity")}>
         <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" /></span>
-        <div><strong>{budget.name}</strong><small><Money value={remaining} /> tersisa dari <Money value={amount} /></small><small>{patternLabel}</small></div>
+        <div className={allocationClass("allocation-limit-row__content")}>
+          <div className={allocationClass("allocation-limit-row__title")}><strong>{budget.name}</strong><span className={allocationClass("allocation-limit-row__pattern")}>{patternLabel}</span></div>
+          <p className={allocationClass("allocation-limit-row__balance")}><strong>Sisa <Money value={remaining} /></strong><span>dari <Money value={amount} /></span></p>
+        </div>
       </div>
-      <span className={allocationClass(tone)}>{status.label}</span>
+      {status.attention ? <span className={allocationClass(`allocation-limit-row__status ${tone}`)}>{status.label}</span> : null}
     </div>
-    <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${Math.round(status.usedPercent)}%`} />
+    <div className={allocationClass("allocation-limit-row__progress")}>
+      <div className={allocationClass("allocation-limit-row__progress-meta")}><span>{used > 0 ? <>Terpakai <Money value={used} /></> : "Belum digunakan"}</span><strong>{usedPercent}%</strong></div>
+      <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${usedPercent}%`} />
+    </div>
     <BudgetLimitActions budget={budget} schedule={schedule} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} />
   </div>;
 };
@@ -130,7 +140,6 @@ const AllocationNeedsPanel = ({
       <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Atur nama, kategori, nominal, dan pola kebutuhan yang menggunakan Alokasi Dana ini.</p></div>
       {linkedBudgets.length ? <span className={allocationClass("allocation-detail-section__count")}>{linkedBudgets.length} item</span> : null}
     </div>
-    {canManage && linkedBudgets.length ? <Button className={allocationClass("allocation-needs-add")} variant="secondary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
     {linkedBudgets.length ? <>
       <AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} />
       <div className={allocationClass("allocation-limit-list")}>{linkedBudgets.map((budget) => <BudgetLimitRow
@@ -144,6 +153,7 @@ const AllocationNeedsPanel = ({
         onOpenSchedule={openSchedule}
         onEdit={editBudget}
       />)}</div>
+      {canManage ? <Button className={allocationClass("allocation-needs-add")} variant="secondary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
     </> : <EmptyState
       variant="inline"
       title="Belum ada kebutuhan"
