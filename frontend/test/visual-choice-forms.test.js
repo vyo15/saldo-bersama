@@ -123,13 +123,14 @@ test("ownership identity picker stays compact until expanded inline", async () =
 });
 
 test("inline account picker stays compact, searchable, and expands in the same form", async () => {
-  const [source, css, allocations, funding, accounts, goals, recurring, reconciliation, transaction, transfer, budgets] = await Promise.all([
+  const [source, css, allocations, funding, accounts, goals, goalExecution, recurring, reconciliation, transaction, transfer, budgets] = await Promise.all([
     read("components/common/InlineSelectionPicker.jsx"),
     read("components/common/InlineSelectionPicker.module.css"),
     read("features/allocations/AllocationDialogLayer.jsx"),
     read("features/allocations/AllocationFundingFlow.jsx"),
     read("features/accounts/components/AccountEditorDialogs.jsx"),
     read("features/goals/components/GoalDialogs.jsx"),
+    read("features/allocations/AllocationGoalExecutionModal.jsx"),
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/reconciliations/components/ReconciliationForm.jsx"),
     read("features/transactions/MobileTransactionFields.jsx"),
@@ -165,7 +166,8 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(accounts, /badge: `\$\{userRoleLabel\(member\.role\)\}/);
   assert.doesNotMatch(accounts, /name="account-ownership"/);
   assert.match(goals, /<InlineSelectionPicker[\s\S]*label="Rekening tujuan"/);
-  assert.match(goals, /<InlineSelectionPicker label=\{label\}/);
+  assert.doesNotMatch(goals, /GoalMovementModal|label="Rekening sumber"/);
+  assert.match(goalExecution, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.match(recurring, /<InlineSelectionPicker label=\{label\}/);
   assert.match(reconciliation, /<InlineSelectionPicker[\s\S]*label="Rekening"/);
   assert.match(transaction, /<InlineSelectionPicker[\s\S]*label=\{label\}/);

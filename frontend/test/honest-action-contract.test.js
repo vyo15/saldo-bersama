@@ -35,16 +35,18 @@ test("lifecycle action membedakan hard-delete, archive, dan penghentian Kewajiba
   assert.doesNotMatch(commitmentApi, /deleteCommitment/);
 });
 
-test("Target memakai kata kerja Setor dan Tarik tanpa membocorkan mekanisme transfer internal", async () => {
+test("Target menjaga aksi uang satu arah melalui Alokasi tanpa tombol Setor atau Tarik langsung", async () => {
   const source = await readMany([
     "src/features/goals/GoalsPage.jsx",
     "src/features/goals/components/GoalCards.jsx",
     "src/features/goals/components/GoalDialogs.jsx",
   ]);
 
-  assert.match(source, /Setor dana/);
-  assert.match(source, /Tarik dana/);
-  assert.doesNotMatch(source, /Tambah dana target|Simpan transfer/);
+  assert.match(source, /Buka Alokasi/);
+  assert.match(source, /Target hanya memantau rencana dan progres/);
+  assert.doesNotMatch(source, />\s*Setor dana\s*</);
+  assert.doesNotMatch(source, />\s*Tarik dana\s*</);
+  assert.doesNotMatch(source, /Tambah dana target|Simpan transfer|GoalMovementModal/);
 });
 
 test("side effect dan model akses dijelaskan sebelum user mengambil tindakan", async () => {

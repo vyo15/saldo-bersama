@@ -83,18 +83,20 @@ test("dana darurat memakai copy suportif yang tidak mengubah kondisi finansial m
   assert.doesNotMatch(`${presentation.title} ${presentation.message}`, /boros|saldo tinggal|jangan sampai putus/i);
 });
 
-test("Goal achievement tampil setelah server sukses, finite, non-blocking, dan tidak menggandakan toast proses", async () => {
-  const [page, component, css, feedback] = await Promise.all([
-    source("src/features/goals/GoalsPage.jsx"),
+test("Goal achievement tampil setelah server sukses di Alokasi, finite, non-blocking, dan tidak menggandakan toast proses", async () => {
+  const [workspace, execution, component, css, feedback] = await Promise.all([
+    source("src/features/allocations/AllocationsWorkspace.jsx"),
+    source("src/features/allocations/AllocationGoalExecutionModal.jsx"),
     source("src/features/goals/components/GoalAchievementPostcard.jsx"),
     source("src/features/goals/components/GoalAchievementPostcard.module.css"),
     source("src/components/feedback/FeedbackProvider.jsx"),
   ]);
 
-  assert.match(page, /const result = await requestMoveGoal/);
-  assert.match(page, /movementType === "deposit" && result\?\.goal/);
-  assert.match(page, /setAchievement\(\{ goalBefore, goalAfter: result\.goal, amount \}\)/);
-  assert.match(page, /GoalAchievementPostcard/);
+  assert.match(execution, /const result = await moveGoalFromAllocation/);
+  assert.match(execution, /goalAfter: result\?\.goal \|\| null/);
+  assert.match(execution, /onSuccess\?\.\(\{ goalBefore: goal, goalAfter:/);
+  assert.match(workspace, /setGoalAchievement\(achievement\)/);
+  assert.match(workspace, /GoalAchievementPostcard/);
   assert.match(component, /role="status"/);
   assert.match(component, /aria-live="polite"/);
   assert.match(component, /setTimeout\(\(\) => onClose\?\.\(\), duration\)/);

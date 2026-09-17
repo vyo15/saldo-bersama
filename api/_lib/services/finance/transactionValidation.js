@@ -62,8 +62,8 @@ export const assertCanModify = (context, transaction) => {
   if (transaction.transaction_type === "adjustment" && context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat diubah Administrator.", 403);
   if (context.actor.role !== "owner" && (!actorCanOperateTransaction(context.actor, transaction) || transaction.created_by !== context.actor.user_id)) throw appError("FORBIDDEN", "Member hanya dapat mengubah transaksi miliknya pada rekening yang dapat dioperasikan.", 403);
   if (transaction.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Koreksi transaksi rutin harus dilakukan melalui menu Tagihan.", 409, { occurrenceId: transaction.recurring_occurrence_id });
-  if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi target harus dilakukan melalui menu Target.", 409, { goalId: transaction.goal_id });
-  if (transaction.commitment_id) throw appError("LINKED_COMMITMENT_TRANSACTION", "Koreksi transaksi Komitmen harus dilakukan melalui menu Komitmen/Jadwal Rutin.", 409, { commitmentId: transaction.commitment_id });
+  if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi Target harus dilakukan dari transaksi sumber atau Alokasi agar tidak membuat mutasi ganda.", 409, { goalId: transaction.goal_id });
+  if (transaction.commitment_id) throw appError("LINKED_COMMITMENT_TRANSACTION", "Koreksi transaksi Kewajiban harus dilakukan dari transaksi sumber atau Alokasi/Jadwal terkait agar tidak membuat pembayaran ganda.", 409, { commitmentId: transaction.commitment_id });
 };
 
 const assertEnvelopeCompatibility = (row, context, transaction) => {

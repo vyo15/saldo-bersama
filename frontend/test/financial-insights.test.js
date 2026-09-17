@@ -115,7 +115,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));
   }
-  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Rapikan transaksi", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Setor dana target"]) {
+  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Rapikan transaksi", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Buka Alokasi"]) {
     assert.match(alertWorkflow, new RegExp(label));
   }
   assert.match(alertWorkflow, /safeTargetPath/);
@@ -140,9 +140,10 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(recurringActions, /consumeAttention\(\)/);
   assert.match(recurringActions, /const openPayment = useCallback/);
   assert.match(goals, /attentionGoalId/);
-  assert.match(goals, /openMovement\(goal, "deposit"\)/);
-  assert.match(goals, /const openMovement = useCallback/);
-  assert.match(goals, /consumeAttention\(\)/);
+  assert.match(goals, /navigate\("\/perencanaan\/kantong"/);
+  assert.match(goals, /workflowAction: "goal-plan"/);
+  assert.match(goals, /replace: true/);
+  assert.doesNotMatch(goals, /openMovement\(goal, "deposit"\)|GoalMovementModal/);
   assert.match(budgets, /attentionBudgetId/);
   assert.match(budgets, /attentionBudgetId/);
   assert.match(budgets, /Kebutuhan/);
@@ -155,15 +156,21 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(allocations, /Kembalikan ke dana tersedia|Tetap di alokasi berikutnya/);
 });
 
-test("target menampilkan sisa, kebutuhan setoran bulanan, status proyeksi, dan blocker movement dari backend", async () => {
-  const goals = await goalFeatureSource();
+test("target menampilkan sisa dan proyeksi, sedangkan eksekusi dana tetap satu arah melalui Alokasi", async () => {
+  const [goals, allocationExecution] = await Promise.all([
+    goalFeatureSource(),
+    source("src/features/allocations/AllocationGoalExecutionModal.jsx"),
+  ]);
   assert.match(goals, /remaining_amount/);
   assert.match(goals, /required_monthly_amount/);
   assert.match(goals, /pace_status/);
-  assert.match(goals, /withdraw_blocked_reason/);
-  assert.match(goals, /Penarikan belum tersedia/);
+  assert.match(goals, /Buka Alokasi/);
+  assert.match(goals, /Target hanya memantau rencana dan progres/);
   assert.match(goals, /const canCreate = creationAccounts\.length > 0/);
-  assert.match(goals, /transferRoutes: bootstrap\?\.transferRoutes \|\| \[\]/);
+  assert.doesNotMatch(goals, /withdraw_blocked_reason|GoalMovementModal|Setor dana ke target|Tarik dana dari target/);
+  assert.match(allocationExecution, /moveGoalFromAllocation/);
+  assert.match(allocationExecution, /movement_type: "deposit"/);
+  assert.match(allocationExecution, /directRoute\(transferRoutes/);
 });
 
 test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis", async () => {
@@ -328,7 +335,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
 
 test("continuity flow memakai prefill dan action existing tanpa mutation finansial otomatis", async () => {
   const [allocations, overlay, funding, notices, goals, recurring, reconciliation, periods, setup] = await Promise.all([
-    source("src/features/allocations/AllocationsWorkspace.jsx"),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/allocationWorkflowNavigation.js")]).then((parts) => parts.join("\n")),
     source("src/features/allocations/AllocationOverlayLayer.jsx"),
     source("src/features/allocations/AllocationFundingFlow.jsx"),
     source("src/features/allocations/AllocationNoticesLayer.jsx"),
@@ -374,7 +381,7 @@ test("dashboard empty state menjaga satu aksi canonical dan mobile transaksi mem
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     readDesktopDashboardSource(),
     source("src/features/dashboard/DashboardPage.jsx"),
-    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/allocationDashboardWorkflow.js")]).then((parts) => parts.join("\n")),
+    Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/allocationWorkflowNavigation.js"), source("src/features/allocations/allocationDashboardWorkflow.js")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringPage.jsx"),
     source("src/features/goals/GoalsPage.jsx"),
     source("src/features/dashboard/DashboardPage.module.css"),

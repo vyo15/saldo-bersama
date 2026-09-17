@@ -9,3 +9,5 @@ export const previewEnvelopeRuleLifecycle = (payload, options) => apiClient.requ
 export const archiveEnvelopeRule = (payload, options) => apiClient.request("envelopes.archiveRule", payload, options);
 export const deleteUnusedEnvelopeRule = (payload, options) => apiClient.request("envelopes.deleteUnusedRule", payload, options);
 export const reverseEnvelopeMovement = (payload, options) => apiClient.request("envelopes.reverseMovement", payload, options);
+
+export const moveGoalFromAllocation = (payload, options) => apiClient.request("goals.move", payload, options);

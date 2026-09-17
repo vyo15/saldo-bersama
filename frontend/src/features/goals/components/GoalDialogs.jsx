@@ -59,31 +59,6 @@ const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => {
   </>;
 };
 
-const MovementAccountField = ({ label, value, accounts, onChange }) => {
-  const selected = accounts.find((account) => account.account_id === value) || null;
-  return <InlineSelectionPicker label={label} required value={value} onChange={onChange} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} helper={selected ? `Tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)}` : ""} />;
-};
-
-const GoalMovementModal = ({ movement, setMovement, movementState, movementMutation, accounts, submitMovement }) => {
-  const submitting = movementState.status === "submitting";
-  const close = () => !submitting && setMovement((current) => ({ ...current, goal: null }));
-  const guard = useUnsavedChangesGuard({ open: Boolean(movement.goal), value: movement, onClose: close, blocked: submitting });
-  const deposit = movement.movement_type === "deposit";
-  return <>
-  <Modal open={Boolean(movement.goal)} onClose={guard.requestClose} discardGuard={guard} discardSubject="mutasi target" dismissible={!submitting} title={deposit ? "Setor dana ke target" : "Tarik dana dari target"} description={movement.goal ? movement.goal.name : ""} footer={<><Button type="button" disabled={submitting} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="goal-movement-form" variant="primary" loading={movementMutation.busy} disabled={submitting}>{deposit ? "Setor dana" : "Tarik dana"}</Button></>}>
-    <form id="goal-movement-form" className="form-grid" onSubmit={submitMovement}>
-      {movement.goal ? <CompactNotice tone="info" title={deposit ? "Sisa target" : "Dana target tersedia"} className="form-grid__full"><Money value={deposit ? movement.goal.remaining_amount : movement.goal.current_amount} /></CompactNotice> : null}
-      <MoneyInput id="goal-movement-amount" label="Nominal" value={movement.amount} onChange={(value) => setMovement((current) => ({ ...current, amount: value }))} />
-      <MovementAccountField label="Rekening sumber" value={movement.source_account_id} accounts={accounts} onChange={(source_account_id) => setMovement((current) => ({ ...current, source_account_id }))} />
-      <MovementAccountField label="Rekening tujuan" value={movement.destination_account_id} accounts={accounts} onChange={(destination_account_id) => setMovement((current) => ({ ...current, destination_account_id }))} />
-      <label className="field"><span>Tanggal *</span><TemporalInput required type="date" value={movement.transaction_date} onChange={(event) => setMovement((current) => ({ ...current, transaction_date: event.target.value }))} /></label>
-      <label className="field form-grid__full"><span>Alasan *</span><input required maxLength="180" value={movement.reason} onChange={(event) => setMovement((current) => ({ ...current, reason: event.target.value }))} /></label>
-      {movementState.error ? <div className="notice notice--danger form-grid__full" role="alert">{movementState.error.message}</div> : null}
-    </form>
-  </Modal>
-  </>;
-};
-
 const GoalStatusConfirmation = ({ statusTarget, statusState, setStatusTarget, applyGoalStatus }) => {
   const completing = statusTarget?.nextStatus === "completed";
   return <ConfirmationModal
@@ -91,7 +66,7 @@ const GoalStatusConfirmation = ({ statusTarget, statusState, setStatusTarget, ap
     title={completing ? "Selesaikan target?" : "Buka kembali target?"}
     description={statusTarget ? (completing
       ? `${statusTarget.goal.name} sudah mencapai nominal tujuan. Mutasi target akan dikunci tanpa mengubah saldo rekening.`
-      : `${statusTarget.goal.name} akan kembali aktif. Jika progress masih 100%, penambahan dana tetap terkunci sampai nominal target dinaikkan; penarikan dana tetap tersedia.`) : ""}
+      : `${statusTarget.goal.name} akan kembali aktif. Jika progress masih 100%, sesuaikan nominal target bila rencana berubah. Eksekusi dana tetap dilakukan melalui Alokasi.`) : ""}
     confirmLabel={completing ? "Selesaikan target" : "Buka kembali"}
     tone="primary"
     busy={statusState.status === "submitting"}
@@ -101,11 +76,10 @@ const GoalStatusConfirmation = ({ statusTarget, statusState, setStatusTarget, ap
   />;
 };
 
-const GoalConfirmations = ({ reverseTarget, reverseState, setReverseTarget, reverseLastMovement, archiveTarget, archiveState, setArchiveTarget, applyGoalLifecycle, statusTarget, statusState, setStatusTarget, applyGoalStatus }) => <>
+const GoalConfirmations = ({ archiveTarget, archiveState, setArchiveTarget, applyGoalLifecycle, statusTarget, statusState, setStatusTarget, applyGoalStatus }) => <>
   <GoalStatusConfirmation statusTarget={statusTarget} statusState={statusState} setStatusTarget={setStatusTarget} applyGoalStatus={applyGoalStatus} />
-  <ConfirmationModal open={Boolean(reverseTarget)} title="Batalkan mutasi target terakhir?" description={reverseTarget ? `${reverseTarget.name} · transfer terkait juga akan dibatalkan tanpa menghapus audit.` : ""} confirmLabel="Batalkan mutasi" reasonLabel="Alasan pembatalan" requireReason busy={reverseState.status === "submitting"} error={reverseState.error} onCancel={() => reverseState.status !== "submitting" && setReverseTarget(null)} onConfirm={reverseLastMovement} />
   <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus target yang belum dipakai?" : "Arsipkan target?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.goal.name} masih Rp0 dan belum pernah memiliki mutasi maupun transaksi terkait.` : `${archiveTarget.goal.name} sudah memiliki histori. Target tidak dihapus permanen dan riwayat tetap tersimpan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan target"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={archiveTarget?.preview.canDeleteUnused ? "Saya memahami target ini belum pernah digunakan dan penghapusan bersifat permanen." : ""} busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyGoalLifecycle}>{archiveTarget ? <div className="notice notice--info">Progress saat ini <Money value={archiveTarget.preview.currentAmount} /> · mutasi historis {archiveTarget.preview.dependencies.movements} · transaksi terkait {archiveTarget.preview.dependencies.transactions}.</div> : null}</ConfirmationModal>
 </>;
 
 
-export { GoalConfirmations, GoalCreateModal, GoalEditModal, GoalMovementModal };
+export { GoalConfirmations, GoalCreateModal, GoalEditModal };

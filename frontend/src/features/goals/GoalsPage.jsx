@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useLocation, useNavigate } from "react-router";
 import { FiPlus } from "react-icons/fi";
@@ -16,22 +16,16 @@ import {
   archiveGoal as requestArchiveGoal,
   createGoal as requestCreateGoal,
   deleteUnusedGoal as requestDeleteUnusedGoal,
-  moveGoal as requestMoveGoal,
   previewGoalLifecycle,
-  reverseGoalMovement,
   updateGoal as requestUpdateGoal,
 } from "./goals.api.js";
 import { assertPositiveRupiah } from "../../domain/money.js";
-import { todayInJakarta } from "../../domain/dates.js";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
 
 const GoalDialogLayer = lazy(() => import("./components/GoalDialogLayer.jsx"));
-const GoalAchievementPostcard = lazy(() => import("./components/GoalAchievementPostcard.jsx"));
 
 const emptyGoalForm = () => ({ name: "", goal_type: "savings", target_amount: "", target_date: "", account_id: "", priority: "normal" });
-const emptyMovement = () => ({ goal: null, movement_type: "deposit", amount: "", source_account_id: "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "" });
 const refreshGoalKeys = Object.freeze(["goals.list", "reports.monthly", "app.initialState"]);
-const goalLedgerRefreshKeys = Object.freeze(["goals.list", "transactions.list", "accounts.list", "reports.monthly", "app.initialState"]);
 
 const useGoalCreation = ({ resource, refreshOverview, invalidate, notify, onCreated }) => {
   const createMutation = useGuardedMutation();
@@ -60,84 +54,11 @@ const useGoalCreation = ({ resource, refreshOverview, invalidate, notify, onCrea
   return { createMutation, message, form, setForm, open, openCreate, closeCreate, createGoal };
 };
 
-const movementError = (movement, amount) => {
-  if (!movement.source_account_id || !movement.destination_account_id) return new Error("Rekening sumber dan tujuan wajib dipilih.");
-  if (movement.source_account_id === movement.destination_account_id) return new Error("Rekening sumber dan tujuan harus berbeda.");
-  if (movement.movement_type === "deposit" && amount > Number(movement.goal?.remaining_amount || 0)) return new Error("Nominal melebihi sisa target.");
-  if (movement.movement_type === "withdrawal" && amount > Number(movement.goal?.current_amount || 0)) return new Error("Nominal melebihi dana target yang tersedia.");
-  return null;
-};
-
-
-const transferRouteFor = (routes, sourceAccountId, destinationAccountId) => (routes || []).find((route) =>
-  route.source_account_id === sourceAccountId && route.destination_account_id === destinationAccountId
-) || null;
-
-const goalMovementDraft = ({ goal, movementType, accounts, transferRoutes, prefill }) => {
-  const withdrawal = movementType === "withdrawal";
-  if (withdrawal) return { goal, movement_type: movementType, amount: "", source_account_id: goal.account_id || "", destination_account_id: "", transaction_date: todayInJakarta(), reason: "Penggunaan dana target" };
-  const compatible = accounts.filter((account) => account.account_id !== goal.account_id
-    && transferRouteFor(transferRoutes, account.account_id, goal.account_id)?.mode === "direct");
-  const preferredSource = prefill?.sourceAccountId ? compatible.find((account) => account.account_id === prefill.sourceAccountId) || null : null;
-  const suggested = Math.max(0, Number(prefill?.suggestedAmount || 0));
-  const remaining = Math.max(0, Number(goal.remaining_amount || 0));
-  const sourceAvailable = Math.max(0, Number(preferredSource?.available_balance ?? preferredSource?.balance ?? 0));
-  const allowed = preferredSource ? Math.min(suggested, remaining, sourceAvailable) : 0;
-  return { goal, movement_type: movementType, amount: allowed > 0 ? String(allowed) : "", source_account_id: preferredSource?.account_id || "", destination_account_id: goal.account_id || "", transaction_date: todayInJakarta(), reason: "Kontribusi target" };
-};
-
-const useGoalMovement = ({ accounts, transferRoutes, resource, refreshOverview, invalidate, notify }) => {
-  const movementMutation = useGuardedMutation();
-  const [movement, setMovement] = useState(emptyMovement);
-  const [movementState, setMovementState] = useState({ status: "idle", error: null });
-  const [achievement, setAchievement] = useState(null);
-  const compatibleMovementAccounts = movement.goal
-    ? accounts.filter((account) => {
-      const sourceId = movement.movement_type === "withdrawal" ? movement.goal.account_id : account.account_id;
-      const destinationId = movement.movement_type === "withdrawal" ? account.account_id : movement.goal.account_id;
-      return account.account_id !== movement.goal.account_id
-        && transferRouteFor(transferRoutes, sourceId, destinationId)?.mode === "direct";
-    })
-    : accounts;
-  const openMovement = useCallback((goal, movement_type, prefill = null) => {
-    setAchievement(null);
-    setMovement(goalMovementDraft({ goal, movementType: movement_type, accounts, transferRoutes, prefill }));
-    setMovementState({ status: "idle", error: null });
-  }, [accounts, transferRoutes]);
-  const submitMovement = (event) => {
-    event.preventDefault();
-    if (!movement.goal) return;
-    let amount;
-    try { amount = assertPositiveRupiah(movement.amount); } catch (error) { setMovementState({ status: "error", error }); return; }
-    const error = movementError(movement, amount);
-    if (error) { setMovementState({ status: "error", error }); return; }
-    setMovementState({ status: "submitting", error: null });
-    return movementMutation.run(async () => {
-      const movementType = movement.movement_type;
-      const goalBefore = movement.goal;
-      const result = await requestMoveGoal({ goal_id: goalBefore.goal_id, movement_type: movementType, amount, source_account_id: movement.source_account_id, destination_account_id: movement.destination_account_id, transaction_date: movement.transaction_date, reason: movement.reason }, {});
-      setMovement((current) => ({ ...current, goal: null }));
-      setMovementState({ status: "idle", error: null });
-      if (movementType === "deposit" && result?.goal) {
-        setAchievement({ goalBefore, goalAfter: result.goal, amount });
-      } else {
-        notify({ message: movementType === "deposit" ? "Setoran target berhasil." : "Penarikan target berhasil.", tone: "success", dedupeKey: "goals:move" });
-      }
-      invalidate(goalLedgerRefreshKeys);
-      await Promise.allSettled([resource.reload(), refreshOverview()]);
-    }).catch((caught) => setMovementState({ status: "error", error: caught }));
-  };
-  const dismissAchievement = useCallback(() => setAchievement(null), []);
-  return { movementMutation, movement, setMovement, movementState, achievement, dismissAchievement, compatibleMovementAccounts, openMovement, submitMovement };
-};
-
 const useGoalLifecycle = ({ resource, refreshOverview, invalidate, notify }) => {
   const [editGoal, setEditGoal] = useState(null);
   const [editState, setEditState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
-  const [reverseTarget, setReverseTarget] = useState(null);
-  const [reverseState, setReverseState] = useState({ status: "idle", error: null });
   const [statusTarget, setStatusTarget] = useState(null);
   const [statusState, setStatusState] = useState({ status: "idle", error: null });
   const refresh = async (keys) => { invalidate(keys); await Promise.allSettled([resource.reload(), refreshOverview()]); };
@@ -181,17 +102,6 @@ const useGoalLifecycle = ({ resource, refreshOverview, invalidate, notify }) => 
       await refresh(refreshGoalKeys);
     } catch (error) { setArchiveState({ status: "error", error }); }
   };
-  const reverseLastMovement = async (reason) => {
-    if (!reverseTarget?.last_movement_id) return;
-    setReverseState({ status: "submitting", error: null });
-    try {
-      await reverseGoalMovement({ goal_movement_id: reverseTarget.last_movement_id, row_version: reverseTarget.last_movement_row_version, reason }, { rowVersion: reverseTarget.last_movement_row_version });
-      setReverseTarget(null);
-      setReverseState({ status: "idle", error: null });
-      notify({ message: "Mutasi target terakhir dan transfer terkait berhasil dibatalkan.", tone: "success", dedupeKey: "goals:reverse" });
-      await refresh(goalLedgerRefreshKeys);
-    } catch (error) { setReverseState({ status: "error", error }); }
-  };
   const openStatusChange = (goal, nextStatus) => { setStatusTarget({ goal, nextStatus }); setStatusState({ status: "idle", error: null }); };
   const applyGoalStatus = async () => {
     if (!statusTarget) return;
@@ -202,7 +112,7 @@ const useGoalLifecycle = ({ resource, refreshOverview, invalidate, notify }) => 
       setStatusTarget(null);
       setStatusState({ status: "idle", error: null });
       notify({
-        message: nextStatus === "completed" ? "Target selesai. Mutasi target dikunci dan saldo rekening tidak berubah." : "Target dibuka kembali. Penarikan dana tersedia; setoran baru menunggu sisa target kembali positif.",
+        message: nextStatus === "completed" ? "Target selesai. Progress dikunci dan saldo rekening tidak berubah." : "Target dibuka kembali. Rencana dapat dilanjutkan melalui Alokasi.",
         tone: "success",
         dedupeKey: nextStatus === "completed" ? "goals:complete" : "goals:reopen",
       });
@@ -210,8 +120,7 @@ const useGoalLifecycle = ({ resource, refreshOverview, invalidate, notify }) => 
     } catch (error) { setStatusState({ status: "error", error }); }
   };
   const openEdit = (goal) => { setEditGoal({ ...goal }); setEditState({ status: "idle", error: null }); };
-  const openReverse = (goal) => { setReverseTarget(goal); setReverseState({ status: "idle", error: null }); };
-  return { editGoal, setEditGoal, editState, saveGoal, archiveTarget, setArchiveTarget, archiveState, applyGoalLifecycle, reverseTarget, setReverseTarget, reverseState, reverseLastMovement, statusTarget, setStatusTarget, statusState, applyGoalStatus, openStatusChange, openEdit, openArchive, openReverse };
+  return { editGoal, setEditGoal, editState, saveGoal, archiveTarget, setArchiveTarget, archiveState, applyGoalLifecycle, statusTarget, setStatusTarget, statusState, applyGoalStatus, openStatusChange, openEdit, openArchive };
 };
 
 
@@ -225,27 +134,16 @@ const goalHeaderActions = ({ canCreate, itemCount, openCreate }) => (canCreate &
   ? <Button variant="primary" icon={FiPlus} data-preload-action="goalDialog" onClick={openCreate}>Buat target</Button>
   : null);
 
-const useGoalAttention = ({ attention, attentionGoalId, consumeAttention, items, resourceStatus, openMovement, attentionHandled }) => {
-  useEffect(() => {
-    if (attentionHandled.current || !attentionGoalId || resourceStatus !== "ready") return;
-    attentionHandled.current = true;
-    const goal = items.find((item) => item.goal_id === attentionGoalId);
-    if (goal && attention?.attentionAction === "deposit" && goal.can_deposit) openMovement(goal, "deposit");
-    consumeAttention();
-  }, [attention?.attentionAction, attentionGoalId, attentionHandled, consumeAttention, items, openMovement, resourceStatus]);
-};
-
 const GoalsPage = () => {
-  const { attention, consumeAttention } = useDashboardAttentionState();
+  const { attention } = useDashboardAttentionState();
   const location = useLocation();
   const navigate = useNavigate();
-  const attentionHandled = useRef(false);
   const resource = useApiResource("goals.list");
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
   const { notify } = useFeedback();
   const [reminderTarget, setReminderTarget] = useState(null);
-  const [workflowPrefill, setWorkflowPrefill] = useState(null);
   const [setupCreated, setSetupCreated] = useState(false);
+  const [allocationIntent, setAllocationIntent] = useState(null);
   const accounts = goalPageAccounts(bootstrap, overview);
   const operableAccounts = accounts.filter((item) => item.can_transact !== false);
   const creationAccounts = operableAccounts.filter((item) => item.owner_scope === "shared");
@@ -253,11 +151,8 @@ const GoalsPage = () => {
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
   const shared = { resource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation({ ...shared, onCreated: () => { if (location.state?.setupFlow) setSetupCreated(true); } });
-  const movement = useGoalMovement({ ...shared, accounts: operableAccounts, transferRoutes: bootstrap?.transferRoutes || [] });
-  const { openMovement } = movement;
   const lifecycle = useGoalLifecycle(shared);
   const attentionGoalId = String(attention?.attentionGoalId || "");
-  useGoalAttention({ attention, attentionGoalId, consumeAttention, items, resourceStatus: resource.status, openMovement, attentionHandled });
   useEffect(() => {
     if (resource.status !== "ready" || location.state?.workflowAction !== "create-goal") return;
     if (canCreate) creation.openCreate();
@@ -266,31 +161,38 @@ const GoalsPage = () => {
   }, [canCreate, creation, location.hash, location.pathname, location.search, location.state, navigate, notify, resource.status]);
   useEffect(() => {
     if (resource.status !== "ready" || location.state?.workflowAction !== "goal-deposit") return;
-    const nextPrefill = { sourceAccountId: String(location.state.sourceAccountId || ""), suggestedAmount: Number(location.state.suggestedAmount || 0) };
-    setWorkflowPrefill(nextPrefill);
-    const eligible = items.filter((item) => item.status === "active" && item.can_deposit);
-    if (eligible.length === 1) openMovement(eligible[0], "deposit", nextPrefill);
+    setAllocationIntent({
+      sourceAccountId: String(location.state.sourceAccountId || ""),
+      suggestedAmount: Number(location.state.suggestedAmount || 0),
+    });
     navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-  }, [items, location.hash, location.pathname, location.search, location.state, navigate, openMovement, resource.status]);
+  }, [location.hash, location.pathname, location.search, location.state, navigate, resource.status]);
+  useEffect(() => {
+    if (resource.status !== "ready" || !attentionGoalId) return;
+    const goal = items.find((item) => item.goal_id === attentionGoalId && item.status === "active");
+    if (!goal) {
+      notify({ message: "Target aktif yang perlu perhatian tidak ditemukan.", tone: "warning", dedupeKey: "goal:attention-unavailable" });
+      navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+      return;
+    }
+    navigate("/perencanaan/kantong", {
+      replace: true,
+      state: { workflowSource: "goal-attention", workflowAction: "goal-plan", goalId: goal.goal_id, suggestedAmount: Number(attention?.attentionSuggestedAmount || goal.required_monthly_amount || 0) },
+    });
+  }, [attention?.attentionSuggestedAmount, attentionGoalId, items, location.hash, location.pathname, location.search, navigate, notify, resource.status]);
   if (resource.status === "loading") return <NativePageSkeleton kind="goals" label="Memuat target keuangan…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   const openReminder = (goal) => setReminderTarget({ entityType: "goal", entityId: goal.goal_id, name: goal.name, suggestedDate: goal.target_date });
-  const openMovementWithPrefill = (goal, type) => { movement.openMovement(goal, type, type === "deposit" ? workflowPrefill : null); if (type === "deposit" && workflowPrefill) setWorkflowPrefill(null); };
-  const actions = { openMovement: openMovementWithPrefill, openReverse: lifecycle.openReverse, openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder };
+  const actions = { openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder, allocationIntent };
   const headerActions = goalHeaderActions({ canCreate, itemCount: items.length, openCreate: creation.openCreate });
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
-    <PageHeader title="Target" help="Pantau uang yang sedang dikumpulkan untuk tujuan tertentu." actions={headerActions} />{setupCreated ? <div><CompactNotice tone="success" title="Target sudah siap." role="status">Target berdiri terpisah dari Alokasi Dana dan dipakai untuk dana yang masih dikumpulkan menuju tujuan.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Catat transaksi</Button></div></div> : null}{attentionGoalId ? <CompactNotice tone="info" title="Target ini tertinggal dari rencana." role="status">Setor hanya jika saldo rekening sumber cukup. Form setoran dibuka otomatis saat target masih menerima setoran.</CompactNotice> : null}{workflowPrefill ? <CompactNotice tone="success" title="Dana tersedia siap diarahkan ke Target." role="status">Pilih Target lalu tekan Setor dana. Rekening sumber dan nominal akan diprefill bila masih valid.</CompactNotice> : null}
+    <PageHeader title="Target" help="Pantau uang yang sedang dikumpulkan untuk tujuan tertentu." actions={headerActions} />{setupCreated ? <div><CompactNotice tone="success" title="Target sudah siap." role="status">Target siap dipantau. Menyisihkan dana tetap dilakukan melalui Alokasi agar transaksi tidak tercatat dua kali.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/perencanaan/kantong")}>Buka Alokasi</Button></div></div> : null}{allocationIntent ? <CompactNotice tone="info" title="Pilih Target yang ingin diisi." role="status">Dana yang baru tersedia akan diteruskan ke Alokasi setelah kamu memilih Target melalui tombol Buka Alokasi.</CompactNotice> : null}
     {items.length ? <GoalSummary items={items} /> : null}
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
-    {(reminderTarget || creation.open || lifecycle.editGoal || movement.movement.goal || lifecycle.reverseTarget || lifecycle.archiveTarget || lifecycle.statusTarget) ? (
+    {(reminderTarget || creation.open || lifecycle.editGoal || lifecycle.archiveTarget || lifecycle.statusTarget) ? (
       <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan aksi target..." />}>
-        <GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} movement={movement} lifecycle={lifecycle} />
-      </Suspense>
-    ) : null}
-    {movement.achievement ? (
-      <Suspense fallback={null}>
-        <GoalAchievementPostcard {...movement.achievement} onClose={movement.dismissAchievement} />
+        <GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} lifecycle={lifecycle} />
       </Suspense>
     ) : null}
   </div>;

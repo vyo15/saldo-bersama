@@ -1,4 +1,4 @@
-import { FiArchive, FiArrowDown, FiArrowUp, FiBell, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
+import { FiArchive, FiBell, FiCheckCircle, FiEdit2, FiExternalLink, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../../components/common/CompactNotice.jsx";
@@ -46,21 +46,20 @@ const GoalSummary = ({ items }) => {
   );
 };
 
-const GoalActions = ({ goal, openMovement, openReverse, openEdit, openArchive, openStatusChange, openReminder }) => {
-  const primaryAction = goal.can_deposit
-    ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiArrowUp} onClick={() => openMovement(goal, "deposit")}>Setor dana</Button>
-    : goal.can_complete
-      ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button>
-      : goal.can_reopen
-        ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiRotateCcw} onClick={() => openStatusChange(goal, "active")}>Buka kembali</Button>
-        : null;
+const GoalActions = ({ goal, openEdit, openArchive, openStatusChange, openReminder, allocationIntent }) => {
+  const allocationState = { workflowSource: "goal", workflowAction: "goal-plan", goalId: goal.goal_id, ...(allocationIntent || {}) };
+  const primaryAction = goal.status === "active"
+    ? <ButtonLink className={goalClass("goal-card__primary-action")} variant="primary" icon={FiExternalLink} to="/perencanaan/kantong" state={allocationState}>Buka Alokasi</ButtonLink>
+    : goal.can_reopen
+      ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiRotateCcw} onClick={() => openStatusChange(goal, "active")}>Buka kembali</Button>
+      : null;
   const canRemind = goal.status === "active";
-  const hasSecondaryActions = goal.can_withdraw || (goal.can_complete && goal.can_deposit) || goal.can_reverse || goal.can_update || goal.can_archive;
+  const hasSecondaryActions = goal.can_complete || goal.can_update || goal.can_archive;
   if (!primaryAction && !hasSecondaryActions && !canRemind) return null;
   return (
     <div className={goalClass("goal-card__actions")}>
       <div className={goalClass("goal-card__quick-actions")}>{primaryAction}{canRemind ? <Button icon={FiBell} onClick={() => openReminder(goal)}>Pengingat</Button> : null}</div>
-      {hasSecondaryActions ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{goal.can_withdraw ? <Button icon={FiArrowDown} onClick={() => openMovement(goal, "withdrawal")}>Tarik dana</Button> : null}{goal.can_complete && goal.can_deposit ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_reverse ? <Button icon={FiRotateCcw} onClick={() => openReverse(goal)}>Batalkan terakhir</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Kelola status</Button> : null}</div></details> : null}
+      {hasSecondaryActions ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{goal.can_complete ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Kelola status</Button> : null}</div></details> : null}
     </div>
   );
 };
@@ -78,8 +77,7 @@ const GoalCard = ({ goal, actions }) => (
       <div><dt>Proyeksi</dt><dd data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</dd></div>
     </dl>
     {goal.status === "active" && goal.pace_status === "completed" ? <p className={goalClass("goal-card__completion")}>Target tercapai. Selesaikan target untuk mengunci mutasi.</p> : null}
-    {goal.deposit_blocked_reason ? <CompactNotice tone="info" title="Setoran belum tersedia">{goal.deposit_blocked_reason}</CompactNotice> : null}
-    {goal.withdraw_blocked_reason ? <CompactNotice tone="info" title="Penarikan belum tersedia">{goal.withdraw_blocked_reason}</CompactNotice> : null}
+    {goal.status === "active" ? <CompactNotice tone="info" title="Eksekusi lewat Alokasi">Target hanya memantau rencana dan progres. Menyisihkan atau menggunakan dana dilakukan dari Alokasi agar satu kejadian uang tetap memiliki satu transaksi.</CompactNotice> : null}
     <GoalActions goal={goal} {...actions} />
   </Card>
 );

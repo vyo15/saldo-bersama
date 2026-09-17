@@ -87,7 +87,7 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
 
 test("planning master memakai server lifecycle preview sebelum hard-delete unused", async () => {
   const [allocations, allocationsApi, recurring, recurringApi, goals, goalsApi, budgets, budgetsApi] = await Promise.all([
-    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/allocations/AllocationGoalExecutionModal.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/allocations/allocations.api.js"),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/recurring/recurring.api.js"),
@@ -118,8 +118,8 @@ test("planning master memakai server lifecycle preview sebelum hard-delete unuse
 
   assert.match(allocations, /acknowledgementLabel=\{(?:p\.)?archiveTarget\?\.preview\.canDeleteUnused/);
   assert.match(recurring, /acknowledgementLabel=\{(?:p\.)?archiveRuleTarget\?\.preview\.canDeleteUnused/);
-  assert.match(goals, /last_movement_row_version/);
-  assert.match(goals, /rowVersion: reverseTarget\.last_movement_row_version/);
+  assert.doesNotMatch(goals, /last_movement_row_version|reverseLastMovement|GoalMovementModal|Batalkan mutasi target terakhir/);
+  assert.match(goals, /Eksekusi dana tetap dilakukan melalui Alokasi/);
   assert.match(goals, /const GoalCreateModal/);
   assert.match(goals, /id="goal-create-form"/);
   assert.match(recurring, /const CreateRuleModal/);
@@ -256,7 +256,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
   ] = await Promise.all([
     read("src/features/transactions/TransactionForm.jsx"),
     Promise.all([read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx")]).then((parts) => parts.join("\n")),
-    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/allocations/AllocationGoalExecutionModal.jsx")]).then((parts) => parts.join("\n")),
     goalsSource(),
     read("src/features/recurring/RecurringDialogs.jsx"),
     readCategoryFeatureSource(),
@@ -278,7 +278,8 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
   assert.match(goals, /dismissible=\{!createMutation\.busy\}/);
   assert.match(goals, /const submitting = editState\.status === "submitting"/);
   assert.match(goals, /dismissible=\{!submitting\}/);
-  assert.match(goals, /const submitting = movementState\.status === "submitting"/);
+  assert.doesNotMatch(goals, /movementState|GoalMovementModal/);
+  assert.match(allocations, /dismissible=\{!busy\}/);
 
   assert.match(recurring, /dismissible=\{!createMutation\.busy\}/);
   assert.match(recurring, /const submitting = paymentState\.status === "submitting"/);
@@ -517,13 +518,13 @@ test("login branded desktop dan mobile membedakan server OAuth production dari p
 
 
 test("mutation ledger terkelola menginvalidasi rekening dan turunan laporan yang ikut berubah", async () => {
-  const [goals, recurring] = await Promise.all([
-    read("src/features/goals/GoalsPage.jsx"),
+  const [allocations, recurring] = await Promise.all([
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/useRecurringActions.js"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
   ]);
-  assert.match(goals, /goalLedgerRefreshKeys = Object\.freeze\(\["goals\.list", "transactions\.list", "accounts\.list", "reports\.monthly", "app\.initialState"\]\)/);
-  assert.match(goals, /invalidate\(goalLedgerRefreshKeys\)/);
-  assert.match(goals, /refresh\(goalLedgerRefreshKeys\)/);
+  assert.match(allocations, /allocationGoalRefreshKeys = Object\.freeze\(\["goals\.list", "transactions\.list", "accounts\.list", "reports\.monthly", "app\.initialState"\]\)/);
+  assert.match(allocations, /invalidate\(allocationGoalRefreshKeys\)/);
+  assert.match(allocations, /goalResource\.reload\(\)/);
   assert.match(recurring, /recurringLedgerRefreshKeys = Object\.freeze\(\["recurring\.list", "transactions\.list", "accounts\.list", "envelopes\.list", "budgets\.list", "reports\.monthly", "app\.initialState"\]\)/);
   assert.equal((recurring.match(/keys: recurringLedgerRefreshKeys/g) || []).length, 2, "bayar dan reverse pembayaran rutin harus menyegarkan semua read model ledger terkait");
 });

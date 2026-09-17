@@ -16,10 +16,14 @@ import { allocationClass } from "./allocationStyles.js";
 import { createAllocationNeedDraft } from "./allocationNeedDraft.js";
 import AllocationNoticesLayer from "./AllocationNoticesLayer.jsx";
 import { scrollWindowToWithMotionPreference } from "../../shared/motion.js";
+import { useAllocationCommitmentPlanNavigation, useAllocationDashboardCreateWorkflow, useAllocationFundingNavigation, useAllocationGoalPlanNavigation } from "./allocationWorkflowNavigation.js";
 const AllocationOverlayLayer = lazy(() => import("./AllocationOverlayLayer.jsx"));
 const AllocationOverviewLayer = lazy(() => import("./AllocationOverviewLayer.jsx"));
 const AllocationPlanningDetail = lazy(() => import("./AllocationPlanningDetail.jsx"));
+const AllocationGoalExecutionModal = lazy(() => import("./AllocationGoalExecutionModal.jsx"));
+const GoalAchievementPostcard = lazy(() => import("../goals/components/GoalAchievementPostcard.jsx"));
 const loadAllocationActionRunners = () => import("./allocationActionRunners.js");
+const allocationGoalRefreshKeys = Object.freeze(["goals.list", "transactions.list", "accounts.list", "reports.monthly", "app.initialState"]);
 
 const defaultCreateForm = () => {
   const { start, end } = currentMonthBoundsInJakarta();
@@ -259,28 +263,12 @@ const allocationDetailCanMove = ({ detailItem, movableItems, administratorMode }
   }).length > 0;
 };
 
-const ALLOCATION_DASHBOARD_WORKFLOW_ACTIONS = ["create-allocation", "add-need", "choose-need-allocation"];
-const loadAllocationDashboardWorkflow = () => import("./allocationDashboardWorkflow.js");
-
-const useAllocationDashboardCreateWorkflow = ({ canCreate, location, navigate, notify, resourceStatus, activeItems, setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId }) => {
-  useEffect(() => {
-    const workflowAction = String(location.state?.workflowAction || "");
-    if (resourceStatus !== "ready" || !ALLOCATION_DASHBOARD_WORKFLOW_ACTIONS.includes(workflowAction)) return undefined;
-    let disposed = false;
-    void loadAllocationDashboardWorkflow().then(({ runAllocationDashboardWorkflow }) => {
-      if (disposed) return;
-      runAllocationDashboardWorkflow({
-        workflowAction, envelopeRuleId: String(location.state?.envelopeRuleId || ""), canCreate, activeItems,
-        setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId, notify,
-      });
-      navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-    }).catch(() => {
-      if (disposed) return;
-      notify({ message: "Aksi Alokasi Dana belum dapat dimuat. Coba lagi.", tone: "warning", dedupeKey: "allocation:workflow-load-failed" });
-      navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-    });
-    return () => { disposed = true; };
-  }, [activeItems, canCreate, location, navigate, notify, resourceStatus, setAllocationFilter, setCreateOpen, setDetailAction, setDetailRuleId, setLegacyBudgetAttention, setMessage]);
+const AllocationGoalActionLayer = ({ target, achievement, accounts, transferRoutes, busy, onBusyChange, onCloseTarget, onSuccess, onCloseAchievement }) => {
+  const intent = target?.allocation_intent || {};
+  return <>
+    {target ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan setoran Target..." />}><AllocationGoalExecutionModal goal={target} accounts={accounts} transferRoutes={transferRoutes} initialSourceAccountId={intent.sourceAccountId || ""} suggestedAmount={intent.suggestedAmount || 0} busy={busy} onBusyChange={onBusyChange} onClose={() => !busy && onCloseTarget()} onSuccess={onSuccess} /></Suspense> : null}
+    {achievement ? <Suspense fallback={null}><GoalAchievementPostcard {...achievement} onClose={onCloseAchievement} /></Suspense> : null}
+  </>;
 };
 
 const AllocationsWorkspace = ({ embedded = false }) => {
@@ -291,6 +279,7 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const resource = useApiResource("envelopes.list", { period });
   const budgetResource = useApiResource("budgets.list", { period });
   const recurringResource = useApiResource("recurring.list", { period });
+  const goalResource = useApiResource("goals.list");
   const { refreshOverview, invalidate, bootstrap, overview } = useFinance();
   const { user } = useAuth();
   const { notify } = useFeedback();
@@ -323,6 +312,9 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const [releasedFunds, setReleasedFunds] = useState(null);
   const [fundingIntent, setFundingIntent] = useState(null);
   const [fundingError, setFundingError] = useState(null);
+  const [goalActionTarget, setGoalActionTarget] = useState(null);
+  const [goalActionBusy, setGoalActionBusy] = useState(false);
+  const [goalAchievement, setGoalAchievement] = useState(null);
   const allocationActor = allocationActorFor(bootstrap, user);
   const view = useAllocationViewData({ resource, budgetResource, recurringResource, bootstrap, overview, usersResource, allocationFilter, move, administratorMode, allocationActor });
   const canCreate = view.accounts.length > 0;
@@ -349,11 +341,9 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   useAllocationAttentionNavigation({ resourceStatus: resource.status, budgetStatus: budgetResource.status, attentionAction, attentionEnvelopeId, attentionBudgetId, attentionSuggestedAmount, activeItems: view.activeItems, budgets: view.budgets, consumeAttention, setDetailRuleId, setLegacyBudgetAttention, openFunding });
   useEffect(() => { if (detailRuleId && resource.status === "ready" && !detailItem) setDetailRuleId(""); }, [detailItem, detailRuleId, resource.status]);
   useAllocationDashboardCreateWorkflow({ canCreate, location, navigate, notify, resourceStatus: resource.status, activeItems: view.activeItems, setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId });
-  useEffect(() => {
-    if (resource.status !== "ready" || location.state?.workflowAction !== "fund") return;
-    openFunding({ sourceAccountId: String(location.state.sourceAccountId || ""), suggestedAmount: Number(location.state.suggestedAmount || 0) });
-    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-  }, [location.hash, location.pathname, location.search, location.state, navigate, openFunding, resource.status]);
+  useAllocationCommitmentPlanNavigation({ resourceStatus: resource.status, budgetStatus: budgetResource.status, location, navigate, notify, activeItems: view.activeItems, budgets: view.budgets, setLegacyBudgetAttention, setDetailAction, setDetailRuleId });
+  useAllocationGoalPlanNavigation({ resourceStatus: resource.status, goalResource, location, navigate, notify, setGoalActionTarget });
+  useAllocationFundingNavigation({ resourceStatus: resource.status, location, navigate, openFunding });
 
 
   const closeCreate = () => { if (!createMutation.busy) setCreateOpen(false); };
@@ -374,12 +364,14 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const openDetail = (item, action = "") => { setLegacyBudgetAttention(false); setDetailAction(action); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const closeDetail = () => { setDetailRuleId(""); setDetailAction(""); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
+  const completeGoalAction = async (achievement) => { invalidate(allocationGoalRefreshKeys); await Promise.allSettled([goalResource.reload(), refreshOverview()]); if (achievement?.goalAfter) setGoalAchievement(achievement); notify({ message: "Dana Target berhasil disisihkan dari Alokasi.", tone: "success", dedupeKey: "allocation:goal-deposit" }); };
 
   return <AllocationResourceState resource={resource}><div className={allocationClass("page-stack allocations-page")}>
     <AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={hasActiveGoal} onDismissReleasedFunds={() => setReleasedFunds(null)} />
     <AllocationHeading embedded={embedded} />
     <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, accounts: view.accounts, users: view.activeUsers, usersStatus, initialAction: detailAction, onInitialActionConsumed: () => setDetailAction(""), onBack: closeDetail, onBudgetReminder: openBudgetReminder, onAllocationReminder: openReminder, onOpenAllocationActions: setActionTarget, canAdjustAllocation: allocationDetailCanAdjust(detailItem), onAdjustAllocation: (item, amount) => openAdjust(item, "fund", amount), canMoveAllocation: detailCanMove, onMoveAllocation: openMoveForItem }} overviewProps={{ activeItems: view.activeItems, filteredActiveItems: view.filteredActiveItems, allocationFilter, setAllocationFilter, onAddNeed: (item) => openDetail(item, "add-need"), attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, onOpenDetail: openDetail, canCreate, openCreate: () => { setMessage(null); setCreateOpen(true); }, linkedBudgetsForItem: linkedBudgetsForEnvelope, relatedRecurringForItem: relatedRecurringForEnvelope }} />
     {(showSecondaryLayer || fundingIntent || reminderTarget || createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget) ? <Suspense fallback={<LazyActionFallback surface="modal" title="Alokasi Dana" label="Menyiapkan aksi Alokasi Dana..." />}><AllocationOverlayLayer dialogsOpen={Boolean(createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget)} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, createNeeds, setCreateNeeds, expenseCategories: view.expenseCategories, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus, createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} showSecondaryLayer={showSecondaryLayer} secondaryProps={{ historicalItems: view.historicalItems, recentMovements: view.recentMovements, actionTarget, onCloseAction: () => setActionTarget(null), onClosePeriod: startClosePeriod, onLifecycle: startLifecycle, setReverseTarget, setReverseState }} fundingIntent={fundingIntent} fundingProps={{ accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item) && item.source_account_id), initialSourceAccountId: fundingInitialState.sourceAccountId, initialEnvelopePeriodId: fundingInitialState.envelopePeriodId, suggestedAmount: fundingInitialState.suggestedAmount, busy: adjustMutation.busy, error: fundingError, onClose: closeFunding, onSubmit: submitFunding }} reminderTarget={reminderTarget} onCloseReminder={() => setReminderTarget(null)} /></Suspense> : null}
+    <AllocationGoalActionLayer target={goalActionTarget} achievement={goalAchievement} accounts={view.accounts} transferRoutes={bootstrap?.transferRoutes || []} busy={goalActionBusy} onBusyChange={setGoalActionBusy} onCloseTarget={() => setGoalActionTarget(null)} onSuccess={completeGoalAction} onCloseAchievement={() => setGoalAchievement(null)} />
   </div></AllocationResourceState>;
 };
 
