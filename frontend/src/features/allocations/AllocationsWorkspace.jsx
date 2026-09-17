@@ -14,9 +14,9 @@ import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain
 import { filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
 import { allocationClass } from "./allocationStyles.js";
 import { createAllocationNeedDraft } from "./allocationNeedDraft.js";
+import { useAllocationCommitmentPlanNavigation, useAllocationDashboardCreateWorkflow, useAllocationFundingNavigation, useAllocationGoalPlanNavigation } from "./allocationWorkflowNavigation.js";
 import AllocationNoticesLayer from "./AllocationNoticesLayer.jsx";
 import { scrollWindowToWithMotionPreference } from "../../shared/motion.js";
-import { useAllocationCommitmentPlanNavigation, useAllocationDashboardCreateWorkflow, useAllocationFundingNavigation, useAllocationGoalPlanNavigation } from "./allocationWorkflowNavigation.js";
 const AllocationOverlayLayer = lazy(() => import("./AllocationOverlayLayer.jsx"));
 const AllocationOverviewLayer = lazy(() => import("./AllocationOverviewLayer.jsx"));
 const AllocationPlanningDetail = lazy(() => import("./AllocationPlanningDetail.jsx"));
@@ -263,14 +263,8 @@ const allocationDetailCanMove = ({ detailItem, movableItems, administratorMode }
   }).length > 0;
 };
 
-const AllocationGoalActionLayer = ({ target, achievement, accounts, transferRoutes, busy, onBusyChange, onCloseTarget, onSuccess, onCloseAchievement }) => {
-  const intent = target?.allocation_intent || {};
-  return <>
-    {target ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan setoran Target..." />}><AllocationGoalExecutionModal goal={target} accounts={accounts} transferRoutes={transferRoutes} initialSourceAccountId={intent.sourceAccountId || ""} suggestedAmount={intent.suggestedAmount || 0} busy={busy} onBusyChange={onBusyChange} onClose={() => !busy && onCloseTarget()} onSuccess={onSuccess} /></Suspense> : null}
-    {achievement ? <Suspense fallback={null}><GoalAchievementPostcard {...achievement} onClose={onCloseAchievement} /></Suspense> : null}
-  </>;
-};
-
+// Workspace orchestrates route state, resources, and modal controllers in one canonical owner.
+// eslint-disable-next-line complexity
 const AllocationsWorkspace = ({ embedded = false }) => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const location = useLocation();
@@ -345,7 +339,6 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   useAllocationGoalPlanNavigation({ resourceStatus: resource.status, goalResource, location, navigate, notify, setGoalActionTarget });
   useAllocationFundingNavigation({ resourceStatus: resource.status, location, navigate, openFunding });
 
-
   const closeCreate = () => { if (!createMutation.busy) setCreateOpen(false); };
   const closeMove = () => { if (!moveMutation.busy) setMoveOpen(false); };
   const closeAdjust = () => { if (!adjustMutation.busy) setAdjustTarget(null); };
@@ -364,14 +357,14 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const openDetail = (item, action = "") => { setLegacyBudgetAttention(false); setDetailAction(action); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const closeDetail = () => { setDetailRuleId(""); setDetailAction(""); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
-  const completeGoalAction = async (achievement) => { invalidate(allocationGoalRefreshKeys); await Promise.allSettled([goalResource.reload(), refreshOverview()]); if (achievement?.goalAfter) setGoalAchievement(achievement); notify({ message: "Dana Target berhasil disisihkan dari Alokasi.", tone: "success", dedupeKey: "allocation:goal-deposit" }); };
 
   return <AllocationResourceState resource={resource}><div className={allocationClass("page-stack allocations-page")}>
     <AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} administratorMode={administratorMode} usersResource={usersResource} attentionEnvelopeId={attentionEnvelopeId} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={hasActiveGoal} onDismissReleasedFunds={() => setReleasedFunds(null)} />
     <AllocationHeading embedded={embedded} />
     <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, accounts: view.accounts, users: view.activeUsers, usersStatus, initialAction: detailAction, onInitialActionConsumed: () => setDetailAction(""), onBack: closeDetail, onBudgetReminder: openBudgetReminder, onAllocationReminder: openReminder, onOpenAllocationActions: setActionTarget, canAdjustAllocation: allocationDetailCanAdjust(detailItem), onAdjustAllocation: (item, amount) => openAdjust(item, "fund", amount), canMoveAllocation: detailCanMove, onMoveAllocation: openMoveForItem }} overviewProps={{ activeItems: view.activeItems, filteredActiveItems: view.filteredActiveItems, allocationFilter, setAllocationFilter, onAddNeed: (item) => openDetail(item, "add-need"), attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, onOpenDetail: openDetail, canCreate, openCreate: () => { setMessage(null); setCreateOpen(true); }, linkedBudgetsForItem: linkedBudgetsForEnvelope, relatedRecurringForItem: relatedRecurringForEnvelope }} />
     {(showSecondaryLayer || fundingIntent || reminderTarget || createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget) ? <Suspense fallback={<LazyActionFallback surface="modal" title="Alokasi Dana" label="Menyiapkan aksi Alokasi Dana..." />}><AllocationOverlayLayer dialogsOpen={Boolean(createOpen || moveOpen || adjustTarget || closeTarget || archiveTarget || reverseTarget)} dialogProps={{ createOpen, closeCreate, createForm, setCreateForm, createNeeds, setCreateNeeds, expenseCategories: view.expenseCategories, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus, createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }} showSecondaryLayer={showSecondaryLayer} secondaryProps={{ historicalItems: view.historicalItems, recentMovements: view.recentMovements, actionTarget, onCloseAction: () => setActionTarget(null), onClosePeriod: startClosePeriod, onLifecycle: startLifecycle, setReverseTarget, setReverseState }} fundingIntent={fundingIntent} fundingProps={{ accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item) && item.source_account_id), initialSourceAccountId: fundingInitialState.sourceAccountId, initialEnvelopePeriodId: fundingInitialState.envelopePeriodId, suggestedAmount: fundingInitialState.suggestedAmount, busy: adjustMutation.busy, error: fundingError, onClose: closeFunding, onSubmit: submitFunding }} reminderTarget={reminderTarget} onCloseReminder={() => setReminderTarget(null)} /></Suspense> : null}
-    <AllocationGoalActionLayer target={goalActionTarget} achievement={goalAchievement} accounts={view.accounts} transferRoutes={bootstrap?.transferRoutes || []} busy={goalActionBusy} onBusyChange={setGoalActionBusy} onCloseTarget={() => setGoalActionTarget(null)} onSuccess={completeGoalAction} onCloseAchievement={() => setGoalAchievement(null)} />
+    {goalActionTarget ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan setoran Target..." />}><AllocationGoalExecutionModal goal={goalActionTarget} accounts={view.accounts} transferRoutes={bootstrap?.transferRoutes || []} busy={goalActionBusy} onBusyChange={setGoalActionBusy} onClose={() => !goalActionBusy && setGoalActionTarget(null)} onSuccess={async (achievement) => { setGoalAchievement(achievement); invalidate(allocationGoalRefreshKeys); await Promise.allSettled([goalResource.reload(), refreshOverview()]); }} /></Suspense> : null}
+    {goalAchievement ? <Suspense fallback={null}><GoalAchievementPostcard {...goalAchievement} onClose={() => setGoalAchievement(null)} /></Suspense> : null}
   </div></AllocationResourceState>;
 };
 

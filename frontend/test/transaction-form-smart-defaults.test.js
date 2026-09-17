@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { TRANSACTION_TYPES } from "../src/domain/constants.js";
 import {
+  UNALLOCATED_NEED_VALUE,
   earlyFundsWarning,
   frequentCategories,
+  mergeContextualAllocationCandidate,
+  needSelectionValue,
   smartAllocationCandidates,
   sourceAccountPicker,
 } from "../src/features/transactions/transactionFormSmartDefaults.js";
@@ -84,11 +87,33 @@ test("smart allocation mengembalikan semua Kebutuhan ambigu agar UI meminta pili
   assert.ok(candidates.every((item) => item.envelope.envelope_period_id === "p-rumah"));
 });
 
+
+test("context Kebutuhan dari detail Alokasi tetap terpilih saat overview composer belum memuat kandidat", () => {
+  const form = { transaction_type: "expense", transaction_date: "2026-08-20", source_account_id: "a1", category_id: "c1", budget_id: "b1" };
+  const context = {
+    budget: { budget_id: "b1", category_id: "c1", name: "Bensin", amount: 200_000, used_amount: 50_000 },
+    envelope: { envelope_period_id: "p1", source_account_id: "a1", period_start: "2026-08-01", period_end: "2026-08-31", name: "Bulanan" },
+  };
+  const merged = mergeContextualAllocationCandidate({ candidates: [], context, form });
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].need.budget_id, "b1");
+  assert.equal(merged[0].envelope.envelope_period_id, "p1");
+
+  assert.deepEqual(mergeContextualAllocationCandidate({ candidates: [], context, form: { ...form, category_id: "c2", budget_id: "" } }), []);
+});
+
+
+test("state kosong berbeda dari intent eksplisit Tanpa Kebutuhan", () => {
+  assert.equal(needSelectionValue({ budgetId: "", allocationMode: "auto" }), "");
+  assert.equal(needSelectionValue({ budgetId: "", allocationMode: "manual" }), UNALLOCATED_NEED_VALUE);
+  assert.equal(needSelectionValue({ budgetId: "b-dry-food", allocationMode: "manual" }), "b-dry-food");
+});
+
 test("early warning membedakan dana bebas, sisa Alokasi, dan kebijakan overspend", () => {
   const source = { balance: 1_000_000, available_balance: 200_000 };
   assert.equal(earlyFundsWarning({ transactionType: "expense", amount: 2_000_000, source: { ...source, allow_negative: true }, envelope: null }), null);
   assert.equal(earlyFundsWarning({ transactionType: "expense", amount: 150_000, source, envelope: null }), null);
-  assert.match(earlyFundsWarning({ transactionType: "expense", amount: 300_000, source, envelope: null }).title, /belum dialokasikan/i);
+  assert.match(earlyFundsWarning({ transactionType: "expense", amount: 300_000, source, envelope: null }).title, /rekening tidak cukup/i);
 
   const blocked = earlyFundsWarning({ transactionType: "expense", amount: 600_000, source, envelope: { name: "Rumah", remaining_amount: 500_000, overspend_policy: "block" } });
   assert.match(blocked.title, /Melebihi sisa Alokasi Dana/);

@@ -59,7 +59,7 @@ const GoalActions = ({ goal, openEdit, openArchive, openStatusChange, openRemind
   return (
     <div className={goalClass("goal-card__actions")}>
       <div className={goalClass("goal-card__quick-actions")}>{primaryAction}{canRemind ? <Button icon={FiBell} onClick={() => openReminder(goal)}>Pengingat</Button> : null}</div>
-      {hasSecondaryActions ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{goal.can_complete ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Kelola status</Button> : null}</div></details> : null}
+      {hasSecondaryActions ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{goal.can_complete ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Hapus dari daftar</Button> : null}</div></details> : null}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { allocationNeedsFundingSummary } from "../src/features/allocations/allocationPresentation.js";
+import { budgetRemainingAmount } from "../src/shared/presentation/budget.js";
 
 test("ringkasan Kebutuhan membandingkan rencana dengan dana alokasi tanpa memakai sisa setelah transaksi", () => {
   const summary = allocationNeedsFundingSummary(
@@ -45,4 +46,11 @@ test("ringkasan Kebutuhan menormalkan nominal invalid agar tidak membuat suggest
     unplanned: 0,
     status: "needs-funding",
   });
+});
+
+
+test("sisa Kebutuhan mengikuti pemakaian aktual dan tidak mempertahankan nominal rencana sebagai saldo", () => {
+  assert.equal(budgetRemainingAmount({ amount: 200_000, used_amount: 0 }), 200_000);
+  assert.equal(budgetRemainingAmount({ amount: 200_000, used_amount: 50_000 }), 150_000);
+  assert.equal(budgetRemainingAmount({ amount: 200_000, used_amount: 250_000 }), 0);
 });

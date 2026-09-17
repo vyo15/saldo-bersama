@@ -6,6 +6,12 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat("id-ID", {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+export const budgetRemainingAmount = (item = {}) => {
+  const amount = Math.max(0, Number(item.amount || 0));
+  const used = Math.max(0, Number(item.used_amount || 0));
+  return Math.max(0, amount - used);
+};
+
 export const budgetPercentage = (item = {}) => {
   const amount = Number(item.amount || 0);
   return amount > 0 ? (Number(item.used_amount || 0) / amount) * 100 : 0;

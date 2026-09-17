@@ -106,7 +106,7 @@ allocated_remaining = total sisa Alokasi Dana aktif dari rekening sumber
 available_balance = balance - allocated_remaining
 ```
 
-`balance` tetap saldo ledger fisik. Membuat **wadah** Alokasi tidak mengikat dana; penyimpanan/perubahan Kebutuhan secara otomatis mengubah `allocated_amount` sebesar delta yang aman dari Dana Tersedia, sedangkan manual fund/release tetap advanced/compatibility control. Expense yang memakai Alokasi Dana wajib memakai rekening sumber yang sama; bagian yang ter-cover menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Alokasi Dana dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif. Shortage Kebutuhan ditolak atomic sebelum partial state dibuat.
+`balance` tetap saldo ledger fisik. Membuat **wadah** Alokasi tidak mengikat dana; penyimpanan/perubahan Kebutuhan secara otomatis mengubah `allocated_amount` sebesar delta yang aman dari Dana Tersedia, sedangkan manual fund/release tetap advanced/compatibility control. Expense yang memakai Alokasi Dana wajib memakai rekening sumber yang sama; bagian yang ter-cover menurunkan `balance` dan `allocated_remaining` bersama-sama sehingga dana bebas tidak turun dua kali. Expense tanpa Alokasi Dana dan Transfer hanya boleh memakai `available_balance` pada rekening yang tidak mengizinkan saldo negatif. Jika Dana Tersedia tidak cukup, Kebutuhan tetap tersimpan secara atomic dan Alokasi hanya mengikat dana yang benar-benar tersedia; metadata funding menjelaskan shortage tanpa membuat saldo/ledger fiktif.
 
 ## Global realtime synchronization
 

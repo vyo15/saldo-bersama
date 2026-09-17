@@ -455,6 +455,23 @@
 .needEmpty strong { font-size: 12px; }
 .needEmpty small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
 
+.needLocked {
+  min-height: 56px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 48%, var(--border));
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  background: color-mix(in srgb, var(--primary-soft) 62%, var(--surface));
+}
+.needLocked > svg { width: 18px; height: 18px; color: var(--primary); }
+.needLocked > span { min-width: 0; display: grid; gap: 2px; }
+.needLocked strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.needLocked span small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
+.needLocked > small { color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+
 .additionalDetails {
   min-width: 0;
   display: grid;
@@ -481,7 +498,7 @@
 .additionalToggle strong { font-size: 12px; }
 .additionalToggle small { color: var(--text-muted); font-size: var(--font-size-xs); }
 .additionalToggle > svg { width: 17px; height: 17px; flex: 0 0 17px; color: var(--text-muted); }
-.additionalToggle:focus-visible, .manualAllocationToggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.additionalToggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 .additionalBody {
   padding: 10px;
@@ -491,25 +508,3 @@
   gap: 12px;
   background: color-mix(in srgb, var(--surface-soft) 54%, var(--surface));
 }
-
-.manualAllocation {
-  display: grid;
-  gap: 8px;
-}
-
-.manualAllocationToggle {
-  min-height: var(--mobile-control-height);
-  padding: 0 2px;
-  border: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-self: start;
-  gap: 6px;
-  background: transparent;
-  color: var(--primary);
-  font: inherit;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-.manualAllocationToggle svg { width: 15px; height: 15px; }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiBell, FiCalendar, FiCheckCircle, FiEdit3, FiMoreHorizontal, FiPlus, FiRepeat } from "react-icons/fi";
+import { FiArchive, FiBell, FiCalendar, FiCheckCircle, FiEdit3, FiPlus, FiRepeat } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -71,7 +71,7 @@ const ExistingBudgetActions = ({ existingBudget, canLifecycle, onReminder, onLif
   if (!existingBudget) return null;
   return <div className="form-grid__full form-actions">
     <Button type="button" icon={FiBell} onClick={() => onReminder?.(existingBudget)}>Atur pengingat</Button>
-    {canLifecycle ? <Button type="button" icon={FiMoreHorizontal} onClick={() => onLifecycle?.(existingBudget)}>Kelola status</Button> : null}
+    {canLifecycle ? <Button type="button" icon={FiArchive} onClick={() => onLifecycle?.(existingBudget)}>Hapus dari daftar</Button> : null}
   </div>;
 };
 

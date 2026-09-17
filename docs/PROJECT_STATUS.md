@@ -40,7 +40,7 @@ Detail evidence dan remaining gap berada di `IMPLEMENTATION_MATRIX.md`; behavior
 - Saldo rekening adalah ledger fisik; Alokasi Dana tidak menciptakan saldo baru.
 - `available_balance = balance - allocated_remaining` untuk rekening operasional.
 - Kebutuhan memiliki **nama spesifik** dan kategori master terpisah di dalam Alokasi. Beberapa kebutuhan boleh memakai kategori master yang sama; transaksi baru ditautkan eksplisit lewat `budget_id` agar pemakaian tidak double-count. Delta Kebutuhan secara otomatis fund/release Alokasi bila aman; operasi tersebut **tidak** membuat transaksi ledger.
-- Bila Dana Tersedia tidak cukup, seluruh mutation Kebutuhan gagal atomic dan frontend menjelaskan total kebutuhan, dana tersedia, serta kekurangan. Draft lokal tidak boleh hilang hanya karena sync/reconnect.
+- Bila Dana Tersedia tidak cukup, Kebutuhan tetap tersimpan dan Alokasi mengikat dana sebanyak yang benar-benar tersedia; frontend menjelaskan dana tersedia serta kekurangan tanpa membuat saldo/ledger fiktif. Draft lokal tidak boleh hilang hanya karena sync/reconnect.
 - Transfer internal netral terhadap total income/expense.
 - Saldo RDN dan nilai aset tidak masuk Dana Tersedia operasional.
 - Komitmen bukan saldo baru: KPR/cicilan/pinjaman menyimpan sisa kewajiban, Arisan menyimpan progres setoran/penerimaan, dan saldo rekening hanya berubah melalui transaksi aktual canonical.

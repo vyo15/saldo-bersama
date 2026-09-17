@@ -10,7 +10,7 @@ import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
-import { budgetPeriodMeta, budgetVisualState } from "../../shared/presentation/budget.js";
+import { budgetPeriodMeta, budgetRemainingAmount, budgetVisualState } from "../../shared/presentation/budget.js";
 import { categoryIcon } from "../../shared/presentation/transaction.js";
 import { useBudgetFormController, useBudgetLifecycleController } from "../budgets/useBudgetActions.js";
 import { allocationAssigneeLabel, allocationNeedsFundingSummary, allocationPeriodLabel, allocationSourceLabel, allocationUsage } from "./allocationPresentation.js";
@@ -88,7 +88,7 @@ const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onR
   const status = budgetVisualState(budget, periodMeta);
   const tone = status.key === "danger" ? "is-danger" : ["warning", "pace"].includes(status.key) ? "is-warning" : "";
   const CategoryIcon = categoryIcon(category?.icon, "expense");
-  const remaining = Math.max(0, amount - used);
+  const remaining = budgetRemainingAmount(budget);
   const patternLabel = budget.recording_mode === "fixed_once" ? "Sekali bayar"
     : budget.recording_mode === "recurring" ? "Rutin"
       : "Fleksibel";
@@ -96,19 +96,21 @@ const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onR
   const usedPercent = Math.max(0, Math.round(status.usedPercent));
   const usageLabel = used > 0 ? <>Terpakai <Money value={used} /></> : "Belum digunakan";
   return <div className={allocationClass("allocation-limit-row")} data-budget-id={budget.budget_id}>
-    <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" /></span>
-    <div className={allocationClass("allocation-limit-row__content")}>
+    <div className={allocationClass("allocation-limit-row__header")}>
+      <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" /></span>
       <div className={allocationClass("allocation-limit-row__title")}>
         <strong>{budget.name}</strong>
         <span className={allocationClass(`allocation-limit-row__pattern ${status.attention ? tone : ""}`)}>{status.attention ? status.label : patternLabel}</span>
       </div>
-      <p className={allocationClass("allocation-limit-row__balance")}><strong>Sisa <Money value={remaining} /></strong><span>· <Money value={amount} /></span><b>{usedPercent}%</b></p>
+      <BudgetLimitActions budget={budget} schedule={schedule} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} />
+    </div>
+    <div className={allocationClass("allocation-limit-row__content")}>
+      <p className={allocationClass("allocation-limit-row__balance")}><strong><Money value={remaining} /> <span>sisa</span></strong><span>dari <Money value={amount} /></span><b>{usedPercent}%</b></p>
       <div className={allocationClass("allocation-limit-row__progress")}>
         <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${usedPercent}%`} />
         <span className={allocationClass(`allocation-limit-row__usage ${status.attention ? tone : ""}`)}>{usageLabel}{schedule?.label ? <> · {schedule.label}</> : null}</span>
       </div>
     </div>
-    <BudgetLimitActions budget={budget} schedule={schedule} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} />
   </div>;
 };
 
@@ -160,7 +162,7 @@ const AllocationNeedsPanel = ({
 
   return <section className={allocationClass("allocation-detail-section allocation-detail-section--needs")} aria-labelledby="allocation-needs-title">
     <div className={allocationClass("allocation-detail-panel__header")}>
-      <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Pantau sisa dana dan catat pemakaian tanpa membuka detail satu per satu.</p></div>
+      <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Pantau sisa dana dan catat pemakaian.</p></div>
       {linkedBudgets.length ? <span className={allocationClass("allocation-detail-section__count")}>{linkedBudgets.length} item</span> : null}
     </div>
     {linkedBudgets.length ? <>
@@ -229,7 +231,7 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
   });
   const recordExpense = (budget = null) => {
     if (!canRecordExpense) return;
-    const remaining = budget ? Math.max(0, Number(budget.amount || 0) - Number(budget.used_amount || 0)) : 0;
+    const remaining = budget ? budgetRemainingAmount(budget) : 0;
     openTransactionComposer({
       initialType: TRANSACTION_TYPES.EXPENSE,
       initialSourceAccountId: item.source_account_id,
@@ -242,6 +244,7 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
         amount: budget?.recording_mode === "fixed_once" ? remaining : "",
         description: budget?.name || "",
       },
+      initialAllocationContext: budget ? { budget, envelope: item } : null,
     });
   };
   const openRecurringWorkflow = (workflow) => navigate("/perencanaan/jadwal", { state: workflow });
@@ -305,10 +308,10 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
       />
       <section className={allocationClass("allocation-detail-section allocation-detail-section--management")} aria-labelledby="allocation-management-title">
         <div className={allocationClass("allocation-detail-panel__header")}><div><h3 id="allocation-management-title">Kelola dana</h3><p>Sesuaikan dana atau pengingat tanpa mengubah transaksi yang sudah tercatat.</p></div></div>
-        <div className="form-actions">
+        <div className={allocationClass("allocation-management-actions")}>
           {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}
           {item.can_set_reminder ? <Button icon={FiBell} onClick={() => onAllocationReminder(item)}>Pengingat</Button> : null}
-          {item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Kelola status</Button> : null}
+          {item.can_archive_rule ? <Button className={allocationClass("allocation-management-actions__lifecycle")} onClick={() => onOpenAllocationActions(item)}>Hapus dari daftar</Button> : null}
         </div>
       </section>
     </Card>

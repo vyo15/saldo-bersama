@@ -38,7 +38,8 @@
 - [ ] Alokasi baru tidak meminta budget awal sebagai flow utama; Kebutuhan mengatur funding dari Dana Tersedia sesuai contract.
 - [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
-- [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: satu grouped row memuat ikon + nama + Sisa + progress + status ringkas; aksi `Catat`/Jadwal memakai quick action icon-only dengan accessible label dan target sentuh minimal 44px; Edit berada di overflow; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
+- [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: header row memuat ikon + nama + pola/status + quick actions, sementara Sisa/total/persentase + progress memakai lebar penuh di bawahnya agar nominal tidak terpotong; aksi `Catat`/Jadwal memakai quick action icon-only dengan accessible label dan target sentuh minimal 44px; Edit berada di overflow; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
+- [ ] Section `Kelola dana` tidak memakai tiga tombol sempit dalam satu baris: aksi utama memakai grid 2 kolom dan lifecycle **Hapus / arsipkan** mengambil satu baris penuh sehingga label terbaca pada mobile.
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
 - [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, dan tidak menghapus draft/form.
 - [ ] Reconnect/foreground/offline recovery tidak memicu duplicate mutation atau refresh ganda yang tidak perlu.
@@ -104,3 +105,9 @@
 - [ ] Status handoff eksplisit `FINAL / VERIFIED` setelah full gate PASS atau `CANDIDATE / UNVERIFIED` bila full gate benar-benar terblokir environment eksternal.
 - [ ] `git status --short` ditinjau sebelum commit/push.
 - [ ] Delivery Git tidak memakai `--no-verify`/force push dan GitHub **Quality** dipantau setelah push.
+
+### Kebutuhan → transaksi (canonical)
+- Nominal utama pada row Kebutuhan adalah **sisa aktual = nominal rencana - terpakai**, bukan nominal rencana statis.
+- Quick action dari row Kebutuhan wajib membawa `budget_id` + `envelope_period_id` dan composer menampilkan relasi itu sebagai **Otomatis**; jangan meminta user memilih ulang konteks yang sudah diketahui.
+- Jangan menyediakan pemilih **Alokasi manual** terpisah di composer. Pilihan Kebutuhan adalah surface canonical untuk relasi planning; opsi `Tanpa Kebutuhan` tetap tersedia untuk pengeluaran biasa.
+- Aksi yang dapat berujung delete/archive tidak boleh diberi label samar pada form edit. Gunakan label outcome-oriented seperti `Hapus / arsipkan`, lalu preview server menentukan tindakan final.

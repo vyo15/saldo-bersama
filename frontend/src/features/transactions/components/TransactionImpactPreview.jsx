@@ -4,44 +4,44 @@ import styles from "../TransactionForm.module.css";
 
 const signedRupiah = (value) => {
   const amount = Number(value || 0);
-  if (amount === 0) return formatRupiah(0);
+  if (amount === 0) return "tidak berubah";
   return `${amount > 0 ? "+" : "−"}${formatRupiah(Math.abs(amount))}`;
 };
 
-const ImpactValue = ({ label, value, delta, hideDelta = false }) => (
+const ImpactValue = ({ label, value, delta, resultLabel = "jadi" }) => (
   <span className={styles.impactValue}>
     <span className={styles.impactValueCopy}>
       <small>{label}</small>
-      <strong>{formatRupiah(value)}</strong>
+      <strong>{resultLabel} {formatRupiah(value)}</strong>
     </span>
-    {hideDelta ? null : (
-      <span className={`${styles.impactDelta} ${Number(delta || 0) < 0 ? styles.impactDeltaNegative : ""}`.trim()}>
-        {signedRupiah(delta)}
-      </span>
-    )}
+    <span className={`${styles.impactDelta} ${Number(delta || 0) < 0 ? styles.impactDeltaNegative : ""}`.trim()}>
+      {signedRupiah(delta)}
+    </span>
   </span>
 );
 
 const changedAccounts = (impact) => (impact.accountChanges || []).filter((item) => Number(item.balanceAfter || 0) !== Number(item.balanceBefore || 0));
 
-const impactFootnote = (impact) => {
+const expenseImpactFootnote = (impact) => {
   const safeDelta = Number(impact.safeToSpendDelta || 0);
-  if (impact.transactionType === TRANSACTION_TYPES.EXPENSE && impact.envelope && safeDelta === 0) {
-    return "Dana Tersedia tidak berubah karena pengeluaran memakai dana yang sudah disiapkan.";
-  }
-  if (impact.transactionType === TRANSACTION_TYPES.EXPENSE && !impact.envelope) {
-    return "Pengeluaran belum masuk rencana, sehingga langsung mengurangi Dana Tersedia.";
-  }
-  if (impact.transactionType === TRANSACTION_TYPES.TRANSFER && safeDelta === 0) {
-    return "Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga.";
-  }
-  if (impact.transactionType === TRANSACTION_TYPES.TRANSFER && safeDelta < 0) {
-    return "Sebagian dana berpindah keluar dari uang operasional, sehingga Dana Tersedia berkurang.";
-  }
-  if (impact.transactionType === TRANSACTION_TYPES.TRANSFER && safeDelta > 0) {
-    return "Dana kembali ke rekening operasional, sehingga Dana Tersedia bertambah.";
-  }
-  return impact.isEdit ? "Perkiraan perubahan dari transaksi yang tersimpan saat ini." : "Perkiraan setelah transaksi disimpan.";
+  const needName = impact.budget?.name || "Kebutuhan terpilih";
+  if (impact.budget && safeDelta === 0) return `Sumber pengurangan dana: ${needName}. Dana Tersedia tidak berubah.`;
+  if (impact.budget && safeDelta < 0) return `${needName} memakai dana yang sudah disiapkan; kekurangan ${formatRupiah(Math.abs(safeDelta))} memakai Dana Tersedia.`;
+  if (impact.envelope && safeDelta === 0) return `Sumber pengurangan dana: ${impact.envelope.name}. Dana Tersedia tidak berubah.`;
+  if (!impact.envelope) return "Sumber pengurangan dana: Dana Tersedia. Kebutuhan tidak berubah.";
+  return "Dampak pengeluaran mengikuti sisa Alokasi dan Dana Tersedia yang ditampilkan di atas.";
+};
+
+const transferImpactFootnote = (safeDelta) => {
+  if (safeDelta === 0) return "Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga.";
+  if (safeDelta < 0) return "Sebagian dana berpindah keluar dari uang operasional, sehingga Dana Tersedia berkurang.";
+  return "Dana kembali ke rekening operasional, sehingga Dana Tersedia bertambah.";
+};
+
+const impactFootnote = (impact) => {
+  if (impact.transactionType === TRANSACTION_TYPES.EXPENSE) return expenseImpactFootnote(impact);
+  if (impact.transactionType === TRANSACTION_TYPES.TRANSFER) return transferImpactFootnote(Number(impact.safeToSpendDelta || 0));
+  return impact.isEdit ? "Dampak dihitung sebagai perubahan terhadap transaksi yang tersimpan saat ini." : "Dampak berikut akan diterapkan setelah transaksi disimpan.";
 };
 
 const TransactionImpactPreview = ({ impact }) => {
@@ -56,17 +56,17 @@ const TransactionImpactPreview = ({ impact }) => {
 
   return (
     <div className={`form-grid__full ${styles.impactPreview}`} aria-live="polite">
-      <span className={styles.impactEyebrow}>Perkiraan setelah disimpan</span>
+      <span className={styles.impactEyebrow}>Setelah disimpan</span>
       <div className={styles.impactTransferRoute}>
-        {impact.budget ? (
-          <ImpactValue label={`Sisa ${impact.budget.name || "Kebutuhan"}`} value={budgetAfter} delta={budgetAfter - budgetBefore} />
-        ) : impact.envelope ? (
-          <ImpactValue label={`Sisa ${impact.envelope.name}`} value={envelopeAfter} delta={envelopeAfter - envelopeBefore} />
-        ) : null}
-        <ImpactValue label="Dana Tersedia" value={safeAfter} delta={safeAfter - safeBefore} hideDelta={safeAfter === safeBefore} />
         {accounts.map((item) => (
-          <ImpactValue key={item.accountId} label={item.account.name || "Rekening"} value={item.balanceAfter} delta={item.balanceAfter - item.balanceBefore} />
+          <ImpactValue key={item.accountId} label={`Rekening · ${item.account.name || "Rekening"}`} value={item.balanceAfter} delta={item.balanceAfter - item.balanceBefore} resultLabel="saldo" />
         ))}
+        {impact.budget ? (
+          <ImpactValue label={impact.budget.name || "Kebutuhan"} value={budgetAfter} delta={budgetAfter - budgetBefore} resultLabel="sisa" />
+        ) : impact.envelope ? (
+          <ImpactValue label={impact.envelope.name} value={envelopeAfter} delta={envelopeAfter - envelopeBefore} resultLabel="sisa" />
+        ) : null}
+        <ImpactValue label="Dana Tersedia" value={safeAfter} delta={safeAfter - safeBefore} resultLabel="sisa" />
       </div>
       <small className={styles.impactFootnote}>{impactFootnote(impact)}</small>
     </div>

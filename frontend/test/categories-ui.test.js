@@ -58,7 +58,7 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /FiMoreHorizontal/);
   assert.match(page, /createPortal/);
   assert.match(page, /document\.body/);
-  assert.match(page, /Kelola status/);
+  assert.match(page, /Hapus dari daftar/);
   assert.match(page, /active \? null : <span className=\{styles\.categoryStatus\}/);
   assert.match(page, /event\.key === "Escape"/);
   assert.match(page, /event\.key === "ArrowDown"/);

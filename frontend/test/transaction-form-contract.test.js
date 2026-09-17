@@ -47,7 +47,14 @@ test("metode pembayaran tetap opsional dan mobile menaruhnya di Detail tambahan"
   assert.match(text, /sourceAccountPicker/);
   assert.doesNotMatch(text, /Tampilkan semua|Lihat semua|hiddenAccountLabel/);
   assert.match(text, /Belum ada rekening sumber dengan dana yang dapat digunakan/);
-  assert.match(text, /envelopeOptionLabel/);
+  assert.doesNotMatch(text, /Alokasi Dana \(manual\)|Pilih Alokasi manual|orderedEnvelopeOptions/, "Pemilihan Alokasi manual tidak boleh muncul lagi di form transaksi.");
+  assert.match(text, /lockPlanningSelection/);
+  assert.match(text, /Dipilih dari Alokasi Dana|Dari Alokasi/);
+  assert.match(text, /UNALLOCATED_NEED_VALUE/);
+  assert.match(text, /allocationCandidates\.length > 1[\s\S]*Pilih Kebutuhan yang dipakai/);
+  assert.match(text, /allocationMode !== "manual"/);
+  assert.match(text, /Sumber pengurangan dana: Dana Tersedia\. Kebutuhan tidak berubah\./);
+
   assert.match(text, /mobileColumns=\{4\}/, "jenis transaksi mobile harus tetap satu baris empat opsi pada lebar normal");
   assert.match(text, /styles\.typeSelector/);
 });
@@ -180,11 +187,16 @@ test("composer mobile memakai picker inline canonical untuk rekening, kategori, 
   assert.match(mobile, /styles\.detailStack/);
   assert.match(mobile, /Detail tambahan/);
   assert.match(mobile, /Dipakai untuk kebutuhan mana\?/);
-  assert.match(mobile, /Pilih Alokasi manual/);
+  assert.doesNotMatch(mobile, /Pilih Alokasi manual|Tutup pilihan Alokasi manual|Alokasi Dana · manual/);
+  assert.match(mobile, /lockPlanningSelection/);
+  assert.match(mobile, /Dari Alokasi/);
+  assert.match(mobile, /Pengeluaran Belum Dialokasikan/);
+  assert.match(mobile, /Tanpa Kebutuhan/);
+  assert.match(mobile, /placeholder="Pilih Kebutuhan"/);
+
   assert.match(mobile, /<InlineSelectionPicker/);
   assert.match(mobile, /sourceAccountPicker/);
   assert.match(mobile, /compatibleDestinationAccounts/);
-  assert.match(mobile, /orderedEnvelopeOptions/);
   assert.match(mobile, /<MobileTransactionCategoryField/);
   assert.doesNotMatch(mobile, /openMobileSelection|<select/, "composer mobile default tidak memakai subview atau native select");
   assert.match(category, /InlineSelectionPicker/);
@@ -248,9 +260,9 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   assert.match(form, /smartAllocationCandidates/);
   assert.match(form, /useSmartAllocationSelection/);
   assert.match(form, /allocationMode !== "auto"/);
-  assert.match(smart, /Kebutuhan .* dipakai untuk transaksi ini/);
+  assert.match(smart, /mergeContextualAllocationCandidate/);
   assert.match(form, /earlyFundsWarning/);
-  assert.match(form, /Perkiraan setelah disimpan/);
+  assert.match(form, /Setelah disimpan/);
   assert.doesNotMatch(form, /Lihat dampak lengkap/);
   assert.match(form, /label: "Tambah lagi"/);
   assert.match(form, /idempotencyKeyRef\.current = createTransactionIntentKey\(\)/);
@@ -267,6 +279,7 @@ test("detail Alokasi Dana membuka composer canonical dengan rekening, Alokasi, d
   assert.match(detail, /today >= item\.period_start/);
   assert.match(detail, /category_id: budget\?\.category_id \|\| ""/);
   assert.match(detail, /envelope_period_id: item\.envelope_period_id/);
+  assert.match(detail, /initialAllocationContext: budget \? \{ budget, envelope: item \} : null/);
   assert.doesNotMatch(detail, /createTransaction|updateTransaction|transactions\.api/, "detail Alokasi hanya boleh membuka composer, bukan menyimpan transaksi sendiri");
 });
 

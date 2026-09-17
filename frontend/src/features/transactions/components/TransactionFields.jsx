@@ -4,12 +4,11 @@ import VisualChoiceGroup from "../../../components/common/VisualChoiceGroup.jsx"
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import MoneyInput from "../../../components/common/MoneyInput.jsx";
 import { SelectionControl } from "../../../components/common/SelectionField.jsx";
-import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
+import { accountOptionVisual, categoryOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import { TRANSACTION_TYPES } from "../../../domain/constants.js";
 import { formatRupiah } from "../../../domain/money.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
-import { userRoleLabel } from "../../../shared/presentation/user.js";
-import { allocationSelectionHint, frequentCategories, orderedEnvelopeOptions, sourceAccountPicker } from "../transactionFormSmartDefaults.js";
+import { UNALLOCATED_NEED_VALUE, frequentCategories, needSelectionValue, sourceAccountPicker } from "../transactionFormSmartDefaults.js";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, quickAmountLabel } from "../transactionFormPresentation.js";
 import styles from "../TransactionForm.module.css";
 import TransactionImpactPreview from "./TransactionImpactPreview.jsx";
@@ -59,38 +58,54 @@ const CategoryField = ({ form, visibleCategories, recentTransactions, update, er
   </div>;
 };
 
-const envelopeOptionLabel = (item) => {
-  const assignee = item.assignee_user_id ? `${item.assignee_name || "Pengguna"} · ${userRoleLabel(item.assignee_role)}` : "Bersama";
-  return `${item.name} · ${assignee} — sisa ${formatRupiah(item.remaining_amount)}`;
+const resolveLockedNeed = ({ form, candidates, budgets, envelopes }) => {
+  const contextual = candidates.find((item) => item.need.budget_id === form.budget_id && item.envelope.envelope_period_id === form.envelope_period_id) || null;
+  return {
+    need: contextual?.need || budgets.find((item) => item.budget_id === form.budget_id) || null,
+    envelope: contextual?.envelope || envelopes.find((item) => item.envelope_period_id === form.envelope_period_id) || null,
+  };
 };
 
-
-const NeedField = ({ form, candidates, onNeedChange }) => {
-  if (!form.source_account_id || !form.category_id || !candidates.length) return null;
-  const options = [
-    { value: "", label: "Belum masuk Kebutuhan", meta: "Catat tanpa menghubungkan ke Kebutuhan", ...allocationOptionVisual() },
-    ...candidates.map((candidate) => ({
-      value: candidate.need.budget_id,
-      label: candidate.need.name || "Kebutuhan",
-      meta: `${candidate.envelope.name} · sisa ${formatRupiah(Math.max(0, Number(candidate.need.amount || 0) - Number(candidate.need.used_amount || 0)))}`,
-      icon: FiCheckCircle,
-    })),
-  ];
+const LockedNeedField = ({ form, candidates, budgets, envelopes }) => {
+  const { need, envelope } = resolveLockedNeed({ form, candidates, budgets, envelopes });
+  const remaining = Math.max(0, Number(need?.amount || 0) - Number(need?.used_amount || 0));
+  const envelopePrefix = envelope?.name ? `${envelope.name} · ` : "";
   return <div className={`field ${styles.visualField}`}>
-    <label htmlFor="budget-need">{candidates.length > 1 ? "Dipakai untuk kebutuhan mana?" : "Kebutuhan"}</label>
-    <FieldControl icon={FiCheckCircle}><SelectionControl id="budget-need" embedded value={form.budget_id} onChange={onNeedChange} placeholder="Pilih Kebutuhan" searchable={options.length > 8} ariaLabel="Kebutuhan" options={options} /></FieldControl>
-    <small>{candidates.length === 1 ? "Kebutuhan yang cocok dipilih otomatis." : `${candidates.length} Kebutuhan cocok dengan kategori ini. Pilih yang benar.`}</small>
+    <span>Kebutuhan</span>
+    <div className="notice notice--info"><FiCheckCircle aria-hidden="true" /><span><strong>{need?.name || "Kebutuhan terpilih"}</strong> · {envelopePrefix}sisa {formatRupiah(remaining)} · Dipilih dari Alokasi Dana.</span></div>
   </div>;
 };
-const EnvelopeField = ({ form, envelopes, candidates, onEnvelopeChange }) => {
-  const disabled = !form.source_account_id || !form.category_id;
-  const options = useMemo(() => orderedEnvelopeOptions(envelopes, candidates), [candidates, envelopes]);
-  const placeholder = !form.source_account_id ? "Pilih rekening terlebih dahulu" : !form.category_id ? "Pilih kategori terlebih dahulu" : "Belum dialokasikan";
-  const hint = allocationSelectionHint({ form, candidates, selectedEnvelopeId: form.envelope_period_id });
+
+const needOption = (candidate) => ({
+  value: candidate.need.budget_id,
+  label: candidate.need.name || "Kebutuhan",
+  meta: `${candidate.envelope.name} · sisa ${formatRupiah(Math.max(0, Number(candidate.need.amount || 0) - Number(candidate.need.used_amount || 0)))}`,
+  icon: FiCheckCircle,
+});
+
+const needHelperText = ({ automatic, count }) => {
+  if (automatic) return "Dipilih otomatis karena hanya satu Kebutuhan yang cocok.";
+  if (count > 1) return `${count} Kebutuhan cocok. Pilih salah satu atau pilih Tanpa Kebutuhan secara sadar.`;
+  return "Anda dapat mengganti pilihan ini bila diperlukan.";
+};
+
+const NeedField = ({ form, candidates, onNeedChange, lockPlanningSelection, budgets, envelopes, allocationMode, errors, outcomeUnknown }) => {
+  if (!form.source_account_id || !form.category_id) return null;
+  if (lockPlanningSelection && form.budget_id) return <LockedNeedField form={form} candidates={candidates} budgets={budgets} envelopes={envelopes} />;
+  if (!candidates.length) {
+    return <div className={`notice notice--info ${styles.visualField}`}><FiLayers aria-hidden="true" /><span><strong>Belum ada Kebutuhan yang cocok.</strong> Transaksi dapat dicatat sebagai Pengeluaran Belum Dialokasikan dan akan memakai Dana Tersedia.</span></div>;
+  }
+  const options = [
+    { value: UNALLOCATED_NEED_VALUE, label: "Tanpa Kebutuhan", meta: "Akan memakai Dana Tersedia · Kebutuhan tidak berubah", icon: FiLayers },
+    ...candidates.map(needOption),
+  ];
+  const value = needSelectionValue({ budgetId: form.budget_id, allocationMode });
+  const automatic = candidates.length === 1 && allocationMode === "auto" && form.budget_id === candidates[0].need.budget_id;
+  const label = candidates.length > 1 ? "Dipakai untuk kebutuhan mana?" : "Kebutuhan";
   return <div className={`field ${styles.visualField}`}>
-    <label htmlFor="envelope">Alokasi Dana (manual)</label>
-    <FieldControl icon={FiLayers}><SelectionControl id="envelope" embedded value={form.envelope_period_id} onChange={onEnvelopeChange} disabled={disabled} placeholder={placeholder} searchable={options.length > 8} ariaLabel="Alokasi Dana" options={[...(!disabled ? [{ value: "", label: "Belum dialokasikan", ...allocationOptionVisual() }] : []), ...options.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: envelopeOptionLabel(item).replace(`${item.name} · `, ""), ...allocationOptionVisual() }))]} /></FieldControl>
-    {hint ? <small>{hint}</small> : null}
+    <label htmlFor="budget-need">{label}</label>
+    <FieldControl icon={FiCheckCircle}><SelectionControl id="budget-need" embedded value={value} onChange={onNeedChange} placeholder="Pilih Kebutuhan" searchable={options.length > 8} ariaLabel="Kebutuhan" options={options} invalid={Boolean(errors.budget_id)} describedBy={errors.budget_id ? "budget-need-error" : undefined} disabled={outcomeUnknown} /></FieldControl>
+    {errors.budget_id ? <small id="budget-need-error" className="field__error">{errors.budget_id}</small> : <small>{needHelperText({ automatic, count: candidates.length })}</small>}
   </div>;
 };
 
@@ -98,8 +113,7 @@ const AccountCategoryFields = (p) => <>
     {!p.isIncome ? <SourceAccountField form={p.form} accounts={p.accounts} recentTransactions={p.recentTransactions} onSourceAccountChange={p.onSourceAccountChange} errors={p.errors} /> : null}
     {p.isIncome || p.isTransfer ? <DestinationAccountField form={p.form} accounts={p.compatibleDestinationAccounts} update={p.update} errors={p.errors} /> : null}
     {!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} recentTransactions={p.recentTransactions} update={p.update} errors={p.errors} /> : null}
-    {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <NeedField form={p.form} candidates={p.allocationCandidates} onNeedChange={p.onNeedChange} /> : null}
-    {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <EnvelopeField form={p.form} envelopes={p.compatibleEnvelopes} candidates={p.allocationCandidates} onEnvelopeChange={p.onEnvelopeChange} /> : null}
+    {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <NeedField form={p.form} candidates={p.allocationCandidates} onNeedChange={p.onNeedChange} lockPlanningSelection={p.lockPlanningSelection} budgets={p.budgets} envelopes={p.envelopes} allocationMode={p.allocationMode} errors={p.errors} outcomeUnknown={p.outcomeUnknown} /> : null}
   </>;
 
 const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`}><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><SelectionControl id="payment-method" embedded value={form.payment_method} onChange={(value) => update("payment_method", value)} ariaLabel="Metode pembayaran" options={[...(form.payment_method === "autodebit" ? [{ value: "autodebit", label: "Auto-debit (data lama)", disabled: true }] : []), ...PAYMENT_METHOD_OPTIONS.map((item) => ({ value: item.value, label: item.label, icon: item.icon }))]} /></FieldControl></label><label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined} />{errors.description ? <small id="description-error" className="field__error">{errors.description}</small> : null}</label></>;

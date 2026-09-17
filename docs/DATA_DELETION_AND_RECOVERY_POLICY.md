@@ -33,7 +33,7 @@ Kebijakan ini mencegah kehilangan histori, saldo tidak konsisten, dan kesalahan 
 ## Honest lifecycle contract
 
 - Label tindakan harus sesuai dengan konsekuensi server. **Hapus permanen** hanya dipakai ketika preview server membuktikan entity belum pernah digunakan dan benar-benar dapat dihapus; **Arsipkan** dipakai ketika histori tetap dipertahankan.
-- Sebelum preview lifecycle tersedia, UI boleh memakai label netral **Kelola status**. Label netral tidak boleh diganti dengan `Hapus` bila server masih mungkin memilih archive.
+- Sebelum preview lifecycle tersedia, UI memakai label hasil **Hapus dari daftar**. Label ini hanya berarti keluar dari daftar aktif dan tidak boleh disingkat menjadi `Hapus permanen` bila server masih mungkin memilih archive.
 - Kewajiban memakai istilah **Hentikan kewajiban** karena action `commitments.archive` menghentikan future schedule tanpa menghapus histori dan saat ini tidak memiliki restore manual di UI.
 - Success feedback dan recovery copy harus mengikuti hasil aktual (`deleted_unused`, archived/stopped, restored), bukan nama action generik yang dipanggil client.
 

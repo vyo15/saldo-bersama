@@ -225,7 +225,7 @@ const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTran
       </div>
       {account.status === "active" && canManage ? (
         <div className={styles.mobileSecondaryActions} aria-label={`Tindakan tambahan rekening ${account.name}`}>
-          <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Kelola status</button>
+          <button type="button" className={styles.mobileDangerAction} onClick={() => onArchive?.(account)}><FiArchive aria-hidden="true" />Hapus dari daftar</button>
         </div>
       ) : null}
     </>

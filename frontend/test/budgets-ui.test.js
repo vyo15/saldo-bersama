@@ -85,7 +85,9 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /Belum digunakan/);
   assert.match(detail, /Kelola kebutuhan \${budget\.name}/);
   assert.match(detail, />Edit kebutuhan<\/Button>/);
+  assert.match(detail, /allocation-limit-row__header/);
   assert.match(styles, /grid-template-columns: 34px minmax\(0, 1fr\) auto/);
+  assert.match(styles, /allocation-limit-row__content[\s\S]*margin-left: 42px/);
   assert.match(detail, /allocation-needs-filter/);
   assert.match(detail, /Perhatian <span>\{attentionCount\}<\/span>/);
   assert.match(detail, /Belum dipakai <span>\{unusedCount\}<\/span>/);
@@ -93,6 +95,9 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.doesNotMatch(detail, /Jadwal Terkait/);
   assert.doesNotMatch(detail, /AllocationScheduleContinuation/);
   assert.match(detail, /Kelola dana/);
+  assert.match(detail, /allocation-management-actions/);
+  assert.match(detail, />Hapus dari daftar<\/Button>/);
+  assert.match(styles, /allocation-management-actions__lifecycle[\s\S]*grid-column: 1 \/ -1/);
   assert.match(styles, /allocation-detail-shell/);
   assert.match(styles, /allocation-limit-row/);
 });

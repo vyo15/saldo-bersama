@@ -14,6 +14,7 @@ const DEFAULT_COMPOSER_STATE = Object.freeze({
   initialSourceAccountId: "",
   presentation: "default",
   initialDraft: null,
+  initialAllocationContext: null,
   continuation: null,
 });
 
@@ -34,8 +35,14 @@ const normalizeComposerOptions = (options) => {
     : "";
   const presentation = source.presentation === "mobile-transfer" ? "mobile-transfer" : "default";
   const initialDraft = source.initialDraft && typeof source.initialDraft === "object" ? { ...source.initialDraft } : null;
+  const initialAllocationContext = source.initialAllocationContext && typeof source.initialAllocationContext === "object"
+    ? {
+      budget: source.initialAllocationContext.budget && typeof source.initialAllocationContext.budget === "object" ? { ...source.initialAllocationContext.budget } : null,
+      envelope: source.initialAllocationContext.envelope && typeof source.initialAllocationContext.envelope === "object" ? { ...source.initialAllocationContext.envelope } : null,
+    }
+    : null;
   const continuation = source.continuation && typeof source.continuation === "object" ? { ...source.continuation, payload: { ...(source.continuation.payload || {}) } } : null;
-  return { initialType, initialSourceAccountId, presentation, initialDraft, continuation };
+  return { initialType, initialSourceAccountId, presentation, initialDraft, initialAllocationContext, continuation };
 };
 
 export const useTransactionComposer = () => {
@@ -93,6 +100,7 @@ export const TransactionComposerProvider = ({ children }) => {
         initialSourceAccountId={composer.initialSourceAccountId}
         presentation={composer.presentation}
         initialDraft={composer.initialDraft}
+        initialAllocationContext={composer.initialAllocationContext}
         continuation={composer.continuation}
         onDirtyChange={setComposerDirty}
       /></Suspense> : null}

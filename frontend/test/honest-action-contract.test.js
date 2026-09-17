@@ -23,9 +23,14 @@ test("lifecycle action membedakan hard-delete, archive, dan penghentian Kewajiba
     assert.match(source, /Arsipkan/);
   }
   for (const source of [categories, allocations, budgets, recurring, goals]) {
-    assert.match(source, /Kelola status/);
+    assert.match(source, /Hapus dari daftar/);
+
     assert.doesNotMatch(source, />\s*Kelola data\s*</);
   }
+  assert.match(allocations, /Hapus dari daftar/);
+  assert.doesNotMatch(allocations, />\s*Kelola data\s*</);
+  assert.match(budgets, /Hapus dari daftar/);
+  assert.doesNotMatch(budgets, />\s*Kelola status\s*</);
 
   assert.match(commitments, /Hentikan kewajiban\?/);
   assert.match(commitments, /confirmLabel="Hentikan kewajiban"/);
@@ -35,7 +40,7 @@ test("lifecycle action membedakan hard-delete, archive, dan penghentian Kewajiba
   assert.doesNotMatch(commitmentApi, /deleteCommitment/);
 });
 
-test("Target menjaga aksi uang satu arah melalui Alokasi tanpa tombol Setor atau Tarik langsung", async () => {
+test("Target mengarahkan eksekusi dana melalui Alokasi tanpa CTA mutasi langsung yang duplikatif", async () => {
   const source = await readMany([
     "src/features/goals/GoalsPage.jsx",
     "src/features/goals/components/GoalCards.jsx",
@@ -43,10 +48,8 @@ test("Target menjaga aksi uang satu arah melalui Alokasi tanpa tombol Setor atau
   ]);
 
   assert.match(source, /Buka Alokasi/);
-  assert.match(source, /Target hanya memantau rencana dan progres/);
-  assert.doesNotMatch(source, />\s*Setor dana\s*</);
-  assert.doesNotMatch(source, />\s*Tarik dana\s*</);
-  assert.doesNotMatch(source, /Tambah dana target|Simpan transfer|GoalMovementModal/);
+  assert.match(source, /Eksekusi lewat Alokasi/);
+  assert.doesNotMatch(source, /Setor dana|Tarik dana|Tambah dana target|Simpan transfer/);
 });
 
 test("side effect dan model akses dijelaskan sebelum user mengambil tindakan", async () => {

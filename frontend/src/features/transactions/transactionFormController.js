@@ -21,6 +21,7 @@ const TRANSACTION_ERROR_SELECTORS = Object.freeze([
   ["source_account_id", "#source-account"],
   ["destination_account_id", "#destination-account"],
   ["category_id", "#category"],
+  ["budget_id", "#budget-need"],
   ["description", "#description"],
 ]);
 
@@ -195,7 +196,7 @@ const finalizeTransactionSave = async ({ saved, transaction, form, continuation,
   return false;
 };
 
-export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
+export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, allocationCandidates = [], allocationMode = "auto", forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault();
   const formElement = event.currentTarget;
   const submission = prepareTransactionSubmission({ form, transaction, isIncome, confirmation, envelopes, forceOverspendNote });
@@ -207,11 +208,19 @@ export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome
   }
   const validation = submission.validation;
   if (!validation.ok) { setters.setErrors(validation.errors); focusFirstTransactionError(formElement, validation.errors); return; }
+  if (form.transaction_type === TRANSACTION_TYPES.EXPENSE && allocationCandidates.length > 1 && !form.budget_id && allocationMode !== "manual") {
+    const nextErrors = { budget_id: `Pilih Kebutuhan yang dipakai. Ada ${allocationCandidates.length} Kebutuhan yang cocok dengan transaksi ini.` };
+    setters.setErrors((current) => ({ ...current, ...nextErrors }));
+    setters.setConfirmation(null);
+    setUnallocatedConfirmed(false);
+    focusFirstTransactionError(formElement, nextErrors);
+    return;
+  }
   if (form.transaction_type === TRANSACTION_TYPES.EXPENSE && !form.envelope_period_id && !unallocatedConfirmed) {
     setUnallocatedConfirmed(true);
     setters.setConfirmation({
       code: "UNALLOCATED_EXPENSE",
-      message: "Belum memilih Alokasi Dana. Transaksi tetap dapat dicatat, tetapi akan masuk ke Pengeluaran Belum Dialokasikan.",
+      message: "Transaksi belum terhubung ke Kebutuhan. Transaksi tetap dapat dicatat dan akan masuk ke Pengeluaran Belum Dialokasikan.",
     });
     return;
   }
@@ -296,7 +305,7 @@ export const useSmartAllocationSelection = ({ open, transaction, allocationMode,
     const candidate = candidates.length === 1 ? candidates[0] : null;
     const nextEnvelopeId = candidate?.envelope.envelope_period_id || "";
     const nextBudgetId = candidate?.need.budget_id || "";
-    setErrors((current) => clearTransactionFieldErrors(current, "envelope_period_id"));
+    setErrors((current) => clearTransactionFieldErrors(current, ["envelope_period_id", "budget_id"]));
     setForm((current) => current.envelope_period_id === nextEnvelopeId && current.budget_id === nextBudgetId
       ? current
       : { ...current, envelope_period_id: nextEnvelopeId, budget_id: nextBudgetId });

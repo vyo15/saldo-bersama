@@ -203,7 +203,7 @@ const SelectedAccountHeroActions = ({ account, investment, canManage, onEditAcco
   <div className={styles.heroActions}>
     {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat investasi</Button> : null}
     {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
-    {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Kelola status</Button> : null}
+    {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Hapus dari daftar</Button> : null}
   </div>
 );
 

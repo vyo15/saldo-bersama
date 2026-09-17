@@ -18,9 +18,8 @@ import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
-import { userRoleLabel } from "../../shared/presentation/user.js";
 import MobileTransactionCategoryField from "./MobileTransactionCategoryField.jsx";
-import { orderedEnvelopeOptions, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
+import { UNALLOCATED_NEED_VALUE, needSelectionValue, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, paymentMethodLabel, quickAmountLabel } from "./transactionFormPresentation.js";
 import TransactionImpactPreview from "./components/TransactionImpactPreview.jsx";
 import styles from "./MobileTransactionFields.module.css";
@@ -122,56 +121,48 @@ const TransactionAccountField = (p) => {
   );
 };
 
-const envelopeOptionMeta = (item) => {
-  const assignee = item.assignee_user_id ? `${item.assignee_name || "Pengguna"} · ${userRoleLabel(item.assignee_role)}` : "Bersama";
-  return `${assignee} · sisa ${formatRupiah(item.remaining_amount || 0)}`;
-};
-
-const EnvelopeField = (p) => {
-  const disabled = !p.form.source_account_id || !p.form.category_id;
-  const options = disabled ? [] : [
-    { value: "", label: "Belum dialokasikan", meta: "Gunakan dana rekening tanpa mengikat ke Alokasi Dana", icon: FiLayers },
-    ...orderedEnvelopeOptions(p.compatibleEnvelopes, p.allocationCandidates).map((item) => ({
-      value: item.envelope_period_id,
-      label: item.name,
-      meta: envelopeOptionMeta(item),
-      icon: FiLayers,
-    })),
-  ];
-  return (
-    <InlineSelectionPicker
-      label="Alokasi Dana · manual"
-      value={p.form.envelope_period_id}
-      onChange={p.onEnvelopeChange}
-      options={options}
-      placeholder={disabled ? "Belum tersedia" : "Pilih Alokasi Dana"}
-      placeholderOption={{ icon: FiLayers }}
-      searchable={options.length > 8}
-      searchPlaceholder="Cari Alokasi Dana…"
-      emptyText="Belum ada Alokasi Dana yang cocok."
-      disabled={disabled || p.outcomeUnknown}
-    />
-  );
-};
-
 const needMeta = (candidate) => {
   const amount = Math.max(0, Number(candidate.need.amount || 0));
   const used = Math.max(0, Number(candidate.need.used_amount || 0));
   return `${candidate.envelope.name} · sisa ${formatRupiah(Math.max(0, amount - used))}`;
 };
 
+const lockedPlanningNeed = (p) => {
+  if (!p.lockPlanningSelection || !p.form.budget_id) return null;
+  const contextual = p.allocationCandidates.find((item) => item.need.budget_id === p.form.budget_id && item.envelope.envelope_period_id === p.form.envelope_period_id) || null;
+  return contextual || {
+    need: p.budgets.find((item) => item.budget_id === p.form.budget_id) || null,
+    envelope: p.envelopes.find((item) => item.envelope_period_id === p.form.envelope_period_id) || null,
+  };
+};
+
+// NeedField intentionally separates unresolved selection from an explicit Tanpa Kebutuhan intent.
+// eslint-disable-next-line complexity
 const NeedField = (p) => {
   if (p.form.transaction_type !== TRANSACTION_TYPES.EXPENSE || !p.form.source_account_id || !p.form.category_id) return null;
+  const locked = lockedPlanningNeed(p);
+  const lockedNeed = locked?.need || null;
+  const lockedEnvelope = locked?.envelope || null;
+  if (locked) {
+    const amount = Math.max(0, Number(lockedNeed?.amount || 0));
+    const used = Math.max(0, Number(lockedNeed?.used_amount || 0));
+    const remaining = Math.max(0, amount - used);
+    return <div className={styles.needLocked} role="status">
+      <FiCheckCircle aria-hidden="true" />
+      <span><strong>{lockedNeed?.name || "Kebutuhan terpilih"}</strong><small>{lockedEnvelope?.name ? `${lockedEnvelope.name} · ` : ""}sisa {formatRupiah(remaining)}</small></span>
+      <small>Dari Alokasi</small>
+    </div>;
+  }
   if (!p.allocationCandidates.length) {
     return (
       <div className={styles.needEmpty}>
         <FiLayers aria-hidden="true" />
-        <span><strong>Belum ada Kebutuhan yang cocok</strong><small>Transaksi tetap dapat dicatat. Alokasi Dana dapat dipilih manual bila diperlukan.</small></span>
+        <span><strong>Belum ada Kebutuhan yang cocok</strong><small>Transaksi dapat dicatat sebagai Pengeluaran Belum Dialokasikan dan akan memakai Dana Tersedia.</small></span>
       </div>
     );
   }
   const options = [
-    { value: "", label: "Belum masuk Kebutuhan", meta: "Catat tanpa menghubungkan ke Kebutuhan", icon: FiLayers },
+    { value: UNALLOCATED_NEED_VALUE, label: "Tanpa Kebutuhan", meta: "Akan memakai Dana Tersedia · Kebutuhan tidak berubah", icon: FiLayers },
     ...p.allocationCandidates.map((candidate) => ({
       value: candidate.need.budget_id,
       label: candidate.need.name || "Kebutuhan",
@@ -179,22 +170,25 @@ const NeedField = (p) => {
       icon: FiCheckCircle,
     })),
   ];
-  const automatic = p.allocationCandidates.length === 1 && p.form.budget_id === p.allocationCandidates[0].need.budget_id;
+  const value = needSelectionValue({ budgetId: p.form.budget_id, allocationMode: p.allocationMode });
+  const automatic = p.allocationCandidates.length === 1 && p.allocationMode === "auto" && p.form.budget_id === p.allocationCandidates[0].need.budget_id;
   return (
     <div className={styles.needField}>
       <InlineSelectionPicker
         label={p.allocationCandidates.length > 1 ? "Dipakai untuk kebutuhan mana?" : "Kebutuhan"}
-        value={p.form.budget_id}
+        value={value}
         onChange={p.onNeedChange}
         options={options}
         placeholder="Pilih Kebutuhan"
+        placeholderMeta={p.allocationCandidates.length > 1 ? `${p.allocationCandidates.length} Kebutuhan cocok · wajib pilih atau pilih Tanpa Kebutuhan` : ""}
         placeholderOption={{ icon: FiLayers }}
         searchable={options.length > 8}
         searchPlaceholder="Cari Kebutuhan…"
         emptyText="Belum ada Kebutuhan yang cocok."
+        error={p.errors.budget_id || ""}
         disabled={p.outcomeUnknown}
       />
-      {automatic ? <small className={styles.smartMatch}><FiCheckCircle aria-hidden="true" /> Dipilih otomatis dari Kebutuhan bulan ini.</small> : null}
+      {automatic ? <small className={styles.smartMatch}><FiCheckCircle aria-hidden="true" /> Dipilih otomatis karena hanya satu Kebutuhan yang cocok.</small> : null}
     </div>
   );
 };
@@ -259,15 +253,9 @@ const NotesField = ({ form, update, errors }) => (
 const AdditionalDetails = (p) => {
   const shouldOpen = p.isEditing || Boolean(p.form.payment_method || p.form.description) || p.form.transaction_date !== todayInJakarta() || Boolean(p.errors.transaction_date || p.errors.description);
   const [open, setOpen] = useState(shouldOpen);
-  const [manualAllocationOpen, setManualAllocationOpen] = useState(Boolean(p.form.envelope_period_id && !p.form.budget_id));
-
   useEffect(() => {
     if (p.errors.transaction_date || p.errors.description) setOpen(true);
   }, [p.errors.description, p.errors.transaction_date]);
-  useEffect(() => {
-    if (p.form.envelope_period_id && !p.form.budget_id) setManualAllocationOpen(true);
-  }, [p.form.budget_id, p.form.envelope_period_id]);
-
   return (
     <section className={styles.additionalDetails}>
       <button type="button" className={styles.additionalToggle} aria-expanded={open} aria-controls="transaction-additional-details" onClick={() => setOpen((current) => !current)}>
@@ -279,15 +267,6 @@ const AdditionalDetails = (p) => {
           <DateRow form={p.form} update={p.update} errors={p.errors} />
           <PaymentMethods form={p.form} update={p.update} />
           <NotesField form={p.form} update={p.update} errors={p.errors} />
-        </div>
-      ) : null}
-      {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? (
-        <div className={styles.manualAllocation}>
-          <button type="button" className={styles.manualAllocationToggle} aria-expanded={manualAllocationOpen} onClick={() => setManualAllocationOpen((current) => !current)}>
-            <FiLayers aria-hidden="true" />
-            <span>{manualAllocationOpen ? "Tutup pilihan Alokasi manual" : "Pilih Alokasi manual"}</span>
-          </button>
-          {manualAllocationOpen ? <EnvelopeField {...p} /> : null}
         </div>
       ) : null}
     </section>

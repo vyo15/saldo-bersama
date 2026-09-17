@@ -1,6 +1,12 @@
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { formatRupiah } from "../../domain/money.js";
 
+export const UNALLOCATED_NEED_VALUE = "__unallocated_need__";
+
+export const needSelectionValue = ({ budgetId = "", allocationMode = "auto" } = {}) => (
+  budgetId || (allocationMode === "manual" ? UNALLOCATED_NEED_VALUE : "")
+);
+
 const asNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
 const periodFromDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value).slice(0, 7) : "";
 const dateInsideEnvelope = (date, item) => !date || (!item.period_start || date >= item.period_start) && (!item.period_end || date <= item.period_end);
@@ -77,26 +83,15 @@ export const smartAllocationCandidates = ({ budgets = [], envelopes = [], form }
   }, []);
 };
 
-export const orderedEnvelopeOptions = (envelopes = [], candidates = []) => {
-  const preferred = new Set(candidates.map((item) => item.envelope.envelope_period_id));
-  return [...envelopes].sort((left, right) => {
-    const leftPreferred = preferred.has(left.envelope_period_id);
-    const rightPreferred = preferred.has(right.envelope_period_id);
-    if (leftPreferred !== rightPreferred) return leftPreferred ? -1 : 1;
-    return String(left.name || "").localeCompare(String(right.name || ""), "id-ID");
-  });
-};
-
-export const allocationSelectionHint = ({ form, candidates, selectedEnvelopeId }) => {
-  if (form.transaction_type !== TRANSACTION_TYPES.EXPENSE) return "";
-  if (!form.source_account_id) return "Pilih rekening terlebih dahulu.";
-  if (!form.category_id) return "Pilih kategori terlebih dahulu.";
-  const selected = candidates.find((item) => item.envelope.envelope_period_id === selectedEnvelopeId && (!form.budget_id || item.need.budget_id === form.budget_id));
-  if (selected) return `Kebutuhan ${selected.need.name || selected.need.category_id} dipakai untuk transaksi ini.`;
-  if (selectedEnvelopeId) return "Alokasi Dana dipilih manual untuk transaksi ini.";
-  if (candidates.length > 1) return `${candidates.length} Kebutuhan cocok. Pilih kebutuhan yang benar.`;
-  if (candidates.length === 1) return `Kebutuhan ${candidates[0].need.name || candidates[0].need.category_id} cocok dan dapat dipilih otomatis.`;
-  return "Belum ada Kebutuhan aktif yang cocok. Transaksi tetap dapat dicatat atau Alokasi Dana dapat dipilih manual.";
+export const mergeContextualAllocationCandidate = ({ candidates = [], context = null, form }) => {
+  const budget = context?.budget;
+  const envelope = context?.envelope;
+  if (!budget?.budget_id || !envelope?.envelope_period_id || !form?.budget_id) return candidates;
+  if (String(form.budget_id) !== String(budget.budget_id)) return candidates;
+  if (budget.category_id !== form.category_id || envelope.source_account_id !== form.source_account_id) return candidates;
+  if (!dateInsideEnvelope(form.transaction_date, envelope)) return candidates;
+  if (candidates.some((item) => item.need.budget_id === budget.budget_id && item.envelope.envelope_period_id === envelope.envelope_period_id)) return candidates;
+  return [{ need: budget, envelope }, ...candidates];
 };
 
 export const earlyFundsWarning = ({ transactionType, amount, source, envelope }) => {
@@ -110,7 +105,7 @@ export const earlyFundsWarning = ({ transactionType, amount, source, envelope })
   if (transactionType !== TRANSACTION_TYPES.EXPENSE) return null;
   if (!envelope) {
     if (value <= available) return null;
-    return { title: "Dana belum dialokasikan tidak cukup", message: `Kurang ${formatRupiah(value - available)}. Pilih Alokasi Dana yang sesuai atau kurangi nominal.`, shortage: value - available };
+    return { title: "Dana rekening tidak cukup", message: `Kurang ${formatRupiah(value - available)}. Kurangi nominal atau pilih rekening sumber lain.`, shortage: value - available };
   }
   const remaining = Math.max(0, asNumber(envelope.remaining_amount));
   const uncovered = Math.max(0, value - remaining);
