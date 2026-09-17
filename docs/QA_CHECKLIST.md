@@ -38,7 +38,7 @@
 - [ ] Alokasi baru tidak meminta budget awal sebagai flow utama; Kebutuhan mengatur funding dari Dana Tersedia sesuai contract.
 - [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
-- [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: `Sisa` + progress mudah dipindai, status normal tidak memenuhi layar dengan badge `Aman`, status warning/danger tetap terlihat, overflow Edit memiliki target sentuh minimal 44px, dan `Tambah kebutuhan` berada setelah daftar.
+- [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: satu grouped row memuat ikon + nama + Sisa + progress + status ringkas; aksi `Catat`/Jadwal memakai quick action icon-only dengan accessible label dan target sentuh minimal 44px; Edit berada di overflow; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
 - [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, dan tidak menghapus draft/form.
 - [ ] Reconnect/foreground/offline recovery tidak memicu duplicate mutation atau refresh ganda yang tidak perlu.

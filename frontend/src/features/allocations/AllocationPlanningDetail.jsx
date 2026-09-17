@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useNavigate } from "react-router";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
@@ -63,10 +63,20 @@ const recurringScheduleForBudget = (budget, relatedRecurring, today) => {
 const BudgetLimitActions = ({ budget, schedule, canManage, onRecord, onOpenSchedule, onEdit }) => {
   const hasPrimaryAction = Boolean(schedule || onRecord);
   if (!hasPrimaryAction && !canManage) return null;
+  const primaryLabel = schedule ? (schedule.canPay ? "Bayar" : "Lihat jadwal") : "Catat pengeluaran";
+  const PrimaryIcon = schedule ? FiArrowRight : FiPlus;
+  const runPrimaryAction = () => schedule ? onOpenSchedule(schedule.item, schedule.canPay) : onRecord?.(budget);
   return <div className={allocationClass("allocation-limit-row__actions")}>
-    {schedule ? <Button className={allocationClass("allocation-limit-row__primary-action")} variant={schedule.canPay ? "primary" : undefined} onClick={() => onOpenSchedule(schedule.item, schedule.canPay)}>{schedule.canPay ? "Bayar" : "Lihat jadwal"}</Button> : onRecord ? <Button className={allocationClass("allocation-limit-row__primary-action")} variant="primary" icon={FiPlus} onClick={() => onRecord(budget)}>Catat pengeluaran</Button> : null}
+    {hasPrimaryAction ? <Button
+      className={allocationClass("allocation-limit-row__quick-action")}
+      variant={schedule?.canPay || onRecord ? "primary" : "secondary"}
+      icon={PrimaryIcon}
+      aria-label={`${primaryLabel} ${budget.name}`}
+      title={primaryLabel}
+      onClick={runPrimaryAction}
+    >{primaryLabel}</Button> : null}
     {canManage ? <details className={allocationClass("allocation-limit-row__menu")}>
-      <summary aria-label={`Kelola kebutuhan ${budget.name}`}><FiMoreHorizontal aria-hidden="true" /></summary>
+      <summary aria-label={`Kelola kebutuhan ${budget.name}`} title="Kelola kebutuhan"><FiMoreHorizontal aria-hidden="true" /></summary>
       <div className={allocationClass("allocation-limit-row__menu-items")}><Button icon={FiEdit2} onClick={() => onEdit(budget)}>Edit kebutuhan</Button></div>
     </details> : null}
   </div>;
@@ -79,26 +89,24 @@ const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onR
   const tone = status.key === "danger" ? "is-danger" : ["warning", "pace"].includes(status.key) ? "is-warning" : "";
   const CategoryIcon = categoryIcon(category?.icon, "expense");
   const remaining = Math.max(0, amount - used);
-  const patternLabel = schedule?.label
-    || (budget.recording_mode === "fixed_once" ? "Sekali bayar"
-      : budget.recording_mode === "recurring" ? "Rutin"
-        : "Fleksibel");
+  const patternLabel = budget.recording_mode === "fixed_once" ? "Sekali bayar"
+    : budget.recording_mode === "recurring" ? "Rutin"
+      : "Fleksibel";
   const recordAction = budget.recording_mode === "fixed_once" && remaining <= 0 ? null : onRecord;
   const usedPercent = Math.max(0, Math.round(status.usedPercent));
+  const usageLabel = used > 0 ? <>Terpakai <Money value={used} /></> : "Belum digunakan";
   return <div className={allocationClass("allocation-limit-row")} data-budget-id={budget.budget_id}>
-    <div className={allocationClass("allocation-limit-row__main")}>
-      <div className={allocationClass("allocation-limit-row__identity")}>
-        <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" /></span>
-        <div className={allocationClass("allocation-limit-row__content")}>
-          <div className={allocationClass("allocation-limit-row__title")}><strong>{budget.name}</strong><span className={allocationClass("allocation-limit-row__pattern")}>{patternLabel}</span></div>
-          <p className={allocationClass("allocation-limit-row__balance")}><strong>Sisa <Money value={remaining} /></strong><span>dari <Money value={amount} /></span></p>
-        </div>
+    <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" /></span>
+    <div className={allocationClass("allocation-limit-row__content")}>
+      <div className={allocationClass("allocation-limit-row__title")}>
+        <strong>{budget.name}</strong>
+        <span className={allocationClass(`allocation-limit-row__pattern ${status.attention ? tone : ""}`)}>{status.attention ? status.label : patternLabel}</span>
       </div>
-      {status.attention ? <span className={allocationClass(`allocation-limit-row__status ${tone}`)}>{status.label}</span> : null}
-    </div>
-    <div className={allocationClass("allocation-limit-row__progress")}>
-      <div className={allocationClass("allocation-limit-row__progress-meta")}><span>{used > 0 ? <>Terpakai <Money value={used} /></> : "Belum digunakan"}</span><strong>{usedPercent}%</strong></div>
-      <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${usedPercent}%`} />
+      <p className={allocationClass("allocation-limit-row__balance")}><strong>Sisa <Money value={remaining} /></strong><span>· <Money value={amount} /></span><b>{usedPercent}%</b></p>
+      <div className={allocationClass("allocation-limit-row__progress")}>
+        <ProgressBar value={used} max={amount} label={`Pemakaian ${budget.name} ${usedPercent}%`} />
+        <span className={allocationClass(`allocation-limit-row__usage ${status.attention ? tone : ""}`)}>{usageLabel}{schedule?.label ? <> · {schedule.label}</> : null}</span>
+      </div>
     </div>
     <BudgetLimitActions budget={budget} schedule={schedule} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} />
   </div>;
@@ -134,15 +142,35 @@ const AllocationNeedsPanel = ({
   openSchedule,
   editBudget,
 }) => {
+  const [needFilter, setNeedFilter] = useState("all");
   const categoryLookup = new Map((expenseCategories || []).map((category) => [category.category_id, category]));
+  const budgetState = linkedBudgets.map((budget) => ({
+    budget,
+    status: budgetVisualState(budget, periodMeta),
+    used: Math.max(0, Number(budget.used_amount || 0)),
+  }));
+  const attentionCount = budgetState.filter((entry) => entry.status.attention).length;
+  const unusedCount = budgetState.filter((entry) => entry.used <= 0).length;
+  const filteredBudgets = budgetState.filter((entry) => {
+    if (needFilter === "attention") return entry.status.attention;
+    if (needFilter === "unused") return entry.used <= 0;
+    return true;
+  }).map((entry) => entry.budget);
+  const showFilters = linkedBudgets.length > 4;
+
   return <section className={allocationClass("allocation-detail-section allocation-detail-section--needs")} aria-labelledby="allocation-needs-title">
     <div className={allocationClass("allocation-detail-panel__header")}>
-      <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Atur nama, kategori, nominal, dan pola kebutuhan yang menggunakan Alokasi Dana ini.</p></div>
+      <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Pantau sisa dana dan catat pemakaian tanpa membuka detail satu per satu.</p></div>
       {linkedBudgets.length ? <span className={allocationClass("allocation-detail-section__count")}>{linkedBudgets.length} item</span> : null}
     </div>
     {linkedBudgets.length ? <>
       <AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} />
-      <div className={allocationClass("allocation-limit-list")}>{linkedBudgets.map((budget) => <BudgetLimitRow
+      {showFilters ? <div className={allocationClass("allocation-needs-filter")} role="group" aria-label="Filter kebutuhan">
+        <button type="button" className={allocationClass(`allocation-needs-filter__button ${needFilter === "all" ? "is-active" : ""}`)} aria-pressed={needFilter === "all"} onClick={() => setNeedFilter("all")}>Semua <span>{linkedBudgets.length}</span></button>
+        <button type="button" className={allocationClass(`allocation-needs-filter__button ${needFilter === "attention" ? "is-active" : ""}`)} aria-pressed={needFilter === "attention"} onClick={() => setNeedFilter("attention")}>Perhatian <span>{attentionCount}</span></button>
+        <button type="button" className={allocationClass(`allocation-needs-filter__button ${needFilter === "unused" ? "is-active" : ""}`)} aria-pressed={needFilter === "unused"} onClick={() => setNeedFilter("unused")}>Belum dipakai <span>{unusedCount}</span></button>
+      </div> : null}
+      {filteredBudgets.length ? <div className={allocationClass("allocation-limit-list")}>{filteredBudgets.map((budget) => <BudgetLimitRow
         key={budget.budget_id}
         budget={budget}
         category={categoryLookup.get(budget.category_id)}
@@ -152,7 +180,7 @@ const AllocationNeedsPanel = ({
         onRecord={canRecordExpense ? recordExpense : null}
         onOpenSchedule={openSchedule}
         onEdit={editBudget}
-      />)}</div>
+      />)}</div> : <p className={allocationClass("allocation-needs-filter__empty")}>Tidak ada kebutuhan pada filter ini.</p>}
       {canManage ? <Button className={allocationClass("allocation-needs-add")} variant="secondary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
     </> : <EmptyState
       variant="inline"

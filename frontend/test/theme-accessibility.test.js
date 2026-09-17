@@ -529,7 +529,7 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
   assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(budgetCard, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-card__expand \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-limit-row__actions :global\(\.button\),[\s\S]*?\.allocation-limit-row__menu > summary \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-needs-filter__button,[\s\S]*?\.allocation-limit-row__quick-action,[\s\S]*?\.allocation-limit-row__menu > summary \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-limit-row__balance,[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.doesNotMatch(pages, /allocation-limit-row__more|allocation-related-row/);
 });
