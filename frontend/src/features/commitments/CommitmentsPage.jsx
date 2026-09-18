@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FiArchive, FiCheckCircle, FiEdit2, FiExternalLink, FiHome, FiPlus, FiUsers } from "react-icons/fi";
+import { FiArchive, FiCheckCircle, FiEdit2, FiExternalLink, FiHome, FiMoreHorizontal, FiPlus, FiUsers } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -67,11 +67,21 @@ const CommitmentMeta = ({ item, arisan }) => <dl className={styles.meta}>
   {arisan && Number(item.received_amount || 0) > 0 ? <div><dt>Sudah diterima</dt><dd>{formatRupiah(item.received_amount)}</dd></div> : null}
 </dl>;
 
-const CommitmentActions = ({ item, onEdit, onStop }) => <div className={styles.actions}>
-  {item.status === "active" ? <ButtonLink variant="primary" icon={FiExternalLink} to="/perencanaan/kantong" state={{ workflowSource: "commitment", workflowAction: "commitment-plan", commitmentId: item.commitment_id, budgetId: item.budget_id || "", sourceAccountId: item.default_account_id || "" }}>Buka Alokasi</ButtonLink> : null}
-  {item.can_manage && item.status === "active" ? <Button icon={FiEdit2} onClick={() => onEdit(item)}>Edit</Button> : null}
-  {item.can_delete ? <Button icon={FiArchive} variant="danger" onClick={() => onStop(item)}>Hentikan</Button> : null}
-</div>;
+const CommitmentActions = ({ item, onEdit, onStop }) => {
+  const active = item.status === "active";
+  const hasManagement = (item.can_manage && active) || item.can_delete;
+  if (!active && !hasManagement) return null;
+  return <div className={styles.actions}>
+    {active ? <ButtonLink variant="primary" icon={FiExternalLink} to="/perencanaan/kantong" state={{ workflowSource: "commitment", workflowAction: "commitment-plan", commitmentId: item.commitment_id, budgetId: item.budget_id || "", sourceAccountId: item.default_account_id || "" }}>Buka Alokasi</ButtonLink> : null}
+    {hasManagement ? <details className={styles.manageMenu}>
+      <summary aria-label={`Kelola kewajiban ${item.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary>
+      <div className={styles.manageMenuItems}>
+        {item.can_manage && active ? <Button icon={FiEdit2} onClick={() => onEdit(item)}>Edit kewajiban</Button> : null}
+        {item.can_delete ? <Button icon={FiArchive} variant="danger" onClick={() => onStop(item)}>Hentikan kewajiban</Button> : null}
+      </div>
+    </details> : null}
+  </div>;
+};
 
 const CommitmentCard = ({ item, onEdit, onStop, compact = false }) => {
   const arisan = item.commitment_type === "arisan";

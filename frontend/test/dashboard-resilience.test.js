@@ -55,7 +55,7 @@ test("dashboard desktop membawa creator resolver ke model transaksi dan fallback
     readFile(new URL("../src/features/dashboard/components/desktopDashboardModel.js", import.meta.url), "utf8"),
     readFile(new URL("../src/features/dashboard/components/DesktopDashboardTransactions.jsx", import.meta.url), "utf8"),
   ]);
-  assert.match(model, /const \{ accountBalances, categoryLookup, recentTransactions, expenseByCategory, transactionCreatorLabel \} = viewModel/);
+  assert.match(model, /const \{[^}]*accountBalances[^}]*categoryLookup[^}]*recentTransactions[^}]*expenseByCategory[^}]*transactionCreatorLabel[^}]*allocationSummary[^}]*\} = viewModel/);
   assert.match(model, /selectedTransaction,\s*transactionCreatorLabel,/);
   assert.match(transactions, /typeof transactionCreatorLabel === "function"/);
   assert.match(transactions, /: "Anggota keluarga"/);

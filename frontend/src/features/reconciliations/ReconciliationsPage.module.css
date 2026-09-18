@@ -201,3 +201,24 @@
   .historyDisclosureContent { display: none; padding-top: var(--space-2); }
   .historyDisclosureContent.isExpanded { display: block; }
 }
+
+
+/* Desktop analysis workspace: compare the current balance flow and history side by side. */
+@media (min-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(320px, .72fr) minmax(0, 1.28fr);
+    gap: clamp(18px, 2vw, 28px);
+  }
+  .formPanel {
+    position: sticky;
+    top: 82px;
+  }
+  .historyDisclosure,
+  .historyDisclosureContent,
+  .historyPanel {
+    min-width: 0;
+  }
+  .historyPanel {
+    min-height: 100%;
+  }
+}

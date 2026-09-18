@@ -153,36 +153,38 @@ const ReconciliationsPage = () => {
       <RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} />
       <PageHeader title="Cocokkan Saldo" help="Pastikan catatan aplikasi sama dengan saldo yang benar-benar Anda lihat." />
       {reconciliationAttention && !contextLocked ? <CompactNotice tone="warning" title="Rekening pengingat tidak tersedia." role="status">Pilih rekening yang masih aktif dan dapat Anda cocokkan.</CompactNotice> : null}
-      <ReconciliationInputPanel
-        accountSystemBalance={accountSystemBalance}
-        contextLocked={contextLocked}
-        accounts={data.reconcilableAccounts}
-        selectedAccount={selectedAccount}
-        form={form}
-        setForm={setForm}
-        submitState={submission.submitState}
-        setSubmitState={submission.setSubmitState}
-        onConfirmSystemBalance={submission.confirmSystemBalance}
-        onSubmitDifference={submission.submitDifference}
-        preview={preview}
-        onRefreshAccounts={data.accountsResource.reload}
-        accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submission.submitState.status)}
-      />
-      <section className={styles.historyDisclosure} aria-label="Riwayat pencocokan saldo">
-        <button
-          type="button"
-          className={styles.historyDisclosureButton}
-          aria-expanded={historyExpanded}
-          aria-controls="reconciliation-history-content"
-          onClick={() => setHistoryExpanded((current) => !current)}
-        >
-          <span><strong>Riwayat pencocokan</strong><small>{data.historyItems.length} hasil pada filter saat ini</small></span>
-          <FiChevronDown className={styles.historyDisclosureChevron} data-expanded={historyExpanded ? "true" : "false"} aria-hidden="true" />
-        </button>
-        <div id="reconciliation-history-content" className={`${styles.historyDisclosureContent}${historyExpanded ? ` ${styles.isExpanded}` : ""}`}>
-          <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
-        </div>
-      </section>
+      <div className={styles.layout}>
+        <ReconciliationInputPanel
+          accountSystemBalance={accountSystemBalance}
+          contextLocked={contextLocked}
+          accounts={data.reconcilableAccounts}
+          selectedAccount={selectedAccount}
+          form={form}
+          setForm={setForm}
+          submitState={submission.submitState}
+          setSubmitState={submission.setSubmitState}
+          onConfirmSystemBalance={submission.confirmSystemBalance}
+          onSubmitDifference={submission.submitDifference}
+          preview={preview}
+          onRefreshAccounts={data.accountsResource.reload}
+          accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submission.submitState.status)}
+        />
+        <section className={styles.historyDisclosure} aria-label="Riwayat pencocokan saldo">
+          <button
+            type="button"
+            className={styles.historyDisclosureButton}
+            aria-expanded={historyExpanded}
+            aria-controls="reconciliation-history-content"
+            onClick={() => setHistoryExpanded((current) => !current)}
+          >
+            <span><strong>Riwayat pencocokan</strong><small>{data.historyItems.length} hasil pada filter saat ini</small></span>
+            <FiChevronDown className={styles.historyDisclosureChevron} data-expanded={historyExpanded ? "true" : "false"} aria-hidden="true" />
+          </button>
+          <div id="reconciliation-history-content" className={`${styles.historyDisclosureContent}${historyExpanded ? ` ${styles.isExpanded}` : ""}`}>
+            <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
+          </div>
+        </section>
+      </div>
       <ReconciliationResultOverlay result={submission.resultOverlay} onClose={finishReconciliation} onReviewTransactions={reviewReconciliationTransactions} />
     </div>
   );

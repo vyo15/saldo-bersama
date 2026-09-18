@@ -79,11 +79,11 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
   const presentation = type === TRANSACTION_TYPES.INCOME
     ? {
       title: "Pemasukan berhasil",
-      description: "Dana sudah masuk ke rekening. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti.",
+      description: "Dana sudah masuk ke rekening. Anda dapat mengalokasikannya sekarang atau nanti.",
       summaryRows,
       secondaryActions: [
         ...(onAddAnother ? [{ label: "Tambah pemasukan lagi", onClick: onAddAnother }] : []),
-        { label: "Bagi ke Alokasi Dana", onClick: allocate },
+        { label: "Alokasikan dana", onClick: allocate },
       ],
     }
     : type === TRANSACTION_TYPES.TRANSFER

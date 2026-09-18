@@ -262,10 +262,10 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
     read("src/components/navigation/MobileNavigation.jsx"),
   ]);
 
-  assert.match(allocation, /if \(!items\.length\) return null;/);
-  assert.match(allocation, /\{activeItems\.length \? <AllocationSummary items=\{activeItems\} \/> : null\}/);
-  assert.match(allocation, /activeItems\.length && canCreate \? <div className=\{allocationClass\("allocation-header-actions allocation-header-actions--simple"\)\}/);
-  assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Tampilkan semua Alokasi<\/Button> : canCreate \?/);
+  assert.match(allocation, /if \(!accounts\.length\) return null;/);
+  assert.match(allocation, /<AllocationFundingSummary accounts=\{accounts\}/);
+  assert.match(allocation, /hasActiveItems=\{Boolean\(activeItems\.length\)\}/);
+  assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Tampilkan semua Alokasi<\/Button> : canCreate \? null/);
   assert.doesNotMatch(allocation, /canMove|openMove|allocation-move-action/);
 
   assert.match(allocationDetail, /linkedBudgets\.length \? <>[\s\S]*\{canManage \? <Button className=\{allocationClass\("allocation-needs-add"\)\} variant="secondary" icon=\{FiPlus\} onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button> : null\}[\s\S]*<\/> : <EmptyState/);
@@ -316,8 +316,9 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
     read("src/features/allocations/AllocationOverview.module.css"),
   ]);
 
-  assert.match(overview, />Tambah Alokasi<\/Button>/);
-  assert.match(overview, /allocation-header-actions allocation-header-actions--simple/);
+  assert.match(overview, />Alokasi baru<\/Button>/);
+  assert.match(overview, /allocation-funding-summary__actions/);
+  assert.match(overview, /allocation-card__fund/);
   assert.doesNotMatch(overview, /allocation-header-actions--with-move|allocation-move-action/);
   assert.match(overview, /Belum ada kebutuhan/);
   assert.match(overview, />Tambah kebutuhan<\/Button>/);
@@ -331,7 +332,7 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
   assert.match(detail, /if \(canManage\) openBudgetForm\(\)/);
   assert.doesNotMatch(styles, /allocation-card__planning-actions/);
   assert.match(styles, /\.allocation-card__expand\s*\{/);
-  assert.match(styles, /\.allocation-header-actions__create\s*\{[\s\S]*color:\s*var\(--primary\)/);
+  assert.match(styles, /\.allocation-card__fund\s*\{[\s\S]*color:\s*var\(--primary\)/);
 });
 
 test("Planning mobile menghindari judul embedded ganda dan rekonsiliasi memprioritaskan workflow", async () => {

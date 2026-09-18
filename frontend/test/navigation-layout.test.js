@@ -88,10 +88,10 @@ test("quick add transaksi mobile selalu tersedia sementara aksi floating desktop
   ]);
   assert.match(shell, /DESKTOP_LOCAL_CREATE_ROUTES = new Set/);
   for (const route of ["/rekening", "/perencanaan", "/target", "/kategori"]) assert.match(shell, new RegExp(`"${route}"`));
-  assert.match(shell, /normalizedPath\.startsWith\("\/perencanaan\/"\)/);
-  assert.match(shell, /normalizedPath === "\/404"/);
-  assert.match(shell, /normalizedPath === "\/anggota"/);
-  assert.match(shell, /normalizedPath === "\/pengaturan" \|\| normalizedPath\.startsWith\("\/pengaturan\/"\)/);
+  assert.match(shell, /DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES = new Set/);
+  for (const route of ["/404", "/anggota", "/laporan", "/notifikasi", "/pengaturan", "/persetujuan", "/rekonsiliasi"]) assert.match(shell, new RegExp(`"${route}"`));
+  assert.match(shell, /DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES\.has\(normalizedPath\)/);
+  assert.match(shell, /normalizedPath\.startsWith\("\/pengaturan\/"\)/);
   assert.match(shell, /role === "owner" && \(DESKTOP_LOCAL_CREATE_ROUTES\.has\(normalizedPath\) \|\| normalizedPath\.startsWith\("\/perencanaan\/"\)\)/);
   assert.match(shell, /desktopTransactionQuickAddVisible/);
   assert.match(shell, /<MobileNavigation[\s\S]*quickAddDisabled=\{offline\}/);

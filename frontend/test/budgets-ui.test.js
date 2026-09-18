@@ -112,7 +112,8 @@ test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia"
     Promise.all(["envelopes.js", "budgetFunding.js", "budgetMutations.js", "budgetQueries.js", "budgetShared.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
   ]);
   assert.match(dialogs, /Perlu disiapkan/);
-  assert.match(dialogs, /Sisa setelah dialokasikan/);
+  assert.match(dialogs, /Dana tersedia setelah dibuat/);
+  assert.match(dialogs, /Dialokasikan sekarang/);
   assert.match(dialogs, /BudgetBatchEditor\.module\.css/);
   assert.match(dialogs, /Kebutuhan \{index \+ 1\}/);
   assert.match(dialogs, /Tambah kebutuhan lain/);
@@ -122,7 +123,8 @@ test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia"
   assert.match(dialogs, /Pemanis kartu/);
   assert.match(dialogs, /Kembalikan ke dana tersedia/);
   assert.match(dialogs, /Tetap di alokasi berikutnya/);
-  assert.match(dialogs, /Simpan Alokasi/);
+  assert.match(dialogs, /Buat & alokasikan/);
+  assert.match(dialogs, /Tampilan & periode/);
   assert.doesNotMatch(dialogs, /Periode alokasi|Mulai periode|Akhir periode/);
   assert.match(runner, /createEnvelopeWithNeeds/);
   assert.match(runner, /recording_mode: recordingMode/);

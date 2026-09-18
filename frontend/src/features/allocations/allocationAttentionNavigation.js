@@ -14,6 +14,7 @@ const openAttentionFunding = ({ attentionAction, targetEnvelope, attentionSugges
     sourceAccountId: targetEnvelope?.source_account_id || "",
     envelopePeriodId: targetEnvelope?.envelope_period_id || "",
     suggestedAmount: attentionSuggestedAmount,
+    lockSelection: Boolean(targetEnvelope),
   });
   consumeAttention();
   return true;

@@ -33,8 +33,8 @@ const PlanningPage = () => {
 
   return <div className={`page-stack ${styles.page}`}>
     <PageHeader
-      title="Perencanaan"
-      description="Atur Alokasi Dana, Jadwal Rutin, dan Kewajiban dalam satu tempat."
+      title="Atur dana"
+      description="Arahkan uang ke Alokasi dan Kebutuhan, lalu atur Jadwal Rutin serta Kewajiban."
       help="Alokasi Dana memisahkan dana berdasarkan tujuan. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Kewajiban memantau KPR, cicilan, pinjaman, dan Arisan sampai selesai. Kewajiban yang dananya sudah siap di Alokasi dapat tercatat otomatis saat jatuh tempo."
     />
     <div className={styles.tabs} role="tablist" aria-label="Perencanaan keuangan">

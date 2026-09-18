@@ -63,18 +63,18 @@ const ReportHeader = ({ period, setPeriod, trendMonths, allocationRuleId, setAll
     { value: "", label: "Semua Alokasi" },
     ...allocationOptions.map((item) => ({ value: item.envelope_rule_id, label: item.name, meta: `${formatCompactRupiah(item.used_amount)} terpakai` })),
   ], [allocationOptions]);
-  return <div className={styles.headerArea}>
+  return <>
     <header className={styles.header}>
       <div><h1>Laporan</h1><p>Ringkasan keuangan dan penggunaan Alokasi dalam satu tampilan.</p></div>
     </header>
-    <div className={styles.toolbar}>
+    <div className={styles.reportContextBar} aria-label="Konteks laporan">
       <div className={styles.filters}>
         <div className={styles.periodControl}><span className="sr-only">Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} compact aria-label="Pilih periode laporan" /></div>
         <SelectionField className={styles.scopeControl} label="Alokasi" hideLabel compact value={allocationRuleId} onChange={setAllocationRuleId} options={scopeOptions} ariaLabel="Pilih scope Alokasi" searchable={scopeOptions.length > 7} />
       </div>
       <ReportDownloadMenu period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} />
     </div>
-  </div>;
+  </>;
 };
 
 const SummaryStrip = ({ summary }) => {

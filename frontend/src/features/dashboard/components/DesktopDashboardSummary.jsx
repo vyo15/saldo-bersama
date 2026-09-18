@@ -1,4 +1,4 @@
-import { FiAlertCircle, FiEye, FiEyeOff, FiPlus, FiShield } from "react-icons/fi";
+import { FiAlertCircle, FiArrowDownRight, FiArrowUpRight, FiEye, FiEyeOff, FiPlus, FiShield } from "react-icons/fi";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
@@ -11,16 +11,22 @@ import { formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
+const flowWidth = (value, maximum) => {
+  const amount = Math.max(0, Number(value || 0));
+  if (!amount || maximum <= 0) return 0;
+  return Math.max(8, Math.round((amount / maximum) * 100));
+};
+
 export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggleBalance, onOpenTransaction }) => (
   <header className={dashboardClass("shared-dashboard__header")}>
     <div>
       <div className={dashboardClass("shared-dashboard__title-row")}>
         <h1>Hai, {displayName}</h1>
         <PageInfoButton title="Tentang Beranda">
-          Beranda merangkum saldo, transaksi terbaru, alokasi, dan perhatian penting. Informasi di sini mengikuti data terbaru yang sudah diterima aplikasi.
+          Beranda desktop adalah ruang analisis utama: saldo, arus uang, transaksi, Alokasi, dan perhatian penting dirangkum tanpa mengubah alur cepat di mobile.
         </PageInfoButton>
       </div>
-      <p>Keuangan keluarga · <strong>{formatPeriod(overview.periodKey)}</strong></p>
+      <p>Command center keuangan keluarga · <strong>{formatPeriod(overview.periodKey)}</strong></p>
     </div>
     <div className={dashboardClass("shared-dashboard__actions")}>
       <button
@@ -45,18 +51,46 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
   const cashIn = Number(cashFlow.income || 0) + Number(cashFlow.refund || 0);
   const cashOut = Number(cashFlow.expense || 0);
   const net = cashIn - cashOut;
+  const maxFlow = Math.max(1, cashIn, cashOut);
+  const allocation = model.allocationSummary || {};
 
   return (
     <section className={dashboardClass("desktop-balance-card shared-panel")} aria-label="Ringkasan keuangan utama">
-      <div className={dashboardClass("desktop-balance-card__heading")}>
-        <div>
-          <span>Dana Tersedia</span>
-          <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
-          <small>Sisa uang yang aman dipakai setelah kebutuhan dan tagihan.</small>
-        </div>
+      <div className={dashboardClass("desktop-balance-card__topline")}>
+        <span>Posisi keuangan</span>
         <div className={dashboardClass("desktop-balance-card__sync")}>
           <FiShield aria-hidden="true" />
           <span aria-live="polite">{dashboardSyncLabel(overview.lastSyncedAt)}</span>
+        </div>
+      </div>
+
+      <div className={dashboardClass("desktop-balance-card__hero")}>
+        <div className={dashboardClass("desktop-balance-card__heading")}>
+          <span>Dana Tersedia</span>
+          <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
+          <small>Sisa uang yang aman dipakai setelah kebutuhan dan tagihan.</small>
+          <div className={dashboardClass("desktop-balance-card__allocation-note")}>
+            <span>{allocation.count || 0} Alokasi aktif</span>
+            <strong>{Number(allocation.percentage || 0)}% terpakai / disiapkan</strong>
+          </div>
+        </div>
+
+        <div className={dashboardClass("desktop-cashflow-visual")} aria-label="Arus uang bulan ini">
+          <div className={dashboardClass("desktop-cashflow-visual__heading")}>
+            <span>Arus uang bulan ini</span>
+            <strong className={dashboardClass(net < 0 ? "is-negative" : "is-positive")}>
+              {net < 0 ? <FiArrowDownRight aria-hidden="true" /> : <FiArrowUpRight aria-hidden="true" />}
+              <SensitiveMoney visible={balanceVisible} value={Math.abs(net)} />
+            </strong>
+          </div>
+          <div className={dashboardClass("desktop-cashflow-bar")}>
+            <span><i style={{ width: `${flowWidth(cashIn, maxFlow)}%` }} /></span>
+            <div><small>Masuk bulan ini</small><SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" /></div>
+          </div>
+          <div className={dashboardClass("desktop-cashflow-bar desktop-cashflow-bar--out")}>
+            <span><i style={{ width: `${flowWidth(cashOut, maxFlow)}%` }} /></span>
+            <div><small>Keluar bulan ini</small><SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" /></div>
+          </div>
         </div>
       </div>
 
@@ -69,23 +103,26 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
           <span>Aman dipakai / hari</span>
           <SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} />
         </div>
-      </div>
-
-      <div className={dashboardClass("desktop-balance-card__secondary")} aria-label="Arus uang bulan ini">
         <div>
-          <span>Masuk bulan ini</span>
-          <SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" />
-        </div>
-        <div>
-          <span>Keluar bulan ini</span>
-          <SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" />
-        </div>
-        <div>
-          <span>Selisih</span>
-          <SensitiveMoney visible={balanceVisible} value={net} tone={net < 0 ? "negative" : net > 0 ? "positive" : "default"} />
+          <span>Sisa di Alokasi</span>
+          <SensitiveMoney visible={balanceVisible} value={allocation.remaining || 0} />
         </div>
       </div>
     </section>
+  );
+};
+
+const AttentionTask = ({ alert }) => {
+  const guidance = financialAlertGuidance(alert);
+  return (
+    <Link className={dashboardClass("desktop-attention-card__task")} to={guidance.to} state={guidance.state}>
+      <span className={dashboardClass("desktop-attention-card__icon")}><FiAlertCircle aria-hidden="true" /></span>
+      <span>
+        <strong>{alert.title || alert.message}</strong>
+        <small>{alert.message || "Tinjau kondisi ini agar data keuangan tetap sesuai."}</small>
+      </span>
+      <em>Tinjau</em>
+    </Link>
   );
 };
 
@@ -102,15 +139,14 @@ export const DashboardAttention = ({ alerts }) => {
         </div>
         <div className={dashboardClass("desktop-attention-card__clear")}>
           <FiShield aria-hidden="true" />
-          <p>Tidak ada tindakan mendesak dari kondisi aktif saat ini.</p>
+          <p>Tidak ada tindakan mendesak dari kondisi aktif saat ini. Kamu bisa lanjut menganalisis transaksi dan rencana bulan ini.</p>
         </div>
         <Link to="/notifikasi">Lihat semua perhatian</Link>
       </section>
     );
   }
 
-  const first = alerts[0];
-  const guidance = financialAlertGuidance(first);
+  const visibleAlerts = alerts.slice(0, 3);
   return (
     <section className={dashboardClass("desktop-attention-card shared-panel")} aria-label="Perlu perhatian">
       <div className={dashboardClass("desktop-attention-card__heading")}>
@@ -120,15 +156,10 @@ export const DashboardAttention = ({ alerts }) => {
         </div>
         <span className={dashboardClass("desktop-attention-card__badge")}>{alerts.length} tugas</span>
       </div>
-      <Link className={dashboardClass("desktop-attention-card__task")} to={guidance.to} state={guidance.state}>
-        <span className={dashboardClass("desktop-attention-card__icon")}><FiAlertCircle aria-hidden="true" /></span>
-        <span>
-          <strong>{first.title || first.message}</strong>
-          <small>{first.message || "Tinjau kondisi ini agar data keuangan tetap sesuai."}</small>
-        </span>
-        <em>Tinjau sekarang</em>
-      </Link>
-      <Link to="/notifikasi">Lihat semua perhatian</Link>
+      <div className={dashboardClass("desktop-attention-card__list")}>
+        {visibleAlerts.map((alert, index) => <AttentionTask key={alert.id || alert.alert_id || `${alert.type || "alert"}-${index}`} alert={alert} />)}
+      </div>
+      <Link to="/notifikasi">{alerts.length > visibleAlerts.length ? `Lihat semua perhatian (+${alerts.length - visibleAlerts.length})` : "Lihat semua perhatian"}</Link>
     </section>
   );
 };
@@ -205,4 +236,3 @@ export const AccountSelector = ({ accountBalances, selectedAccount, onSelectAcco
     )}
   </section>
 );
-

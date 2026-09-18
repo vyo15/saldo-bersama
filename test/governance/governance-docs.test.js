@@ -217,7 +217,9 @@ test("allocation and needs documentation matches automatic funding source contra
   assert.match(testPlan, /Kebutuhan tetap tersimpan|tetap dapat disimpan/i);
   assert.match(matrix, /delta Kebutuhan otomatis fund\/release/i);
   assert.doesNotMatch(requirements, /Menambah atau mengedit Kebutuhan tidak boleh otomatis memindahkan dana/i);
-  assert.match(design, /Total yang perlu disiapkan|Simpan Alokasi/);
+  assert.match(design, /Dana yang bisa dialokasikan/);
+  assert.match(design, /Buat & alokasikan/);
+  assert.match(design, /rekening sumber/);
 });
 
 test("legacy cutover is historical and no longer an active root runbook", () => {

@@ -250,12 +250,12 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(transactionStyles, /font-size:\s*9px/);
   assert.match(transactionStyles, /@media \(max-width: 820px\)[\s\S]*\.modal/);
   assert.doesNotMatch(transactionStyles, /47\.99rem|51\.25rem/);
-  assert.match(allocations, /allocation-header-actions/);
+  assert.match(allocations, /allocation-funding-summary__actions/);
   assert.match(allocations, /allocationClass\("allocation-create-needs form-grid__full"\)/);
   assert.match(allocations, /allocationClass\("allocation-create-funding"\)/);
   assert.doesNotMatch(allocations, /aria-label="Muat ulang Alokasi Dana"/);
   assert.match(allocations, /PageHeader title="Alokasi Dana"/);
-  assert.match(allocations, /allocation-summary/);
+  assert.match(allocations, /allocation-funding-summary/);
   assert.match(allocations, /allocation-filters/);
   assert.match(allocations, /allocation-card__expand/);
   assert.doesNotMatch(allocations, /FiMoreHorizontal/);

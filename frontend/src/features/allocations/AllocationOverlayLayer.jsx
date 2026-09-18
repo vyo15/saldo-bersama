@@ -28,7 +28,7 @@ const AllocationOverlayLayer = ({
       </Suspense>
     ) : null}
     {fundingIntent ? (
-      <Suspense fallback={<LazyActionFallback surface="modal" title="Bagi dana tersedia" label="Menyiapkan pembagian dana..." />}>
+      <Suspense fallback={<LazyActionFallback surface="modal" title="Alokasikan dana" label="Menyiapkan alokasi dana..." />}>
         <AllocationFundingFlow open {...fundingProps} />
       </Suspense>
     ) : null}

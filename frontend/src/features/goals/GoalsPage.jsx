@@ -188,6 +188,7 @@ const GoalsPage = () => {
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
     <PageHeader title="Target" help="Pantau uang yang sedang dikumpulkan untuk tujuan tertentu." actions={headerActions} />{setupCreated ? <div><CompactNotice tone="success" title="Target sudah siap." role="status">Target siap dipantau. Menyisihkan dana tetap dilakukan melalui Alokasi agar transaksi tidak tercatat dua kali.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/perencanaan/kantong")}>Buka Alokasi</Button></div></div> : null}{allocationIntent ? <CompactNotice tone="info" title="Pilih Target yang ingin diisi." role="status">Dana yang baru tersedia akan diteruskan ke Alokasi setelah kamu memilih Target melalui tombol Buka Alokasi.</CompactNotice> : null}
+    {items.some((item) => item.status === "active") ? <CompactNotice tone="info" title="Eksekusi lewat Alokasi">Target hanya memantau rencana dan progres. Menyisihkan atau menggunakan dana dilakukan dari Alokasi agar satu kejadian uang tetap memiliki satu transaksi.</CompactNotice> : null}
     {items.length ? <GoalSummary items={items} /> : null}
     <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
     {(reminderTarget || creation.open || lifecycle.editGoal || lifecycle.archiveTarget || lifecycle.statusTarget) ? (

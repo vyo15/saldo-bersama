@@ -38,9 +38,19 @@ const DESKTOP_LOCAL_CREATE_ROUTES = new Set([
   "/investasi",
 ]);
 
+const DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES = new Set([
+  "/404",
+  "/anggota",
+  "/laporan",
+  "/notifikasi",
+  "/pengaturan",
+  "/persetujuan",
+  "/rekonsiliasi",
+]);
+
 const desktopTransactionQuickAddAllowed = (pathname, role) => {
   const normalizedPath = pathname === "/" ? "/" : `/${String(pathname || "").replace(/^\/+|\/+$/g, "")}`;
-  if (normalizedPath === "/404" || normalizedPath === "/anggota" || normalizedPath === "/pengaturan" || normalizedPath.startsWith("/pengaturan/")) return false;
+  if (DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/pengaturan/")) return false;
   if (role === "owner" && (DESKTOP_LOCAL_CREATE_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/perencanaan/"))) return false;
   return true;
 };

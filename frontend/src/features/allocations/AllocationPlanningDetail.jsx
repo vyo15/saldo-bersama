@@ -325,7 +325,7 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         openSchedule={state.openSchedule}
         editBudget={state.editBudget}
       />
-      <section className={allocationClass("allocation-detail-section allocation-detail-section--management")} aria-labelledby="allocation-management-title">
+      <section className={allocationClass("allocation-detail-section")} aria-labelledby="allocation-management-title">
         <div className={allocationClass("allocation-detail-panel__header")}><div><h3 id="allocation-management-title">Kelola dana</h3><p>Sesuaikan dana atau pengingat tanpa mengubah transaksi yang sudah tercatat.</p></div></div>
         <div className={allocationClass("allocation-management-actions")}>
           {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}

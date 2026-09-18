@@ -161,7 +161,7 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(css, /prefers-reduced-motion/);
   assert.match(allocations, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.doesNotMatch(allocations, /placeholderMeta="Pilih rekening sumber dana"/);
-  assert.match(funding, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
+  assert.match(funding, /<InlineSelectionPicker[\s\S]*label="Dari rekening mana\?"/);
   assert.match(accounts, /<InlineOwnershipPicker[\s\S]*legend="Pemegang rekening"/);
   assert.match(accounts, /badge: `\$\{userRoleLabel\(member\.role\)\}/);
   assert.doesNotMatch(accounts, /name="account-ownership"/);
@@ -174,7 +174,7 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(transaction, /<MobileTransactionCategoryField/);
   assert.match(transfer, /<InlineSelectionPicker/);
   assert.match(allocations, /label="Dari alokasi"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
-  assert.match(funding, /label="Ke Alokasi Dana"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
+  assert.match(funding, /label="Ke Alokasi"[\s\S]*placeholderOption=\{allocationOptionVisual\(\)\}/);
   assert.match(recurring, /const CategoryField[\s\S]*<SelectionField/);
   assert.match(recurring, /const PaymentEnvelopeField[\s\S]*<InlineSelectionPicker/);
   assert.match(budgets, /<InlineSelectionPicker[^>]*label="Kategori"/);

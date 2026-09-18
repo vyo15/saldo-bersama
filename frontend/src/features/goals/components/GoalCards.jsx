@@ -1,7 +1,6 @@
 import { FiArchive, FiBell, FiCheckCircle, FiEdit2, FiExternalLink, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
-import CompactNotice from "../../../components/common/CompactNotice.jsx";
 import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
@@ -77,7 +76,6 @@ const GoalCard = ({ goal, actions }) => (
       <div><dt>Proyeksi</dt><dd data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</dd></div>
     </dl>
     {goal.status === "active" && goal.pace_status === "completed" ? <p className={goalClass("goal-card__completion")}>Target tercapai. Selesaikan target untuk mengunci mutasi.</p> : null}
-    {goal.status === "active" ? <CompactNotice tone="info" title="Eksekusi lewat Alokasi">Target hanya memantau rencana dan progres. Menyisihkan atau menggunakan dana dilakukan dari Alokasi agar satu kejadian uang tetap memiliki satu transaksi.</CompactNotice> : null}
     <GoalActions goal={goal} {...actions} />
   </Card>
 );

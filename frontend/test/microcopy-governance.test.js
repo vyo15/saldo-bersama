@@ -67,7 +67,7 @@ test("surface finansial normal tetap outcome-first dan bebas jargon implementasi
 
   assert.doesNotMatch(allocations, /kategori master|Tentukan tujuan, kebutuhan, dan sumber dana|Pilih rekening sumber dana/i);
   assert.match(allocations, /Perlu disiapkan/);
-  assert.match(allocations, /Sisa setelah dialokasikan/);
+  assert.match(allocations, /Dana tersedia setelah dibuat/);
   assert.doesNotMatch(budgets, /kategori master|Nominal menjadi bawaan pada jadwal pembayaran/i);
   assert.match(budgets, /Bisa dipakai beberapa kali/);
   assert.match(budgets, /Sekali bayar/);

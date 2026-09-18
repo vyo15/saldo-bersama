@@ -186,8 +186,8 @@ test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis",
   assert.match(goals, /piggy-bank\.webp/);
   assert.match(goals, /const items = useMemo\(\(\) => resource\.data\?\.items \|\| \[\], \[resource\.data\?\.items\]\);/);
   assert.match(goals, /<GoalSummary items=\{items\}/);
-  assert.match(allocations, /wallet\.webp/);
-  assert.match(allocations, /<AllocationSummary items=\{activeItems\}/);
+  assert.doesNotMatch(allocations, /wallet\.webp/);
+  assert.match(allocations, /<AllocationFundingSummary accounts=\{accounts\}/);
   assert.match(recurring, /finance-checklist\.webp/);
   assert.match(recurring, /aria-label="Ringkasan jadwal rutin periode ini"/);
   assert.match(members, /house\.webp/);
@@ -226,8 +226,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /<InlineOwnershipPicker[\s\S]{0,220}legend="Digunakan oleh"/);
   assert.match(allocations, /description: "Digunakan oleh semua anggota"/);
   assert.match(allocations, /Perlu disiapkan/);
-  assert.match(allocations, /Sisa setelah dialokasikan/);
-  assert.match(allocations, /Simpan Alokasi/);
+  assert.match(allocations, /Dana tersedia setelah dibuat/);
+  assert.match(allocations, /Buat & alokasikan/);
   assert.match(allocations, /filteredActiveItems = useMemo/);
   assert.match(allocations, /allocationFilter === "shared"/);
   assert.match(allocations, /allocationFilter === "mine"/);
@@ -235,8 +235,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /Kebutuhan/);
   assert.match(allocations, /recurringScheduleForBudget/);
   assert.doesNotMatch(allocations, /Jadwal Terkait/);
-  assert.match(allocations, /<AllocationSummary items=\{activeItems\}/);
-  assert.match(allocations, /items=\{filteredActiveItems\}/);
+  assert.match(allocations, /AllocationFundingSummary/);
+  assert.match(allocations, /visibleItems = showFilters \? filteredActiveItems : activeItems/);
   assert.match(recurring, /envelope_period_id/);
   assert.match(recurring, /Alokasi Dana/);
   assert.match(recurring, /paymentEnvelopes\.map/);
@@ -349,8 +349,9 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
   assert.match(allocations, /lazy\(\(\) => import\("\.\/AllocationOverlayLayer\.jsx"\)\)/);
   assert.match(overlay, /lazy\(\(\) => import\("\.\/AllocationFundingFlow\.jsx"\)\)/);
   assert.match(allocations, /workflowAction !== "fund"/);
-  assert.match(funding, /Bagi dana tersedia/);
-  assert.match(funding, /available_balance/);
+  assert.match(funding, /Alokasikan dana/);
+  assert.match(funding, /Dampak setelah disimpan/);
+  assert.match(funding, /allocationAvailableBalance/);
   assert.match(funding, /onSubmit/);
   assert.doesNotMatch(funding, /apiClient|createTransaction|transactions\.create/);
 
@@ -360,7 +361,7 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
   assert.match(goals, /suggestedAmount/);
 
   assert.match(recurring, /workflowSource: "recurring-income"/);
-  assert.match(recurring, />Bagi ke Alokasi Dana<\/Button>/);
+  assert.match(recurring, />Alokasikan dana<\/Button>/);
   assert.match(reconciliation, /reviewReconciliationTransactions/);
   assert.match(reconciliation, /accountId: submission\.resultOverlay\.accountId/);
   assert.doesNotMatch(reconciliation, /adjustment.*difference|difference.*adjustment/i);

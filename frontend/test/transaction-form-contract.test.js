@@ -243,8 +243,8 @@ test("income sukses menawarkan Alokasi Dana hanya setelah mutation sukses tanpa 
   assert.match(text, /TRANSACTION_TYPES\.REFUND/);
   assert.match(text, /workflowSource: "transaction-income"/);
   assert.match(text, /workflowAction: "fund"/);
-  assert.match(text, /label: "Bagi ke Alokasi Dana"/);
-  assert.match(text, /Dana sudah masuk ke rekening\. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti\./);
+  assert.match(text, /label: "Alokasikan dana"/);
+  assert.match(text, /Dana sudah masuk ke rekening\. Anda dapat mengalokasikannya sekarang atau nanti\./);
   assert.doesNotMatch(text, /envelopes\.adjustAllocation|adjustAllocation\(/, "TransactionForm tidak boleh membuat allocation mutation sendiri");
 });
 

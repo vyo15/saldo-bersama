@@ -146,7 +146,7 @@ export const buildDesktopModel = ({
   searchTerm,
   selectedTransactionId,
 }) => {
-  const { accountBalances, categoryLookup, recentTransactions, expenseByCategory, transactionCreatorLabel } = viewModel;
+  const { accountBalances, categoryLookup, recentTransactions, expenseByCategory, transactionCreatorLabel, allocationSummary } = viewModel;
   const selectedAccount = accountBalances.find((item) => item.account_id === selectedAccountId)
     || accountBalances[0]
     || null;
@@ -174,6 +174,7 @@ export const buildDesktopModel = ({
     transactionRows,
     selectedTransaction,
     transactionCreatorLabel,
+    allocationSummary,
     ...categoryStatistics(expenseByCategory),
     ...planningSummary(overview, expenseByCategory),
   };

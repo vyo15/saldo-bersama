@@ -82,9 +82,9 @@ const createNeedsTotal = (needs) => (needs || []).reduce((total, need) => {
   return total + (Number.isFinite(amount) ? amount : 0);
 }, 0);
 
-const CreateEnvelopeFooter = ({ close, createMutation }) => <>
+const CreateEnvelopeFooter = ({ close, createMutation, label = "Buat & alokasikan" }) => <>
   <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
-  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>Simpan Alokasi</Button>
+  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>{label}</Button>
 </>;
 
 const NEED_RECORDING_OPTIONS = Object.freeze([
@@ -204,6 +204,7 @@ const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) =
   const total = createNeedsTotal(needs);
   const available = Math.max(0, Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0));
   const shortage = Math.max(0, total - available);
+  const fundedNow = Math.min(total, available);
   const updateNeed = (id, updates) => setNeeds((current) => current.map((need) => need.id === id ? { ...need, ...updates } : need));
   const removeNeed = (id) => {
     if (needs.length <= 1) {
@@ -232,10 +233,14 @@ const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) =
     <button type="button" className={needStyles.addButton} onClick={addNeed} disabled={needs.length >= ALLOCATION_CREATE_NEED_LIMIT}><FiPlus aria-hidden="true" /><span>Tambah kebutuhan lain</span></button>
     <div className={allocationClass("allocation-create-funding")}>
       <div><span>Perlu disiapkan</span><strong>{formatRupiah(total)}</strong></div>
-      <div><span>Tersedia di {sourceAccount?.name || "rekening"}</span><strong>{formatRupiah(available)}</strong></div>
-      {shortage > 0
-        ? <div role="status"><span>Masih kurang</span><strong>{formatRupiah(shortage)}</strong></div>
-        : <div role="status"><span>Sisa setelah dialokasikan</span><strong>{formatRupiah(Math.max(0, available - total))}</strong></div>}
+      {sourceAccount ? <>
+        <div><span>Dana tersedia di {sourceAccount.name || "rekening"}</span><strong>{formatRupiah(available)}</strong></div>
+        {shortage > 0 ? <>
+          <div><span>Dialokasikan sekarang</span><strong>{formatRupiah(fundedNow)}</strong></div>
+          <div role="status"><span>Masih kurang</span><strong>{formatRupiah(shortage)}</strong></div>
+        </> : <div role="status"><span>Dana tersedia setelah dibuat</span><strong>{formatRupiah(Math.max(0, available - total))}</strong></div>}
+        <p>Saldo rekening tidak berubah. Dana hanya ditandai untuk Alokasi ini.</p>
+      </> : <p role="status">Pilih rekening sumber untuk melihat dana yang dapat dialokasikan.</p>}
     </div>
   </section>;
 };
@@ -255,13 +260,18 @@ const CreateEnvelopeForm = ({
   createEnvelope,
 }) => {
   const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
-  return <form id="create-envelope-form" className={allocationClass("form-grid allocation-create-form")} onSubmit={createEnvelope}>
+  return <form id="create-envelope-form" className={allocationClass("form-grid")} onSubmit={createEnvelope}>
     <label className="field form-grid__full"><span>Untuk apa uang ini? *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
     <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
-{!assigneeState.locked ? <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : ""} /> : null}
+{assigneeState.locked ? <div className={allocationClass("allocation-owner-lock form-grid__full")}><span>Digunakan oleh</span><strong>{assigneeOptions[0]?.label || sourceAccount?.owner_name || "Pemilik rekening"}</strong><small>Mengikuti pemilik rekening sumber pribadi.</small></div> : <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : "Rekening Bersama dapat dialokasikan untuk Bersama atau anggota tertentu."} />}
     <AllocationCreateNeeds needs={createNeeds} setNeeds={setCreateNeeds} categories={categories} sourceAccount={sourceAccount} />
-    <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
-    <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
+    <details className={allocationClass("allocation-create-options form-grid__full")}>
+      <summary><span>Tampilan & periode</span><small>Pemanis kartu dan aturan sisa</small></summary>
+      <div className={allocationClass("allocation-create-options__content")}>
+        <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
+        <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
+      </div>
+    </details>
     {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
   </form>;
 };
@@ -274,7 +284,16 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
     const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
     setCreateForm((current) => ({ ...current, source_account_id: sourceAccountId, assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : "" }));
   };
-  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Alokasi Dana" dismissible={!createMutation.busy} title="Tambah Alokasi" footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} />}>
+  const sourceAccount = accounts.find((item) => item.account_id === createForm.source_account_id) || null;
+  const total = createNeedsTotal(createNeeds);
+  const available = Math.max(0, Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0));
+  const fundedNow = Math.min(total, available);
+  const submitLabel = !sourceAccount || total <= 0
+    ? "Buat Alokasi"
+    : total > available
+      ? fundedNow > 0 ? `Buat dengan ${formatRupiah(fundedNow)}` : "Buat Alokasi"
+      : "Buat & alokasikan";
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Alokasi Dana" dismissible={!createMutation.busy} title="Alokasi baru" description="Pilih rekening sumber, tentukan siapa yang memakai, lalu susun Kebutuhan utama." footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} label={submitLabel} />}>
     <CreateEnvelopeForm createForm={createForm} setCreateForm={setCreateForm} createNeeds={createNeeds} setCreateNeeds={setCreateNeeds} categories={categories} accounts={accounts} usersStatus={usersStatus} assigneeState={assigneeState} assigneeOptions={assigneeOptions} onChangeSource={changeSource} message={message} createEnvelope={createEnvelope} />
   </Modal>;
 };

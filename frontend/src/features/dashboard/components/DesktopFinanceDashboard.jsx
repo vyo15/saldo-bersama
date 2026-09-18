@@ -46,36 +46,48 @@ const DesktopFinanceDashboard = ({
         onToggleBalance={onToggleBalance}
         onOpenTransaction={onOpenTransaction}
       />
+
       <div className={dashboardClass("desktop-overview-grid")}>
         <PrimaryMetrics overview={overview} model={model} balanceVisible={balanceVisible} />
         <DashboardAttention alerts={model.alerts} />
       </div>
+
       {setupContent}
       <DashboardQuickActions variant="desktop" />
+
+      <section className={dashboardClass("desktop-analysis-section")} aria-labelledby="desktop-analysis-title">
+        <div className={dashboardClass("desktop-analysis-section__heading")}>
+          <div>
+            <span>Analisis bulan ini</span>
+            <h2 id="desktop-analysis-title">Apa yang paling memengaruhi kondisi keuangan?</h2>
+          </div>
+        </div>
+        <div className={dashboardClass(`desktop-analysis-grid${investmentSummary ? "" : " desktop-analysis-grid--single"}`)}>
+          <StatisticsPanel overview={overview} model={model} balanceVisible={balanceVisible} />
+          <InvestmentWidget summary={investmentSummary} balanceVisible={balanceVisible} />
+        </div>
+      </section>
+
       <AccountSelector
         accountBalances={model.accountBalances}
         selectedAccount={model.selectedAccount}
         onSelectAccount={onSelectAccount}
         balanceVisible={balanceVisible}
       />
-      <div className={dashboardClass("shared-dashboard__layout")}>
-        <AccountTransactions
-          model={model}
-          bootstrap={bootstrap}
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
-          typeFilter={typeFilter}
-          setTypeFilter={setTypeFilter}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          setSelectedTransactionId={setSelectedTransactionId}
-          balanceVisible={balanceVisible}
-        />
-        <aside className={dashboardClass("shared-dashboard__side")} aria-label="Investasi dan statistik dashboard">
-          <InvestmentWidget summary={investmentSummary} balanceVisible={balanceVisible} />
-          <StatisticsPanel overview={overview} model={model} balanceVisible={balanceVisible} />
-        </aside>
-      </div>
+
+      <AccountTransactions
+        model={model}
+        bootstrap={bootstrap}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        setSelectedTransactionId={setSelectedTransactionId}
+        balanceVisible={balanceVisible}
+      />
+
       <DashboardPlanning model={model} balanceVisible={balanceVisible} />
     </div>
   );
