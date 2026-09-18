@@ -186,7 +186,7 @@ Minimum contract:
 - Regression harus menolak facade/action berlabel `delete/hapus` yang sebenarnya memanggil archive, serta menolak success copy yang menyatakan data dihapus bila server hanya mengarsipkan.
 - Smart default/otomatisasi yang mengubah atau mengikat dana harus mempunyai disclosure/impact sebelum mutation; pilihan otomatis tetap terlihat dan dapat dikoreksi saat ambigu.
 
-- Regression desktop wajib menjaga curved sidebar canonical, urutan analytical Dashboard, row-action overflow Transaksi, single page-level notice Target, management overflow Kewajiban, sticky report context desktop, contextual suppression floating quick-add, dan split workspace Rekonsiliasi >=1100px; behavior mobile canonical tidak boleh ikut berubah.
+- Regression desktop wajib menjaga curved sidebar canonical, urutan analytical Dashboard, row-action overflow Transaksi, single page-level notice Target, management overflow Kewajiban, **analytical Report workspace** (hero tren + kategori + KPI + planning panels) bersama sticky report context desktop, contextual suppression floating quick-add, dan split workspace Rekonsiliasi >=1100px; behavior mobile canonical tidak boleh ikut berubah. Laporan tidak boleh menduplikasi business mutation atau mengganti shell/sidebar.
 
 ### Microcopy
 

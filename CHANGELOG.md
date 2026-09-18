@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-18 — Laporan desktop analytical workspace
+- Merombak **hanya route Laporan desktop** menjadi analytical financial dashboard tanpa mengubah curved floating sidebar canonical: hero saldo/sisa scope + tren 1/3/6/12, panel pengeluaran kategori ber-progress, empat KPI, penggunaan Alokasi, Kebutuhan vs realisasi, aktivitas Kewajiban, transaksi pendukung, progressive breakdown rekening/pencatat, dan dokumen PDF/Excel.
+- Seluruh angka tetap berasal dari `reports.monthly` existing; tidak ada metrik dekoratif, schema/API baru, atau mutation finansial baru. Scope per-Alokasi tetap mengubah summary/tren/kategori/Kebutuhan secara canonical.
+- Mobile mempertahankan hierarchy compact melalui breakpoint existing; context periode/scope/unduh tetap sticky hanya pada desktop. Regression/design/status docs diperbarui untuk mengunci sidebar tetap utuh dan mencegah route Laporan kembali menjadi flat list.
+
 ## 2026-09-18 — KPR onboarding aktual dan progress compact
 - Menyesuaikan Kewajiban **KPR** dengan data bank nyata tanpa membuat modul baru: create flow menerima sisa pokok saat ini, cicilan aktual, posisi **cicilan berikutnya X dari Y**, pembayaran berikutnya, rekening/kategori canonical, serta akhir kontrak opsional. Nilai `installments_paid` diturunkan otomatis dari posisi cicilan sehingga KPR lama tidak mulai dari 0.
 - Progress KPR pada kartu dan form dipadatkan menjadi satu row minimalist (`cicilan berikutnya`, `selesai`, `tersisa`, bar 4px) agar tetap terbaca tanpa memakan ruang mobile. Kartu tetap membedakan progress periode dari persentase pokok yang sudah lunas.

@@ -12,8 +12,8 @@ import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { formatCompactRupiah, formatRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
-import { downloadFinancialReport } from "./reports.api.js";
 import { allocationDecoration } from "../allocations/allocationDecorations.js";
+import { downloadFinancialReport } from "./reports.api.js";
 import styles from "./ReportsPage.module.css";
 
 const TREND_OPTIONS = [1, 3, 6, 12];
@@ -65,7 +65,7 @@ const ReportHeader = ({ period, setPeriod, trendMonths, allocationRuleId, setAll
   ], [allocationOptions]);
   return <>
     <header className={styles.header}>
-      <div><h1>Laporan</h1><p>Ringkasan keuangan dan penggunaan Alokasi dalam satu tampilan.</p></div>
+      <div><h1>Laporan</h1><p>Analisis kondisi keuangan, penggunaan Alokasi, Kebutuhan, dan aktivitas keluarga.</p></div>
     </header>
     <div className={styles.reportContextBar} aria-label="Konteks laporan">
       <div className={styles.filters}>
@@ -80,12 +80,18 @@ const ReportHeader = ({ period, setPeriod, trendMonths, allocationRuleId, setAll
 const SummaryStrip = ({ summary }) => {
   const allocation = summary?.mode === "allocation";
   const items = allocation ? [
-    ["Dialokasikan", summary.allocated, ""], ["Terpakai", summary.used, "negative"], ["Sisa", summary.remaining, summary.remaining < 0 ? "negative" : ""], ["Penggunaan", `${Number(summary.usagePercent || 0)}%`, "text"],
+    ["Dialokasikan", summary.allocated, "", "Dana yang disiapkan"],
+    ["Terpakai", summary.used, "negative", "Pengeluaran periode ini"],
+    ["Sisa", summary.remaining, summary.remaining < 0 ? "negative" : "", "Masih tersedia"],
+    ["Penggunaan", `${Number(summary.usagePercent || 0)}%`, "text", "Dari dana Alokasi"],
   ] : [
-    ["Saldo awal", summary?.openingBalance, ""], ["Kredit", summary?.credit, "positive"], ["Debit", summary?.debit, "negative"], ["Saldo akhir", summary?.closingBalance, ""],
+    ["Saldo awal", summary?.openingBalance, "", "Awal periode"],
+    ["Pemasukan", summary?.credit, "positive", "Kredit periode ini"],
+    ["Pengeluaran", summary?.debit, "negative", "Debit periode ini"],
+    ["Saldo akhir", summary?.closingBalance, "", "Setelah aktivitas periode"],
   ];
   return <section className={styles.summaryStrip} aria-label="Ringkasan laporan">
-    {items.map(([label, value, tone]) => <div className={`${styles.summaryItem}${["Saldo akhir", "Sisa"].includes(label) ? ` ${styles.summaryPrimary}` : ""}`} key={label}><span>{label}</span>{tone === "text" ? <strong>{value}</strong> : <Money value={value || 0} tone={tone || "default"} />}</div>)}
+    {items.map(([label, value, tone, note]) => <div className={`${styles.summaryItem}${["Saldo akhir", "Sisa"].includes(label) ? ` ${styles.summaryPrimary}` : ""}`} key={label}><span>{label}</span>{tone === "text" ? <strong>{value}</strong> : <Money value={value || 0} tone={tone || "default"} />}<small>{note}</small></div>)}
   </section>;
 };
 
@@ -115,7 +121,14 @@ const TrendView = ({ trend = { items: [] }, period }) => {
 const CategoryRows = ({ items = [] }) => {
   const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   if (!items.length) return <EmptyState variant="inline" title="Belum ada pengeluaran" description="Kategori akan muncul setelah transaksi pengeluaran tercatat." />;
-  return <div className={styles.categoryRows}>{items.slice(0, 6).map((item) => <div className={styles.categoryRow} key={item.category_id || item.label}><span><strong>{item.label}</strong><small>{Number(item.transaction_count || 0)} transaksi</small></span><span><strong>{formatCompactRupiah(item.amount)}</strong><small>{total ? Math.round(Number(item.amount || 0) / total * 100) : 0}%</small></span></div>)}</div>;
+  return <div className={styles.categoryRows}>{items.slice(0, 6).map((item) => {
+    const percent = total ? Math.round(Number(item.amount || 0) / total * 100) : 0;
+    return <div className={styles.categoryRow} key={item.category_id || item.label}>
+      <span className={styles.categoryIdentity}><i aria-hidden="true" /><span><strong>{item.label}</strong><small>{Number(item.transaction_count || 0)} transaksi</small></span></span>
+      <span className={styles.categoryValue}><strong>{formatCompactRupiah(item.amount)}</strong><small>{percent}%</small></span>
+      <span className={styles.categoryProgress} aria-hidden="true"><i style={{ width: `${Math.min(100, percent)}%` }} /></span>
+    </div>;
+  })}</div>;
 };
 
 const BudgetRows = ({ budgets }) => {
@@ -135,6 +148,53 @@ const TransactionRows = ({ items, expanded, onToggle }) => {
   </div>)}</div>{items.length > 6 ? <button className={styles.textAction} type="button" onClick={onToggle}>{expanded ? "Tampilkan ringkas" : `Lihat semua ${items.length} transaksi`}</button> : null}</>;
 };
 
+const reportNumber = (value) => Number(value ?? 0);
+
+const allocationHeroModel = (summary, scope) => {
+  const remaining = reportNumber(summary.remaining);
+  return {
+    eyebrow: `Alokasi · ${scope.label}`,
+    value: remaining,
+    tone: remaining < 0 ? "negative" : "default",
+    description: `${reportNumber(summary.usagePercent)}% dana sudah digunakan pada periode ini.`,
+    descriptionTone: "default",
+    facts: [["Dialokasikan", summary.allocated], ["Terpakai", summary.used], ["Sisa", summary.remaining]],
+  };
+};
+
+const globalHeroModel = (summary, period) => {
+  const credit = reportNumber(summary.credit);
+  const debit = reportNumber(summary.debit);
+  const cashFlow = credit - debit;
+  const sign = cashFlow < 0 ? "-" : "+";
+  return {
+    eyebrow: "Kondisi keuangan",
+    value: reportNumber(summary.closingBalance),
+    tone: "default",
+    description: `Arus kas ${sign}${formatCompactRupiah(Math.abs(cashFlow))} pada periode ini.`,
+    descriptionTone: cashFlow < 0 ? "negative" : "positive",
+    facts: [["Pemasukan", credit], ["Pengeluaran", debit], ["Periode", monthLabel(period)]],
+  };
+};
+
+const HeroOverview = ({ summary = {}, scope, trend, period, trendMonths, setTrendMonths, categories }) => {
+  const model = summary.mode === "allocation" ? allocationHeroModel(summary, scope) : globalHeroModel(summary, period);
+  return <div className={styles.heroGrid}>
+    <section className={`${styles.reportPanel} ${styles.heroPanel}`}>
+      <div className={styles.heroHeading}>
+        <div><span className={styles.eyebrow}>{model.eyebrow}</span><Money value={model.value} tone={model.tone} />
+          <p><strong data-tone={model.descriptionTone}>{model.description}</strong></p></div>
+        <SelectionField className={styles.inlineTrend} label="Rentang tren" hideLabel compact value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} options={trendOptions} ariaLabel="Pilih rentang tren" />
+      </div>
+      <TrendView trend={trend} period={period} />
+      <div className={styles.heroFacts}>{model.facts.map(([label, value]) => <span key={label}>{label} <strong>{typeof value === "number" ? formatCompactRupiah(value) : value}</strong></span>)}</div>
+    </section>
+    <section className={`${styles.reportPanel} ${styles.categoryPanel}`}>
+      <div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada scope aktif.</p></div></div>
+      <CategoryRows items={categories} />
+    </section>
+  </div>;
+};
 
 const CommitmentActivity = ({ activity = {} }) => {
   const rows = [
@@ -146,9 +206,9 @@ const CommitmentActivity = ({ activity = {} }) => {
     ["Penerimaan Arisan", activity.arisan_receipt_amount, "Dana Arisan yang diterima"],
   ].filter(([, value]) => Number(value || 0) > 0);
   if (!rows.length) return null;
-  return <section className={styles.flatSection}>
-    <div className={styles.sectionHeading}><div><h2>Aktivitas Kewajiban</h2><p>Lihat pembayaran pokok, bunga/biaya, dan Arisan yang sudah tercatat.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Buka Kewajiban</Link></div>
-    <div className={styles.categoryRows}>{rows.map(([label, value, note]) => <div className={styles.categoryRow} key={label}><span><strong>{label}</strong><small>{note}</small></span><span><strong>{formatCompactRupiah(value)}</strong></span></div>)}</div>
+  return <section className={`${styles.reportPanel} ${styles.activityPanel}`}>
+    <div className={styles.sectionHeading}><div><h2>Aktivitas Kewajiban</h2><p>Pembayaran pokok, bunga/biaya, dan Arisan yang sudah tercatat.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Buka Kewajiban</Link></div>
+    <div className={styles.categoryRows}>{rows.map(([label, value, note]) => <div className={styles.categoryRowSimple} key={label}><span><strong>{label}</strong><small>{note}</small></span><span><strong>{formatCompactRupiah(value)}</strong></span></div>)}</div>
   </section>;
 };
 
@@ -160,11 +220,11 @@ const BreakdownDetails = ({ accountExpenses, creatorExpenses }) => <details clas
   </div>
 </details>;
 
-const Documents = ({ period, scopeLabel, trendMonths, allocationRuleId }) => <section className={styles.documentsSection}>
+const Documents = ({ period, scopeLabel, trendMonths, allocationRuleId }) => <section className={`${styles.reportPanel} ${styles.documentsSection}`}>
   <div className={styles.sectionHeading}><div><h2>Dokumen laporan</h2><p>{monthLabel(period)} · {scopeLabel}</p></div></div>
   <div className={styles.documentRows}>
-    <div><FiFileText aria-hidden="true" /><span><strong>PDF rekening koran</strong><small>Ringkasan, Kewajiban, Kebutuhan, dan rincian transaksi siap baca.</small></span><ReportFileButton format="pdf" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
-    <div><FiLayers aria-hidden="true" /><span><strong>Excel terolah</strong><small>Sheet Ringkasan, Kewajiban, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening.</small></span><ReportFileButton format="xlsx" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+    <div><span className={styles.documentIcon}><FiFileText aria-hidden="true" /></span><span><strong>PDF rekening koran</strong><small>Ringkasan, Kewajiban, Kebutuhan, dan rincian transaksi siap baca.</small></span><ReportFileButton format="pdf" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
+    <div><span className={styles.documentIcon}><FiLayers aria-hidden="true" /></span><span><strong>Excel terolah</strong><small>Sheet Ringkasan, Kewajiban, Alokasi, Kebutuhan, Transaksi, Kategori, dan Rekening.</small></span><ReportFileButton format="xlsx" period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} /></div>
   </div>
 </section>;
 
@@ -183,22 +243,23 @@ const ReportFileButton = ({ format, period, trendMonths, allocationRuleId }) => 
   return <Button variant="secondary" icon={FiDownload} loading={loading} onClick={run}>{format === "pdf" ? "PDF" : "Excel"}</Button>;
 };
 
+const PlanningReport = ({ data, scope, setAllocationRuleId }) => <div className={`${styles.planningGrid}${scope.mode === "allocation" ? ` ${styles.singlePlanning}` : ""}`}>
+  {scope.mode === "all" ? <section className={`${styles.reportPanel} ${styles.planningPanel}`}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Buka Alokasi</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : null}
+  <section className={`${styles.reportPanel} ${styles.planningPanel}`}><div className={styles.sectionHeading}><div><h2>{scope.mode === "all" ? "Kebutuhan vs Pengeluaran" : `Kebutuhan di ${scope.label}`}</h2><p>Rencana dibanding realisasi pengeluaran pada periode ini.</p></div></div><BudgetRows budgets={data.budgets || []} /></section>
+</div>;
+
 const ReportsContent = ({ data, period, setPeriod, trendMonths, setTrendMonths, allocationRuleId, setAllocationRuleId, refreshError, reload }) => {
   const [transactionsExpanded, setTransactionsExpanded] = useState(false);
   const scope = data.reportScope || { mode: "all", label: "Semua Alokasi" };
   return <div className={styles.page}>
     <RefreshWarning error={refreshError} onRetry={reload} />
     <ReportHeader period={period} setPeriod={setPeriod} trendMonths={trendMonths} allocationRuleId={allocationRuleId} setAllocationRuleId={setAllocationRuleId} allocationOptions={data.allocationOptions || []} />
+    <HeroOverview summary={data.reportSummary} scope={scope} trend={data.trend} period={period} trendMonths={trendMonths} setTrendMonths={setTrendMonths} categories={data.categoryExpenses || []} />
     <SummaryStrip summary={data.reportSummary} />
-    <div className={styles.primaryGrid}>
-      {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Buka Alokasi</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan di {scope.label}</h2><p>Rencana dibanding realisasi pengeluaran.</p></div></div><BudgetRows budgets={data.budgets || []} /></section>}
-      <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Tren pengeluaran</h2><p>{trendMonths === 1 ? "Harian pada bulan terpilih" : `${trendMonths} bulan terakhir`}</p></div><SelectionField className={styles.inlineTrend} label="Rentang tren" hideLabel compact value={String(trendMonths)} onChange={(value) => setTrendMonths(Number(value))} options={trendOptions} ariaLabel="Pilih rentang tren" /></div><TrendView trend={data.trend} period={period} /></section>
-    </div>
-    {scope.mode === "all" ? <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Kebutuhan vs Pengeluaran</h2><p>Rencana dan pemakaian dana pada periode ini.</p></div></div><BudgetRows budgets={data.budgets || []} /></section> : null}
-    <CommitmentActivity activity={data.commitmentActivity || {}} />
+    <PlanningReport data={data} scope={scope} setAllocationRuleId={setAllocationRuleId} />
     <div className={styles.secondaryGrid}>
-      <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada scope aktif.</p></div></div><CategoryRows items={data.categoryExpenses || []} /></section>
-      <section className={styles.flatSection}><div className={styles.sectionHeading}><div><h2>Transaksi terbaru</h2><p>Rincian debit, kredit, dan saldo berjalan.</p></div></div><TransactionRows items={data.reportTransactions || []} expanded={transactionsExpanded} onToggle={() => setTransactionsExpanded((value) => !value)} /></section>
+      <CommitmentActivity activity={data.commitmentActivity || {}} />
+      <section className={`${styles.reportPanel} ${styles.transactionPanel}`}><div className={styles.sectionHeading}><div><h2>Transaksi terbaru</h2><p>Pendukung analisis dari debit, kredit, dan saldo berjalan.</p></div><Link className={styles.headingLink} to="/transaksi">Lihat semua</Link></div><TransactionRows items={data.reportTransactions || []} expanded={transactionsExpanded} onToggle={() => setTransactionsExpanded((value) => !value)} /></section>
     </div>
     <BreakdownDetails accountExpenses={data.accountExpenses || []} creatorExpenses={data.creatorExpenses || []} />
     <Documents period={period} scopeLabel={scope.label} trendMonths={trendMonths} allocationRuleId={allocationRuleId} />

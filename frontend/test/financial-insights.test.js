@@ -97,6 +97,14 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
   assert.match(reportStyles, /@media \(max-width: 820px\)/);
   assert.match(reportStyles, /\.summaryItem\.summaryPrimary/);
   assert.match(reportStyles, /\.allocationRow/);
+  assert.match(reportStyles, /\.heroGrid/);
+  assert.match(reportStyles, /\.reportPanel/);
+  assert.match(reportStyles, /\.categoryProgress/);
+  assert.match(reportStyles, /@media \(min-width: 821px\)[\s\S]*?\.reportContextBar[\s\S]*?position:\s*sticky/);
+  assert.match(reports, /const HeroOverview/);
+  assert.match(reports, /const PlanningReport/);
+  assert.match(reports, /Kondisi keuangan/);
+  assert.doesNotMatch(reports, /AppShell|DesktopModuleDock|DesktopSidebar/);
   assert.match(reportStyles, /prefers-reduced-motion: reduce/);
 });
 
