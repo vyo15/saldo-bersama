@@ -319,6 +319,49 @@
   box-shadow: none;
 }
 
+.lockedSelection {
+  min-height: 54px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 9px;
+  background: color-mix(in srgb, var(--primary-soft) 18%, var(--surface));
+}
+
+.lockedSelection > svg:first-child {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.lockedSelection > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.lockedSelection strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lockedSelection small {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.lockedSelection > svg:last-child {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
 .notesField textarea {
   min-height: 3.5rem;
   resize: vertical;

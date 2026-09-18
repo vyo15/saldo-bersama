@@ -11,6 +11,7 @@ import { parseTransactionAmount } from "./transactionImpact.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 import { isInvestmentAccount } from "../../shared/presentation/account.js";
+import { planningIntentMatchesForm } from "./transactionPlanningIntent.js";
 
 export const createTransactionIntentKey = () => createIdempotencyKey();
 
@@ -35,7 +36,7 @@ const focusFirstTransactionError = (formElement, errors) => {
   });
 };
 
-const editableTransactionForm = (transaction) => {
+export const editableTransactionForm = (transaction) => {
   const editable = { ...transaction }; delete editable.scope; delete editable.owner_user_id; delete editable.cost_share_json;
   const percentages = Array.isArray(transaction.cost_share)
     ? transaction.cost_share.map((item) => ({ user_id: item.user_id, percentage: Number(item.basis_points || 0) / 100 }))
@@ -43,7 +44,7 @@ const editableTransactionForm = (transaction) => {
   return { ...emptyForm(), ...editable, amount: String(transaction.amount || ""), overspend_reason: transaction.overspend_reason || "", cost_share_mode: transaction.cost_share_mode || "unspecified", cost_share_percentages: percentages };
 };
 
-const initialTransactionForm = ({ initialType, initialSourceAccountId, initialDraft }) => {
+export const initialTransactionForm = ({ initialType, initialSourceAccountId, initialDraft }) => {
   const base = { ...emptyForm(), source_account_id: initialSourceAccountId || "" };
   const source = initialDraft && typeof initialDraft === "object" ? initialDraft : {};
   const transactionType = [TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.INCOME, TRANSACTION_TYPES.TRANSFER].includes(source.transaction_type)
@@ -65,11 +66,13 @@ const initialTransactionForm = ({ initialType, initialSourceAccountId, initialDr
   };
 };
 
+export const initialAllocationMode = ({ transaction, initialDraft } = {}) => (transaction || initialDraft?.envelope_period_id ? "manual" : "auto");
+
 export const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef }) => {
   useEffect(() => {
     if (!open) return;
     setForm(transaction ? editableTransactionForm(transaction) : initialTransactionForm({ initialType, initialSourceAccountId, initialDraft }));
-    setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); setPostSave(null); setForceOverspendNote(false); setAllocationMode(transaction || initialDraft?.envelope_period_id ? "manual" : "auto"); setUnallocatedConfirmed(false); idempotencyKeyRef.current = createTransactionIntentKey();
+    setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); setPostSave(null); setForceOverspendNote(false); setAllocationMode(initialAllocationMode({ transaction, initialDraft })); setUnallocatedConfirmed(false); idempotencyKeyRef.current = createTransactionIntentKey();
   }, [initialDraft, initialSourceAccountId, initialType, open, transaction, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef]);
 };
 
@@ -196,9 +199,17 @@ const finalizeTransactionSave = async ({ saved, transaction, form, continuation,
   return false;
 };
 
-export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, allocationCandidates = [], allocationMode = "auto", forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
+export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, allocationCandidates = [], allocationMode = "auto", planningIntent = null, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault();
   const formElement = event.currentTarget;
+  if (!planningIntentMatchesForm({ planningIntent, form })) {
+    const nextErrors = { budget_id: "Konteks Kebutuhan berubah. Tutup form lalu catat kembali dari tombol + pada Kebutuhan yang ingin dipakai." };
+    setters.setErrors((current) => ({ ...current, ...nextErrors }));
+    setters.setConfirmation(null);
+    setUnallocatedConfirmed(false);
+    focusFirstTransactionError(formElement, nextErrors);
+    return;
+  }
   const submission = prepareTransactionSubmission({ form, transaction, isIncome, confirmation, envelopes, forceOverspendNote });
   if (submission.overspendNoteRequired && !submission.preparedInput.overspend_reason) {
     const nextErrors = { description: "Isi Catatan untuk menjelaskan penggunaan di atas dana tersisa pada Alokasi Dana." };
@@ -299,9 +310,18 @@ export const useMobileTransferDestination = ({ open, enabled, destinationAccount
   }, [compatibleDestinationAccounts, destinationAccountId, enabled, open, setErrors, setForm]);
 };
 
-export const useSmartAllocationSelection = ({ open, transaction, allocationMode, candidates, form, setForm, setErrors }) => {
+export const shouldApplySmartAllocationSelection = ({ open, transaction, allocationMode, transactionType, budgetId, disabled = false }) => (
+  !disabled
+  && open
+  && !transaction
+  && allocationMode === "auto"
+  && transactionType === TRANSACTION_TYPES.EXPENSE
+  && !budgetId
+);
+
+export const useSmartAllocationSelection = ({ open, transaction, allocationMode, candidates, form, setForm, setErrors, disabled = false }) => {
   useEffect(() => {
-    if (!open || transaction || allocationMode !== "auto" || form.transaction_type !== TRANSACTION_TYPES.EXPENSE || form.budget_id) return;
+    if (!shouldApplySmartAllocationSelection({ open, transaction, allocationMode, transactionType: form.transaction_type, budgetId: form.budget_id, disabled })) return;
     const candidate = candidates.length === 1 ? candidates[0] : null;
     const nextEnvelopeId = candidate?.envelope.envelope_period_id || "";
     const nextBudgetId = candidate?.need.budget_id || "";
@@ -309,7 +329,7 @@ export const useSmartAllocationSelection = ({ open, transaction, allocationMode,
     setForm((current) => current.envelope_period_id === nextEnvelopeId && current.budget_id === nextBudgetId
       ? current
       : { ...current, envelope_period_id: nextEnvelopeId, budget_id: nextBudgetId });
-  }, [allocationMode, candidates, form.budget_id, form.transaction_type, open, setErrors, setForm, transaction]);
+  }, [allocationMode, candidates, disabled, form.budget_id, form.transaction_type, open, setErrors, setForm, transaction]);
 };
 
 const canReuseSourceAccount = (account, transactionType) => {

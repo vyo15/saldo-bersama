@@ -118,6 +118,8 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   assert.match(composer, /compose/);
   assert.match(composer, /beforeunload/);
   assert.match(composer, /onDirtyChange=\{setComposerDirty\}/);
+  assert.match(composer, /planningIntent = source\.planningIntent/);
+  assert.match(composer, /planningIntent=\{composer\.planningIntent\}/);
 });
 
 
@@ -259,7 +261,8 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   assert.match(form, /Sering dipakai/);
   assert.match(form, /smartAllocationCandidates/);
   assert.match(form, /useSmartAllocationSelection/);
-  assert.match(form, /allocationMode !== "auto"/);
+  assert.match(form, /shouldApplySmartAllocationSelection/);
+  assert.match(form, /disabled: planning\.locked/, "Planning intent harus menonaktifkan smart-selection agar context row Kebutuhan tidak tertimpa pada render pertama.");
   assert.match(smart, /mergeContextualAllocationCandidate/);
   assert.match(form, /earlyFundsWarning/);
   assert.match(form, /Setelah disimpan/);
@@ -271,15 +274,23 @@ test("form transaksi memakai smart rekening, smart Alokasi, warning dini, dan Ta
   assert.match(smart, /envelope\.source_account_id !== form\.source_account_id/);
 });
 
-test("detail Alokasi Dana membuka composer canonical dengan rekening, Alokasi, dan Kebutuhan sebagai prefill", async () => {
+test("detail Alokasi memisahkan aksi umum dari tombol + Kebutuhan agar context tidak dapat hilang", async () => {
   const detail = await readFile(new URL("../src/features/allocations/AllocationPlanningDetail.jsx", import.meta.url), "utf8");
   assert.match(detail, /useTransactionComposer/);
   assert.match(detail, /Catat pengeluaran/);
   assert.match(detail, /canRecordExpense/);
   assert.match(detail, /today >= item\.period_start/);
-  assert.match(detail, /category_id: budget\?\.category_id \|\| ""/);
-  assert.match(detail, /envelope_period_id: item\.envelope_period_id/);
-  assert.match(detail, /initialAllocationContext: budget \? \{ budget, envelope: item \} : null/);
+  assert.match(detail, /const recordAllocationExpense = \(\) =>/);
+  assert.match(detail, /const recordNeedExpense = \(budget\) =>/);
+  assert.match(detail, /!budget\?\.budget_id \|\| !budget\?\.category_id/);
+  assert.match(detail, /initialAllocationContext: \{ budget, envelope: item \}/);
+  assert.match(detail, /planningIntent: \{/);
+  assert.match(detail, /mode: "locked-need"/);
+  assert.match(detail, /budget_id: budget\.budget_id/);
+  assert.match(detail, /source_account_id: item\.source_account_id/);
+  assert.match(detail, /recordExpense=\{state\.recordNeedExpense\}/);
+  assert.doesNotMatch(detail, /const recordExpense = \(budget = null\)/, "Aksi Alokasi dan tombol + Kebutuhan tidak boleh berbagi callback opsional yang ambigu.");
+  assert.doesNotMatch(detail, /recordAllocationExpense[\s\S]{0,500}envelope_period_id:/, "Aksi umum tanpa Kebutuhan tidak boleh diam-diam mengikat Alokasi dan menyamar sebagai Tanpa Kebutuhan.");
   assert.doesNotMatch(detail, /createTransaction|updateTransaction|transactions\.api/, "detail Alokasi hanya boleh membuka composer, bukan menyimpan transaksi sendiri");
 });
 

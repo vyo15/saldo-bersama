@@ -225,6 +225,26 @@
   opacity: .58;
 }
 
+.contextLocked {
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 9px;
+  background: color-mix(in srgb, var(--primary-soft) 18%, var(--surface));
+  box-shadow: var(--shadow-control);
+}
+
+.contextLockedCheck {
+  width: 17px;
+  height: 17px;
+  color: var(--primary);
+}
+
 .detailIcon {
   width: 25px;
   height: 25px;

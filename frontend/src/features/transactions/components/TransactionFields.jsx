@@ -19,7 +19,9 @@ const TypeSelector = ({ form, update }) => <VisualChoiceGroup className={`form-g
 
 const FieldControl = ({ icon: Icon, children }) => <span className={styles.fieldControl}><Icon aria-hidden="true" /><span className={styles.fieldControlInput}>{children}</span></span>;
 
-const AmountDateFields = ({ form, update, errors, amountRef }) => <><div className={`money-entry ${styles.amountEntry}`}><div className={styles.amountVisual}><MoneyInput ref={amountRef} id="transaction-amount" value={form.amount} onChange={(value) => update("amount", value)} error={errors.amount} required /><span className={styles.currencyBadge} aria-hidden="true">Rp</span><FiGrid className={styles.amountIcon} aria-hidden="true" /></div>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <div className={`quick-amounts ${styles.quickAmounts}`} aria-label="Nominal pengeluaran cepat">{QUICK_EXPENSE_AMOUNTS.map((amount) => <button key={amount} type="button" aria-pressed={Number(form.amount || 0) === amount} onClick={() => update("amount", String(amount))}>{quickAmountLabel(amount)}</button>)}</div> : null}</div><label className={`field ${styles.visualField}`} htmlFor="transaction-date"><span>Tanggal *</span><FieldControl icon={FiCalendar}><TemporalInput id="transaction-date" type="date" embedded value={form.transaction_date} onChange={(event) => update("transaction_date", event.target.value)} aria-invalid={Boolean(errors.transaction_date)} aria-describedby={errors.transaction_date ? "transaction-date-error" : undefined} /></FieldControl>{errors.transaction_date ? <small id="transaction-date-error" className="field__error">{errors.transaction_date}</small> : null}</label></>;
+const LockedSelectionField = ({ label, icon: Icon, value, meta }) => <div className={`field ${styles.visualField}`}><span>{label}</span><div className={styles.lockedSelection} role="status"><Icon aria-hidden="true" /><span><strong>{value}</strong>{meta ? <small>{meta}</small> : null}</span><FiCheckCircle aria-label="Dikunci dari Alokasi Dana" /></div></div>;
+
+const AmountDateFields = ({ form, update, errors, amountRef, min = "", max = "" }) => <><div className={`money-entry ${styles.amountEntry}`}><div className={styles.amountVisual}><MoneyInput ref={amountRef} id="transaction-amount" value={form.amount} onChange={(value) => update("amount", value)} error={errors.amount} required /><span className={styles.currencyBadge} aria-hidden="true">Rp</span><FiGrid className={styles.amountIcon} aria-hidden="true" /></div>{form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <div className={`quick-amounts ${styles.quickAmounts}`} aria-label="Nominal pengeluaran cepat">{QUICK_EXPENSE_AMOUNTS.map((amount) => <button key={amount} type="button" aria-pressed={Number(form.amount || 0) === amount} onClick={() => update("amount", String(amount))}>{quickAmountLabel(amount)}</button>)}</div> : null}</div><label className={`field ${styles.visualField}`} htmlFor="transaction-date"><span>Tanggal *</span><FieldControl icon={FiCalendar}><TemporalInput id="transaction-date" type="date" embedded min={min || undefined} max={max || undefined} value={form.transaction_date} onChange={(event) => update("transaction_date", event.target.value)} aria-invalid={Boolean(errors.transaction_date)} aria-describedby={errors.transaction_date ? "transaction-date-error" : undefined} /></FieldControl>{errors.transaction_date ? <small id="transaction-date-error" className="field__error">{errors.transaction_date}</small> : null}</label></>;
 
 const sourceAccountOptionLabel = (item, transactionType) => {
   const amount = transactionType === TRANSACTION_TYPES.TRANSFER
@@ -29,7 +31,7 @@ const sourceAccountOptionLabel = (item, transactionType) => {
   return `${accountDisplayLabel(item)} · ${suffix} ${formatRupiah(amount)}`;
 };
 
-const SourceAccountField = ({ form, accounts, recentTransactions, onSourceAccountChange, errors }) => {
+const SourceAccountField = ({ form, accounts, recentTransactions, onSourceAccountChange, errors, lockPlanningSelection }) => {
   const picker = useMemo(() => sourceAccountPicker({
     accounts,
     transactionType: form.transaction_type,
@@ -37,6 +39,7 @@ const SourceAccountField = ({ form, accounts, recentTransactions, onSourceAccoun
     recentTransactions,
   }), [accounts, form.source_account_id, form.transaction_type, recentTransactions]);
   const selected = accounts.find((item) => item.account_id === form.source_account_id) || null;
+  if (lockPlanningSelection) return <LockedSelectionField label="Rekening sumber" icon={AccountIcon} value={selected ? accountDisplayLabel(selected) : "Rekening Alokasi"} meta={selected ? `Tersedia ${formatRupiah(selected.available_balance ?? selected.balance ?? 0)} · Terkunci dari Alokasi` : "Terkunci dari Alokasi"} />;
   return <div className={`field ${styles.visualField}`}>
     <label htmlFor="source-account">Rekening sumber *</label>
     <FieldControl icon={AccountIcon}><SelectionControl id="source-account" embedded value={form.source_account_id} onChange={onSourceAccountChange} placeholder="Pilih rekening" searchable={picker.length > 8} ariaLabel="Rekening sumber" options={picker.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: sourceAccountOptionLabel(item, form.transaction_type).split(" · ").slice(1).join(" · "), ...accountOptionVisual(item) }))} /></FieldControl>
@@ -48,8 +51,10 @@ const SourceAccountField = ({ form, accounts, recentTransactions, onSourceAccoun
 
 const DestinationAccountField = ({ form, accounts, update, errors }) => <label className={`field ${styles.visualField}`}><span>Rekening tujuan *</span><FieldControl icon={AccountIcon}><SelectionControl id="destination-account" embedded value={form.destination_account_id} onChange={(value) => update("destination_account_id", value)} placeholder="Pilih rekening" searchable={accounts.length > 8} ariaLabel="Rekening tujuan" options={accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), meta: `Saldo ${formatRupiah(item.balance || 0)}`, ...accountOptionVisual(item) }))} /></FieldControl>{errors.destination_account_id ? <small id="destination-account-error" className="field__error">{errors.destination_account_id}</small> : null}</label>;
 
-const CategoryField = ({ form, visibleCategories, recentTransactions, update, errors }) => {
+const CategoryField = ({ form, visibleCategories, recentTransactions, update, errors, lockPlanningSelection }) => {
   const quickCategories = useMemo(() => frequentCategories({ recentTransactions, sourceAccountId: form.source_account_id, visibleCategories }), [form.source_account_id, recentTransactions, visibleCategories]);
+  const selected = visibleCategories.find((item) => item.category_id === form.category_id) || null;
+  if (lockPlanningSelection) return <LockedSelectionField label="Kategori" icon={FiTag} value={selected?.name || "Kategori Kebutuhan"} meta="Mengikuti Kebutuhan yang dipilih" />;
   return <div className={`field ${styles.visualField}`}>
     <label htmlFor="category">Kategori{![TRANSACTION_TYPES.TRANSFER, TRANSACTION_TYPES.ADJUSTMENT].includes(form.transaction_type) ? " *" : ""}</label>
     {quickCategories.length ? <div className={styles.categoryQuickChoices} aria-label="Kategori yang sering dipakai"><small>Sering dipakai</small><div>{quickCategories.map((item) => <button key={item.category_id} type="button" aria-pressed={form.category_id === item.category_id} onClick={() => update("category_id", item.category_id)}>{item.name}</button>)}</div></div> : null}
@@ -110,9 +115,9 @@ const NeedField = ({ form, candidates, onNeedChange, lockPlanningSelection, budg
 };
 
 const AccountCategoryFields = (p) => <>
-    {!p.isIncome ? <SourceAccountField form={p.form} accounts={p.accounts} recentTransactions={p.recentTransactions} onSourceAccountChange={p.onSourceAccountChange} errors={p.errors} /> : null}
+    {!p.isIncome ? <SourceAccountField form={p.form} accounts={p.accounts} recentTransactions={p.recentTransactions} onSourceAccountChange={p.onSourceAccountChange} errors={p.errors} lockPlanningSelection={p.lockPlanningSelection} /> : null}
     {p.isIncome || p.isTransfer ? <DestinationAccountField form={p.form} accounts={p.compatibleDestinationAccounts} update={p.update} errors={p.errors} /> : null}
-    {!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} recentTransactions={p.recentTransactions} update={p.update} errors={p.errors} /> : null}
+    {!p.isTransfer ? <CategoryField form={p.form} visibleCategories={p.visibleCategories} recentTransactions={p.recentTransactions} update={p.update} errors={p.errors} lockPlanningSelection={p.lockPlanningSelection} /> : null}
     {p.form.transaction_type === TRANSACTION_TYPES.EXPENSE ? <NeedField form={p.form} candidates={p.allocationCandidates} onNeedChange={p.onNeedChange} lockPlanningSelection={p.lockPlanningSelection} budgets={p.budgets} envelopes={p.envelopes} allocationMode={p.allocationMode} errors={p.errors} outcomeUnknown={p.outcomeUnknown} /> : null}
   </>;
 
@@ -126,7 +131,7 @@ const ValidationSummary = ({ errors }) => {
 
 const FundsWarning = ({ warning }) => warning ? <div className="notice notice--warning form-grid__full" role="status"><FiAlertTriangle aria-hidden="true" /><span><strong>{warning.title}</strong> {warning.message}</span></div> : null;
 
-const TransactionFields = (p) => <><ValidationSummary errors={p.errors} />{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} /><AccountCategoryFields {...p} /><DirectDetailsFields form={p.form} update={p.update} errors={p.errors} /><FundsWarning warning={p.fundsWarning} /><TransactionImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
+const TransactionFields = (p) => <><ValidationSummary errors={p.errors} />{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} min={p.planningDateMin} max={p.planningDateMax} /><AccountCategoryFields {...p} /><DirectDetailsFields form={p.form} update={p.update} errors={p.errors} /><FundsWarning warning={p.fundsWarning} /><TransactionImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
 
 
 export default TransactionFields;

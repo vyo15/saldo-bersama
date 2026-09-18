@@ -94,6 +94,15 @@ export const mergeContextualAllocationCandidate = ({ candidates = [], context = 
   return [{ need: budget, envelope }, ...candidates];
 };
 
+
+export const contextualPlanningData = ({ budgets = [], envelopes = [], candidates = [], form = {} } = {}) => {
+  const selected = candidates.find((item) => item.need?.budget_id === form.budget_id && item.envelope?.envelope_period_id === form.envelope_period_id) || null;
+  if (!selected) return { budgets, envelopes };
+  const mergedBudgets = budgets.some((item) => item.budget_id === selected.need.budget_id) ? budgets : [selected.need, ...budgets];
+  const mergedEnvelopes = envelopes.some((item) => item.envelope_period_id === selected.envelope.envelope_period_id) ? envelopes : [selected.envelope, ...envelopes];
+  return { budgets: mergedBudgets, envelopes: mergedEnvelopes };
+};
+
 export const earlyFundsWarning = ({ transactionType, amount, source, envelope }) => {
   const value = asNumber(amount);
   if (value <= 0 || !source || Boolean(source.allow_negative)) return null;

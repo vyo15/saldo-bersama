@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { TRANSACTION_TYPES } from "../src/domain/constants.js";
 import {
   UNALLOCATED_NEED_VALUE,
+  contextualPlanningData,
   earlyFundsWarning,
   frequentCategories,
   mergeContextualAllocationCandidate,
@@ -121,4 +122,18 @@ test("early warning membedakan dana bebas, sisa Alokasi, dan kebijakan overspend
   const confirmable = earlyFundsWarning({ transactionType: "expense", amount: 600_000, source, envelope: { name: "Rumah", remaining_amount: 500_000, overspend_policy: "confirm" } });
   assert.equal(confirmable.shortage, 0);
   assert.match(confirmable.message, /dana tersedia rekening/);
+});
+test("context Kebutuhan ikut memasok data impact saat overview composer tertinggal", () => {
+  const candidate = {
+    need: { budget_id: "dry-food", amount: 100_000, used_amount: 50_000, name: "Dry Food" },
+    envelope: { envelope_period_id: "kucing-period", remaining_amount: 90_000, name: "Kucing" },
+  };
+  const form = { budget_id: "dry-food", envelope_period_id: "kucing-period" };
+  const merged = contextualPlanningData({ budgets: [], envelopes: [], candidates: [candidate], form });
+  assert.equal(merged.budgets[0].budget_id, "dry-food");
+  assert.equal(merged.envelopes[0].envelope_period_id, "kucing-period");
+
+  const existing = contextualPlanningData({ budgets: [candidate.need], envelopes: [candidate.envelope], candidates: [candidate], form });
+  assert.equal(existing.budgets.length, 1);
+  assert.equal(existing.envelopes.length, 1);
 });

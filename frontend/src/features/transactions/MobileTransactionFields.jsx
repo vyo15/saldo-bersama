@@ -8,6 +8,7 @@ import {
   FiChevronUp,
   FiGrid,
   FiLayers,
+  FiTag,
 } from "react-icons/fi";
 import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
@@ -67,7 +68,15 @@ const DetailCopy = ({ label, value, meta, error, errorId }) => (
   </span>
 );
 
-const DateRow = ({ form, update, errors }) => (
+const LockedContextRow = ({ icon: Icon, label, value, meta }) => (
+  <div className={styles.contextLocked} role="status">
+    <span className={styles.detailIcon} aria-hidden="true"><Icon /></span>
+    <DetailCopy label={label} value={value} meta={meta} />
+    <FiCheckCircle className={styles.contextLockedCheck} aria-label="Dikunci dari Alokasi Dana" />
+  </div>
+);
+
+const DateRow = ({ form, update, errors, min = "", max = "" }) => (
   <label className={styles.detailRow} htmlFor="transaction-date">
     <span className={styles.detailIcon} aria-hidden="true"><FiCalendar /></span>
     <DetailCopy label="Tanggal" value={formatDateLongIndonesia(form.transaction_date) || "Pilih tanggal"} error={errors.transaction_date} errorId="transaction-date-error" />
@@ -77,6 +86,8 @@ const DateRow = ({ form, update, errors }) => (
       className={styles.nativeOverlay}
       type="date"
       value={form.transaction_date}
+      min={min || undefined}
+      max={max || undefined}
       onChange={(event) => update("transaction_date", event.target.value)}
       aria-invalid={Boolean(errors.transaction_date)}
       aria-describedby={errors.transaction_date ? "transaction-date-error" : undefined}
@@ -91,6 +102,15 @@ const sourceAccountOptionMeta = (item, transactionType) => {
 
 const TransactionAccountField = (p) => {
   const destinationMode = p.isIncome;
+  if (p.lockPlanningSelection && !destinationMode) {
+    const selected = p.accounts.find((item) => item.account_id === p.form.source_account_id) || null;
+    return <LockedContextRow
+      icon={AccountIcon}
+      label="Rekening sumber"
+      value={selected ? accountDisplayLabel(selected) : "Rekening Alokasi"}
+      meta={selected ? `${sourceAccountOptionMeta(selected, p.form.transaction_type)} · Terkunci dari Alokasi` : "Terkunci dari Alokasi"}
+    />;
+  }
   const pickerAccounts = destinationMode
     ? p.compatibleDestinationAccounts
     : sourceAccountPicker({ accounts: p.accounts, transactionType: p.form.transaction_type, selectedAccountId: p.form.source_account_id, recentTransactions: p.recentTransactions });
@@ -119,6 +139,16 @@ const TransactionAccountField = (p) => {
       disabled={p.outcomeUnknown}
     />
   );
+};
+
+const LockedCategoryField = (p) => {
+  const category = p.visibleCategories.find((item) => item.category_id === p.form.category_id) || null;
+  return <LockedContextRow
+    icon={FiTag}
+    label="Kategori"
+    value={category?.name || "Kategori Kebutuhan"}
+    meta="Mengikuti Kebutuhan yang dipilih"
+  />;
 };
 
 const needMeta = (candidate) => {
@@ -198,7 +228,7 @@ const PrimaryDetails = (p) => (
     <span className={styles.sectionLabel}>Transaksi</span>
     <div className={styles.detailStack}>
       <TransactionAccountField {...p} />
-      <MobileTransactionCategoryField
+      {p.lockPlanningSelection ? <LockedCategoryField {...p} /> : <MobileTransactionCategoryField
         key={`${p.form.transaction_type}:${p.form.source_account_id}`}
         form={p.form}
         update={p.update}
@@ -206,7 +236,7 @@ const PrimaryDetails = (p) => (
         recentTransactions={p.recentTransactions}
         errors={p.errors}
         outcomeUnknown={p.outcomeUnknown}
-      />
+      />}
       <NeedField {...p} />
     </div>
   </section>
@@ -264,7 +294,7 @@ const AdditionalDetails = (p) => {
       </button>
       {open ? (
         <div id="transaction-additional-details" className={styles.additionalBody}>
-          <DateRow form={p.form} update={p.update} errors={p.errors} />
+          <DateRow form={p.form} update={p.update} errors={p.errors} min={p.planningDateMin} max={p.planningDateMax} />
           <PaymentMethods form={p.form} update={p.update} />
           <NotesField form={p.form} update={p.update} errors={p.errors} />
         </div>

@@ -15,6 +15,7 @@ const DEFAULT_COMPOSER_STATE = Object.freeze({
   presentation: "default",
   initialDraft: null,
   initialAllocationContext: null,
+  planningIntent: null,
   continuation: null,
 });
 
@@ -41,8 +42,9 @@ const normalizeComposerOptions = (options) => {
       envelope: source.initialAllocationContext.envelope && typeof source.initialAllocationContext.envelope === "object" ? { ...source.initialAllocationContext.envelope } : null,
     }
     : null;
+  const planningIntent = source.planningIntent && typeof source.planningIntent === "object" ? { ...source.planningIntent } : null;
   const continuation = source.continuation && typeof source.continuation === "object" ? { ...source.continuation, payload: { ...(source.continuation.payload || {}) } } : null;
-  return { initialType, initialSourceAccountId, presentation, initialDraft, initialAllocationContext, continuation };
+  return { initialType, initialSourceAccountId, presentation, initialDraft, initialAllocationContext, planningIntent, continuation };
 };
 
 export const useTransactionComposer = () => {
@@ -101,6 +103,7 @@ export const TransactionComposerProvider = ({ children }) => {
         presentation={composer.presentation}
         initialDraft={composer.initialDraft}
         initialAllocationContext={composer.initialAllocationContext}
+        planningIntent={composer.planningIntent}
         continuation={composer.continuation}
         onDirtyChange={setComposerDirty}
       /></Suspense> : null}

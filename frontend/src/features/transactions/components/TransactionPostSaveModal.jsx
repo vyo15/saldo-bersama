@@ -82,7 +82,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
       description: "Dana sudah masuk ke rekening. Anda dapat membaginya ke Alokasi Dana sekarang atau nanti.",
       summaryRows,
       secondaryActions: [
-        { label: "Tambah pemasukan lagi", onClick: onAddAnother },
+        ...(onAddAnother ? [{ label: "Tambah pemasukan lagi", onClick: onAddAnother }] : []),
         { label: "Bagi ke Alokasi Dana", onClick: allocate },
       ],
     }
@@ -106,7 +106,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
           title: "Pengeluaran berhasil",
           description: "Pengeluaran sudah tercatat.",
           summaryRows,
-          secondaryActions: [{ label: "Tambah lagi", onClick: onAddAnother }],
+          secondaryActions: onAddAnother ? [{ label: "Tambah lagi", onClick: onAddAnother }] : [],
         };
 
   return <FinancialSuccessOverlay

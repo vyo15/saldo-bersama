@@ -229,22 +229,40 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
       description: `Tambah saldo untuk Alokasi ${item.name}`,
     },
   });
-  const recordExpense = (budget = null) => {
+  const recordAllocationExpense = () => {
     if (!canRecordExpense) return;
-    const remaining = budget ? budgetRemainingAmount(budget) : 0;
     openTransactionComposer({
       initialType: TRANSACTION_TYPES.EXPENSE,
       initialSourceAccountId: item.source_account_id,
       initialDraft: {
         transaction_type: TRANSACTION_TYPES.EXPENSE,
         source_account_id: item.source_account_id,
-        category_id: budget?.category_id || "",
-        envelope_period_id: item.envelope_period_id,
-        budget_id: budget?.budget_id || "",
-        amount: budget?.recording_mode === "fixed_once" ? remaining : "",
-        description: budget?.name || "",
       },
-      initialAllocationContext: budget ? { budget, envelope: item } : null,
+    });
+  };
+  const recordNeedExpense = (budget) => {
+    if (!canRecordExpense || !budget?.budget_id || !budget?.category_id || !item.envelope_period_id || !item.source_account_id) return;
+    const remaining = budgetRemainingAmount(budget);
+    openTransactionComposer({
+      initialType: TRANSACTION_TYPES.EXPENSE,
+      initialSourceAccountId: item.source_account_id,
+      initialDraft: {
+        transaction_type: TRANSACTION_TYPES.EXPENSE,
+        source_account_id: item.source_account_id,
+        category_id: budget.category_id,
+        envelope_period_id: item.envelope_period_id,
+        budget_id: budget.budget_id,
+        amount: budget.recording_mode === "fixed_once" ? remaining : "",
+        description: budget.name || "",
+      },
+      initialAllocationContext: { budget, envelope: item },
+      planningIntent: {
+        mode: "locked-need",
+        budget_id: budget.budget_id,
+        envelope_period_id: item.envelope_period_id,
+        source_account_id: item.source_account_id,
+        category_id: budget.category_id,
+      },
     });
   };
   const openRecurringWorkflow = (workflow) => navigate("/perencanaan/jadwal", { state: workflow });
@@ -268,7 +286,8 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
     budgetLifecycleController,
     openBudgetForm,
     editBudget,
-    recordExpense,
+    recordAllocationExpense,
+    recordNeedExpense,
     openSchedule,
   };
 };
@@ -281,7 +300,7 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
     <Card className={allocationClass("allocation-detail-shell")}>
       <section className={allocationClass("allocation-detail-hero")} aria-labelledby="allocation-detail-title">
         <div><span>Alokasi Dana</span><h2 id="allocation-detail-title">{item.name}</h2><p>{state.sourceLabel} · {state.assigneeLabel} · {state.periodLabel}</p></div>
-        {showGlobalExpenseAction(state.canRecordExpense, linkedBudgets) ? <div className={allocationClass("allocation-detail-hero__action")}><Button variant="primary" icon={FiPlus} onClick={() => state.recordExpense()}>Catat pengeluaran</Button></div> : null}
+        {showGlobalExpenseAction(state.canRecordExpense, linkedBudgets) ? <div className={allocationClass("allocation-detail-hero__action")}><Button variant="primary" icon={FiPlus} onClick={state.recordAllocationExpense}>Catat pengeluaran</Button></div> : null}
         <div className={allocationClass("allocation-detail-hero__metrics")}>
           <div><span>Masih tersedia</span><strong><Money value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /></strong></div>
           <div><span>Total disiapkan</span><strong><Money value={state.usage.allocated} /></strong></div>
@@ -302,7 +321,7 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         canAdjustAllocation={canAdjustAllocation}
         onAdjustAllocation={onAdjustAllocation}
         openBudgetForm={state.openBudgetForm}
-        recordExpense={state.recordExpense}
+        recordExpense={state.recordNeedExpense}
         openSchedule={state.openSchedule}
         editBudget={state.editBudget}
       />

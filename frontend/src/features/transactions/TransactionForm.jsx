@@ -14,12 +14,15 @@ import MobileTransactionFields from "./MobileTransactionFields.jsx";
 import MobileTransferFields from "./MobileTransferFields.jsx";
 import TransactionFields from "./components/TransactionFields.jsx";
 import TransactionPostSaveModal from "./components/TransactionPostSaveModal.jsx";
-import { UNALLOCATED_NEED_VALUE, earlyFundsWarning, mergeContextualAllocationCandidate, smartAllocationCandidates } from "./transactionFormSmartDefaults.js";
+import { UNALLOCATED_NEED_VALUE, contextualPlanningData, earlyFundsWarning, mergeContextualAllocationCandidate, smartAllocationCandidates } from "./transactionFormSmartDefaults.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
+import { applyPlanningIntentToDraft, isLockedPlanningIntent, planningDependencyInvalidatesSelection, planningIntentLocksField, transactionPlanningState } from "./transactionPlanningIntent.js";
 import {
   applySourceAccountChange,
   createTransactionIntentKey,
-  emptyForm,
+  editableTransactionForm,
+  initialAllocationMode,
+  initialTransactionForm,
   isMobileTransferPresentation,
   parseTransactionAmount,
   requiresTransferApproval,
@@ -112,13 +115,15 @@ const TransactionFormBody = ({ mobileLayout, mobileTransferMode, fields }) => {
 };
 
 const useTransactionFormState = ({ open, transaction, initialType, initialSourceAccountId, initialDraft }) => {
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => transaction
+    ? editableTransactionForm(transaction)
+    : initialTransactionForm({ initialType, initialSourceAccountId, initialDraft }));
   const [errors, setErrors] = useState({});
   const [confirmation, setConfirmation] = useState(null);
   const [submitState, setSubmitState] = useState({ status: "idle", error: null });
   const [postSave, setPostSave] = useState(null);
   const [forceOverspendNote, setForceOverspendNote] = useState(false);
-  const [allocationMode, setAllocationMode] = useState("auto");
+  const [allocationMode, setAllocationMode] = useState(() => initialAllocationMode({ transaction, initialDraft }));
   const [unallocatedConfirmed, setUnallocatedConfirmed] = useState(false);
   const idempotencyKeyRef = useRef(createTransactionIntentKey());
   const amountRef = useRef(null);
@@ -139,16 +144,20 @@ const useTransactionDerived = ({ bootstrap, overview, form, transaction, present
     context: initialAllocationContext,
     form,
   }), [derived.compatibleEnvelopes, data.budgets, form, initialAllocationContext]);
+  const impactPlanning = useMemo(
+    () => contextualPlanningData({ budgets: data.budgets, envelopes: data.envelopes, candidates: allocationCandidates, form }),
+    [allocationCandidates, data.budgets, data.envelopes, form],
+  );
   const impact = useMemo(
     () => transactionImpact({
       accountBalances: data.accountBalances,
-      envelopes: data.envelopes,
-      budgets: data.budgets,
+      envelopes: impactPlanning.envelopes,
+      budgets: impactPlanning.budgets,
       safeToSpend: overview?.safeToSpend || 0,
       form,
       transaction,
     }),
-    [data.accountBalances, data.budgets, data.envelopes, form, overview?.safeToSpend, transaction],
+    [data.accountBalances, form, impactPlanning.budgets, impactPlanning.envelopes, overview?.safeToSpend, transaction],
   );
   const selectedSource = data.accountBalances.find((item) => item.account_id === form.source_account_id) || null;
   const selectedEnvelope = data.envelopes.find((item) => item.envelope_period_id === form.envelope_period_id) || null;
@@ -159,19 +168,23 @@ const useTransactionDerived = ({ bootstrap, overview, form, transaction, present
   return { data, isIncome, isTransfer, mobileTransferMode, approvalRequired, allocationCandidates, impact, fundsWarning, outcomeUnknown: submitState.status === "unknown", ...derived };
 };
 
-const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, transaction, allocationCandidates, markDirty }) => {
+const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, transaction, allocationCandidates, planningIntent, markDirty }) => {
   const setDirtyForm = (updater) => { markDirty(); state.setForm(updater); };
   const update = (field, value) => {
-    if (outcomeUnknown) return;
+    if (outcomeUnknown || planningIntentLocksField(planningIntent, field)) return;
     state.setConfirmation(null);
     state.setUnallocatedConfirmed(false);
     state.setSubmitState({ status: "idle", error: null });
     state.setErrors((current) => clearTransactionFieldErrors(current, field));
     if (["transaction_type", "amount", "envelope_period_id"].includes(field)) state.setForceOverspendNote(false);
-    if (!transaction && ["transaction_type", "category_id", "transaction_date"].includes(field)) state.setAllocationMode("auto");
+    const planningDependencyChanged = planningDependencyInvalidatesSelection({ planningIntent, field });
+    if (!transaction && planningDependencyChanged) state.setAllocationMode("auto");
     setDirtyForm((current) => {
       const next = { ...current, [field]: value };
-      if (["transaction_type", "category_id", "envelope_period_id"].includes(field)) next.budget_id = "";
+      if (planningDependencyChanged) {
+        next.envelope_period_id = "";
+        next.budget_id = "";
+      } else if (field === "envelope_period_id") next.budget_id = "";
       if (field === "transaction_type" && value !== TRANSACTION_TYPES.EXPENSE) {
         next.envelope_period_id = "";
         next.cost_share_mode = "unspecified";
@@ -182,7 +195,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
   };
 
   const onSourceAccountChange = (nextId) => {
-    if (outcomeUnknown) return;
+    if (outcomeUnknown || planningIntentLocksField(planningIntent, "source_account_id")) return;
     state.setForceOverspendNote(false);
     state.setUnallocatedConfirmed(false);
     if (!transaction) state.setAllocationMode("auto");
@@ -190,7 +203,7 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
   };
 
   const onNeedChange = (selectionValue) => {
-    if (outcomeUnknown) return;
+    if (outcomeUnknown || isLockedPlanningIntent(planningIntent)) return;
     const explicitUnallocated = selectionValue === UNALLOCATED_NEED_VALUE;
     const candidate = explicitUnallocated ? null : allocationCandidates.find((item) => item.need.budget_id === selectionValue) || null;
     state.setAllocationMode("manual");
@@ -237,7 +250,7 @@ const useTransactionDraftLifecycle = ({ open, postSave, onClose, onDirtyChange }
 };
 
 
-const transactionFields = ({ state, derived, actions, lockType, lockPlanningSelection, submitting, transaction }) => ({
+const transactionFields = ({ state, derived, actions, lockType, lockPlanningSelection, planningDateMin, planningDateMax, submitting, transaction }) => ({
   form: state.form,
   update: actions.update,
   errors: state.errors,
@@ -264,6 +277,8 @@ const transactionFields = ({ state, derived, actions, lockType, lockPlanningSele
   submitState: state.submitState,
   lockType,
   lockPlanningSelection,
+  planningDateMin,
+  planningDateMax,
   onSourceAccountChange: actions.onSourceAccountChange,
   submitting,
   outcomeUnknown: derived.outcomeUnknown,
@@ -305,6 +320,7 @@ const TransactionForm = ({
   initialSourceAccountId = "",
   initialDraft = null,
   initialAllocationContext = null,
+  planningIntent = null,
   continuation = null,
   lockType = false,
   transaction = null,
@@ -321,26 +337,35 @@ const TransactionForm = ({
   const { notify } = useFeedback();
   const navigate = useNavigate();
   const mobileLayout = useMediaQuery(APP_MEDIA.mobile);
-  const state = useTransactionFormState({ open, transaction, initialType, initialSourceAccountId, initialDraft });
+  const planning = useMemo(
+    () => transactionPlanningState({ transaction, planningIntent, initialDraft, initialAllocationContext }),
+    [initialAllocationContext, initialDraft, planningIntent, transaction],
+  );
+  const state = useTransactionFormState({ open, transaction, initialType, initialSourceAccountId, initialDraft: planning.initialDraft });
   const derived = useTransactionDerived({ bootstrap, overview, form: state.form, transaction, presentation, mobileLayout, submitState: state.submitState, initialAllocationContext });
   const draftLifecycle = useTransactionDraftLifecycle({ open, postSave: state.postSave, onClose, onDirtyChange });
-  const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, outcomeUnknown: derived.outcomeUnknown, transaction, allocationCandidates: derived.allocationCandidates, markDirty: draftLifecycle.markDirty });
+  const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, outcomeUnknown: derived.outcomeUnknown, transaction, allocationCandidates: derived.allocationCandidates, planningIntent: planning.intent, markDirty: draftLifecycle.markDirty });
   const setters = { setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote };
-  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, approvalRequired: derived.approvalRequired, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, forceOverspendNote: state.forceOverspendNote, unallocatedConfirmed: state.unallocatedConfirmed, setUnallocatedConfirmed: state.setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
+  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, approvalRequired: derived.approvalRequired, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, planningIntent: planning.intent, forceOverspendNote: state.forceOverspendNote, unallocatedConfirmed: state.unallocatedConfirmed, setUnallocatedConfirmed: state.setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
   const submitting = state.submitState.status === "submitting";
   const outcomeUnknown = derived.outcomeUnknown;
 
-  useSmartAllocationSelection({ open, transaction, allocationMode: state.allocationMode, candidates: derived.allocationCandidates, form: state.form, setForm: state.setForm, setErrors: state.setErrors });
+  useSmartAllocationSelection({ open, transaction, allocationMode: state.allocationMode, candidates: derived.allocationCandidates, form: state.form, setForm: state.setForm, setErrors: state.setErrors, disabled: planning.locked });
   useMobileTransferDestination({ open, enabled: derived.mobileTransferMode, destinationAccountId: state.form.destination_account_id, compatibleDestinationAccounts: derived.compatibleDestinationAccounts, setForm: state.setForm, setErrors: state.setErrors });
 
-  const lockPlanningSelection = !transaction && Boolean(initialDraft?.budget_id && initialDraft?.envelope_period_id);
-  const fields = transactionFields({ state, derived, actions, lockType, lockPlanningSelection, submitting, transaction });
+  const fields = transactionFields({ state, derived, actions, lockType: lockType || planning.locked, lockPlanningSelection: planning.locked, planningDateMin: planning.dateMin, planningDateMax: planning.dateMax, submitting, transaction });
   const requestModalClose = draftLifecycle.requestClose;
   const modal = resolveTransactionPresentation({ mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout });
-  const addAnother = () => resetForAnotherTransaction({ postSave: state.postSave, accounts: derived.data.accounts, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote, setAllocationMode: state.setAllocationMode, setUnallocatedConfirmed: state.setUnallocatedConfirmed, setPostSave: state.setPostSave, idempotencyKeyRef: state.idempotencyKeyRef, amountRef: state.amountRef });
+  const addAnother = () => {
+    resetForAnotherTransaction({ postSave: state.postSave, accounts: derived.data.accounts, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote, setAllocationMode: state.setAllocationMode, setUnallocatedConfirmed: state.setUnallocatedConfirmed, setPostSave: state.setPostSave, idempotencyKeyRef: state.idempotencyKeyRef, amountRef: state.amountRef });
+    if (!planning.locked) return;
+    state.setForm((current) => applyPlanningIntentToDraft({ initialDraft: current, planningIntent: planning.intent }));
+    state.setAllocationMode("manual");
+  };
 
   if (state.postSave) {
-    return <TransactionPostSaveModal open={open} postSave={state.postSave} accounts={derived.data.readableAccounts} onClose={onClose} navigate={navigate} onAddAnother={addAnother} />;
+    const singleUseNeedCompleted = planning.locked && initialAllocationContext?.budget?.recording_mode === "fixed_once";
+    return <TransactionPostSaveModal open={open} postSave={state.postSave} accounts={derived.data.readableAccounts} onClose={onClose} navigate={navigate} onAddAnother={singleUseNeedCompleted ? null : addAnother} />;
   }
 
   return (
