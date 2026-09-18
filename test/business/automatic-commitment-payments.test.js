@@ -47,7 +47,7 @@ const seedFundedNeed = async (db, { amount = 3_750_000, budgetId = "budget-home"
   return { budgetId, ruleId, periodId };
 };
 
-test("KPR yang sudah berjalan memakai saldo sekarang tanpa membuat histori palsu dan bunga flat terpisah otomatis", async () => {
+test("KPR yang sudah berjalan memakai saldo sekarang tanpa membuat histori palsu dan tidak menebak pokok flat", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -77,11 +77,12 @@ test("KPR yang sudah berjalan memakai saldo sekarang tanpa membuat histori palsu
       amount: 3_750_000,
       transaction_date: todayJakarta(),
     }, occurrence.row_version));
-    assert.equal(paid.commitment.current_balance, 285_000_000);
+    assert.equal(paid.commitment.current_balance, 287_500_000, "saldo pokok KPR tidak boleh ditebak dari rumus flat");
+    assert.equal(paid.commitment.installments_paid, 1);
     const movement = await db.one("SELECT * FROM commitment_movements WHERE transaction_id=?", [paid.transaction.transaction_id]);
-    assert.equal(movement.principal_amount, 2_500_000);
-    assert.equal(movement.interest_amount, 1_250_000);
-    assert.equal(movement.principal_known, 1);
+    assert.equal(movement.principal_amount, 0);
+    assert.equal(movement.interest_amount, 0);
+    assert.equal(movement.principal_known, 0);
   } finally {
     db.close();
   }
@@ -119,7 +120,7 @@ test("Kewajiban yang Kebutuhannya sudah didanai dicatat otomatis tepat sekali sa
     assert.equal(transaction.budget_id, funded.budgetId);
     assert.equal(transaction.envelope_period_id, funded.periodId);
     const current = await db.one("SELECT current_balance FROM commitments WHERE commitment_id=?", [created.commitment_id]);
-    assert.equal(current.current_balance, 285_000_000);
+    assert.equal(current.current_balance, 287_500_000, "pembayaran otomatis KPR tidak menebak penurunan pokok");
 
     const second = await processFundedCommitmentPayments(db, { today });
     assert.equal(second.settled, 0, "scheduler tidak boleh mendebit occurrence yang sama dua kali");
@@ -244,16 +245,16 @@ test("Kewajiban overdue ikut dibayar otomatis saat Alokasi baru siap setelah jat
   }
 });
 
-test("pembayaran otomatis terakhir tidak melebihi sisa pokok plus bunga flat bulan itu", async () => {
+test("cicilan flat non-KPR tetap membatasi pembayaran terakhir ke sisa pokok plus bunga bulan itu", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
     const today = todayJakarta();
-    const funded = await seedFundedNeed(db, { amount: 1_100_000, budgetId: "budget-final", name: "KPR Final" });
+    const funded = await seedFundedNeed(db, { amount: 1_100_000, budgetId: "budget-final", name: "Cicilan Final" });
     const created = await createCommitment(db, context("commitments.create", {
-      commitment_type: "mortgage",
-      name: "KPR Final",
-      provider: "BTN",
+      commitment_type: "installment",
+      name: "Cicilan Final",
+      provider: "Leasing",
       original_amount: 10_000_000,
       current_balance: 500_000,
       installment_amount: 1_100_000,

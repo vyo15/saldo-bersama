@@ -42,7 +42,7 @@ test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog 
   assert.match(transactions, /const MobileTransactionHistory = lazy/);
   assert.match(mobileHistory, /MobileTransactionOverview/);
   assert.match(mobileHistory, /MobileTransactionFilters/);
-  assert.match(transactions, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}, \{ enabled: mobileLayout \}\)/);
+  assert.match(transactions, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}\)/);
   assert.match(mobileHistory, /title="Filter transaksi"/);
   assert.match(mobileHistory, /title="Cari transaksi"/);
   assert.match(mobileHistory, /ariaLabel="Filter rekening"/);
@@ -71,7 +71,7 @@ test("history transaksi mobile memakai periode dan grafik compact tanpa judul bo
     read("src/features/transactions/components/MobileTransactionHistory.jsx"),
     read("src/features/transactions/components/MobileTransactionHistory.module.css"),
   ]);
-  assert.match(transactions, /description=\{mobileLayout \? undefined : "Semua transaksi dalam satu alur\."\}/);
+  assert.match(transactions, /description=\{mobileLayout \? undefined : "Analisis aktivitas dan telusuri seluruh pergerakan uang dalam satu workspace\."\}/);
   assert.match(mobileHistory, /periodLabel\(period\)/);
   assert.match(mobileHistory, /Tren arus kas enam bulan sampai periode terpilih/);
   assert.match(mobileHistory, /formatCompactRupiah\(cashFlow\.income\)/);

@@ -222,7 +222,10 @@ test("dynamic finance selectors expose canonical visual identity helpers", async
   const [visuals, accounts, transactions, reconciliation, investments] = await Promise.all([
     read("components/common/selectionOptionVisuals.js"),
     read("features/accounts/components/AccountEditorDialogs.jsx"),
-    read("features/transactions/TransactionsPage.jsx"),
+    Promise.all([
+      read("features/transactions/TransactionsPage.jsx"),
+      read("features/transactions/components/TransactionFilters.jsx"),
+    ]).then((parts) => parts.join("\n")),
     read("features/reconciliations/components/ReconciliationForm.jsx"),
     read("features/investments/InvestmentDialog.jsx"),
   ]);

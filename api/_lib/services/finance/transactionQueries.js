@@ -59,7 +59,20 @@ const transactionListFilters = (context, request) => {
 
 const transactionListStatements = (request, filters) => [
   { sql: `SELECT COUNT(*) AS total FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${filters.conditions.join(" AND ")}`, args: filters.args },
-  { sql: `SELECT t.* FROM transactions t LEFT JOIN categories c ON c.category_id=t.category_id WHERE ${filters.conditions.join(" AND ")}
+  { sql: `SELECT t.*,
+      b.name AS budget_name,
+      COALESCE(NULLIF(TRIM(er.name),''),NULLIF(TRIM(ep.name),''),'') AS allocation_name,
+      rr.name AS recurring_name,g.name AS goal_name,cm.name AS commitment_name
+    FROM transactions t
+    LEFT JOIN categories c ON c.category_id=t.category_id
+    LEFT JOIN budgets b ON b.budget_id=t.budget_id
+    LEFT JOIN envelope_periods ep ON ep.envelope_period_id=t.envelope_period_id
+    LEFT JOIN envelope_rules er ON er.envelope_rule_id=ep.envelope_rule_id
+    LEFT JOIN recurring_occurrences ro ON ro.occurrence_id=t.recurring_occurrence_id
+    LEFT JOIN recurring_rules rr ON rr.recurring_rule_id=ro.recurring_rule_id
+    LEFT JOIN savings_goals g ON g.goal_id=t.goal_id
+    LEFT JOIN commitments cm ON cm.commitment_id=t.commitment_id
+    WHERE ${filters.conditions.join(" AND ")}
     ORDER BY t.transaction_date DESC,t.created_at DESC LIMIT ? OFFSET ?`, args: [...filters.args, request.limit, request.offset] },
   { sql: `SELECT DISTINCT a.account_id,a.name,a.account_type,a.bank_template,a.ewallet_template,a.owner_scope,a.owner_user_id,COALESCE(NULLIF(TRIM(u.name),''),'Pengguna') AS owner_name
     FROM accounts a JOIN transactions t ON t.source_account_id=a.account_id OR t.destination_account_id=a.account_id

@@ -8,6 +8,9 @@ const activeCommitment = async (db, commitmentId) => {
 };
 
 export const flatCommitmentPaymentBreakdown = (commitment, amount) => {
+  // KPR nyata umumnya tidak aman diasumsikan memakai pokok flat.
+  // Untuk mortgage, sisa pokok harus berasal dari saldo aktual bank/reconciliation.
+  if (commitment.commitment_type === "mortgage") return null;
   const before = Number(commitment.current_balance || 0);
   const original = Number(commitment.original_amount || 0);
   const totalInstallments = Number(commitment.total_installments || 0);

@@ -95,6 +95,7 @@ const buildCommitmentUpdate = (current, payload, account, category, actorId) => 
 
 
 const commitmentFlatAmounts = (row) => {
+  if (row.commitment_type === "mortgage") return { flatPrincipal: 0, flatInterest: 0 };
   const totalInstallments = Number(row.total_installments || 0);
   const originalAmount = Number(row.original_amount || 0);
   const installmentAmount = Number(row.installment_amount || 0);

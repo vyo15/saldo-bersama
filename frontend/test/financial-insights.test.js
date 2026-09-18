@@ -15,7 +15,10 @@ const goalFeatureSource = () => sourceMany([
 ]);
 
 test("halaman transaksi mengekspos filter rekening, kategori, dan pencatat", async () => {
-  const page = await source("src/features/transactions/TransactionsPage.jsx");
+  const page = await sourceMany([
+    "src/features/transactions/TransactionsPage.jsx",
+    "src/features/transactions/components/TransactionFilters.jsx",
+  ]);
   for (const field of ["account_id", "category_id", "created_by", "filterOptions.accounts", "filterOptions.categories", "filterOptions.creators"]) {
     assert.match(page, new RegExp(field.replace(".", "\\.")));
   }

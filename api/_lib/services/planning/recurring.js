@@ -222,7 +222,7 @@ const recurringCommitmentAmounts = (row) => {
   const original = Number(row.commitment_original_amount || 0);
   const periods = Number(row.commitment_total_installments || 0);
   const installment = Number(row.commitment_installment_amount || row.rule_expected_amount || 0);
-  if (original <= 0 || periods <= 0) return { automaticPrincipal: false, scheduledPrincipal: 0, scheduledInterest: 0 };
+  if (original <= 0 || periods <= 0 || row.commitment_type === "mortgage") return { automaticPrincipal: false, scheduledPrincipal: 0, scheduledInterest: 0 };
   const scheduledPrincipal = Math.max(1, Math.round(original / periods));
   const automaticPrincipal = Boolean(row.commitment_id && row.commitment_type !== "arisan" && installment >= scheduledPrincipal);
   const scheduledInterest = automaticPrincipal ? Math.max(0, installment - scheduledPrincipal) : 0;

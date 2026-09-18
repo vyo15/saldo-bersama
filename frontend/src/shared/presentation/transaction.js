@@ -151,3 +151,12 @@ export const transactionCategoryIcon = (category, type) => {
   if (type === "transfer" || type === "adjustment") return transactionIcon(type);
   return categoryIcon(category?.icon, type);
 };
+export const transactionPlanningContext = (item = {}) => {
+  if (item.commitment_id) return { label: item.commitment_name ? `Kewajiban · ${item.commitment_name}` : "Kewajiban", tone: "planned" };
+  if (item.recurring_occurrence_id) return { label: item.recurring_name ? `Jadwal · ${item.recurring_name}` : "Jadwal rutin", tone: "planned" };
+  if (item.goal_id) return { label: item.goal_name ? `Target · ${item.goal_name}` : "Target", tone: "planned" };
+  if (item.budget_id) return { label: item.budget_name ? `Kebutuhan · ${item.budget_name}` : "Kebutuhan", tone: "planned" };
+  if (item.envelope_period_id) return { label: item.allocation_name || "Alokasi Dana", tone: "planned" };
+  if (item.transaction_type === "expense") return { label: "Belum masuk Alokasi Dana", tone: "warning" };
+  return { label: "Saldo bersama", tone: "neutral" };
+};

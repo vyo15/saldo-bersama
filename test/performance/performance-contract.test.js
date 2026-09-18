@@ -152,7 +152,7 @@ test("rekening mobile tidak membuat request trend tambahan dan analitik tetap di
   ]);
   assert.doesNotMatch(accountsApi, /reports\.monthly|accountExpenseTrend|trend_months/);
   assert.doesNotMatch(mobileActivity, /reports\.monthly|loadAccountExpenseTrend|TREND_OPTIONS/);
-  assert.match(transactionsPage, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}, \{ enabled: mobileLayout \}\)/);
+  assert.match(transactionsPage, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}\)/);
 });
 
 test("initial state menanam cache read-model periode tanpa menyamakan bootstrap dengan daftar master manajemen", async () => {

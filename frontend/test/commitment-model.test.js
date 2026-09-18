@@ -14,7 +14,9 @@ test("bunga flat menghitung pokok, bunga, dan cicilan bulanan dari kondisi sekar
 test("form Kewajiban hanya menampilkan data penting dan tidak menghidupkan lagi UX lama", async () => {
   const [page, api] = await Promise.all([read("src/features/commitments/CommitmentsPage.jsx"), read("src/features/commitments/commitments.api.js")]);
   assert.match(page, /Cicilan &amp; Kewajiban/);
-  assert.match(page, /Bunga flat \/ tahun/);
+  assert.match(page, /debt && !mortgage \? <FlatInterestField/);
+  assert.match(page, /KPR memakai nominal cicilan aktual dari bank/);
+  assert.match(page, /installments_paid: form.commitment_type === "mortgage"/);
   assert.match(page, /Pembayaran otomatis aktif/);
   assert.match(page, /Dana akan dibayar dari Alokasi saat jatuh tempo jika mencukupi/);
   assert.match(page, /Hentikan kewajiban\?/);
@@ -24,9 +26,12 @@ test("form Kewajiban hanya menampilkan data penting dan tidak menghidupkan lagi 
   assert.doesNotMatch(api, /deleteCommitment/);
   assert.doesNotMatch(page, /Detail tambahan/);
   assert.doesNotMatch(page, /PlanningNeedField/);
-  assert.doesNotMatch(page, /Sudah dibayar berapa kali/);
+  assert.match(page, /Cicilan berikutnya/);
+  assert.match(page, /selesai · .*tersisa/);
   assert.doesNotMatch(page, /Hapus kewajiban|>Hapus<|Dihapus dari daftar Kewajiban/);
   assert.doesNotMatch(page, /Autodebet/i);
   assert.doesNotMatch(page, /auto_debit/);
-  assert.doesNotMatch(page, /start_date/);
+  assert.match(page, /Pembayaran berikutnya/);
+  assert.match(page, /start_date/);
+  assert.match(page, /Selesai sesuai kontrak/);
 });

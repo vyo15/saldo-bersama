@@ -10,6 +10,7 @@ import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
+import TemporalInput from "../../components/common/TemporalInput.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import { accountOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
@@ -33,11 +34,23 @@ const TYPES = [
   { value: "arisan", label: "Arisan", description: "Setoran berkala sampai selesai" },
   { value: "other", label: "Lainnya", description: "Kewajiban berkala lainnya" },
 ];
-const emptyForm = () => ({ commitment_type: "mortgage", name: "", provider: "", original_amount: "", current_balance: "", installment_amount: "", total_installments: "", flat_interest_rate: "0", default_account_id: "", category_id: "", budget_id: "", due_day: "10" });
+const emptyForm = () => ({ commitment_type: "mortgage", name: "", provider: "", original_amount: "", current_balance: "", installment_amount: "", total_installments: "", installments_paid: "", next_installment: "", flat_interest_rate: "0", default_account_id: "", category_id: "", budget_id: "", due_day: "10", start_date: "", end_date: "" });
 const refreshKeys = ["commitments.list", "recurring.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState"];
 const typeLabel = (type) => TYPES.find((item) => item.value === type)?.label || "Kewajiban";
 
-const ProgressBar = ({ value }) => <div className={styles.progress} aria-label={`Progress ${value}%`}><i style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>;
+const ProgressBar = ({ value, label, meta }) => <div className={styles.progressWrap}>
+  {(label || meta) ? <div className={styles.progressMeta}><strong>{label}</strong><span>{meta}</span></div> : null}
+  <div className={styles.progress} aria-label={`Progress ${value}%`}><i style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>
+</div>;
+
+const installmentProgress = (item) => {
+  const total = Math.max(0, Number(item.total_installments || 0));
+  const paid = Math.max(0, Math.min(total || Number.MAX_SAFE_INTEGER, Number(item.installments_paid || 0)));
+  const remaining = total ? Math.max(0, total - paid) : 0;
+  const next = total ? Math.min(total, paid + 1) : paid + 1;
+  const percent = total ? Math.round(paid / total * 100) : 0;
+  return { total, paid, remaining, next, percent };
+};
 
 const nextDueLabel = (item) => {
   if (!item.next_due_date) return item.status === "completed" ? "Selesai" : `Tanggal ${item.due_day}`;
@@ -86,12 +99,14 @@ const CommitmentActions = ({ item, onEdit, onStop }) => {
 const CommitmentCard = ({ item, onEdit, onStop, compact = false }) => {
   const arisan = item.commitment_type === "arisan";
   const completed = item.status === "completed";
-  const progress = Number(item.progress_percent || 0);
+  const balanceProgress = Number(item.progress_percent || 0);
+  const installments = installmentProgress(item);
+  const showInstallmentProgress = !arisan && installments.total > 0;
   return <article className={`${styles.card}${compact ? ` ${styles.cardCompact}` : ""}`}>
     <div className={styles.cardIcon}>{completed ? <FiCheckCircle aria-hidden="true" /> : arisan ? <FiUsers aria-hidden="true" /> : <FiHome aria-hidden="true" />}</div>
     <div className={styles.cardTitle}><span>{typeLabel(item.commitment_type)}{item.provider ? ` · ${item.provider}` : ""}</span><h3>{item.name}</h3></div>
-    <div className={styles.amountBlock}><span>{arisan ? "Sisa setoran" : "Sisa pokok"}</span><strong>{formatRupiah(item.current_balance || 0)}</strong><small>{completed ? "Lunas / selesai" : `${progress}% selesai`}</small></div>
-    <ProgressBar value={completed ? 100 : progress} />
+    <div className={styles.amountBlock}><span>{arisan ? "Sisa setoran" : "Sisa pokok"}</span><strong>{formatRupiah(item.current_balance || 0)}</strong><small>{completed ? "Lunas / selesai" : arisan ? `${balanceProgress}% selesai` : `${balanceProgress}% pokok lunas`}</small></div>
+    {showInstallmentProgress ? <ProgressBar value={completed ? 100 : installments.percent} label={completed ? `${installments.total} dari ${installments.total} cicilan` : `Cicilan berikutnya ke-${installments.next} dari ${installments.total}`} meta={completed ? "Selesai" : `${installments.paid} selesai · ${installments.remaining} tersisa`} /> : <ProgressBar value={completed ? 100 : balanceProgress} />}
     {!compact ? <CommitmentMeta item={item} arisan={arisan} /> : null}
     {item.balance_needs_update ? <CompactNotice tone="info" title="Sisa pokok belum pasti">Pembayaran sebelumnya belum memiliki rincian pokok. Periksa kembali sebelum pembayaran berikutnya.</CompactNotice> : null}
     <CommitmentActions item={item} onEdit={onEdit} onStop={onStop} />
@@ -116,28 +131,98 @@ const FlatInterestField = ({ form, setForm }) => {
   </>;
 };
 
-const CommitmentForm = ({ form, setForm, accounts, categories, budgets, error, editing = false }) => {
-  const arisan = form.commitment_type === "arisan";
-  const debt = isDebtCommitment(form.commitment_type);
-  const setEstimated = (patch) => setForm((current) => applyFlatEstimate(current, patch));
-  return <div className="form-grid">
-    {!editing ? <SelectionField className="form-grid__full" label="Jenis kewajiban" value={form.commitment_type} onChange={(commitment_type) => setForm({ ...emptyForm(), commitment_type })} options={TYPES} /> : null}
-    <label className="field form-grid__full"><span>{arisan ? "Nama arisan" : "Nama kewajiban"} *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder={arisan ? "Contoh: Arisan Keluarga" : "Contoh: KPR Rumah"} /></label>
-    <label className="field form-grid__full"><span>{arisan ? "Grup/penyelenggara" : "Bank/Penyedia"}</span><input maxLength="100" value={form.provider || ""} onChange={(event) => setForm((current) => ({ ...current, provider: event.target.value }))} placeholder={arisan ? "Keluarga" : "BTN"} /></label>
-    {debt && !editing ? <MoneyInput id="commitment-original" label="Pinjaman / nilai awal" value={form.original_amount} onChange={(original_amount) => setEstimated({ original_amount })} required /> : null}
-    {!editing ? <MoneyInput id="commitment-balance" label={arisan ? "Sisa setoran sekarang" : "Sisa pokok sekarang"} value={form.current_balance} onChange={(current_balance) => setForm((current) => ({ ...current, current_balance }))} /> : null}
-    <label className="field"><span>{arisan ? "Jumlah setoran" : "Tenor"} (bulan) *</span><input type="number" min="1" required value={form.total_installments} onChange={(event) => arisan ? setForm((current) => ({ ...current, total_installments: event.target.value })) : setEstimated({ total_installments: event.target.value })} placeholder="Contoh: 120" /></label>
-    {debt ? <FlatInterestField form={form} setForm={setForm} /> : null}
-    <MoneyInput id="commitment-installment" label={arisan ? "Setoran per bulan" : "Cicilan per bulan"} value={form.installment_amount} onChange={(installment_amount) => setForm((current) => ({ ...current, installment_amount }))} required />
-    <label className="field"><span>Bayar setiap tanggal *</span><input type="number" min="1" max="31" required value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>
-    <AccountPicker value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => planningPatch(current, budgets, { default_account_id }))} />
-    <CategoryPicker value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => planningPatch(current, budgets, { category_id }))} />
-    {form.budget_id ? <CompactNotice className="form-grid__full" tone="success" title="Pembayaran otomatis aktif">Dana akan dibayar dari Alokasi saat jatuh tempo jika mencukupi.</CompactNotice> : null}
-    {editing && debt ? <CompactNotice className="form-grid__full" tone="info">Nilai awal dan sisa pokok tidak diubah dari form ini agar histori pembayaran tetap konsisten.</CompactNotice> : null}
-    {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
+const MortgageProgressFields = ({ form, setForm, editing }) => {
+  const total = Math.max(0, Number(form.total_installments || 0));
+  const paid = Math.max(0, Number(form.installments_paid || 0));
+  const next = Math.max(1, Number(form.next_installment || (paid + 1) || 1));
+  const normalizedPaid = editing ? paid : Math.max(0, next - 1);
+  const remaining = total ? Math.max(0, total - normalizedPaid) : 0;
+  const percent = total ? Math.min(100, Math.round(normalizedPaid / total * 100)) : 0;
+  const updateNext = (value) => {
+    const raw = value === "" ? "" : String(Math.max(1, Number(value) || 1));
+    setForm((current) => ({ ...current, next_installment: raw, installments_paid: raw === "" ? "" : String(Math.max(0, Number(raw) - 1)) }));
+  };
+  return <div className={`form-grid__full ${styles.mortgageProgress}`}>
+    <div className={styles.mortgageProgressCopy}>
+      <span>Progress cicilan</span>
+      <strong>{total ? `Cicilan berikutnya ke-${editing ? Math.min(total, paid + 1) : next} dari ${total}` : "Isi posisi cicilan"}</strong>
+      <small>{total ? `${normalizedPaid} selesai · ${remaining} tersisa` : "Masukkan cicilan berikutnya dan total tenor."}</small>
+      <div className={styles.progress}><i style={{ width: `${percent}%` }} /></div>
+    </div>
+    <div className={styles.mortgageProgressInputs}>
+      {!editing ? <input aria-label="Cicilan berikutnya" type="number" min="1" inputMode="numeric" value={form.next_installment || ""} onChange={(event) => updateNext(event.target.value)} placeholder="9" /> : <span>{Math.min(total || paid + 1, paid + 1)}</span>}
+      <b>/</b>
+      <input aria-label="Total cicilan" type="number" min="1" inputMode="numeric" required value={form.total_installments} onChange={(event) => setForm((current) => ({ ...current, total_installments: event.target.value }))} placeholder="180" />
+    </div>
   </div>;
 };
 
+const CommitmentIdentityFields = ({ form, setForm, categories, editing, arisan }) => <>
+  {!editing ? <SelectionField className="form-grid__full" label="Jenis kewajiban" value={form.commitment_type} onChange={(commitment_type) => setForm({ ...emptyForm(), commitment_type, category_id: suggestedCategoryId(categories, commitment_type) })} options={TYPES} /> : null}
+  <label className="field form-grid__full"><span>{arisan ? "Nama arisan" : "Nama kewajiban"} *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder={arisan ? "Contoh: Arisan Keluarga" : "Contoh: KPR Rumah"} /></label>
+  <label className="field form-grid__full"><span>{arisan ? "Grup/penyelenggara" : "Bank/Penyedia"}</span><input maxLength="100" value={form.provider || ""} onChange={(event) => setForm((current) => ({ ...current, provider: event.target.value }))} placeholder={arisan ? "Keluarga" : "BTN"} /></label>
+</>;
+
+const CommitmentPrincipalFields = ({ form, setForm, editing, arisan, debt, mortgage, setEstimated }) => <>
+  {debt && !editing ? <MoneyInput id="commitment-original" label="Pinjaman / nilai awal" value={form.original_amount} onChange={(original_amount) => mortgage ? setForm((current) => ({ ...current, original_amount })) : setEstimated({ original_amount })} required /> : null}
+  {!editing ? <MoneyInput id="commitment-balance" label={arisan ? "Sisa setoran sekarang" : "Sisa pokok sekarang"} value={form.current_balance} onChange={(current_balance) => setForm((current) => ({ ...current, current_balance }))} /> : null}
+</>;
+
+const CommitmentTenorFields = ({ form, setForm, editing, arisan, debt, mortgage, setEstimated }) => <>
+  {mortgage ? <MortgageProgressFields form={form} setForm={setForm} editing={editing} /> : <label className="field"><span>{arisan ? "Jumlah setoran" : "Tenor"} (bulan) *</span><input type="number" min="1" required value={form.total_installments} onChange={(event) => arisan ? setForm((current) => ({ ...current, total_installments: event.target.value })) : setEstimated({ total_installments: event.target.value })} placeholder="Contoh: 120" /></label>}
+  {debt && !mortgage ? <FlatInterestField form={form} setForm={setForm} /> : null}
+  <MoneyInput id="commitment-installment" label={arisan ? "Setoran per bulan" : "Cicilan per bulan"} value={form.installment_amount} onChange={(installment_amount) => setForm((current) => ({ ...current, installment_amount }))} required />
+</>;
+
+const CommitmentDueField = ({ form, setForm, editing, mortgage }) => mortgage && !editing
+  ? <label className="field form-grid__full"><span>Pembayaran berikutnya *</span><TemporalInput required type="date" value={form.start_date || ""} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value, due_day: event.target.value ? String(Number(event.target.value.slice(-2))) : current.due_day }))} /></label>
+  : <label className="field"><span>Bayar setiap tanggal *</span><input type="number" min="1" max="31" required value={form.due_day} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>;
+
+const CommitmentPlanningFields = ({ form, setForm, accounts, categories, budgets }) => <>
+  <AccountPicker value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => planningPatch(current, budgets, { default_account_id }))} />
+  <CategoryPicker value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => planningPatch(current, budgets, { category_id }))} />
+  {form.budget_id ? <CompactNotice className="form-grid__full" tone="success" title="Pembayaran otomatis aktif">Dana akan dibayar dari Alokasi saat jatuh tempo jika mencukupi.</CompactNotice> : null}
+</>;
+
+const MortgageDetails = ({ form, setForm }) => <details className={`form-grid__full ${styles.loanDetails}`}><summary>Detail pinjaman</summary><div className="form-grid">
+  <label className="field form-grid__full"><span>Selesai sesuai kontrak</span><TemporalInput type="date" value={form.end_date || ""} onChange={(event) => setForm((current) => ({ ...current, end_date: event.target.value }))} /></label>
+  <CompactNotice className="form-grid__full" tone="info">KPR memakai nominal cicilan aktual dari bank. Saldo pokok tidak diasumsikan turun secara flat; setelah pembayaran, perbarui sisa pokok dari data bank bila tersedia.</CompactNotice>
+</div></details>;
+
+const CommitmentFormNotices = ({ editing, debt, error }) => <>
+  {editing && debt ? <CompactNotice className="form-grid__full" tone="info">Nilai awal dan sisa pokok tidak diubah dari form ini agar histori pembayaran tetap konsisten.</CompactNotice> : null}
+  {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
+</>;
+
+const CommitmentForm = ({ form, setForm, accounts, categories, budgets, error, editing = false }) => {
+  const arisan = form.commitment_type === "arisan";
+  const debt = isDebtCommitment(form.commitment_type);
+  const mortgage = form.commitment_type === "mortgage";
+  const setEstimated = (patch) => setForm((current) => applyFlatEstimate(current, patch));
+  return <div className="form-grid">
+    <CommitmentIdentityFields form={form} setForm={setForm} categories={categories} editing={editing} arisan={arisan} />
+    <CommitmentPrincipalFields form={form} setForm={setForm} editing={editing} arisan={arisan} debt={debt} mortgage={mortgage} setEstimated={setEstimated} />
+    <CommitmentTenorFields form={form} setForm={setForm} editing={editing} arisan={arisan} debt={debt} mortgage={mortgage} setEstimated={setEstimated} />
+    <CommitmentDueField form={form} setForm={setForm} editing={editing} mortgage={mortgage} />
+    <CommitmentPlanningFields form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} />
+    {mortgage ? <MortgageDetails form={form} setForm={setForm} /> : null}
+    <CommitmentFormNotices editing={editing} debt={debt} error={error} />
+  </div>;
+};
+
+
+const suggestedCategoryId = (categories, type) => {
+  const terms = type === "mortgage" ? ["kpr", "cicilan", "rumah"] : type === "installment" ? ["cicilan"] : type === "loan" ? ["pinjaman", "cicilan"] : [];
+  for (const term of terms) {
+    const exact = categories.find((item) => String(item.name || "").trim().toLowerCase() === term);
+    if (exact) return exact.category_id;
+  }
+  for (const term of terms) {
+    const partial = categories.find((item) => String(item.name || "").toLowerCase().includes(term));
+    if (partial) return partial.category_id;
+  }
+  return categories.length === 1 ? categories[0].category_id : "";
+};
 
 const commitmentResourceGate = (resource) => {
   if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat Kewajiban…" />;
@@ -175,11 +260,14 @@ const CommitmentsPage = () => {
       current_balance: form.current_balance === "" ? undefined : Number(form.current_balance),
       installment_amount: assertPositiveRupiah(form.installment_amount),
       total_installments: Number(form.total_installments),
+      installments_paid: form.commitment_type === "mortgage" ? Math.max(0, Number(form.installments_paid || 0)) : undefined,
       default_account_id: form.default_account_id,
       category_id: form.category_id,
       budget_id: form.budget_id || null,
       frequency: "monthly",
       due_day: Number(form.due_day),
+      start_date: form.commitment_type === "mortgage" ? form.start_date : undefined,
+      end_date: form.end_date || undefined,
       payment_method: "transfer",
     });
     const name = form.name || "Kewajiban";
@@ -188,12 +276,12 @@ const CommitmentsPage = () => {
 
   const openEdit = (item) => {
     mutation.reset();
-    const inferredRate = inferFlatAnnualRate({ originalAmount: item.original_amount, totalInstallments: item.total_installments, installmentAmount: item.installment_amount });
-    setEdit({ ...item, budget_id: item.budget_id || "", installment_amount: String(item.installment_amount || ""), total_installments: String(item.total_installments || ""), due_day: String(item.due_day || 1), original_amount: String(item.original_amount || ""), current_balance: String(item.current_balance || ""), flat_interest_rate: String(Number(inferredRate.toFixed(4))) });
+    const inferredRate = item.commitment_type === "mortgage" ? 0 : inferFlatAnnualRate({ originalAmount: item.original_amount, totalInstallments: item.total_installments, installmentAmount: item.installment_amount });
+    setEdit({ ...item, budget_id: item.budget_id || "", installment_amount: String(item.installment_amount || ""), total_installments: String(item.total_installments || ""), installments_paid: String(item.installments_paid || 0), next_installment: String(Math.max(1, Number(item.installments_paid || 0) + 1)), due_day: String(item.due_day || 1), original_amount: String(item.original_amount || ""), current_balance: String(item.current_balance || ""), flat_interest_rate: String(Number(inferredRate.toFixed(4))), start_date: item.start_date || "", end_date: item.end_date || "" });
   };
 
   const submitEdit = (event) => { event.preventDefault(); if (!edit) return; return mutation.run(async () => {
-    await updateCommitment({ commitment_id: edit.commitment_id, row_version: edit.row_version, name: edit.name, provider: edit.provider, installment_amount: assertPositiveRupiah(edit.installment_amount), total_installments: Number(edit.total_installments), default_account_id: edit.default_account_id, category_id: edit.category_id, budget_id: edit.budget_id || null, frequency: "monthly", due_day: Number(edit.due_day), payment_method: "transfer" }, { rowVersion: edit.row_version });
+    await updateCommitment({ commitment_id: edit.commitment_id, row_version: edit.row_version, name: edit.name, provider: edit.provider, installment_amount: assertPositiveRupiah(edit.installment_amount), total_installments: Number(edit.total_installments), default_account_id: edit.default_account_id, category_id: edit.category_id, budget_id: edit.budget_id || null, frequency: "monthly", due_day: Number(edit.due_day), start_date: edit.start_date || undefined, end_date: edit.end_date || null, payment_method: "transfer" }, { rowVersion: edit.row_version });
     const name = edit.name || "Kewajiban";
     setEdit(null); notify({ message: `${name} diperbarui. Jadwal berikutnya ikut menyesuaikan.`, tone: "success", dedupeKey: "commitments:update" }); await reloadAll();
   }).catch(() => undefined); };
@@ -214,7 +302,13 @@ const CommitmentsPage = () => {
   const items = resource.data?.items || [];
   const activeItems = items.filter((item) => item.status === "active");
   const completedItems = items.filter((item) => item.status === "completed");
-  const openCreate = () => { mutation.reset(); setForm(emptyForm()); setCreateOpen(true); };
+  const openCreate = () => {
+    mutation.reset();
+    const next = emptyForm();
+    next.category_id = suggestedCategoryId(expenseCategories, next.commitment_type);
+    setForm(next);
+    setCreateOpen(true);
+  };
   const cardProps = { onEdit: openEdit, onStop: (target) => { setStopError(null); setStopTarget(target); } };
 
   return <div className={styles.page}>

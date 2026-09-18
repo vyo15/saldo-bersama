@@ -35,6 +35,7 @@ test("temporal picker canonical menyediakan date month time dan same-modal subvi
 test("semua temporal field feature memakai adapter canonical", async () => {
   const sources = await Promise.all([
     "src/features/transactions/TransactionsPage.jsx",
+    "src/features/transactions/components/TransactionFilters.jsx",
     "src/features/transactions/MobileTransactionFields.jsx",
     "src/features/transactions/MobileTransferFields.jsx",
     "src/features/transactions/components/TransactionFields.jsx",

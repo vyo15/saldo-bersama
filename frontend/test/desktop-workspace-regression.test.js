@@ -66,3 +66,31 @@ test("rekonsiliasi desktop menjadi workspace perbandingan dua panel tanpa mengub
   assert.match(css, /\.formPanel \{[\s\S]*position: sticky;[\s\S]*top: 82px;/);
   assert.match(css, /@media \(max-width: 820px\)[\s\S]*\.historyDisclosureButton \{[\s\S]*display: flex;/);
 });
+
+
+test("transaksi desktop memakai workspace analitik, ledger, dan drawer detail tanpa mengubah experience mobile", async () => {
+  const [page, workspace, css, presentation, backend] = await Promise.all([
+    read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/transactions/components/DesktopTransactionWorkspace.jsx"),
+    read("src/features/transactions/TransactionsPage.module.css"),
+    read("src/shared/presentation/transaction.js"),
+    readFile(new URL("../../api/_lib/services/finance/transactionQueries.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /const DesktopTransactionWorkspace = lazy/);
+  assert.match(page, /useApiResource\("reports\.monthly", \{ period: filters\.period, trend_months: 6 \}\)/);
+  assert.match(page, /<DesktopTransactionWorkspace/);
+  assert.match(page, /<MobileTransactionHistory/);
+  assert.match(page, /desktop=\{!mobileLayout\}/);
+  assert.match(page, /desktop-data-table/);
+  assert.match(workspace, /Aktivitas bulan ini/);
+  assert.match(workspace, /Transaksi cepat/);
+  assert.match(workspace, /Pengeluaran terbesar/);
+  assert.match(workspace, /Pakai lagi/);
+  assert.match(css, /\.desktopWorkspace \{/);
+  assert.match(css, /:global\(\.modal\)\.detailDrawer \{/);
+  assert.match(presentation, /transactionPlanningContext/);
+  assert.match(backend, /b\.name AS budget_name/);
+  assert.match(backend, /rr\.name AS recurring_name/);
+  assert.match(backend, /g\.name AS goal_name/);
+  assert.match(backend, /cm\.name AS commitment_name/);
+});

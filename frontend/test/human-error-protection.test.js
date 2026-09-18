@@ -64,7 +64,10 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
   const [categories, categoryApi, transactions, transactionApi] = await Promise.all([
     readCategoryFeatureSource(),
     read("src/features/categories/categories.api.js"),
-    read("src/features/transactions/TransactionsPage.jsx"),
+    Promise.all([
+      read("src/features/transactions/TransactionsPage.jsx"),
+      read("src/features/transactions/components/TransactionLifecycleModals.jsx"),
+    ]).then((parts) => parts.join("\n")),
     read("src/features/transactions/transactions.api.js"),
   ]);
   assert.match(categoryApi, /categories\.previewArchive/);

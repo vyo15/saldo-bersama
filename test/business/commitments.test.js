@@ -82,6 +82,7 @@ test("KPR membuat Jadwal Rutin terkelola, pembayaran memisahkan pokok/bunga, dan
     assert.equal(recurringItem.can_edit_rule, false);
     assert.equal(recurringItem.can_archive_rule, false);
     assert.equal(recurringItem.commitment_auto_debit, false);
+    assert.equal(recurringItem.commitment_auto_principal, false, "KPR tidak boleh menebak pokok sebagai cicilan flat");
 
     await assert.rejects(
       () => updateRecurringRule(db, context("recurring.updateRule", { recurring_rule_id: rule.recurring_rule_id, row_version: rule.row_version, expected_amount: 6_000_000 }, rule.row_version)),

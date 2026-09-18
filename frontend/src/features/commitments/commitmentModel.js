@@ -27,7 +27,7 @@ export const inferFlatAnnualRate = ({ originalAmount, totalInstallments, install
 
 export const applyFlatEstimate = (form, patch = {}) => {
   const next = { ...form, ...patch };
-  if (!isDebtCommitment(next.commitment_type)) return next;
+  if (!isDebtCommitment(next.commitment_type) || next.commitment_type === "mortgage") return next;
   const estimate = flatLoanEstimate({
     originalAmount: next.original_amount,
     totalInstallments: next.total_installments,

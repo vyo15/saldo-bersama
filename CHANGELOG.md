@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-18 — KPR onboarding aktual dan progress compact
+- Menyesuaikan Kewajiban **KPR** dengan data bank nyata tanpa membuat modul baru: create flow menerima sisa pokok saat ini, cicilan aktual, posisi **cicilan berikutnya X dari Y**, pembayaran berikutnya, rekening/kategori canonical, serta akhir kontrak opsional. Nilai `installments_paid` diturunkan otomatis dari posisi cicilan sehingga KPR lama tidak mulai dari 0.
+- Progress KPR pada kartu dan form dipadatkan menjadi satu row minimalist (`cicilan berikutnya`, `selesai`, `tersisa`, bar 4px) agar tetap terbaca tanpa memakan ruang mobile. Kartu tetap membedakan progress periode dari persentase pokok yang sudah lunas.
+- Menghapus asumsi **pokok flat khusus KPR**. Pembayaran KPR tetap mencatat occurrence/progress, tetapi sisa pokok tidak diturunkan dengan rumus `original / tenor`; saldo pokok hanya berubah jika nilai aktual setelah pembayaran tersedia. Kalkulasi flat untuk Cicilan/Pinjaman non-KPR tetap dipertahankan.
+- Category create KPR memakai smart default dari kategori aktif yang relevan (`KPR`/`Cicilan`/`Rumah`) tanpa membuat master kategori baru. Dokumentasi dan regression contract diperbarui agar flow Kewajiban, Jadwal Rutin, dan Alokasi tetap konsisten.
+
 ## 2026-09-17 — Kebutuhan: sisa aktual, quick-catat terikat, dan lifecycle jujur
 - Memoles ulang detail **Alokasi Dana → Kebutuhan** untuk mobile sempit: quick action tetap 44px tetapi tidak lagi memakan lebar nominal karena Sisa/total/persentase + progress dipindah ke body lebar penuh di bawah header row; copy section dipadatkan, pola `Sekali bayar` tidak mudah terpotong, dan `Kelola dana` memakai grid 2 kolom dengan lifecycle **Hapus dari daftar** satu baris penuh agar seluruh label terbaca tanpa membuat layout tinggi atau berantakan.
 - Audit quality gate juga menemukan tiga regression contract Target yang tertinggal setelah flow Target dipusatkan lewat Alokasi. Postcard milestone Target yang memang masih diwajibkan design system dipulihkan setelah server sukses, refresh key dikembalikan menjadi constant canonical, dan test vocabulary Target diselaraskan ke CTA `Buka Alokasi` tanpa menghidupkan kembali mutasi Target langsung.
@@ -730,6 +736,12 @@
 - Menghapus `MobileDashboardFilters.jsx` dan `transaction-wallet.svg` yang benar-benar orphan serta membersihkan selector Budget tanpa consumer. Regression baru mencakup continuity `unallocated`, `carry` dengan sisa/Rp0, copy Kebutuhan opt-in, target existing, dan parity status Kebutuhan.
 
 # Changelog
+
+## 2026-09-18 — KPR onboarding aktual dan progress compact
+- Menyesuaikan Kewajiban **KPR** dengan data bank nyata tanpa membuat modul baru: create flow menerima sisa pokok saat ini, cicilan aktual, posisi **cicilan berikutnya X dari Y**, pembayaran berikutnya, rekening/kategori canonical, serta akhir kontrak opsional. Nilai `installments_paid` diturunkan otomatis dari posisi cicilan sehingga KPR lama tidak mulai dari 0.
+- Progress KPR pada kartu dan form dipadatkan menjadi satu row minimalist (`cicilan berikutnya`, `selesai`, `tersisa`, bar 4px) agar tetap terbaca tanpa memakan ruang mobile. Kartu tetap membedakan progress periode dari persentase pokok yang sudah lunas.
+- Menghapus asumsi **pokok flat khusus KPR**. Pembayaran KPR tetap mencatat occurrence/progress, tetapi sisa pokok tidak diturunkan dengan rumus `original / tenor`; saldo pokok hanya berubah jika nilai aktual setelah pembayaran tersedia. Kalkulasi flat untuk Cicilan/Pinjaman non-KPR tetap dipertahankan.
+- Category create KPR memakai smart default dari kategori aktif yang relevan (`KPR`/`Cicilan`/`Rumah`) tanpa membuat master kategori baru. Dokumentasi dan regression contract diperbarui agar flow Kewajiban, Jadwal Rutin, dan Alokasi tetap konsisten.
 
 - Menyelesaikan konsistensi konsep **Alokasi Dana → Kebutuhan → Transaksi**: halaman Anggaran menjadi overview read-only, lifecycle Kebutuhan memakai identitas periode + kategori + ownership + `envelope_rule_id` termasuk saat restore, copy runtime/test memakai istilah produk terbaru, dan dokumen canonical menjelaskan bahwa nama internal `envelope` serta route `/perencanaan/kantong` tetap dipertahankan untuk compatibility.
 - Menutup gap flow uang masuk sampai perencanaan sebagai satu rangkaian: Dashboard memisahkan dana tersedia yang belum dibagi dari pengeluaran tanpa Kantong, income manual/rutin memberi nudge nonblocking, `envelopes.adjustAllocation` dapat menambah atau melepas alokasi Kantong existing tanpa membuat transaksi ledger, dan first-run checklist mengarahkan Rekening → Kategori → Kantong → Target. Target memberi warning bila belum ada rekening sumber lain yang kompatibel untuk setoran; sisa dana tersedia hanya disarankan ke Target dan tidak pernah dipindah otomatis.

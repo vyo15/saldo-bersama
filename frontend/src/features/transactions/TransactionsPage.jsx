@@ -1,15 +1,12 @@
 import { APP_MEDIA } from "../../config/layout.js";
 import styles from "./TransactionsPage.module.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { FiChevronLeft, FiChevronRight, FiCopy, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch, FiSliders, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiCopy, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
-import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
-import SelectionField from "../../components/common/SelectionField.jsx";
-import { accountOptionVisual, categoryOptionVisual, memberOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -21,14 +18,16 @@ import { cancelTransaction as requestCancelTransaction, restoreTransaction as re
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import TransactionForm from "./TransactionForm.jsx";
-import { currentMonthInJakarta } from "../../domain/dates.js";
+import { currentMonthInJakarta, todayInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
-import { formatTransactionDate, transactionCategoryIcon, transactionDisplayTitle, TRANSACTION_LABELS, transactionSign, transactionTone } from "../../shared/presentation/transaction.js";
+import { formatTransactionDate, transactionCategoryIcon, transactionDisplayTitle, transactionPlanningContext, TRANSACTION_LABELS, transactionSign, transactionTone } from "../../shared/presentation/transaction.js";
 
-import TemporalInput from "../../components/common/TemporalInput.jsx";
 const TransferRequestsPanel = lazy(() => import("./TransferRequestsPanel.jsx"));
 const MobileTransactionHistory = lazy(() => import("./components/MobileTransactionHistory.jsx"));
+const DesktopTransactionWorkspace = lazy(() => import("./components/DesktopTransactionWorkspace.jsx"));
+const TransactionFilters = lazy(() => import("./components/TransactionFilters.jsx"));
+const TransactionLifecycleModals = lazy(() => import("./components/TransactionLifecycleModals.jsx"));
 
 const PAGE_SIZE = 50;
 const useMobileTransactionsLayout = () => useMediaQuery(APP_MEDIA.mobile);
@@ -82,71 +81,59 @@ const TransactionActionMenu = ({ item, openEdit, openCancel, openRepeat }) => (
 const TransactionActions = ({ item, linkedModule, openEdit, openCancel, openRestore, openRepeat, menuOnly = false }) => {
   if (item.status === "cancelled") return item.can_restore ? <Button type="button" icon={FiRotateCcw} onClick={() => openRestore(item)}>Pulihkan</Button> : null;
   if (item.status !== "active") return null;
-  if (linkedModule) return <small className={styles.managedNote}>Kelola dari menu {linkedModule}</small>;
+  if (linkedModule) return menuOnly ? null : <small className={styles.managedNote}>Kelola dari menu {linkedModule}</small>;
   if (menuOnly) return <TransactionActionMenu item={item} openEdit={openEdit} openCancel={openCancel} openRepeat={openRepeat} />;
   return <div className={`button-group ${styles.actions}`}>{canRepeatTransaction(item) ? <Button type="button" icon={FiCopy} onClick={() => openRepeat(item)}>Pakai lagi</Button> : null}{item.can_edit ? <Button type="button" icon={FiEdit2} onClick={() => openEdit(item)}>Edit</Button> : null}{item.can_cancel ? <Button type="button" variant="danger" icon={FiTrash2} onClick={() => openCancel(item)}>Batalkan</Button> : null}</div>;
 };
 
-const advancedFilterState = (filters) => ({ allocation: filters.allocation, account: filters.account, category: filters.category, creator: filters.creator });
-const advancedFilterCount = (filters) => [filters.allocation, filters.account, filters.category, filters.creator].filter((value) => value !== "all").length;
-const filterOptionLabel = (items, id, idKey, fallback) => items.find((item) => item[idKey] === id)?.name || fallback;
-
-const TransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, filterOptions, updateFilter, submitSearch, filtersActive }) => {
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advancedDraft, setAdvancedDraft] = useState(() => advancedFilterState(filters));
-  const activeAdvancedCount = advancedFilterCount(filters);
-  const chips = [
-    filters.allocation !== "all" ? { key: "allocation", label: filters.allocation === "allocated" ? "Menggunakan Alokasi Dana" : "Belum masuk Alokasi Dana" } : null,
-    filters.account !== "all" ? { key: "account", label: `Rekening: ${filterOptionLabel(filterOptions.accounts, filters.account, "account_id", "Terpilih")}` } : null,
-    filters.category !== "all" ? { key: "category", label: `Kategori: ${filterOptionLabel(filterOptions.categories, filters.category, "category_id", "Terpilih")}` } : null,
-    filters.creator !== "all" ? { key: "creator", label: `Pencatat: ${filterOptionLabel(filterOptions.creators, filters.creator, "user_id", "Terpilih")}` } : null,
-  ].filter(Boolean);
-  const resetAll = () => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 })); };
-  const openAdvanced = () => { setAdvancedDraft(advancedFilterState(filters)); setAdvancedOpen(true); };
-  const resetAdvancedDraft = () => setAdvancedDraft({ allocation: "all", account: "all", category: "all", creator: "all" });
-  const applyAdvanced = () => { setFilters((current) => ({ ...current, ...advancedDraft, offset: 0 })); setAdvancedOpen(false); };
-  const clearChip = (key) => setFilters((current) => ({ ...current, [key]: "all", offset: 0 }));
-
-  return (
-    <>
-      <form className={`toolbar ${styles.toolbar}`} aria-label="Filter transaksi" onSubmit={submitSearch}>
-        <div className={styles.searchRow}><label className="search-field"><FiSearch aria-hidden="true" /><input type="search" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari keterangan atau kategori" /><span className="sr-only">Cari transaksi</span></label><Button type="submit">Cari</Button></div>
-        <div className={styles.filterRow}>
-          <label className="field field--compact"><span className="sr-only">Periode transaksi</span><TemporalInput type="month" max={currentMonthInJakarta()} value={filters.period} onChange={(event) => updateFilter("period", event.target.value)} aria-label="Periode transaksi" /></label>
-          <SelectionField label="Filter jenis transaksi" hideLabel compact value={filters.type} onChange={(value) => updateFilter("type", value)} options={[{ value: "all", label: "Semua jenis" }, { value: "expense", label: "Pengeluaran" }, { value: "income", label: "Pemasukan" }, { value: "transfer", label: "Transfer" }, { value: "refund", label: "Refund" }, { value: "adjustment", label: "Penyesuaian" }]} />
-          <Button type="button" className={styles.filterMore} icon={FiSliders} onClick={openAdvanced} aria-label={`Buka filter lainnya${activeAdvancedCount ? `, ${activeAdvancedCount} aktif` : ""}`}>
-            Filter lainnya{activeAdvancedCount ? <span className={styles.filterCount} aria-hidden="true">{activeAdvancedCount}</span> : null}
-          </Button>
-        </div>
-        {chips.length || filtersActive ? <div className={styles.filterSummary} aria-label="Filter transaksi aktif">
-          <div className={styles.filterChips}>{chips.map((chip) => <button key={chip.key} type="button" className={styles.filterChip} onClick={() => clearChip(chip.key)} aria-label={`Hapus filter ${chip.label}`}><span>{chip.label}</span><FiX aria-hidden="true" /></button>)}</div>
-          {filtersActive ? <button type="button" className={styles.filterReset} onClick={resetAll}>Reset</button> : null}
-        </div> : null}
-      </form>
-      <Modal open={advancedOpen} onClose={() => setAdvancedOpen(false)} title="Filter lainnya" size="sm" footer={<><Button type="button" onClick={resetAdvancedDraft}>Reset pilihan</Button><Button type="button" variant="primary" onClick={applyAdvanced}>Terapkan filter</Button></>}>
-        <div className={styles.advancedFilterGrid}>
-          <SelectionField label="Alokasi Dana" value={advancedDraft.allocation} onChange={(allocation) => setAdvancedDraft((current) => ({ ...current, allocation }))} options={[{ value: "all", label: "Semua Alokasi" }, { value: "unallocated", label: "Belum masuk Alokasi" }, { value: "allocated", label: "Menggunakan Alokasi" }]} />
-          <SelectionField label="Rekening" value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua rekening" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), ...accountOptionVisual(item) }))]} />
-          <SelectionField label="Kategori" value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua kategori" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))]} />
-          <SelectionField label="Pencatat" value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua pencatat" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name, meta: item.email || "", ...memberOptionVisual(item) }))]} />
-        </div>
-      </Modal>
-    </>
-  );
+const dateKeyInJakarta = (date) => new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Jakarta" }).format(date);
+const transactionTimeLabel = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(parsed).replace(".", ":");
+};
+const transactionWhenLabel = (item) => {
+  const key = String(item.transaction_date || "").slice(0, 10);
+  const today = todayInJakarta();
+  const yesterday = dateKeyInJakarta(new Date(new Date(`${today}T12:00:00+07:00`).getTime() - 86400000));
+  const day = key === today ? "Hari ini" : key === yesterday ? "Kemarin" : formatTransactionDate(key);
+  const time = transactionTimeLabel(item.created_at);
+  return time ? `${day} · ${time}` : day;
 };
 
-const TransactionTableRow = ({ item, categoryLookup, accountLabel, categoryLabel, actions }) => { const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type); return <tr data-native-enter><td><time>{item.transaction_date}</time></td><td><div className={styles.tablePrimary}><span className={styles.categoryIcon} data-type={item.transaction_type || "default"}><Icon aria-hidden="true" /></span><span><strong>{transactionTitle(item, categoryLookup)}</strong><small>{TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</small></span></div></td><td>{accountLabel(item)}</td><td>{categoryLabel(item)}</td><td><StatusBadge status={item.status} /></td><td className="align-right"><Money value={item.amount} tone={transactionTone(item.transaction_type)} /></td><td><TransactionActions item={item} linkedModule={managedModule(item)} menuOnly {...actions} /></td></tr>; };
-const TransactionTable = (p) => <div className="data-table-wrap desktop-data-table"><table className="data-table"><thead><tr><th>Tanggal</th><th>Transaksi</th><th>Rekening</th><th>Kategori</th><th>Status</th><th className="align-right">Nominal</th><th><span className="sr-only">Aksi</span></th></tr></thead><tbody>{p.items.map((item) => <TransactionTableRow key={item.transaction_id} item={item} categoryLookup={p.categoryLookup} accountLabel={p.accountLabel} categoryLabel={p.categoryLabel} actions={p.actions} />)}</tbody></table></div>;
+const TransactionLedgerRow = ({ item, categoryLookup, accountLabel, categoryLabel, actions, onOpenDetail }) => {
+  const Icon = transactionCategoryIcon(categoryLookup[item.category_id], item.transaction_type);
+  const planning = transactionPlanningContext(item);
+  const sign = transactionSign(item.transaction_type);
+  return <div className={styles.ledgerRow} data-status={item.status}>
+    <button type="button" className={styles.ledgerOpen} onClick={() => onOpenDetail(item)} aria-label={`Buka detail ${transactionTitle(item, categoryLookup)}`}>
+      <span className={styles.ledgerTransaction}><span className={styles.categoryIcon} data-type={item.transaction_type || "default"}><Icon aria-hidden="true" /></span><span className={styles.tablePrimary}><strong>{transactionTitle(item, categoryLookup)}</strong><small>{categoryLabel(item)} · {TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</small></span></span>
+      <span className={styles.ledgerContext}><strong>{accountLabel(item)}</strong><small data-tone={planning.tone}>↳ {planning.label}</small></span>
+      <span className={styles.ledgerWhen}><strong>{transactionWhenLabel(item)}</strong><StatusBadge status={item.status} /></span>
+      <span className={`${styles.ledgerAmount} money--${transactionTone(item.transaction_type)}`}>{sign}<Money value={item.amount} tone={transactionTone(item.transaction_type)} /></span>
+    </button>
+    <div className={styles.ledgerAction}><TransactionActions item={item} linkedModule={managedModule(item)} menuOnly {...actions} /></div>
+  </div>;
+};
 
-const TransactionDetailModal = ({ target, onClose, accountLabel, categoryLabel, creatorLabel, actions }) => {
+const TransactionLedger = (p) => <div className={`${styles.ledger} desktop-data-table`} role="region" aria-label="Riwayat transaksi">
+  <div className={styles.ledgerHeader} aria-hidden="true"><span>Transaksi</span><span>Konteks</span><span>Waktu &amp; status</span><span>Nominal</span><span /></div>
+  <div className={styles.ledgerBody}>{p.items.map((item) => <TransactionLedgerRow key={item.transaction_id} item={item} categoryLookup={p.categoryLookup} accountLabel={p.accountLabel} categoryLabel={p.categoryLabel} actions={p.actions} onOpenDetail={p.onOpenDetail} />)}</div>
+</div>;
+
+const TransactionDetailModal = ({ target, onClose, accountLabel, categoryLabel, creatorLabel, actions, desktop = false }) => {
   if (!target) return <Modal open={false} onClose={onClose} title="Detail transaksi" />;
   const tone = transactionTone(target.transaction_type);
   const sign = transactionSign(target.transaction_type);
   const linkedModule = managedModule(target);
-  const allocationLabel = target.transaction_type === "expense" ? (target.envelope_period_id ? "Menggunakan Alokasi Dana" : "Belum masuk Alokasi Dana") : "Tidak berlaku";
-  const sourceLabel = linkedModule || "Transaksi manual";
+  const planning = transactionPlanningContext(target);
+  const allocationLabel = target.transaction_type === "expense"
+    ? (target.envelope_period_id ? (target.allocation_name || "Menggunakan Alokasi Dana") : "Belum masuk Alokasi Dana")
+    : "Tidak berlaku";
+  const sourceLabel = planning.label;
   const hasActions = target.status === "cancelled" ? Boolean(target.can_restore) : target.status === "active" && Boolean(linkedModule || canRepeatTransaction(target) || target.can_edit || target.can_cancel);
-  return <Modal open title="Detail transaksi" description={`${TRANSACTION_LABELS[target.transaction_type] || target.transaction_type} · ${formatTransactionDate(target.transaction_date)}`} onClose={onClose} size="sm" className={styles.detailModal} footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}><article className={styles.detail}><header className={styles.detailAmount}><div><span>Nominal</span><span className={`${styles.detailMoney} money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span></div><StatusBadge status={target.status} /></header><dl><div><dt>Deskripsi</dt><dd>{transactionDisplayTitle(target)}</dd></div><div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}</dd></div><div><dt>Kategori</dt><dd>{categoryLabel(target)}</dd></div><div><dt>Rekening</dt><dd>{accountLabel(target)}</dd></div><div><dt>Alokasi Dana</dt><dd>{allocationLabel}</dd></div><div><dt>Pencatat</dt><dd>{creatorLabel(target)}</dd></div><div><dt>Tanggal</dt><dd>{formatTransactionDate(target.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div><div><dt>Sumber</dt><dd>{sourceLabel}</dd></div></dl></article></Modal>;
+  return <Modal open title="Detail transaksi" description={`${TRANSACTION_LABELS[target.transaction_type] || target.transaction_type} · ${formatTransactionDate(target.transaction_date)}`} onClose={onClose} size="sm" className={desktop ? styles.detailDrawer : styles.detailModal} mobileSwipeToClose={!desktop} footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}><article className={styles.detail}><header className={styles.detailAmount}><div><span>Nominal</span><span className={`${styles.detailMoney} money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span></div><StatusBadge status={target.status} /></header><dl><div><dt>Deskripsi</dt><dd>{transactionDisplayTitle(target)}</dd></div><div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}</dd></div><div><dt>Kategori</dt><dd>{categoryLabel(target)}</dd></div><div><dt>Rekening</dt><dd>{accountLabel(target)}</dd></div><div><dt>Alokasi Dana</dt><dd>{allocationLabel}</dd></div><div><dt>Pencatat</dt><dd>{creatorLabel(target)}</dd></div><div><dt>Tanggal</dt><dd>{formatTransactionDate(target.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div><div><dt>Sumber rencana</dt><dd>{sourceLabel}</dd></div></dl></article></Modal>;
 };
 
 const Pagination = ({ resource, filters, setFilters, itemCount }) => {
@@ -155,14 +142,12 @@ const Pagination = ({ resource, filters, setFilters, itemCount }) => {
 };
 const TransactionResults = (p) => {
   if (!p.items.length) return null;
-  return <><TransactionTable {...p} /><Pagination resource={p.resource} filters={p.filters} setFilters={p.setFilters} itemCount={p.items.length} /></>;
+  return <><TransactionLedger {...p} /><Pagination resource={p.resource} filters={p.filters} setFilters={p.setFilters} itemCount={p.items.length} /></>;
 };
 
-const TransactionLifecycleModals = ({ cancelTarget, cancelState, setCancelTarget, cancelTransaction, restoreTarget, restoreState, setRestoreTarget, restoreCancelledTransaction, accountLabel, categoryLabel }) => <><ConfirmationModal open={Boolean(cancelTarget)} title="Batalkan transaksi?" description={cancelTarget ? `${cancelTarget.description || "Transaksi"} tidak dihapus permanen. Status menjadi dibatalkan dan saldo dihitung ulang.` : ""} confirmLabel={cancelTarget ? `Batalkan transaksi Rp${Number(cancelTarget.amount || 0).toLocaleString("id-ID")}` : "Batalkan transaksi"} reasonLabel="Alasan pembatalan" requireReason busy={cancelState.status === "submitting"} error={cancelState.error} onCancel={() => cancelState.status !== "submitting" && setCancelTarget(null)} onConfirm={cancelTransaction}>{cancelTarget ? <div className="notice notice--warning"><span>{cancelTarget.transaction_date} · {accountLabel(cancelTarget)} · {categoryLabel(cancelTarget)}</span></div> : null}</ConfirmationModal><ConfirmationModal open={Boolean(restoreTarget)} title="Pulihkan transaksi yang dibatalkan?" description={restoreTarget ? `${restoreTarget.description || "Transaksi"} akan aktif kembali dan kembali memengaruhi saldo.` : ""} confirmLabel="Pulihkan transaksi" reasonLabel="Alasan pemulihan" requireReason tone="primary" busy={restoreState.status === "submitting"} error={restoreState.error} onCancel={() => restoreState.status !== "submitting" && setRestoreTarget(null)} onConfirm={restoreCancelledTransaction}>{restoreTarget ? <div className="notice notice--warning"><span>Rp{Number(restoreTarget.amount || 0).toLocaleString("id-ID")} · {restoreTarget.transaction_date} · {accountLabel(restoreTarget)}</span></div> : null}</ConfirmationModal></>;
-
-const useTransactionLifecycle = ({ resource, refreshOverview, invalidate }) => {
+const useTransactionLifecycle = ({ resource, reportResource, refreshOverview, invalidate }) => {
   const [cancelTarget, setCancelTarget] = useState(null); const [cancelState, setCancelState] = useState({ status: "idle", error: null }); const [restoreTarget, setRestoreTarget] = useState(null); const [restoreState, setRestoreState] = useState({ status: "idle", error: null });
-  const refresh = async () => { invalidate(refreshKeys); await Promise.allSettled([resource.reload(), refreshOverview()]); };
+  const refresh = async () => { invalidate(refreshKeys); await Promise.allSettled([resource.reload(), reportResource.reload(), refreshOverview()]); };
   const cancelTransaction = async (reason) => { if (!cancelTarget) return; setCancelState({ status: "submitting", error: null }); try { await requestCancelTransaction({ transactionId: cancelTarget.transaction_id, rowVersion: cancelTarget.row_version, reason }, { rowVersion: cancelTarget.row_version }); setCancelTarget(null); setCancelState({ status: "idle", error: null }); await refresh(); } catch (error) { setCancelState({ status: "error", error }); } };
   const restoreCancelledTransaction = async (reason) => { if (!restoreTarget) return; setRestoreState({ status: "submitting", error: null }); try { await requestRestoreTransaction({ transaction_id: restoreTarget.transaction_id, row_version: restoreTarget.row_version, reason }, { rowVersion: restoreTarget.row_version }); setRestoreTarget(null); setRestoreState({ status: "idle", error: null }); await refresh(); } catch (error) { setRestoreState({ status: "error", error }); } };
   const openCancel = (item) => { setCancelTarget(item); setCancelState({ status: "idle", error: null }); }; const openRestore = (item) => { setRestoreTarget(item); setRestoreState({ status: "idle", error: null }); };
@@ -219,7 +204,7 @@ const TransactionResourceStates = ({ resource, items, filtersActive, openTransac
   </>;
 };
 
-const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, mobileLayout, reportResource, setEditingTransaction }) => {
+const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, reportResource, setEditingTransaction }) => {
   const attentionHandled = useRef(false);
   const [state, setState] = useState(() => attention?.attentionType === "unallocated_expense" ? { active: true, remaining: null, done: false } : { active: false, remaining: null, done: false });
   useEffect(() => {
@@ -230,7 +215,7 @@ const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentio
     consumeAttention();
   }, [attentionEditableTarget, attentionFromDashboard, consumeAttention, items.length, resource.data?.total, resource.status, setEditingTransaction]);
   const handleSaved = async () => {
-    const [nextData] = await Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])]);
+    const [nextData] = await Promise.all([resource.reload(), reportResource.reload()]);
     if (!state.active) return;
     const nextItems = nextData?.items || [];
     const nextEditable = nextItems.find((item) => item.status === "active" && item.can_edit) || null;
@@ -253,8 +238,8 @@ const TransactionsPage = () => {
   const [detailTransaction, setDetailTransaction] = useState(null);
   const resource = useApiResource("transactions.list", transactionQuery(filters));
   const transferRequests = useApiResource("transferRequests.list", {}, { enabled: memberTransferRequestsEnabled(bootstrap?.user?.role) });
-  const reportResource = useApiResource("reports.monthly", { period: filters.period, trend_months: 6 }, { enabled: mobileLayout });
-  const lifecycle = useTransactionLifecycle({ resource, refreshOverview, invalidate });
+  const reportResource = useApiResource("reports.monthly", { period: filters.period, trend_months: 6 });
+  const lifecycle = useTransactionLifecycle({ resource, reportResource, refreshOverview, invalidate });
   const { accountLookup, categoryLookup, creatorLookup, items, filterOptions } = transactionPageData(bootstrap, resource);
   const filtersActive = transactionFiltersActive(filters);
   const resetFilters = () => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 })); };
@@ -284,16 +269,16 @@ const TransactionsPage = () => {
     openRestore: (item) => { closeDetail(); lifecycle.openRestore(item); },
     openRepeat,
   };
-  const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, resource, filters, setFilters };
+  const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, resource, filters, setFilters, onOpenDetail: setDetailTransaction };
   const modalProps = { ...lifecycle, accountLabel, categoryLabel };
 
-  const reviewQueue = useTransactionReviewQueue({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, mobileLayout, reportResource, setEditingTransaction });
+  const reviewQueue = useTransactionReviewQueue({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, reportResource, setEditingTransaction });
   const reviewQueueState = reviewQueue.state;
   const handleEditSaved = reviewQueue.handleSaved;
 
   return <div className={`page-stack ${styles.page}`}>
-    <RefreshWarning error={resource.refreshError || reportResource.refreshError} onRetry={() => Promise.all([resource.reload(), ...(mobileLayout ? [reportResource.reload()] : [])])} />
-    <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Semua transaksi dalam satu alur."} help="Catat pemasukan, pengeluaran, dan transfer di satu tempat." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Catat transaksi</Button> : null} />
+    <RefreshWarning error={resource.refreshError || reportResource.refreshError} onRetry={() => Promise.all([resource.reload(), reportResource.reload()])} />
+    <PageHeader title="Transaksi" description={mobileLayout ? undefined : "Analisis aktivitas dan telusuri seluruh pergerakan uang dalam satu workspace."} help="Catat pemasukan, pengeluaran, dan transfer di satu tempat." actions={showHeaderCreate ? <Button variant="primary" icon={FiPlus} onClick={openTransactionComposer}>Catat transaksi</Button> : null} />
     <MemberTransferRequests role={bootstrap?.user?.role} resource={transferRequests} accounts={bootstrap?.accounts} />
     {mobileLayout ? (
       <Suspense fallback={<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan riwayat transaksi…" />}>
@@ -322,16 +307,26 @@ const TransactionsPage = () => {
         />
       </Suspense>
     ) : (
-      <>
-        <TransactionAttentionNotice active={reviewQueueState.active} editableTarget={attentionEditableTarget} remaining={reviewQueueState.remaining} done={reviewQueueState.done} />
-        <TransactionFilters draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} filterOptions={filterOptions} updateFilter={updateFilter} submitSearch={submitSearch} filtersActive={filtersActive} />
-        <TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} mobileLayout={false} />
-        <TransactionResults {...resultProps} />
-      </>
+      <Suspense fallback={<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan workspace transaksi…" />}>
+        <DesktopTransactionWorkspace
+          report={reportResource}
+          period={filters.period}
+          total={resource.data?.total || 0}
+          items={items}
+          categoryLookup={categoryLookup}
+          accountLabel={accountLabel}
+          onQuickCreate={(initialType) => openTransactionComposer({ initialType })}
+          onRepeat={openRepeat}
+          attentionNotice={<TransactionAttentionNotice active={reviewQueueState.active} editableTarget={attentionEditableTarget} remaining={reviewQueueState.remaining} done={reviewQueueState.done} />}
+          filters={<TransactionFilters draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} filterOptions={filterOptions} updateFilter={updateFilter} submitSearch={submitSearch} filtersActive={filtersActive} />}
+          resourceStates={<TransactionResourceStates resource={resource} items={items} filtersActive={filtersActive} openTransactionComposer={openTransactionComposer} resetFilters={resetFilters} mobileLayout={false} />}
+          results={<TransactionResults {...resultProps} />}
+        />
+      </Suspense>
     )}
-    <TransactionDetailModal target={detailTransaction} onClose={closeDetail} accountLabel={accountLabel} categoryLabel={categoryLabel} creatorLabel={creatorLabel} actions={detailActions} />
+    <TransactionDetailModal target={detailTransaction} onClose={closeDetail} accountLabel={accountLabel} categoryLabel={categoryLabel} creatorLabel={creatorLabel} actions={detailActions} desktop={!mobileLayout} />
     <TransactionForm open={Boolean(editingTransaction)} transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={handleEditSaved} />
-    <TransactionLifecycleModals {...modalProps} />
+    {lifecycle.cancelTarget || lifecycle.restoreTarget ? <Suspense fallback={null}><TransactionLifecycleModals {...modalProps} /></Suspense> : null}
   </div>;
 };
 

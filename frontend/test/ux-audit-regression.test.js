@@ -123,6 +123,10 @@ test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk
   assert.doesNotMatch(members, /import MemberActivityPanel from/);
   assert.match(transactions, /const TransferRequestsPanel = lazy\(\(\) => import\("\.\/TransferRequestsPanel\.jsx"\)\)/);
   assert.doesNotMatch(transactions, /import TransferRequestsPanel from/);
+  assert.match(transactions, /const TransactionFilters = lazy\(\(\) => import\("\.\/components\/TransactionFilters\.jsx"\)\)/);
+  assert.match(transactions, /const TransactionLifecycleModals = lazy\(\(\) => import\("\.\/components\/TransactionLifecycleModals\.jsx"\)\)/);
+  assert.doesNotMatch(transactions, /import TransactionFilters from/);
+  assert.doesNotMatch(transactions, /import TransactionLifecycleModals from/);
   assert.match(login, /const DesktopLoginLayout = lazy\(\(\) => import\("\.\/components\/LoginDesktopLayout\.jsx"\)\)/);
   assert.match(login, /const MobileLoginLayout = lazy\(\(\) => import\("\.\/components\/LoginMobileLayout\.jsx"\)\)/);
   assert.doesNotMatch(login, /import DesktopLoginLayout from/);
