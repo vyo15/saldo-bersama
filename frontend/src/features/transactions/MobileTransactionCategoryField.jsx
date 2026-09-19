@@ -18,7 +18,7 @@ const categoryGroups = ({ recentTransactions, sourceAccountId, visibleCategories
   ].filter((group) => group?.options.length);
 };
 
-const MobileTransactionCategoryField = ({ form, update, visibleCategories, recentTransactions, errors, outcomeUnknown }) => {
+const MobileTransactionCategoryField = ({ form, update, visibleCategories, recentTransactions, errors, outcomeUnknown, label = "Kategori" }) => {
   const groups = categoryGroups({
     recentTransactions,
     sourceAccountId: form.source_account_id,
@@ -26,7 +26,7 @@ const MobileTransactionCategoryField = ({ form, update, visibleCategories, recen
   });
   return (
     <InlineSelectionPicker
-      label="Kategori"
+      label={label}
       required
       value={form.category_id}
       onChange={(categoryId) => update("category_id", categoryId)}

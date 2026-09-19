@@ -11,9 +11,9 @@ import {
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("launcher Catat mendelegasikan setiap aktivitas ke flow canonical tanpa mutation baru", () => {
-  assert.deepEqual(quickRecordTransactionOptions("expense"), { initialType: TRANSACTION_TYPES.EXPENSE });
-  assert.deepEqual(quickRecordTransactionOptions("income"), { initialType: TRANSACTION_TYPES.INCOME });
-  assert.deepEqual(quickRecordTransactionOptions("transfer"), { initialType: TRANSACTION_TYPES.TRANSFER });
+  assert.deepEqual(quickRecordTransactionOptions("expense"), { initialType: TRANSACTION_TYPES.EXPENSE, lockType: true, title: "Catat pengeluaran", description: "Catat uang yang baru saja keluar.", submitLabel: "Simpan pengeluaran" });
+  assert.deepEqual(quickRecordTransactionOptions("income"), { initialType: TRANSACTION_TYPES.INCOME, lockType: true, title: "Catat pemasukan", description: "Catat uang yang baru saja masuk.", submitLabel: "Simpan pemasukan" });
+  assert.deepEqual(quickRecordTransactionOptions("transfer"), { initialType: TRANSACTION_TYPES.TRANSFER, lockType: true, title: "Catat transfer", description: "Pindahkan dana antar rekening.", submitLabel: "Catat transfer" });
   assert.equal(quickRecordTransactionOptions("commitment"), null);
 
   assert.deepEqual(quickRecordNavigation("goal"), {
@@ -62,7 +62,8 @@ test("entry Kewajiban dan Alokasi memakai pay-recurring serta RecurringPage meng
   assert.match(investments, /workflowAction !== "record-investment"/);
   assert.match(investments, /mode: "buy"/);
   assert.match(quickRecordContext, /openQuickRecord/);
-  assert.match(quickRecordContext, /onOpenTransaction=\{openTransactionComposer\}/);
+  assert.match(quickRecordContext, /onOpenTransaction=\{openQuickRecordTransaction\}/);
+  assert.match(quickRecordContext, /onBack: \(\) =>/);
   assert.match(dashboard, /useQuickRecord/);
   assert.match(dashboard, /onOpenQuickRecord=\{openQuickRecord\}/);
   assert.match(dashboardSummary, /onClick=\{onOpenQuickRecord\}>Catat<\/Button>/);

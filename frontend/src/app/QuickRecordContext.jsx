@@ -16,12 +16,19 @@ const QuickRecordProvider = ({ children }) => {
     closeQuickRecord: () => setOpen(false),
     quickRecordOpen: open,
   }), [open]);
+  const openQuickRecordTransaction = (options) => {
+    setOpen(false);
+    openTransactionComposer({
+      ...options,
+      onBack: () => { void loadQuickRecordMenu(); setOpen(true); },
+    });
+  };
 
   useEffect(() => setOpen(false), [location.pathname]);
 
   return <QuickRecordContext.Provider value={value}>
     {children}
-    {open ? <Suspense fallback={<LazyActionFallback surface="modal" title="Catat aktivitas" label="Menyiapkan pilihan aktivitas..." size="sm" />}><QuickRecordMenu open onClose={() => setOpen(false)} onOpenTransaction={openTransactionComposer} /></Suspense> : null}
+    {open ? <Suspense fallback={<LazyActionFallback surface="modal" title="Catat aktivitas" label="Menyiapkan pilihan aktivitas..." size="sm" />}><QuickRecordMenu open onClose={() => setOpen(false)} onOpenTransaction={openQuickRecordTransaction} /></Suspense> : null}
   </QuickRecordContext.Provider>;
 };
 

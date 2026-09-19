@@ -1,7 +1,7 @@
 import { APP_MEDIA } from "../config/layout.js";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
-const PRIMARY_TAB_PATHS = new Set(["/", "/transaksi", "/laporan"]);
+const PRIMARY_TAB_PATHS = new Set(["/", "/perencanaan", "/transaksi"]);
 const primaryTabScrollPositions = new Map();
 const historyEntryScrollPositions = new Map();
 const MAX_HISTORY_POSITIONS = 50;

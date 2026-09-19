@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router";
-import { FiArchive, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch } from "react-icons/fi";
+import { FiArchive, FiChevronDown, FiEdit2, FiFilter, FiMoreHorizontal, FiPlus, FiRotateCcw, FiSearch } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
-import Card from "../../components/common/Card.jsx";
-import CompactNotice from "../../components/common/CompactNotice.jsx";
-import SelectionField from "../../components/common/SelectionField.jsx";
 import { MoneyInIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import SelectionField from "../../components/common/SelectionField.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
@@ -40,10 +39,17 @@ const CATEGORY_SECTION_META = Object.freeze({
   income: { label: "Pemasukan", icon: MoneyInIcon, className: styles.categoryGroupIncome },
   refund: { label: "Pengembalian dana", icon: FiRotateCcw, className: styles.categoryGroupRefund },
 });
+const CATEGORY_VISIBLE_LIMIT = 8;
 
 const categoryStatusLabel = (status) => status === "active" ? "Aktif" : status === "archived" ? "Arsip" : String(status || "Tidak diketahui").replaceAll("_", " ");
 
-const CategoryToolbar = ({ searchQuery, setSearchQuery, statusFilter, setStatusFilter, ownerMode }) => <div className={styles.categoryToolbar}><label className={styles.categorySearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari kategori</span><input className="search-field" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari kategori" /></label><SelectionField className={styles.categoryStatusFilter} label="Filter status kategori" hideLabel compact value={statusFilter} onChange={setStatusFilter} options={[{ value: "all", label: "Semua status" }, { value: "active", label: "Aktif" }, ...(ownerMode ? [{ value: "archived", label: "Arsip" }] : [])]} /></div>;
+const categoryStatusOptions = (ownerMode) => [
+  { value: "active", label: "Aktif", icon: FiFilter },
+  { value: "all", label: "Semua status", icon: FiFilter },
+  ...(ownerMode ? [{ value: "archived", label: "Arsip", icon: FiFilter }] : []),
+];
+
+const CategoryToolbar = ({ searchQuery, setSearchQuery, statusFilter, setStatusFilter, ownerMode }) => <div className={styles.categoryToolbar}><label className={styles.categorySearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari kategori</span><input className="search-field" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari kategori" /></label><SelectionField className={styles.categoryStatusFilter} label="Filter status kategori" hideLabel compact value={statusFilter} onChange={setStatusFilter} ariaLabel={`Filter status kategori: ${categoryStatusLabel(statusFilter)}`} options={categoryStatusOptions(ownerMode)} /></div>;
 
 const categoryMenuAnchorStyle = (trigger) => {
   if (!trigger || typeof window === "undefined") return undefined;
@@ -80,7 +86,11 @@ const CategoryActionMenu = ({ category, menuOpen, activeMenuRef, menuTriggerRefs
 const CategoryItem = ({ category, ownerMode, menuProps, openEdit, openArchivePreview }) => {
   const Icon = categoryIcon(category.icon, category.transaction_type);
   const active = category.status === "active";
-  return <article data-native-enter className={`${styles.categoryItem}${active ? "" : ` ${styles.categoryItemArchived}`}`} aria-label={`${category.name}. ${categoryStatusLabel(category.status)}`}><span className={`${styles.categoryIcon} ${categoryIconToneClass(category.transaction_type)}`}><Icon aria-hidden="true" /></span><div className={styles.categoryItemCopy}><strong className={styles.categoryName}>{category.name}</strong>{active ? null : <span className={styles.categoryStatus}><span aria-hidden="true" />{categoryStatusLabel(category.status)}</span>}</div>{ownerMode && active ? <CategoryActionMenu category={category} menuOpen={menuProps.openMenuId === category.category_id} {...menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} /> : null}</article>;
+  return <article data-native-enter className={`${styles.categoryItem}${active ? "" : ` ${styles.categoryItemArchived}`}`} aria-label={`${category.name}. ${categoryStatusLabel(category.status)}`}>
+    <span className={`${styles.categoryIcon} ${categoryIconToneClass(category.transaction_type)}`}><Icon aria-hidden="true" /></span>
+    <div className={styles.categoryItemCopy}><strong className={styles.categoryName}>{category.name}</strong>{active ? null : <span className={styles.categoryStatus}><span aria-hidden="true" />{categoryStatusLabel(category.status)}</span>}</div>
+    {ownerMode && active ? <CategoryActionMenu category={category} menuOpen={menuProps.openMenuId === category.category_id} {...menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} /> : null}
+  </article>;
 };
 
 const orderedCategoryGroups = (grouped) => Object.entries(grouped).sort(([left], [right]) => {
@@ -92,9 +102,34 @@ const orderedCategoryGroups = (grouped) => Object.entries(grouped).sort(([left],
   return leftIndex - rightIndex;
 });
 
-const CategoryList = ({ items, totalItems, grouped, filtersActive, clearFilters, ownerMode, openCreate, openEdit, openArchivePreview, menuProps }) => {
+const CategoryGroup = ({ type, categories, ownerMode, openEdit, openArchivePreview, menuProps, searchActive, defaultExpanded }) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [showAll, setShowAll] = useState(false);
+  const meta = CATEGORY_SECTION_META[type] || { label: categoryTypeLabel(type), className: "" };
+  const open = searchActive || expanded;
+  const visibleItems = searchActive || showAll ? categories : categories.slice(0, CATEGORY_VISIBLE_LIMIT);
+  const remaining = Math.max(0, categories.length - visibleItems.length);
+
+  useEffect(() => {
+    if (categories.length <= CATEGORY_VISIBLE_LIMIT) setShowAll(false);
+  }, [categories.length]);
+
+  return <section className={styles.categoryGroup} aria-labelledby={`category-${type}`}>
+    <button type="button" className={styles.categoryGroupHeading} aria-expanded={open} onClick={() => { if (!searchActive) setExpanded((current) => !current); }}>
+      <span className={`${styles.categoryGroupTitle} ${meta.className}`}><h2 id={`category-${type}`}>{meta.label}</h2><span className={styles.categoryCount}>{categories.length}</span></span>
+      <FiChevronDown className={`${styles.categorySectionChevron}${open ? ` ${styles.categorySectionChevronOpen}` : ""}`} aria-hidden="true" />
+    </button>
+    {open ? <><div className={styles.categoryList}>{visibleItems.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} menuProps={menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div>{remaining > 0 ? <button type="button" className={styles.categoryShowMore} onClick={() => setShowAll(true)}>Tampilkan {remaining} lainnya</button> : showAll && categories.length > CATEGORY_VISIBLE_LIMIT && !searchActive ? <button type="button" className={styles.categoryShowMore} onClick={() => setShowAll(false)}>Tampilkan lebih sedikit</button> : null}</> : null}
+  </section>;
+};
+
+const CategoryList = ({ items, totalItems, grouped, filtersActive, clearFilters, ownerMode, openCreate, openEdit, openArchivePreview, menuProps, searchActive }) => {
   const emptyState = collectionEmptyState({ visibleCount: items.length, totalCount: totalItems, filtersActive });
-  if (items.length) return <Card className={styles.categoryPanel}><div className={styles.categoryGroups}>{orderedCategoryGroups(grouped).map(([type, categories]) => { const meta = CATEGORY_SECTION_META[type] || { label: categoryTypeLabel(type), icon: null, className: "" }; const TypeIcon = meta.icon; return <section className={styles.categoryGroup} key={type} aria-labelledby={`category-${type}`}><div className={styles.categoryGroupHeading}><div className={`${styles.categoryGroupTitle} ${meta.className}`}><h2 id={`category-${type}`}>{meta.label}</h2>{TypeIcon ? <TypeIcon aria-hidden="true" /> : null}</div><span>{categories.length}</span></div><div className={styles.categoryList}>{categories.map((category) => <CategoryItem key={category.category_id} category={category} ownerMode={ownerMode} menuProps={menuProps} openEdit={openEdit} openArchivePreview={openArchivePreview} />)}</div></section>; })}</div></Card>;
+  if (items.length) {
+    const groups = orderedCategoryGroups(grouped);
+    const hasExpense = Boolean(grouped.expense?.length);
+    return <div className={styles.categoryPanel}><div className={styles.categoryGroups}>{groups.map(([type, categories], index) => <CategoryGroup key={type} type={type} categories={categories} ownerMode={ownerMode} openEdit={openEdit} openArchivePreview={openArchivePreview} menuProps={menuProps} searchActive={searchActive} defaultExpanded={type === "expense" || (!hasExpense && index === 0)} />)}</div></div>;
+  }
   const initialEmpty = emptyState === EMPTY_COLLECTION_STATE.INITIAL;
   return <EmptyState className={`${styles.emptyPanel}${initialEmpty ? ` ${styles.emptyPanelInitial}` : ""}`} title={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Kategori tidak ditemukan" : "Belum ada kategori aktif" : "Belum ada kategori"} description={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? filtersActive ? "Ubah pencarian atau filter untuk menampilkan kategori lain." : "Tidak ada kategori aktif pada status yang dipilih." : "Kategori membantu mengelompokkan pemasukan dan pengeluaran."} action={emptyState === EMPTY_COLLECTION_STATE.FILTERED && filtersActive ? <Button onClick={clearFilters}>Reset pencarian</Button> : initialEmpty ? <Button variant="primary" icon={FiPlus} onClick={openCreate} aria-label={ownerMode ? "Tambah kategori" : "Ajukan kategori"}>{ownerMode ? "Tambah kategori" : "Ajukan kategori"}</Button> : null} />;
 };
@@ -227,12 +262,12 @@ const CategoriesPageContent = ({ page }) => {
     <RefreshWarning error={resource.refreshError} onRetry={actions.reloadCategories} />
     {archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}
     {archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}
-    <PageHeader title="Kategori" help="Kategori mengelompokkan pemasukan, pengeluaran, dan pengembalian dana tanpa mengubah aturan saldo." actions={items.length ? <Button variant="primary" icon={FiPlus} onClick={actions.openCreate} aria-label={ownerMode ? "Tambah kategori" : "Ajukan kategori"}>{ownerMode ? "Tambah kategori" : "Ajukan kategori"}</Button> : null} />
+    <PageHeader title="Kategori" help="Kategori mengelompokkan pemasukan, pengeluaran, dan pengembalian dana tanpa mengubah aturan saldo." actions={items.length ? <Button className={styles.categoryCreateButton} icon={FiPlus} onClick={actions.openCreate} aria-label={ownerMode ? "Tambah kategori" : "Ajukan kategori"}>{ownerMode ? "Tambah" : "Ajukan"}</Button> : null} />
     {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : !ownerMode ? <MasterDataRequestsPanel items={requestsResource.data?.items || []} title="Pengajuan kategori saya" /> : null}
     {setupCreated ? <div><CompactNotice tone="success" title="Dasar pencatatan siap." role="status">Rekening dan kategori sudah cukup untuk mulai mencatat. Fitur perencanaan dapat ditambahkan kapan saja.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => navigate("/perencanaan/kantong")}>Atur Alokasi Dana</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Catat transaksi</Button></div></div> : null}
     {actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}
     <CategoryToolbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} ownerMode={ownerMode} />
-    {archivePending ? <NativePageSkeleton kind="categories" variant="panel" label="Memuat arsip kategori…" /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} />}
+    {archivePending ? <NativePageSkeleton kind="categories" variant="panel" label="Memuat arsip kategori…" /> : <CategoryList items={filteredItems} totalItems={items.length} grouped={grouped} filtersActive={filtersActive} clearFilters={clearFilters} ownerMode={ownerMode} openCreate={actions.openCreate} openEdit={actions.openEdit} openArchivePreview={actions.openArchivePreview} menuProps={menuProps} searchActive={Boolean(searchQuery.trim())} />}
     <CreateCategoryModal open={actions.createOpen} close={actions.closeCreate} form={actions.form} setForm={actions.setForm} createCategory={actions.createCategory} dialogState={actions.dialogState} requestMode={!ownerMode} />
     <EditCategoryModal editCategory={actions.editCategory} setEditCategory={actions.setEditCategory} saveCategory={actions.saveCategory} dialogState={actions.dialogState} />
     <ArchiveCategoryModal archiveTarget={actions.archiveTarget} dialogState={actions.dialogState} setArchiveTarget={actions.setArchiveTarget} applyCategoryLifecycle={actions.applyCategoryLifecycle} />

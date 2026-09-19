@@ -78,7 +78,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
 
   const presentation = type === TRANSACTION_TYPES.INCOME
     ? {
-      title: "Pemasukan berhasil",
+      title: "Pemasukan tercatat",
       description: "Dana sudah masuk ke rekening. Anda dapat mengalokasikannya sekarang atau nanti.",
       summaryRows,
       secondaryActions: [
@@ -88,7 +88,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     }
     : type === TRANSACTION_TYPES.TRANSFER
       ? {
-        title: "Transfer berhasil",
+        title: "Transfer tercatat",
         description: investmentContinuation
           ? "Dana sudah dipindahkan dan kondisi rekening telah disegarkan. Transfer ke/dari RDN tetap netral terhadap pemasukan dan pengeluaran."
           : "Dana sudah dipindahkan dan kondisi rekening telah disegarkan. Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.",
@@ -97,14 +97,14 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
       }
       : type === TRANSACTION_TYPES.REFUND
         ? {
-          title: "Refund berhasil",
-          description: "Refund sudah tercatat.",
+          title: "Refund tercatat",
+          description: "Dana pengembalian sudah tercatat.",
           summaryRows,
           secondaryActions: [],
         }
         : {
-          title: "Pengeluaran berhasil",
-          description: "Pengeluaran sudah tercatat.",
+          title: "Pengeluaran tercatat",
+          description: "Pengeluaran sudah masuk ke riwayat dan kondisi dana telah diperbarui.",
           summaryRows,
           secondaryActions: onAddAnother ? [{ label: "Tambah lagi", onClick: onAddAnother }] : [],
         };
@@ -119,6 +119,7 @@ const TransactionPostSaveModal = ({ open, postSave, accounts, onClose, navigate,
     onClose={closeAction}
     doneLabel={doneLabel}
     footerNote={postSave.snapshot ? undefined : "Transaksi tersimpan."}
+    celebration="subtle"
   />;
 };
 

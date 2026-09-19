@@ -62,14 +62,14 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.match(accountStyles, /\.mobileQuickActions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
 
   for (const [path, label] of [
-    ["/perencanaan", "Atur Dana"],
     ["/rekening", "Rekening"],
     ["/target", "Target"],
+    ["/investasi", "Investasi"],
     ["/rekonsiliasi", "Cocokkan"],
   ]) {
     assert.match(dashboardQuickActions, new RegExp(`to: "${path.replaceAll("/", "\\/")}", label: "${label}"`));
   }
-  assert.doesNotMatch(dashboardQuickActions, /label: "Kategori"|label: "Jadwal Rutin"/);
+  assert.doesNotMatch(dashboardQuickActions, /label: "Atur Dana"|label: "Kategori"|label: "Jadwal Rutin"/);
   assert.match(dashboard, /<DashboardQuickActions \/>/);
   assert.match(dashboard, /Belum ada aktivitas/);
   assert.doesNotMatch(dashboard, /onClick=\{onOpenTransaction\}/);

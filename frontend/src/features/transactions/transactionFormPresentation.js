@@ -24,3 +24,16 @@ export const paymentMethodLabel = (value) => {
   if (value === "autodebit") return "Auto-debit (data lama)";
   return PAYMENT_METHOD_OPTIONS.find((item) => item.value === value)?.label || "Belum dipilih";
 };
+
+export const quickRecordBackPresentation = ({ onBack, requestModalClose, submitting, outcomeUnknown, mobileTransferMode }) => {
+  if (!onBack) return { headerBackAction: null, editorCloseRequest: requestModalClose };
+  const requestQuickRecordBack = () => {
+    if (submitting || outcomeUnknown) return false;
+    const accepted = requestModalClose();
+    if (accepted === false) return false;
+    onBack();
+    return true;
+  };
+  const headerBackAction = { onClick: requestQuickRecordBack, label: "Kembali ke Catat aktivitas", disabled: submitting || outcomeUnknown };
+  return { headerBackAction, editorCloseRequest: mobileTransferMode ? requestQuickRecordBack : requestModalClose };
+};

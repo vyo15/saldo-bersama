@@ -68,12 +68,12 @@ export const initialTransactionForm = ({ initialType, initialSourceAccountId, in
 
 export const initialAllocationMode = ({ transaction, initialDraft } = {}) => (transaction || initialDraft?.envelope_period_id ? "manual" : "auto");
 
-export const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef }) => {
+export const useTransactionReset = ({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, idempotencyKeyRef }) => {
   useEffect(() => {
     if (!open) return;
     setForm(transaction ? editableTransactionForm(transaction) : initialTransactionForm({ initialType, initialSourceAccountId, initialDraft }));
-    setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); setPostSave(null); setForceOverspendNote(false); setAllocationMode(initialAllocationMode({ transaction, initialDraft })); setUnallocatedConfirmed(false); idempotencyKeyRef.current = createTransactionIntentKey();
-  }, [initialDraft, initialSourceAccountId, initialType, open, transaction, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef]);
+    setErrors({}); setConfirmation(null); setSubmitState({ status: "idle", error: null }); setPostSave(null); setForceOverspendNote(false); setAllocationMode(initialAllocationMode({ transaction, initialDraft })); idempotencyKeyRef.current = createTransactionIntentKey();
+  }, [initialDraft, initialSourceAccountId, initialType, open, transaction, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, idempotencyKeyRef]);
 };
 
 export const useTransactionData = (bootstrap, overview, form) => {
@@ -199,14 +199,13 @@ const finalizeTransactionSave = async ({ saved, transaction, form, continuation,
   return false;
 };
 
-export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, allocationCandidates = [], allocationMode = "auto", planningIntent = null, forceOverspendNote, unallocatedConfirmed, setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
+export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, approvalRequired, envelopes, allocationCandidates = [], allocationMode = "auto", planningIntent = null, forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault();
   const formElement = event.currentTarget;
   if (!planningIntentMatchesForm({ planningIntent, form })) {
     const nextErrors = { budget_id: "Konteks Kebutuhan berubah. Tutup form lalu catat kembali dari tombol + pada Kebutuhan yang ingin dipakai." };
     setters.setErrors((current) => ({ ...current, ...nextErrors }));
     setters.setConfirmation(null);
-    setUnallocatedConfirmed(false);
     focusFirstTransactionError(formElement, nextErrors);
     return;
   }
@@ -223,16 +222,7 @@ export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome
     const nextErrors = { budget_id: `Pilih Kebutuhan yang dipakai. Ada ${allocationCandidates.length} Kebutuhan yang cocok dengan transaksi ini.` };
     setters.setErrors((current) => ({ ...current, ...nextErrors }));
     setters.setConfirmation(null);
-    setUnallocatedConfirmed(false);
     focusFirstTransactionError(formElement, nextErrors);
-    return;
-  }
-  if (form.transaction_type === TRANSACTION_TYPES.EXPENSE && !form.envelope_period_id && !unallocatedConfirmed) {
-    setUnallocatedConfirmed(true);
-    setters.setConfirmation({
-      code: "UNALLOCATED_EXPENSE",
-      message: "Transaksi belum terhubung ke Kebutuhan. Transaksi tetap dapat dicatat dan akan masuk ke Pengeluaran Belum Dialokasikan.",
-    });
     return;
   }
   setters.setErrors({}); setters.setSubmitState({ status: "submitting", error: null });
@@ -350,7 +340,7 @@ const anotherTransactionForm = ({ postSave, accounts }) => {
   return next;
 };
 
-export const resetForAnotherTransaction = ({ postSave, accounts, setForm, setErrors, setConfirmation, setSubmitState, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, setPostSave, idempotencyKeyRef, amountRef }) => {
+export const resetForAnotherTransaction = ({ postSave, accounts, setForm, setErrors, setConfirmation, setSubmitState, setForceOverspendNote, setAllocationMode, setPostSave, idempotencyKeyRef, amountRef }) => {
   if (!postSave) return;
   setForm(anotherTransactionForm({ postSave, accounts }));
   setErrors({});
@@ -358,7 +348,6 @@ export const resetForAnotherTransaction = ({ postSave, accounts, setForm, setErr
   setSubmitState({ status: "idle", error: null });
   setForceOverspendNote(false);
   setAllocationMode("auto");
-  setUnallocatedConfirmed(false);
   setPostSave(null);
   idempotencyKeyRef.current = createTransactionIntentKey();
   window.requestAnimationFrame(() => amountRef.current?.focus?.());

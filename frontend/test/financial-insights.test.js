@@ -299,10 +299,11 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /Rencana terdekat/);
   assert.doesNotMatch(mobile, /Rencana Bersama/);
   const quickActions = await source("src/features/dashboard/components/DashboardQuickActions.jsx");
-  assert.match(quickActions, /\{ to: "\/perencanaan", label: "Atur Dana"/);
   assert.match(quickActions, /\{ to: "\/rekening", label: "Rekening"/);
   assert.match(quickActions, /\{ to: "\/target", label: "Target"/);
+  assert.match(quickActions, /\{ to: "\/investasi", label: "Investasi"/);
   assert.match(quickActions, /\{ to: "\/rekonsiliasi", label: "Cocokkan"/);
+  assert.doesNotMatch(quickActions, /label: "Atur Dana"/);
   assert.doesNotMatch(quickActions, /label: "Kategori"|label: "Jadwal"/);
   assert.match(mobile, /Aman dipakai[\s\S]{0,180}\/ hari/);
   assert.match(mobile, /Masuk <strong>/);

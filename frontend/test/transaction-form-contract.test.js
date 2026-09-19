@@ -25,13 +25,16 @@ test("form transaksi tidak menduplikasi pilihan jenis dan menandai kategori waji
   assert.match(text, /form\.transaction_type === "refund" && item\.transaction_type === "expense"/);
 });
 
-test("metode pembayaran tetap opsional dan mobile menaruhnya di Detail tambahan", async () => {
+test("metode pembayaran tetap opsional dan mobile menaruhnya di disclosure catatan", async () => {
   const text = await source();
   assert.match(text, /payment_method: ""/);
   assert.match(text, /\{ value: "", label: "Belum dipilih" \}/);
   assert.match(text, /SelectionControl id="payment-method"[\s\S]*form\.payment_method/);
-  assert.match(text, /Detail tambahan/);
+  assert.match(text, /Catatan & metode pembayaran/);
   assert.match(text, /aria-controls="transaction-additional-details"/);
+  assert.match(text, /Berapa yang dikeluarkan\?/);
+  assert.match(text, /Masuk ke rekening/);
+  assert.match(text, /Dari rekening/);
   assert.match(text, /100_000/);
   assert.match(text, /quickAmountLabel/);
   assert.doesNotMatch(text, /payment_method: "transfer"/);
@@ -72,11 +75,13 @@ test("form tambah transaksi mobile memakai Catatan sebagai satu-satunya detail t
   assert.match(text, /merchant: ""/);
 });
 
-test("modal transaksi mobile tidak autofocus nominal dan memakai asset wallet project", async () => {
+test("modal transaksi mobile tidak autofocus nominal dan membatasi asset wallet pada presentasi desktop", async () => {
   const text = await source();
   assert.match(text, /src="\/login\/assets\/mobile\/wallet\.webp"/);
   assert.match(text, /draggable="false"/);
   assert.match(text, /initialFocusRef: mobileLayout \? undefined : amountRef/);
+  assert.match(text, /modalTitle: mobileLayout \? resolvedTitle : desktopTitle/);
+  assert.match(text, /mobileLayout \? submitButton/);
   assert.doesNotMatch(text, /transaction-wallet\.svg/);
   assert.match(text, /FinancialSuccessOverlay/);
   assert.doesNotMatch(text, /postSaveSuccess/);
@@ -118,8 +123,10 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   assert.match(composer, /compose/);
   assert.match(composer, /beforeunload/);
   assert.match(composer, /onDirtyChange=\{setComposerDirty\}/);
-  assert.match(composer, /planningIntent = source\.planningIntent/);
+  assert.match(composer, /planningIntent = composerObject\(source\.planningIntent\)/);
   assert.match(composer, /planningIntent=\{composer\.planningIntent\}/);
+  assert.match(composer, /lockType=\{composer\.lockType\}/);
+  assert.match(composer, /onBack=\{composer\.onBack\}/);
 });
 
 
@@ -187,14 +194,17 @@ test("composer mobile memakai picker inline canonical untuk rekening, kategori, 
   assert.doesNotMatch(form, /MobileTransactionSelectionView|mobileSelection|openMobileSelection|closeMobileSelection/);
   assert.match(form, /closeIcon: FiChevronLeft/);
   assert.match(mobile, /styles\.detailStack/);
-  assert.match(mobile, /Detail tambahan/);
-  assert.match(mobile, /Dipakai untuk kebutuhan mana\?/);
+  assert.match(mobile, /Catatan & metode pembayaran/);
+  assert.match(mobile, /label="Penggunaan dana"/);
+  assert.match(mobile, /Pilih penggunaan dana/);
   assert.doesNotMatch(mobile, /Pilih Alokasi manual|Tutup pilihan Alokasi manual|Alokasi Dana · manual/);
   assert.match(mobile, /lockPlanningSelection/);
   assert.match(mobile, /Dari Alokasi/);
-  assert.match(mobile, /Pengeluaran Belum Dialokasikan/);
-  assert.match(mobile, /Tanpa Kebutuhan/);
-  assert.match(mobile, /placeholder="Pilih Kebutuhan"/);
+  assert.match(mobile, /<strong>Dana Tersedia<\/strong>/);
+  assert.match(mobile, /transaksi dicatat tanpa Alokasi/);
+  assert.match(mobile, /label: "Dana Tersedia"/);
+  assert.match(mobile, /Tanpa Alokasi · Kebutuhan tidak berubah/);
+  assert.match(mobile, /placeholder=\{ambiguous \? "Pilih penggunaan dana" : "Pilih Kebutuhan"\}/);
 
   assert.match(mobile, /<InlineSelectionPicker/);
   assert.match(mobile, /sourceAccountPicker/);
@@ -290,21 +300,24 @@ test("detail Alokasi memisahkan aksi umum dari tombol + Kebutuhan agar context t
   assert.match(detail, /source_account_id: item\.source_account_id/);
   assert.match(detail, /recordExpense=\{state\.recordNeedExpense\}/);
   assert.doesNotMatch(detail, /const recordExpense = \(budget = null\)/, "Aksi Alokasi dan tombol + Kebutuhan tidak boleh berbagi callback opsional yang ambigu.");
-  assert.doesNotMatch(detail, /recordAllocationExpense[\s\S]{0,500}envelope_period_id:/, "Aksi umum tanpa Kebutuhan tidak boleh diam-diam mengikat Alokasi dan menyamar sebagai Tanpa Kebutuhan.");
+  assert.doesNotMatch(detail, /recordAllocationExpense[\s\S]{0,500}envelope_period_id:/, "Aksi umum tanpa Kebutuhan tidak boleh diam-diam mengikat Alokasi dan menyamar sebagai penggunaan Dana Tersedia.");
   assert.doesNotMatch(detail, /createTransaction|updateTransaction|transactions\.api/, "detail Alokasi hanya boleh membuka composer, bukan menyimpan transaksi sendiri");
 });
 
-test("validasi transaksi memfokuskan field wajib dan expense tanpa Alokasi meminta konfirmasi eksplisit", async () => {
-  const [form, fields] = await Promise.all([
+test("validasi transaksi memfokuskan field wajib dan expense tanpa kandidat memakai Dana Tersedia tanpa konfirmasi kedua", async () => {
+  const [form, fields, mobile] = await Promise.all([
     source(),
     readFile(new URL("../src/features/transactions/components/TransactionFields.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransactionFields.jsx", import.meta.url), "utf8"),
   ]);
   assert.match(form, /focusFirstTransactionError/);
   assert.match(form, /scrollIntoViewWithMotionPreference\(target, \{ block: "center" \}\)/);
   assert.doesNotMatch(form, /behavior:\s*"smooth"/);
-  assert.match(form, /form\.transaction_type === TRANSACTION_TYPES\.EXPENSE && !form\.envelope_period_id && !unallocatedConfirmed/);
-  assert.match(form, /code: "UNALLOCATED_EXPENSE"/);
-  assert.match(form, /Pengeluaran Belum Dialokasikan/);
+  assert.doesNotMatch(form, /unallocatedConfirmed|setUnallocatedConfirmed|code: "UNALLOCATED_EXPENSE"/);
+  assert.match(form, /allocationCandidates\.length > 1[\s\S]*allocationMode !== "manual"/);
+  assert.match(fields, /<strong>Dana Tersedia\.<\/strong>/);
+  assert.match(mobile, /<strong>Dana Tersedia<\/strong>/);
+  assert.match(mobile, /Belum ada Kebutuhan yang cocok · transaksi dicatat tanpa Alokasi/);
   assert.match(fields, /Lengkapi data transaksi yang wajib dipilih/);
   assert.match(fields, /aria-live="assertive"/);
   assert.match(fields, /transaction-date-error/);

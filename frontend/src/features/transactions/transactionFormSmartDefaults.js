@@ -120,7 +120,7 @@ export const earlyFundsWarning = ({ transactionType, amount, source, envelope })
   const uncovered = Math.max(0, value - remaining);
   if (uncovered <= 0) return null;
   if (envelope.overspend_policy === "block") {
-    return { title: "Melebihi sisa Alokasi Dana", message: `Nominal melebihi sisa ${envelope.name} sebesar ${formatRupiah(uncovered)}. Kurangi nominal atau pilih Alokasi Dana lain.`, shortage: uncovered };
+    return { title: "Melebihi batas Alokasi", message: `Nominal melebihi sisa ${envelope.name} sebesar ${formatRupiah(uncovered)}. Pilih Dana Tersedia, Kebutuhan lain, atau kurangi nominal.`, shortage: uncovered };
   }
   if (uncovered > available) {
     return { title: "Dana tambahan tidak cukup", message: `Sisa ${envelope.name} kurang ${formatRupiah(uncovered)}, sementara dana tersedia rekening hanya ${formatRupiah(available)}.`, shortage: uncovered - available };

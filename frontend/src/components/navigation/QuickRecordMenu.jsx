@@ -51,9 +51,9 @@ const ACTION_PRESENTATION = Object.freeze({
   expense: Object.freeze({ label: "Pengeluaran", description: "Belanja & kebutuhan" }),
   income: Object.freeze({ label: "Pemasukan", description: "Gaji & uang masuk" }),
   transfer: Object.freeze({ label: "Transfer", description: "Antar rekening" }),
-  commitment: Object.freeze({ label: "Kewajiban", description: "KPR & cicilan" }),
-  goal: Object.freeze({ label: "Target", description: "Setor tujuan" }),
-  investment: Object.freeze({ label: "Investasi", description: "Beli aset" }),
+  commitment: Object.freeze({ label: "Bayar kewajiban", description: "KPR & cicilan" }),
+  goal: Object.freeze({ label: "Target", description: "Tambah tabungan" }),
+  investment: Object.freeze({ label: "Investasi", description: "Beli / tambah aset" }),
 });
 
 const quickRecordActionById = new Map(QUICK_RECORD_ACTIONS.map((action) => [action.id, action]));
@@ -67,7 +67,7 @@ const ActionCard = ({ actionId, onSelect, secondary = false }) => {
     type="button"
     className={`${styles.actionCard} ${secondary ? styles.actionCardSecondary : ""}`.trim()}
     onClick={() => onSelect(actionId)}
-    aria-label={action.label}
+    aria-label={presentation.label}
   >
     <span className={styles.actionIcon} aria-hidden="true"><Icon /></span>
     <span className={styles.actionCopy}><strong>{presentation.label}</strong><small>{presentation.description}</small></span>

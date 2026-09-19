@@ -459,10 +459,11 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
 
   assert.doesNotMatch(presentation, /QUICK_ACTIONS/);
   assert.match(quickActions, /DASHBOARD_QUICK_ACTIONS/);
-  assert.match(quickActions, /to: "\/perencanaan", label: "Atur Dana"/);
   assert.match(quickActions, /to: "\/rekening", label: "Rekening"/);
   assert.match(quickActions, /to: "\/target", label: "Target"/);
+  assert.match(quickActions, /to: "\/investasi", label: "Investasi"/);
   assert.match(quickActions, /to: "\/rekonsiliasi", label: "Cocokkan"/);
+  assert.doesNotMatch(quickActions, /label: "Atur Dana"/);
   assert.doesNotMatch(quickActions, /label: "Kategori"|label: "Jadwal Rutin"/);
   assert.match(quickActions, /mobile-quick-action/);
   assert.doesNotMatch(mobile, /TRANSACTION_QUICK_ACTIONS|TRANSACTION_TYPES|onOpenTransaction\(type\)/);

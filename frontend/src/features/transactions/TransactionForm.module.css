@@ -420,7 +420,7 @@
 
   .modal :global(.modal__footer) {
     display: grid;
-    grid-template-columns: minmax(0, .78fr) minmax(0, 1.5fr);
+    grid-template-columns: minmax(0, 1fr);
     flex-wrap: nowrap;
     padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
     border-top-color: var(--border);

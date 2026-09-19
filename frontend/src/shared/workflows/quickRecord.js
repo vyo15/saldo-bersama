@@ -9,15 +9,33 @@ export const QUICK_RECORD_ACTIONS = Object.freeze([
   Object.freeze({ id: "investment", label: "Investasi", description: "Catat pembelian atau posisi aset investasi." }),
 ]);
 
-const TRANSACTION_ACTION_TYPES = Object.freeze({
-  expense: TRANSACTION_TYPES.EXPENSE,
-  income: TRANSACTION_TYPES.INCOME,
-  transfer: TRANSACTION_TYPES.TRANSFER,
+const TRANSACTION_ACTIONS = Object.freeze({
+  expense: Object.freeze({
+    initialType: TRANSACTION_TYPES.EXPENSE,
+    lockType: true,
+    title: "Catat pengeluaran",
+    description: "Catat uang yang baru saja keluar.",
+    submitLabel: "Simpan pengeluaran",
+  }),
+  income: Object.freeze({
+    initialType: TRANSACTION_TYPES.INCOME,
+    lockType: true,
+    title: "Catat pemasukan",
+    description: "Catat uang yang baru saja masuk.",
+    submitLabel: "Simpan pemasukan",
+  }),
+  transfer: Object.freeze({
+    initialType: TRANSACTION_TYPES.TRANSFER,
+    lockType: true,
+    title: "Catat transfer",
+    description: "Pindahkan dana antar rekening.",
+    submitLabel: "Catat transfer",
+  }),
 });
 
 export const quickRecordTransactionOptions = (actionId) => {
-  const initialType = TRANSACTION_ACTION_TYPES[actionId];
-  return initialType ? { initialType } : null;
+  const options = TRANSACTION_ACTIONS[actionId];
+  return options ? { ...options } : null;
 };
 
 export const quickRecordNavigation = (actionId) => {

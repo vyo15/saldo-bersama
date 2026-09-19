@@ -293,7 +293,7 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(goalCards, /action=\{canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
   assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>\{ownerMode \? "Tambah rekening" : "Ajukan rekening"\}<\/Button> : null\}/);
   assert.match(accounts, /action=\{emptyState === EMPTY_COLLECTION_STATE\.FILTERED \?[\s\S]*?Tampilkan semua<\/Button> : <Button variant="primary"/);
-  assert.match(categories, /actions=\{items\.length \? <Button[^>]*>\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}<\/Button> : null\}/);
+  assert.match(categories, /actions=\{items\.length \? <Button[^>]*aria-label=\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}>\{ownerMode \? "Tambah" : "Ajukan"\}<\/Button> : null\}/);
   assert.match(categories, /emptyState === EMPTY_COLLECTION_STATE\.FILTERED && filtersActive \? <Button onClick=\{clearFilters\}>Reset pencarian<\/Button> : initialEmpty \? <Button variant="primary"/);
   assert.match(budgets, /Sekali bayar/);
   assert.match(budgets, /Rutin/);
@@ -368,4 +368,19 @@ test("nominal finansial kritis tidak memakai ellipsis sebagai fallback responsiv
 test("login short-height memiliki fallback scroll vertikal untuk zoom dan viewport pendek", async () => {
   const mobile = await readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8");
   assert.match(mobile, /@media \(max-height: 620px\) and \(max-width: 820px\)[\s\S]*\.login-mobile-stage \{[\s\S]*height:\s*auto;[\s\S]*min-height:\s*100dvh;[\s\S]*overflow-y:\s*auto;/);
+});
+
+
+test("quick Catat mobile tidak mengulang keputusan dan dashboard tidak menggandakan Atur Dana", async () => {
+  const [quickRecord, composer, dashboardQuick] = await Promise.all([
+    read("src/components/navigation/QuickRecordMenu.jsx"),
+    read("src/app/TransactionComposerContext.jsx"),
+    read("src/features/dashboard/components/DashboardQuickActions.jsx"),
+  ]);
+  assert.match(quickRecord, /Bayar kewajiban/);
+  assert.match(quickRecord, /Tambah tabungan/);
+  assert.match(quickRecord, /Beli \/ tambah aset/);
+  assert.match(composer, /lockType=\{composer\.lockType\}/);
+  assert.doesNotMatch(dashboardQuick, /label: "Atur Dana"/);
+  assert.match(dashboardQuick, /label: "Investasi"/);
 });

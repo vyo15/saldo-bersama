@@ -70,7 +70,7 @@ test("tab utama mobile memulihkan scroll per tab, route sekunder mulai dari atas
 
   assert.match(shell, /useNavigationType\(\)/);
   assert.match(shell, /useMobileTabScrollRestoration\(location, navigationType\);/);
-  assert.match(restorationHook, /PRIMARY_TAB_PATHS = new Set\(\["\/", "\/transaksi", "\/laporan"\]\)/);
+  assert.match(restorationHook, /PRIMARY_TAB_PATHS = new Set\(\["\/", "\/perencanaan", "\/transaksi"\]\)/);
   assert.match(restorationHook, /window\.history\.scrollRestoration = "manual"/);
   assert.match(restorationHook, /rememberHistoryPosition\(previousLocation\.key, previousTop\)/);
   assert.match(restorationHook, /primaryTabScrollPositions\.set\(previousLocation\.pathname, previousTop\)/);
@@ -99,7 +99,8 @@ test("quick add aktivitas mobile selalu tersedia sementara aksi floating desktop
   assert.match(shell, /useQuickRecord/);
   assert.match(shell, /onQuickAdd=\{openQuickRecord\}/);
   assert.match(quickRecord, /<QuickRecordMenu open/);
-  assert.match(quickRecord, /onOpenTransaction=\{openTransactionComposer\}/);
+  assert.match(quickRecord, /onOpenTransaction=\{openQuickRecordTransaction\}/);
+  assert.match(quickRecord, /onBack: \(\) =>/);
   assert.match(providers, /<TransactionComposerProvider><QuickRecordProvider>/);
   assert.match(shell, /<MobileNavigation[\s\S]*quickAddDisabled=\{offline\}/);
   assert.match(mobileNavigation, /className="mobile-navigation__add"/);

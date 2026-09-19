@@ -55,7 +55,9 @@
 - [ ] Modal diuji buka → tutup/batal → buka lagi; Browser Back/focus/body scroll lock tidak stale.
 - [ ] True-empty hanya memiliki satu primary next action; filtered-empty menawarkan reset/show-all, bukan membuat entity baru.
 - [ ] Create CTA pada true-empty tidak muncul bersamaan di header/toolbar dan empty state. Kewajiban/Investasi/collection lain hanya mengembalikan header create setelah data pertama ada.
-- [ ] Mobile global `Catat` tetap khusus transaksi dan tidak diduplikasi oleh CTA transaksi lokal pada true-empty Dashboard/Transaksi.
+- [ ] Mobile global `Catat` tetap menjadi launcher aktivitas uang dan tidak diduplikasi oleh CTA transaksi lokal pada true-empty Dashboard/Transaksi. Launcher menampilkan Pengeluaran/Pemasukan/Transfer/Bayar kewajiban + grup Untuk masa depan (Target/Investasi); setelah jenis transaksi dipilih, form tidak menanyakan jenis untuk kedua kalinya.
+- [ ] Form quick Catat mobile memakai judul + rekening + CTA kontekstual, satu primary footer full-width, tanggal terlihat, detail metode/catatan opsional, dan tombol kembali ke launcher. Refund bukan quick action global.
+- [ ] Dashboard mobile tidak menggandakan `Atur Dana` pada Akses cepat karena sudah permanen di bottom navigation; shortcut canonical adalah Rekening/Target/Investasi/Cocokkan.
 - [ ] Detail object dengan sub-item erat memakai section/list hierarchy, bukan tumpukan card setara tanpa kebutuhan.
 - [ ] Satu fakta edukatif tidak diulang pada description, helper, card, dan notice di surface yang sama.
 - [ ] Normal state tidak memakai helper/notice hanya untuk mengulang label, placeholder, value, atau state yang sudah jelas.
@@ -111,5 +113,5 @@
 ### Kebutuhan → transaksi (canonical)
 - Nominal utama pada row Kebutuhan adalah **sisa aktual = nominal rencana - terpakai**, bukan nominal rencana statis.
 - Quick action dari row Kebutuhan wajib membawa `budget_id` + `envelope_period_id` dan composer menampilkan relasi itu sebagai **Otomatis**; jangan meminta user memilih ulang konteks yang sudah diketahui.
-- Jangan menyediakan pemilih **Alokasi manual** terpisah di composer. Pilihan Kebutuhan adalah surface canonical untuk relasi planning; opsi `Tanpa Kebutuhan` tetap tersedia untuk pengeluaran biasa.
+- Jangan menyediakan pemilih **Alokasi manual** terpisah di composer. Surface canonical adalah **Penggunaan dana**: satu Kebutuhan cocok boleh auto-link namun tetap editable, beberapa kandidat wajib dipilih, dan nol kandidat/pilihan eksplisit **Dana Tersedia** harus dapat disimpan tanpa konfirmasi unallocated kedua.
 - Aksi yang dapat berujung delete/archive tidak boleh diberi label samar pada form edit. Gunakan label outcome-oriented seperti `Hapus / arsipkan`, lalu preview server menentukan tindakan final.

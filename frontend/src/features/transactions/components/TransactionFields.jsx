@@ -74,10 +74,9 @@ const resolveLockedNeed = ({ form, candidates, budgets, envelopes }) => {
 const LockedNeedField = ({ form, candidates, budgets, envelopes }) => {
   const { need, envelope } = resolveLockedNeed({ form, candidates, budgets, envelopes });
   const remaining = Math.max(0, Number(need?.amount || 0) - Number(need?.used_amount || 0));
-  const envelopePrefix = envelope?.name ? `${envelope.name} · ` : "";
   return <div className={`field ${styles.visualField}`}>
-    <span>Kebutuhan</span>
-    <div className="notice notice--info"><FiCheckCircle aria-hidden="true" /><span><strong>{need?.name || "Kebutuhan terpilih"}</strong> · {envelopePrefix}sisa {formatRupiah(remaining)} · Dipilih dari Alokasi Dana.</span></div>
+    <span>Penggunaan dana</span>
+    <div className="notice notice--info"><FiCheckCircle aria-hidden="true" /><span><strong>{envelope?.name ? `${envelope.name} · ${need?.name || "Kebutuhan"}` : need?.name || "Kebutuhan terpilih"}</strong> · sisa {formatRupiah(remaining)} · Dipilih dari Alokasi Dana.</span></div>
   </div>;
 };
 
@@ -89,27 +88,32 @@ const needOption = (candidate) => ({
 });
 
 const needHelperText = ({ automatic, count }) => {
-  if (automatic) return "Dipilih otomatis karena hanya satu Kebutuhan yang cocok.";
-  if (count > 1) return `${count} Kebutuhan cocok. Pilih salah satu atau pilih Tanpa Kebutuhan secara sadar.`;
-  return "Anda dapat mengganti pilihan ini bila diperlukan.";
+  if (automatic) return "Dipilih otomatis karena hanya satu Kebutuhan yang cocok. Anda tetap dapat mengubahnya.";
+  if (count > 1) return `${count} Kebutuhan cocok. Pilih salah satu atau gunakan Dana Tersedia.`;
+  return "Anda dapat mengganti penggunaan dana bila diperlukan.";
 };
 
 const NeedField = ({ form, candidates, onNeedChange, lockPlanningSelection, budgets, envelopes, allocationMode, errors, outcomeUnknown }) => {
   if (!form.source_account_id || !form.category_id) return null;
   if (lockPlanningSelection && form.budget_id) return <LockedNeedField form={form} candidates={candidates} budgets={budgets} envelopes={envelopes} />;
   if (!candidates.length) {
-    return <div className={`notice notice--info ${styles.visualField}`}><FiLayers aria-hidden="true" /><span><strong>Belum ada Kebutuhan yang cocok.</strong> Transaksi dapat dicatat sebagai Pengeluaran Belum Dialokasikan dan akan memakai Dana Tersedia.</span></div>;
+    return <div className={`notice notice--info ${styles.visualField}`}>
+      <FiLayers aria-hidden="true" />
+      <span><strong>Dana Tersedia.</strong> Belum ada Kebutuhan yang cocok; transaksi akan dicatat tanpa Alokasi.</span>
+    </div>;
   }
+  const automatic = candidates.length === 1 && allocationMode === "auto" && form.budget_id === candidates[0].need.budget_id;
   const options = [
-    { value: UNALLOCATED_NEED_VALUE, label: "Tanpa Kebutuhan", meta: "Akan memakai Dana Tersedia · Kebutuhan tidak berubah", icon: FiLayers },
-    ...candidates.map(needOption),
+    { value: UNALLOCATED_NEED_VALUE, label: "Dana Tersedia", meta: "Tanpa Alokasi · Kebutuhan tidak berubah", icon: FiLayers },
+    ...candidates.map((candidate) => ({
+      ...needOption(candidate),
+      ...(automatic && candidates.length === 1 ? { badge: "Otomatis", badgeTone: "primary" } : {}),
+    })),
   ];
   const value = needSelectionValue({ budgetId: form.budget_id, allocationMode });
-  const automatic = candidates.length === 1 && allocationMode === "auto" && form.budget_id === candidates[0].need.budget_id;
-  const label = candidates.length > 1 ? "Dipakai untuk kebutuhan mana?" : "Kebutuhan";
   return <div className={`field ${styles.visualField}`}>
-    <label htmlFor="budget-need">{label}</label>
-    <FieldControl icon={FiCheckCircle}><SelectionControl id="budget-need" embedded value={value} onChange={onNeedChange} placeholder="Pilih Kebutuhan" searchable={options.length > 8} ariaLabel="Kebutuhan" options={options} invalid={Boolean(errors.budget_id)} describedBy={errors.budget_id ? "budget-need-error" : undefined} disabled={outcomeUnknown} /></FieldControl>
+    <label htmlFor="budget-need">Penggunaan dana</label>
+    <FieldControl icon={FiCheckCircle}><SelectionControl id="budget-need" embedded value={value} onChange={onNeedChange} placeholder={candidates.length > 1 ? "Pilih penggunaan dana" : "Pilih Kebutuhan"} searchable={options.length > 8} ariaLabel="Penggunaan dana" options={options} invalid={Boolean(errors.budget_id)} describedBy={errors.budget_id ? "budget-need-error" : undefined} disabled={outcomeUnknown} /></FieldControl>
     {errors.budget_id ? <small id="budget-need-error" className="field__error">{errors.budget_id}</small> : <small>{needHelperText({ automatic, count: candidates.length })}</small>}
   </div>;
 };

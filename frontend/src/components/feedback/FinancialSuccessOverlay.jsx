@@ -106,6 +106,7 @@ const FinancialSuccessOverlay = ({
   doneLabel = "Selesai",
   secondaryActions = [],
   footerNote = "Riwayat sudah diperbarui.",
+  celebration = "standard",
 }) => {
   const containerRef = useRef(null);
   const doneRef = useRef(null);
@@ -116,8 +117,8 @@ const FinancialSuccessOverlay = ({
 
   return createPortal(
     <div className={styles.backdrop} role="presentation">
-      <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} ref={containerRef} tabIndex={-1}>
-        <MoneyRainCelebration />
+      <section className={`${styles.dialog} ${celebration === "subtle" ? styles.subtle : ""}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} ref={containerRef} tabIndex={-1}>
+        {celebration === "standard" ? <MoneyRainCelebration /> : null}
         <div className={styles.content}>
           <BrandSuccessMark />
           <span className={styles.eyebrow}>Tersimpan dengan aman</span>

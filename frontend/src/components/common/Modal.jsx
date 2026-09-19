@@ -109,9 +109,10 @@ const DiscardChangesFooter = ({ guard }) => <>
   <Button type="button" variant="danger" onClick={guard.confirmDiscard}>Buang perubahan</Button>
 </>;
 
-const ModalHeader = ({ swipeEnabled, swipeHandlers, titleId, title, descriptionId, description, closeRef, closeModal, canDismiss, CloseIcon, closeLabel }) => (
+const ModalHeader = ({ swipeEnabled, swipeHandlers, titleId, title, descriptionId, description, closeRef, closeModal, canDismiss, CloseIcon, closeLabel, headerBackAction }) => (
   <header className={`${styles.header} ${swipeEnabled ? styles.swipeHeader : ""} modal__header`.trim()} {...(swipeEnabled ? swipeHandlers : {})}>
     {swipeEnabled ? <span className={styles.mobileDragHandle} aria-hidden="true" /> : null}
+    {headerBackAction ? <button className={`${styles.backButton} icon-button`} type="button" onClick={headerBackAction.onClick} disabled={headerBackAction.disabled} aria-label={headerBackAction.label || "Kembali"}><FiArrowLeft aria-hidden="true" /></button> : null}
     <div className={styles.heading}>
       <h2 id={titleId}>{title}</h2>
       {description ? <p id={descriptionId}>{description}</p> : null}
@@ -179,7 +180,7 @@ const handleBackdropDismiss = ({ event, discardOpen, discardGuard, subview, clos
   else if (canDismiss) closeModal();
 };
 
-const ModalDialog = ({ controller, titleId, descriptionId, title, description, footer, children, size, className, CloseIcon, closeLabel, discardGuard, discardSubject }) => {
+const ModalDialog = ({ controller, titleId, descriptionId, title, description, footer, children, size, className, CloseIcon, closeLabel, discardGuard, discardSubject, headerBackAction }) => {
   const {
     containerRef, closeRef, subview, closeSubview, subviewApi, canDismiss, discardOpen,
     swipeEnabled, runtime, closeModal, dragging, dismissing, swipeHandlers,
@@ -218,6 +219,7 @@ const ModalDialog = ({ controller, titleId, descriptionId, title, description, f
           canDismiss={presentation.canDismiss}
           CloseIcon={presentation.CloseIcon}
           closeLabel={presentation.closeLabel}
+          headerBackAction={discardOpen || subview ? null : headerBackAction}
         />
         <ModalSubviewContext.Provider value={subviewApi}>
           <div className={`${styles.body} modal__body`}>{discardOpen ? <DiscardChangesBody subject={discardSubject} /> : subview?.content ?? children}</div>
@@ -246,6 +248,7 @@ const Modal = ({
   closeLabel = "Tutup dialog",
   discardGuard = null,
   discardSubject = "form",
+  headerBackAction = null,
 }) => {
   const titleId = useId();
   const descriptionId = useId();
@@ -266,6 +269,7 @@ const Modal = ({
       closeLabel={closeLabel}
       discardGuard={discardGuard}
       discardSubject={discardSubject}
+      headerBackAction={headerBackAction}
     >
       {children}
     </ModalDialog>,

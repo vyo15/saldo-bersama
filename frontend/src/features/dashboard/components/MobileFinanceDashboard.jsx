@@ -16,7 +16,7 @@ import UserAvatar from "../../../components/common/UserAvatar.jsx";
 import { formatDateLongIndonesia } from "../../../domain/dates.js";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
-import { financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
+import { financialNotificationFact, financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
 import { dashboardDueLabel, dashboardNeedEmptyAction, dashboardRecurringEmptyAction, formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import DashboardQuickActions from "./DashboardQuickActions.jsx";
@@ -71,7 +71,7 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
       <div className={dashboardClass("mobile-finance-cash-strip")} aria-label="Arus kas bulan ini">
         <span><FiArrowDownLeft aria-hidden="true" />Masuk <strong><SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" /></strong></span>
         <span><FiArrowUpRight aria-hidden="true" />Keluar <strong><SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" /></strong></span>
-        <span>Selisih <strong className={dashboardClass(`money--${netTone}`)}>{balanceVisible && net > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={net} tone={netTone} /></strong></span>
+        <span>Selisih bulan ini <strong className={dashboardClass(`money--${netTone}`)}>{balanceVisible && net > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={net} tone={netTone} /></strong></span>
       </div>
     </header>
   );
@@ -167,12 +167,14 @@ const MobileNextAction = ({ alerts }) => {
   if (!alerts?.length) return null;
   const alert = alerts[0];
   const guidance = financialAlertGuidance(alert);
+  const title = financialNotificationTitle(alert);
+  const fact = financialNotificationFact(alert);
   const Icon = alert.severity === "info" ? FiBell : FiAlertTriangle;
   return <section className={dashboardClass("mobile-finance-section mobile-next-action-section")} aria-labelledby="mobile-next-action-title">
     <div className={dashboardClass("mobile-section-heading mobile-next-action-heading")}><h2 id="mobile-next-action-title">Perlu dilakukan</h2><span>{alerts.length > 1 ? `${alerts.length} perhatian aktif` : "1 tugas"}</span></div>
-    <Link className={dashboardClass("mobile-next-action")} data-severity={alert.severity} to={guidance.to} state={guidance.state} aria-label={`${financialNotificationTitle(alert)}. ${alert.message}`}>
+    <Link className={dashboardClass("mobile-next-action")} data-severity={alert.severity} to={guidance.to} state={guidance.state} aria-label={`${title}. ${fact}`}>
       <span className={dashboardClass("mobile-next-action__icon")}><Icon aria-hidden="true" /></span>
-      <span className={dashboardClass("mobile-next-action__copy")}><strong>{financialNotificationTitle(alert)}</strong><small>{alert.message}</small><em>{guidance.actionLabel}</em></span>
+      <span className={dashboardClass("mobile-next-action__copy")}><strong>{title}</strong><small>{fact}</small><em>{guidance.actionLabel}</em></span>
       <FiChevronRight className={dashboardClass("mobile-next-action__chevron")} aria-hidden="true" />
     </Link>
   </section>;

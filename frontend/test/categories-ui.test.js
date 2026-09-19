@@ -51,10 +51,15 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /useApiResource\("archive\.list", \{\}, \{ enabled: archiveEnabled \}\)/);
   assert.match(page, /placeholder="Cari kategori"/);
   assert.match(page, /SelectionField className=\{styles\.categoryStatusFilter\} label="Filter status kategori"/);
+  assert.match(page, /FiFilter/);
+  assert.match(styles, /\.categoryStatusFilter :global\(\[role="combobox"\]\)/);
   assert.match(page, /value: "archived", label: "Arsip"/);
   assert.doesNotMatch(page, /<select\b/);
-  assert.match(page, /label: "Pengeluaran", icon: MoneyOutIcon/);
-  assert.match(page, /label: "Pemasukan", icon: MoneyInIcon/);
+  assert.match(page, /expense: \{ label: "Pengeluaran", icon: MoneyOutIcon/);
+  assert.match(page, /income: \{ label: "Pemasukan", icon: MoneyInIcon/);
+  assert.match(page, /CATEGORY_VISIBLE_LIMIT = 8/);
+  assert.match(page, /Tampilkan \{remaining\} lainnya/);
+  assert.match(page, /searchActive=\{Boolean\(searchQuery\.trim\(\)\)\}/);
   assert.match(page, /FiMoreHorizontal/);
   assert.match(page, /createPortal/);
   assert.match(page, /document\.body/);
@@ -64,7 +69,8 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /event\.key === "ArrowDown"/);
   assert.match(page, /event\.key === "ArrowUp"/);
   assert.match(page, /role="menuitem"/);
-  assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(auto-fill, minmax\(11\.5rem, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*?\.categoryList \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.categoryMenu[\s\S]*position: fixed[\s\S]*mobile-navigation-height/);
   assert.doesNotMatch(styles, /\.categoryStatusActive/);
   assert.match(page, /Promise\.allSettled\(\[resource\.reload\(\), refreshAll\(\)\]\)/);

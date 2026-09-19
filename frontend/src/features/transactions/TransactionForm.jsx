@@ -16,6 +16,7 @@ import TransactionFields from "./components/TransactionFields.jsx";
 import TransactionPostSaveModal from "./components/TransactionPostSaveModal.jsx";
 import { UNALLOCATED_NEED_VALUE, contextualPlanningData, earlyFundsWarning, mergeContextualAllocationCandidate, smartAllocationCandidates } from "./transactionFormSmartDefaults.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
+import { quickRecordBackPresentation } from "./transactionFormPresentation.js";
 import { applyPlanningIntentToDraft, isLockedPlanningIntent, planningDependencyInvalidatesSelection, planningIntentLocksField, transactionPlanningState } from "./transactionPlanningIntent.js";
 import {
   applySourceAccountChange,
@@ -50,6 +51,7 @@ const resolveTransactionPresentation = ({
   onClose,
   amountRef,
   mobileLayout,
+  headerBackAction,
 }) => {
   if (mobileTransferMode) {
     return {
@@ -62,13 +64,14 @@ const resolveTransactionPresentation = ({
       closeLabel: "Kembali",
       formClassName: styles.mobileTransferForm,
       mobileSwipeToClose: true,
+      headerBackAction: null,
     };
   }
 
   const resolvedTitle = title || (transaction ? "Edit transaksi" : "Catat transaksi");
   const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
   const progressLabel = submitting ? submittingLabel || "Menyimpan..." : outcomeUnknown ? "Coba lagi data yang sama" : idleSubmitLabel;
-  const modalTitle = (
+  const desktopTitle = (
     <span className={styles.modalTitle}>
       <span className={styles.walletBubble} aria-hidden="true">
         <img src="/login/assets/mobile/wallet.webp" width="797" height="900" alt="" draggable="false" decoding="async" />
@@ -79,15 +82,16 @@ const resolveTransactionPresentation = ({
       </span>
     </span>
   );
-  const modalFooter = (
+  const submitButton = <Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{progressLabel}</Button>;
+  const modalFooter = mobileLayout ? submitButton : (
     <>
       <Button type="button" onClick={onClose} disabled={submitting || outcomeUnknown}>Batal</Button>
-      <Button type="submit" form="transaction-form" variant="primary" icon={FiCheck} loading={submitting}>{progressLabel}</Button>
+      {submitButton}
     </>
   );
   return {
-    modalTitle,
-    modalDescription: undefined,
+    modalTitle: mobileLayout ? resolvedTitle : desktopTitle,
+    modalDescription: mobileLayout ? description || undefined : undefined,
     modalFooter,
     modalClassName: styles.modal,
     initialFocusRef: mobileLayout ? undefined : amountRef,
@@ -95,6 +99,7 @@ const resolveTransactionPresentation = ({
     closeLabel: "Tutup dialog",
     formClassName: mobileLayout ? styles.mobileComposerForm : `form-grid ${styles.form}`,
     mobileSwipeToClose: true,
+    headerBackAction: mobileLayout ? headerBackAction : null,
   };
 };
 
@@ -124,13 +129,12 @@ const useTransactionFormState = ({ open, transaction, initialType, initialSource
   const [postSave, setPostSave] = useState(null);
   const [forceOverspendNote, setForceOverspendNote] = useState(false);
   const [allocationMode, setAllocationMode] = useState(() => initialAllocationMode({ transaction, initialDraft }));
-  const [unallocatedConfirmed, setUnallocatedConfirmed] = useState(false);
   const idempotencyKeyRef = useRef(createTransactionIntentKey());
   const amountRef = useRef(null);
 
-  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, setUnallocatedConfirmed, idempotencyKeyRef });
+  useTransactionReset({ open, transaction, initialType, initialSourceAccountId, initialDraft, setForm, setErrors, setConfirmation, setSubmitState, setPostSave, setForceOverspendNote, setAllocationMode, idempotencyKeyRef });
 
-  return { form, setForm, errors, setErrors, confirmation, setConfirmation, submitState, setSubmitState, postSave, setPostSave, forceOverspendNote, setForceOverspendNote, allocationMode, setAllocationMode, unallocatedConfirmed, setUnallocatedConfirmed, idempotencyKeyRef, amountRef };
+  return { form, setForm, errors, setErrors, confirmation, setConfirmation, submitState, setSubmitState, postSave, setPostSave, forceOverspendNote, setForceOverspendNote, allocationMode, setAllocationMode, idempotencyKeyRef, amountRef };
 };
 
 const useTransactionDerived = ({ bootstrap, overview, form, transaction, presentation, mobileLayout, submitState, initialAllocationContext }) => {
@@ -173,7 +177,6 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
   const update = (field, value) => {
     if (outcomeUnknown || planningIntentLocksField(planningIntent, field)) return;
     state.setConfirmation(null);
-    state.setUnallocatedConfirmed(false);
     state.setSubmitState({ status: "idle", error: null });
     state.setErrors((current) => clearTransactionFieldErrors(current, field));
     if (["transaction_type", "amount", "envelope_period_id"].includes(field)) state.setForceOverspendNote(false);
@@ -197,7 +200,6 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
   const onSourceAccountChange = (nextId) => {
     if (outcomeUnknown || planningIntentLocksField(planningIntent, "source_account_id")) return;
     state.setForceOverspendNote(false);
-    state.setUnallocatedConfirmed(false);
     if (!transaction) state.setAllocationMode("auto");
     applySourceAccountChange({ nextId, accounts: data.accounts, envelopes: data.envelopes, isTransfer, setForm: setDirtyForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState });
   };
@@ -208,7 +210,6 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
     const candidate = explicitUnallocated ? null : allocationCandidates.find((item) => item.need.budget_id === selectionValue) || null;
     state.setAllocationMode("manual");
     state.setForceOverspendNote(false);
-    state.setUnallocatedConfirmed(false);
     state.setConfirmation(null);
     state.setSubmitState({ status: "idle", error: null });
     state.setErrors((current) => clearTransactionFieldErrors(current, ["envelope_period_id", "budget_id"]));
@@ -287,11 +288,11 @@ const transactionFields = ({ state, derived, actions, lockType, lockPlanningSele
 
 const TransactionEditorModal = ({
   open, modal, draftLifecycle, submitting, outcomeUnknown, handleSubmit, mobileLayout,
-  mobileTransferMode, fields, requestModalClose,
+  mobileTransferMode, fields, requestModalClose, editorCloseRequest,
 }) => (
   <Modal
     open={open}
-    onClose={requestModalClose}
+    onClose={editorCloseRequest || requestModalClose}
     dismissible={!submitting && !outcomeUnknown}
     title={modal.modalTitle}
     description={modal.modalDescription}
@@ -302,6 +303,7 @@ const TransactionEditorModal = ({
     closeIcon={modal.closeIcon}
     closeLabel={modal.closeLabel}
     mobileSwipeToClose={modal.mobileSwipeToClose}
+    headerBackAction={modal.headerBackAction}
   >
     <form id="transaction-form" className={modal.formClassName} onSubmit={handleSubmit} onChangeCapture={draftLifecycle.markDirty} noValidate>
       <TransactionFormBody
@@ -332,6 +334,7 @@ const TransactionForm = ({
   notifyOnSuccess = true,
   presentation = "default",
   onDirtyChange,
+  onBack = null,
 }) => {
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
   const { notify } = useFeedback();
@@ -346,7 +349,7 @@ const TransactionForm = ({
   const draftLifecycle = useTransactionDraftLifecycle({ open, postSave: state.postSave, onClose, onDirtyChange });
   const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, outcomeUnknown: derived.outcomeUnknown, transaction, allocationCandidates: derived.allocationCandidates, planningIntent: planning.intent, markDirty: draftLifecycle.markDirty });
   const setters = { setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote };
-  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, approvalRequired: derived.approvalRequired, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, planningIntent: planning.intent, forceOverspendNote: state.forceOverspendNote, unallocatedConfirmed: state.unallocatedConfirmed, setUnallocatedConfirmed: state.setUnallocatedConfirmed, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
+  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, approvalRequired: derived.approvalRequired, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, planningIntent: planning.intent, forceOverspendNote: state.forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
   const submitting = state.submitState.status === "submitting";
   const outcomeUnknown = derived.outcomeUnknown;
 
@@ -355,9 +358,10 @@ const TransactionForm = ({
 
   const fields = transactionFields({ state, derived, actions, lockType: lockType || planning.locked, lockPlanningSelection: planning.locked, planningDateMin: planning.dateMin, planningDateMax: planning.dateMax, submitting, transaction });
   const requestModalClose = draftLifecycle.requestClose;
-  const modal = resolveTransactionPresentation({ mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout });
+  const quickRecordBack = quickRecordBackPresentation({ onBack, requestModalClose, submitting, outcomeUnknown, mobileTransferMode: derived.mobileTransferMode });
+  const modal = resolveTransactionPresentation({ mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout, headerBackAction: quickRecordBack.headerBackAction });
   const addAnother = () => {
-    resetForAnotherTransaction({ postSave: state.postSave, accounts: derived.data.accounts, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote, setAllocationMode: state.setAllocationMode, setUnallocatedConfirmed: state.setUnallocatedConfirmed, setPostSave: state.setPostSave, idempotencyKeyRef: state.idempotencyKeyRef, amountRef: state.amountRef });
+    resetForAnotherTransaction({ postSave: state.postSave, accounts: derived.data.accounts, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote, setAllocationMode: state.setAllocationMode, setPostSave: state.setPostSave, idempotencyKeyRef: state.idempotencyKeyRef, amountRef: state.amountRef });
     if (!planning.locked) return;
     state.setForm((current) => applyPlanningIntentToDraft({ initialDraft: current, planningIntent: planning.intent }));
     state.setAllocationMode("manual");
@@ -380,6 +384,7 @@ const TransactionForm = ({
       mobileTransferMode={derived.mobileTransferMode}
       fields={fields}
       requestModalClose={requestModalClose}
+      editorCloseRequest={quickRecordBack.editorCloseRequest}
     />
   );
 };

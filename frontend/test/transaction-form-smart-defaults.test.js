@@ -104,7 +104,7 @@ test("context Kebutuhan dari detail Alokasi tetap terpilih saat overview compose
 });
 
 
-test("state kosong berbeda dari intent eksplisit Tanpa Kebutuhan", () => {
+test("state auto kosong tetap berbeda dari pilihan eksplisit Dana Tersedia", () => {
   assert.equal(needSelectionValue({ budgetId: "", allocationMode: "auto" }), "");
   assert.equal(needSelectionValue({ budgetId: "", allocationMode: "manual" }), UNALLOCATED_NEED_VALUE);
   assert.equal(needSelectionValue({ budgetId: "b-dry-food", allocationMode: "manual" }), "b-dry-food");
@@ -117,7 +117,7 @@ test("early warning membedakan dana bebas, sisa Alokasi, dan kebijakan overspend
   assert.match(earlyFundsWarning({ transactionType: "expense", amount: 300_000, source, envelope: null }).title, /rekening tidak cukup/i);
 
   const blocked = earlyFundsWarning({ transactionType: "expense", amount: 600_000, source, envelope: { name: "Rumah", remaining_amount: 500_000, overspend_policy: "block" } });
-  assert.match(blocked.title, /Melebihi sisa Alokasi Dana/);
+  assert.match(blocked.title, /Melebihi batas Alokasi/);
 
   const confirmable = earlyFundsWarning({ transactionType: "expense", amount: 600_000, source, envelope: { name: "Rumah", remaining_amount: 500_000, overspend_policy: "confirm" } });
   assert.equal(confirmable.shortage, 0);

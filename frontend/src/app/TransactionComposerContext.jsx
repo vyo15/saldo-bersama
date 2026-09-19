@@ -17,6 +17,12 @@ const DEFAULT_COMPOSER_STATE = Object.freeze({
   initialAllocationContext: null,
   planningIntent: null,
   continuation: null,
+  lockType: false,
+  title: "",
+  description: "",
+  submitLabel: "",
+  submittingLabel: "",
+  onBack: null,
 });
 
 const SUPPORTED_TRANSACTION_TYPES = new Set([
@@ -26,25 +32,34 @@ const SUPPORTED_TRANSACTION_TYPES = new Set([
   TRANSACTION_TYPES.REFUND,
 ]);
 
+const composerString = (value) => typeof value === "string" ? value : "";
+const composerObject = (value) => value && typeof value === "object" ? { ...value } : null;
+const normalizeAllocationContext = (value) => value && typeof value === "object" ? {
+  budget: composerObject(value.budget),
+  envelope: composerObject(value.envelope),
+} : null;
+const normalizeContinuation = (value) => value && typeof value === "object"
+  ? { ...value, payload: { ...(value.payload || {}) } }
+  : null;
+
 const normalizeComposerOptions = (options) => {
   const source = options && typeof options === "object" ? options : {};
   const initialType = SUPPORTED_TRANSACTION_TYPES.has(source.initialType)
     ? source.initialType
     : TRANSACTION_TYPES.EXPENSE;
-  const initialSourceAccountId = typeof source.initialSourceAccountId === "string"
-    ? source.initialSourceAccountId
-    : "";
+  const initialSourceAccountId = composerString(source.initialSourceAccountId);
   const presentation = source.presentation === "mobile-transfer" ? "mobile-transfer" : "default";
-  const initialDraft = source.initialDraft && typeof source.initialDraft === "object" ? { ...source.initialDraft } : null;
-  const initialAllocationContext = source.initialAllocationContext && typeof source.initialAllocationContext === "object"
-    ? {
-      budget: source.initialAllocationContext.budget && typeof source.initialAllocationContext.budget === "object" ? { ...source.initialAllocationContext.budget } : null,
-      envelope: source.initialAllocationContext.envelope && typeof source.initialAllocationContext.envelope === "object" ? { ...source.initialAllocationContext.envelope } : null,
-    }
-    : null;
-  const planningIntent = source.planningIntent && typeof source.planningIntent === "object" ? { ...source.planningIntent } : null;
-  const continuation = source.continuation && typeof source.continuation === "object" ? { ...source.continuation, payload: { ...(source.continuation.payload || {}) } } : null;
-  return { initialType, initialSourceAccountId, presentation, initialDraft, initialAllocationContext, planningIntent, continuation };
+  const initialDraft = composerObject(source.initialDraft);
+  const initialAllocationContext = normalizeAllocationContext(source.initialAllocationContext);
+  const planningIntent = composerObject(source.planningIntent);
+  const continuation = normalizeContinuation(source.continuation);
+  const lockType = source.lockType === true;
+  const title = composerString(source.title);
+  const description = composerString(source.description);
+  const submitLabel = composerString(source.submitLabel);
+  const submittingLabel = composerString(source.submittingLabel);
+  const onBack = typeof source.onBack === "function" ? source.onBack : null;
+  return { initialType, initialSourceAccountId, presentation, initialDraft, initialAllocationContext, planningIntent, continuation, lockType, title, description, submitLabel, submittingLabel, onBack };
 };
 
 export const useTransactionComposer = () => {
@@ -105,6 +120,12 @@ export const TransactionComposerProvider = ({ children }) => {
         initialAllocationContext={composer.initialAllocationContext}
         planningIntent={composer.planningIntent}
         continuation={composer.continuation}
+        lockType={composer.lockType}
+        title={composer.title || undefined}
+        description={composer.description}
+        submitLabel={composer.submitLabel || undefined}
+        submittingLabel={composer.submittingLabel || undefined}
+        onBack={composer.onBack}
         onDirtyChange={setComposerDirty}
       /></Suspense> : null}
     </TransactionComposerContext.Provider>
