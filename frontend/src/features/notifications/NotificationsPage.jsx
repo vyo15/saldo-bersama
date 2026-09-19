@@ -19,9 +19,8 @@ import {
 import styles from "./NotificationsPage.module.css";
 
 const FILTERS = Object.freeze([
-  { id: "all", label: "Semua" },
-  { id: "action", label: "Tindakan" },
-  { id: "reminder", label: "Pengingat" },
+  { id: "action", label: "Perlu tindakan" },
+  { id: "reminder", label: "Lainnya" },
 ]);
 
 const notificationIcon = (type) => {
@@ -76,8 +75,8 @@ const NotificationGroup = ({ title, accessibleLabel, alerts, isRead, onOpen }) =
 const NotificationEmptyState = ({ filter }) => (
   <div className={styles.empty} role="status">
     <span className={styles.emptyIcon}><FiCheckCircle aria-hidden="true" /></span>
-    <h2>{filter === "all" ? "Semua beres" : "Tidak ada item di sini"}</h2>
-    <p>{filter === "all" ? "Tidak ada hal yang perlu diperhatikan saat ini." : "Tidak ada notifikasi yang cocok dengan filter ini."}</p>
+    <h2>{filter === "action" ? "Tidak ada tindakan" : "Tidak ada item di sini"}</h2>
+    <p>{filter === "action" ? "Tidak ada hal yang perlu ditindaklanjuti saat ini." : "Tidak ada notifikasi lain saat ini."}</p>
   </div>
 );
 
@@ -97,7 +96,7 @@ const NotificationsPage = () => {
   const navigate = useNavigate();
   const { overview, status, error, refreshError, refreshOverview } = useFinance();
   const eventFeed = useApiResource("notifications.center", { limit: 80 });
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("action");
   const centerItems = useMemo(() => mergeNotificationCenterItems(overview?.alerts || [], eventFeed.data?.items || []), [eventFeed.data?.items, overview?.alerts]);
   const notifications = useFinancialNotificationReadState({ alerts: centerItems, readStates: eventFeed.data?.readStates || [] });
 
@@ -119,7 +118,7 @@ const NotificationsPage = () => {
 
   const actionCount = notifications.alerts.filter(notificationRequiresAction).length;
   const reminderCount = notifications.alerts.length - actionCount;
-  const filterCounts = { all: notifications.alerts.length, action: actionCount, reminder: reminderCount };
+  const filterCounts = { action: actionCount, reminder: reminderCount };
   const centerRefreshError = refreshError || eventFeed.refreshError;
 
   return (

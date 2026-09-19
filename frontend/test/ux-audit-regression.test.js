@@ -307,9 +307,9 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(transactions, /mobileLayout \? "Gunakan tombol Catat pada navigasi bawah untuk mencatat transaksi pertama\."/);
   assert.match(transactions, /action=\{filteredEmpty \? <Button[^>]*>Reset filter<\/Button> : mobileLayout \? null : <Button variant="primary" onClick=\{openTransactionComposer\}>Catat transaksi<\/Button>\}/);
   assert.match(mobileDashboard, /Belum ada aktivitas/);
-  assert.match(mobileDashboard, /Gunakan tombol Catat di navigasi bawah untuk mencatat transaksi pertama\./);
+  assert.match(mobileDashboard, /Gunakan tombol Catat di navigasi bawah untuk mencatat aktivitas pertama\./);
   assert.doesNotMatch(mobileDashboard, /onClick=\{onOpenTransaction\}/);
-  assert.match(mobileNavigation, /aria-label="Catat transaksi"/);
+  assert.match(mobileNavigation, /aria-label="Catat aktivitas"/);
 });
 
 test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB global", async () => {
@@ -322,21 +322,20 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
 
   assert.match(overview, />Alokasi baru<\/Button>/);
   assert.match(overview, /allocation-funding-summary__actions/);
-  assert.match(overview, /allocation-card__fund/);
+  assert.doesNotMatch(overview, /allocation-card__fund|allocation-card__expand|>Lihat detail|>Tambah kebutuhan<\/Button>/);
   assert.doesNotMatch(overview, /allocation-header-actions--with-move|allocation-move-action/);
   assert.match(overview, /Belum ada kebutuhan/);
-  assert.match(overview, />Tambah kebutuhan<\/Button>/);
-  assert.match(overview, /allocation-card__expand/);
-  assert.match(overview, />Lihat detail/);
+  assert.match(overview, /role="button"/);
+  assert.match(overview, /Buka detail Alokasi/);
   assert.doesNotMatch(overview, /FiSliders|allocation-card__planning-actions|allocationCardActionState/);
   assert.match(detail, /FiSliders[\s\S]*>Pulihkan dana<\/Button>/);
   assert.doesNotMatch(detail, /showStandardAdjustAction|>Atur dana<\/Button>/);
-  assert.match(page, /onAddNeed: \(item\) => openDetail\(item, "add-need"\)/);
+  assert.doesNotMatch(page, /onAddNeed:|onFundAllocation:/);
   assert.match(detail, /initialAction !== "add-need"/);
   assert.match(detail, /if \(canManage\) openBudgetForm\(\)/);
   assert.doesNotMatch(styles, /allocation-card__planning-actions/);
-  assert.match(styles, /\.allocation-card__expand\s*\{/);
-  assert.match(styles, /\.allocation-card__fund\s*\{[\s\S]*color:\s*var\(--primary\)/);
+  assert.match(styles, /\.allocation-card\[role="button"\]:focus-visible/);
+  assert.match(styles, /\.allocation-card__signal/);
 });
 
 test("Planning mobile menghindari judul embedded ganda dan rekonsiliasi memprioritaskan workflow", async () => {

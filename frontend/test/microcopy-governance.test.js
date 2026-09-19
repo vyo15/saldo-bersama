@@ -59,7 +59,7 @@ test("surface finansial normal tetap outcome-first dan bebas jargon implementasi
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/transactions/MobileTransferFields.jsx"), read("src/features/transactions/components/TransactionPostSaveModal.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/reconciliations/components/ReconciliationFeedback.jsx"),
-    read("src/features/investments/InvestmentValuationDialog.jsx"),
+    read("src/features/investments/InvestmentDialog.jsx"),
     read("../docs/UI_DESIGN_SYSTEM.md"),
     read("../docs/QA_CHECKLIST.md"),
     read("../docs/TEST_PLAN.md"),

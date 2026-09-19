@@ -1,4 +1,4 @@
-import { FiArchive, FiBell, FiCheckCircle, FiEdit2, FiExternalLink, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
+import { FiArchive, FiBell, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Card from "../../../components/common/Card.jsx";
@@ -48,7 +48,7 @@ const GoalSummary = ({ items }) => {
 const GoalActions = ({ goal, openEdit, openArchive, openStatusChange, openReminder, allocationIntent }) => {
   const allocationState = { workflowSource: "goal", workflowAction: "goal-plan", goalId: goal.goal_id, ...(allocationIntent || {}) };
   const primaryAction = goal.status === "active"
-    ? <ButtonLink className={goalClass("goal-card__primary-action")} variant="primary" icon={FiExternalLink} to="/perencanaan/kantong" state={allocationState}>Buka Alokasi</ButtonLink>
+    ? <ButtonLink className={goalClass("goal-card__primary-action")} variant="primary" to="/perencanaan/kantong" state={allocationState}>Atur dana</ButtonLink>
     : goal.can_reopen
       ? <Button className={goalClass("goal-card__primary-action")} variant="primary" icon={FiRotateCcw} onClick={() => openStatusChange(goal, "active")}>Buka kembali</Button>
       : null;
@@ -57,28 +57,35 @@ const GoalActions = ({ goal, openEdit, openArchive, openStatusChange, openRemind
   if (!primaryAction && !hasSecondaryActions && !canRemind) return null;
   return (
     <div className={goalClass("goal-card__actions")}>
-      <div className={goalClass("goal-card__quick-actions")}>{primaryAction}{canRemind ? <Button icon={FiBell} onClick={() => openReminder(goal)}>Pengingat</Button> : null}</div>
-      {hasSecondaryActions ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{goal.can_complete ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Hapus dari daftar</Button> : null}</div></details> : null}
+      {primaryAction}
+      {(hasSecondaryActions || canRemind) ? <details className={goalClass("goal-action-menu")}><summary aria-label={`Kelola target ${goal.name}`} title="Aksi lainnya"><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary><div className={goalClass("goal-action-menu__items")}>{canRemind ? <Button icon={FiBell} onClick={() => openReminder(goal)}>Pengingat</Button> : null}{goal.can_complete ? <Button icon={FiCheckCircle} onClick={() => openStatusChange(goal, "completed")}>Selesaikan target</Button> : null}{goal.can_update ? <Button icon={FiEdit2} onClick={() => openEdit(goal)}>Edit</Button> : null}{goal.can_archive ? <Button icon={FiArchive} onClick={() => openArchive(goal)}>Hapus dari daftar</Button> : null}</div></details> : null}
     </div>
   );
 };
 
-const GoalCard = ({ goal, actions }) => (
-  <Card className={goalClass("goal-card")} data-native-enter>
-    <div className={goalClass("goal-card__icon")}>{goal.goal_type === "emergency_fund" ? <FiShield /> : <FiTarget />}</div>
-    <div><p className="eyebrow">{goalTypeLabel(goal.goal_type)}</p><h2>{goal.name}</h2></div>
-    <Money value={goal.current_amount} />
-    <ProgressBar value={goal.current_amount} max={goal.target_amount} label={goal.name} />
-    <div className={goalClass("goal-card__footer")}><span>Target <Money value={goal.target_amount} /></span><span>{goal.target_date || "Tanpa tanggal"}</span></div>
-    <dl className={goalClass("goal-card__projection")}>
-      <div><dt>Sisa</dt><dd><Money value={goal.remaining_amount || 0} /></dd></div>
-      <div><dt>Estimasi/bulan</dt><dd>{goal.pace_status === "no_target_date" ? "Tetapkan tanggal" : <Money value={goal.required_monthly_amount || 0} />}</dd></div>
-      <div><dt>Proyeksi</dt><dd data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</dd></div>
-    </dl>
-    {goal.status === "active" && goal.pace_status === "completed" ? <p className={goalClass("goal-card__completion")}>Target tercapai. Selesaikan target untuk mengunci mutasi.</p> : null}
-    <GoalActions goal={goal} {...actions} />
-  </Card>
-);
+const GoalCard = ({ goal, actions }) => {
+  const target = Math.max(0, Number(goal.target_amount || 0));
+  const current = Math.max(0, Number(goal.current_amount || 0));
+  const percent = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+  return (
+    <Card className={goalClass("goal-card")} data-native-enter>
+      <div className={goalClass("goal-card__heading")}>
+        <div className={goalClass("goal-card__icon")}>{goal.goal_type === "emergency_fund" ? <FiShield /> : <FiTarget />}</div>
+        <div><p className="eyebrow">{goalTypeLabel(goal.goal_type)}</p><h2>{goal.name}</h2></div>
+      </div>
+      <div className={goalClass("goal-card__amount-line")}><strong><Money value={current} /> <span>/ <Money value={target} /></span></strong><em>{percent}%</em></div>
+      <ProgressBar value={current} max={target} label={goal.name} />
+      <div className={goalClass("goal-card__meta")}>
+        <span>Kurang <strong><Money value={goal.remaining_amount || 0} /></strong></span>
+        <span>{goal.target_date || "Tanpa tanggal"}</span>
+        <span data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</span>
+      </div>
+      {goal.status === "active" && goal.pace_status !== "completed" && goal.pace_status !== "no_target_date" ? <p className={goalClass("goal-card__monthly")}>Estimasi/bulan <strong><Money value={goal.required_monthly_amount || 0} /></strong></p> : null}
+      {goal.status === "active" && goal.pace_status === "completed" ? <p className={goalClass("goal-card__completion")}>Target tercapai. Selesaikan target untuk mengunci progres.</p> : null}
+      <GoalActions goal={goal} {...actions} />
+    </Card>
+  );
+};
 
 const GoalGrid = ({ items, actions, canCreate, openCreate }) => (
   <section className={goalClass("goal-grid")}>

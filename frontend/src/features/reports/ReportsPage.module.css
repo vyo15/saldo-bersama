@@ -649,3 +649,78 @@
     z-index: 18;
   }
 }
+
+/* Progressive disclosure keeps the default report useful without turning it into a BI dashboard. */
+.analysisDetails {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: clip;
+}
+.analysisDetails > summary {
+  min-height: 56px;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.analysisDetails > summary::-webkit-details-marker { display: none; }
+.analysisDetails > summary > span { min-width: 0; display: grid; gap: 2px; }
+.analysisDetails > summary strong { font-size: 14px; }
+.analysisDetails > summary small { color: var(--text-muted); font-size: 12px; font-weight: var(--font-weight-medium); }
+.analysisDetails > summary > svg { flex: 0 0 auto; color: var(--text-muted); transition: transform var(--motion-control) var(--ease-standard); }
+.analysisDetails[open] > summary > svg { transform: rotate(90deg); }
+.analysisContent { padding: 0 14px 14px; display: grid; gap: 14px; }
+.analysisContent > .breakdownDetails { box-shadow: none; }
+.documentsSection { box-shadow: none; }
+@media (max-width: 820px) {
+  .header h1 { font-size: clamp(22px, 6.4vw, 27px); }
+  .reportContextBar { gap: 8px; }
+  .summaryStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .summaryItem { padding: 10px 11px; border-radius: 13px; box-shadow: none; }
+  .summaryItem > small { display: none; }
+  .summaryItem > strong, .summaryItem :global(.money) { font-size: 17px; }
+  .reportPanel { box-shadow: none; }
+  .analysisDetails { border-radius: 14px; }
+  .analysisDetails > summary { min-height: 52px; padding: 8px 12px; }
+  .analysisContent { padding: 0 10px 10px; gap: 10px; }
+}
+
+/* Compact report status strip: enough context without another dashboard-sized card. */
+.allocationHealthStrip {
+  min-height: 58px;
+  padding: 9px 12px;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) repeat(3, auto) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.allocationHealthStrip > div { min-width: 0; display: grid; gap: 1px; }
+.allocationHealthStrip > div strong { font-size: var(--font-size-sm); }
+.allocationHealthStrip > div small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.allocationHealthStrip > span { display: inline-flex; align-items: baseline; gap: 4px; color: var(--text-muted); font-size: var(--font-size-xs); white-space: nowrap; }
+.allocationHealthStrip > span strong { font-size: var(--font-size-sm); color: var(--text); }
+.allocationHealthStrip > span[data-tone="safe"] strong { color: var(--positive); }
+.allocationHealthStrip > span[data-tone="warning"] strong { color: var(--warning); }
+.allocationHealthStrip > span[data-tone="danger"] strong { color: var(--negative); }
+.allocationHealthStrip > a { min-height: 44px; padding-inline: 6px; display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-decoration: none; white-space: nowrap; }
+
+@media (max-width: 820px) {
+  .allocationHealthStrip {
+    min-height: 0;
+    padding: 9px 0;
+    grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+    gap: 7px;
+    border-inline: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .allocationHealthStrip > div small { display: none; }
+  .allocationHealthStrip > a { grid-column: 1 / -1; min-height: 32px; padding: 0; justify-content: flex-start; }
+}

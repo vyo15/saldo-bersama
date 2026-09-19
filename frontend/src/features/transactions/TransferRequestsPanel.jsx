@@ -23,10 +23,10 @@ const TransferRequestCard = ({ request, lookup, ownerMode, busyId, locked, onDec
     <div className={styles.meta}>{fromLabel} → {toLabel} · {formatDateLongIndonesia(payload.transaction_date) || payload.transaction_date || ""}</div>
     {payload.description ? <small className={styles.meta}>{payload.description}</small> : null}
     {request.review_reason ? <small className={styles.meta}>Catatan: {request.review_reason}</small> : null}
-    {showActions ? <div className={styles.actions}>
+    {showActions ? <details className={styles.reviewDisclosure}><summary>Tinjau</summary><div className={styles.actions}>
       <Button type="button" variant="primary" disabled={Boolean(busyId) || locked} onClick={() => onDecision("approve", request)}>Setujui</Button>
       <Button type="button" disabled={Boolean(busyId) || locked} onClick={() => onDecision("reject", request)}>Tolak</Button>
-    </div> : null}
+    </div></details> : null}
   </article>;
 };
 

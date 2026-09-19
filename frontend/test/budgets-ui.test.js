@@ -94,10 +94,11 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /allocation-limit-row__quick-action/);
   assert.doesNotMatch(detail, /Jadwal Terkait/);
   assert.doesNotMatch(detail, /AllocationScheduleContinuation/);
-  assert.match(detail, /Kelola dana/);
-  assert.match(detail, /allocation-management-actions/);
+  assert.match(detail, /allocation-detail-menu/);
+  assert.match(detail, /Pindahkan dana/);
+  assert.match(detail, /Pengingat/);
   assert.match(detail, />Hapus dari daftar<\/Button>/);
-  assert.match(styles, /allocation-management-actions__lifecycle[\s\S]*grid-column: 1 \/ -1/);
+  assert.doesNotMatch(detail, /Kelola dana/);
   assert.match(styles, /allocation-detail-shell/);
   assert.match(styles, /allocation-limit-row/);
 });
@@ -133,7 +134,7 @@ test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia"
   assert.match(runner, /allocated_amount: 0/);
   assert.doesNotMatch(page, /setDetailAction\("add-need"\).*createdRuleId/s);
   assert.match(detail, /Masih tersedia/);
-  assert.match(detail, /Total disiapkan/);
+  assert.match(detail, /Sudah dipakai/);
   assert.match(detail, /Untuk jadwal/);
   assert.doesNotMatch(detail, /Jumlah kebutuhan/);
   assert.match(batchEditor, /Kebutuhan tetap dapat disimpan/);

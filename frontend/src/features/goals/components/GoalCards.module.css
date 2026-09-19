@@ -368,3 +368,37 @@
     font-size: var(--font-size-xs);
   }
 }
+
+/* Compact financial hierarchy: one amount, one progress signal, one primary action. */
+.goal-card { padding: 15px 16px; gap: 10px; box-shadow: none; }
+.goal-card__heading { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.goal-card__heading > div:last-child { min-width: 0; }
+.goal-card__heading h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goal-card__icon { width: 36px; height: 36px; padding: 8px; border-radius: 11px; flex: 0 0 36px; }
+.goal-card__amount-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.goal-card__amount-line > strong { min-width: 0; font-size: 20px; letter-spacing: -.035em; }
+.goal-card__amount-line > strong :global(.money) { font-size: inherit; }
+.goal-card__amount-line > strong span { color: var(--text-muted); font-size: 12px; font-weight: var(--font-weight-medium); letter-spacing: 0; }
+.goal-card__amount-line > strong span :global(.money) { font-size: inherit; color: inherit; }
+.goal-card__amount-line > em { color: var(--primary); font-size: 12px; font-style: normal; font-weight: var(--font-weight-bold); }
+.goal-card__meta { display: flex; align-items: center; gap: 5px 10px; flex-wrap: wrap; color: var(--text-muted); font-size: 12px; }
+.goal-card__meta span:not(:last-child)::after { content: "·"; margin-inline-start: 10px; color: var(--border-strong); }
+.goal-card__meta strong, .goal-card__meta :global(.money) { color: var(--text); font-size: inherit; }
+.goal-card__meta [data-pace="behind"], .goal-card__meta [data-pace="overdue"] { color: var(--warning); font-weight: var(--font-weight-semibold); }
+.goal-card__monthly { margin: -2px 0 0; color: var(--text-muted); font-size: 12px; }
+.goal-card__monthly strong, .goal-card__monthly :global(.money) { color: var(--text); font-size: inherit; }
+.goal-card__actions { grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.goal-card__primary-action { min-height: 44px; width: 100%; }
+.goal-summary { min-height: 10.5rem; padding: 17px 18px; box-shadow: none; }
+.goal-summary__content { width: min(74%, 42rem); }
+.goal-summary__amount { margin-top: 5px; }
+.goal-summary__progress { margin-top: 11px; }
+.goal-summary__meta { margin-top: 8px; gap: 6px 12px; }
+.goal-summary__art { opacity: .62; width: min(10.5rem, 24%); max-height: 9.5rem; filter: none; }
+@media (max-width: 820px) {
+  .goal-card { padding: 13px 14px; gap: 9px; }
+  .goal-summary { min-height: 9.2rem; padding: 14px; border-radius: 16px; }
+  .goal-summary__amount :global(.money) { font-size: clamp(25px, 8vw, 31px); }
+  .goal-summary__description { font-size: 12px; }
+  .goal-summary__art { opacity: .42; }
+}

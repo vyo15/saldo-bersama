@@ -23,76 +23,57 @@ import DashboardQuickActions from "./DashboardQuickActions.jsx";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
-const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => (
-  <header className={dashboardClass("mobile-finance-hero")}>
-    <div className={dashboardClass("mobile-finance-hero__bar")}>
-      <div className={dashboardClass("mobile-finance-user")}>
-        <UserAvatar user={user} className={dashboardClass("mobile-finance-user__avatar")} />
-        <div className={dashboardClass("mobile-finance-user__copy")}>
-          <strong>Hai, {displayName}</strong>
-          <span>Keuangan keluarga · {formatPeriod(overview.periodKey)}</span>
-        </div>
-      </div>
-      <div className={dashboardClass("mobile-finance-hero__actions")}>
-        <Link to="/notifikasi" className={dashboardClass("mobile-hero-button mobile-notification-button")} aria-label={notificationCount ? `Buka notifikasi, ${notificationCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
-          <FiBell aria-hidden="true" />
-          {notificationCount ? <span className={dashboardClass("mobile-notification-badge")}>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}
-        </Link>
-      </div>
-    </div>
-
-    <div className={dashboardClass("mobile-finance-identity")}>
-      <div className={dashboardClass("mobile-finance-balance-label")}>
-        <span>Dana Tersedia</span>
-        <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}>
-          {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
-        </button>
-      </div>
-      <div className={dashboardClass(`mobile-finance-balance${balanceVisible ? "" : " mobile-finance-balance--hidden"}`)} aria-live="polite">
-        <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
-      </div>
-      <div className={dashboardClass("mobile-finance-meta")}>
-        <span>Sisa uang yang aman dipakai setelah kebutuhan dan tagihan.</span>
-        <span aria-live="polite"><i aria-hidden="true" />{dashboardSyncLabel(overview.lastSyncedAt)}</span>
-      </div>
-    </div>
-
-    <div className={dashboardClass("mobile-finance-summary")} aria-label="Ringkasan dana tersedia">
-      <div><span>Saldo rekening</span><SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} /></div>
-      <div><span>Aman dipakai / hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
-    </div>
-  </header>
-);
-
-const MobileCashFlow = ({ overview, balanceVisible }) => {
+const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
   const cashFlow = overview?.cashFlow || {};
   const cashIn = Number(cashFlow.income || 0) + Number(cashFlow.refund || 0);
   const cashOut = Number(cashFlow.expense || 0);
   const net = cashIn - cashOut;
   const netTone = net < 0 ? "negative" : net > 0 ? "positive" : "default";
   return (
-    <section className={dashboardClass("mobile-cash-flow")} aria-labelledby="mobile-cash-flow-title">
-      <div className={dashboardClass("mobile-cash-flow__heading")}>
-        <h2 id="mobile-cash-flow-title">Bulan ini</h2>
-        <span>{formatPeriod(overview.periodKey)}</span>
-      </div>
-      <div className={dashboardClass("mobile-cash-flow__values")}>
-        <div>
-          <span><FiArrowDownLeft aria-hidden="true" />Masuk</span>
-          <SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" />
+    <header className={dashboardClass("mobile-finance-hero")}>
+      <div className={dashboardClass("mobile-finance-hero__bar")}>
+        <div className={dashboardClass("mobile-finance-user")}>
+          <UserAvatar user={user} className={dashboardClass("mobile-finance-user__avatar")} />
+          <div className={dashboardClass("mobile-finance-user__copy")}>
+            <strong>Hai, {displayName}</strong>
+            <span>{formatPeriod(overview.periodKey)}</span>
+          </div>
         </div>
-        <div>
-          <span><FiArrowUpRight aria-hidden="true" />Keluar</span>
-          <SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" />
+        <div className={dashboardClass("mobile-finance-hero__actions")}>
+          <Link to="/notifikasi" className={dashboardClass("mobile-hero-button mobile-notification-button")} aria-label={notificationCount ? `Buka notifikasi, ${notificationCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
+            <FiBell aria-hidden="true" />
+            {notificationCount ? <span className={dashboardClass("mobile-notification-badge")}>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}
+          </Link>
         </div>
       </div>
-      <div className={dashboardClass("mobile-cash-flow__net")}>
-        <span>Selisih</span>
-        <span className={dashboardClass(`mobile-cash-flow__net-value money--${netTone}`)}>
-          {balanceVisible && net > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={net} tone={netTone} />
-        </span>
+
+      <div className={dashboardClass("mobile-finance-identity")}>
+        <div className={dashboardClass("mobile-finance-balance-label")}>
+          <span>Dana Tersedia</span>
+          <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}>
+            {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
+          </button>
+        </div>
+        <div className={dashboardClass(`mobile-finance-balance${balanceVisible ? "" : " mobile-finance-balance--hidden"}`)} aria-live="polite">
+          <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
+        </div>
+        <div className={dashboardClass("mobile-finance-meta")}>
+          <span>Aman dipakai <strong><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></strong> / hari</span>
+          <span aria-live="polite"><i aria-hidden="true" />{dashboardSyncLabel(overview.lastSyncedAt)}</span>
+        </div>
       </div>
-    </section>
+
+      <div className={dashboardClass("mobile-finance-summary")} aria-label="Konteks dana tersedia">
+        <div><span>Total saldo rekening</span><SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} /></div>
+        <div><span>Sisa di Alokasi</span><SensitiveMoney visible={balanceVisible} value={overview.allocatedRemaining || 0} /></div>
+      </div>
+
+      <div className={dashboardClass("mobile-finance-cash-strip")} aria-label="Arus kas bulan ini">
+        <span><FiArrowDownLeft aria-hidden="true" />Masuk <strong><SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" /></strong></span>
+        <span><FiArrowUpRight aria-hidden="true" />Keluar <strong><SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" /></strong></span>
+        <span>Selisih <strong className={dashboardClass(`money--${netTone}`)}>{balanceVisible && net > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={net} tone={netTone} /></strong></span>
+      </div>
+    </header>
   );
 };
 
@@ -213,7 +194,7 @@ const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, 
 const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel, balanceVisible, onOpenTransactionDetail }) => (
   <section className={dashboardClass("mobile-finance-section")} aria-labelledby="recent-transactions-title">
     <div className={dashboardClass("mobile-section-heading")}><h2 id="recent-transactions-title">Aktivitas terbaru</h2>{recentTransactions.length ? <Link to="/transaksi">Lihat semua</Link> : null}</div>
-    {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <div className={dashboardClass("mobile-empty-guidance")}><span className={dashboardClass("mobile-empty-guidance__icon")}><FiPlus aria-hidden="true" /></span><span><strong>Belum ada aktivitas</strong><small>Gunakan tombol Catat di navigasi bawah untuk mencatat transaksi pertama.</small></span></div>}
+    {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <div className={dashboardClass("mobile-empty-guidance")}><span className={dashboardClass("mobile-empty-guidance__icon")}><FiPlus aria-hidden="true" /></span><span><strong>Belum ada aktivitas</strong><small>Gunakan tombol Catat di navigasi bawah untuk mencatat aktivitas pertama.</small></span></div>}
   </section>
 );
 
@@ -251,7 +232,6 @@ const MobileFinanceDashboard = ({ overview, viewModel, investmentSummary, user, 
     <h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1>
     <MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} notificationCount={notificationState.unreadCount} />
     <div className={dashboardClass("mobile-finance-content")}>
-      <MobileCashFlow overview={overview} balanceVisible={balanceVisible} />
       <MobileNextAction alerts={overview.alerts} />
       {setupContent}
       <DashboardQuickActions />

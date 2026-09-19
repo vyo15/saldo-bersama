@@ -59,7 +59,7 @@ const MobileQuickActions = ({ account, bootstrap, onTransferSaved, onViewTransac
   </div>
 );
 
-const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved }) => {
+const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved }) => {
   const navigate = useNavigate();
   const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
   const {
@@ -69,6 +69,7 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
   } = stack;
   const onViewTransactions = useCallback((item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } }), [navigate]);
   const ambientTone = accountAmbientTone(selectedAccount);
+  const totalAccountBalance = allAccounts.filter((item) => item.account_type !== "investment").reduce((sum, item) => sum + Number(item.balance || 0), 0);
 
   return <div className={styles.mobileAccountExperience}>
     <section className={styles.mobileStackPanel} data-account-tone={ambientTone} aria-labelledby="mobile-account-stack-title">
@@ -84,6 +85,10 @@ const MobileAccountsExperience = ({ accounts, selectedAccount, selectedAccountId
 
       <div className={styles.mobileOwnershipFilters} role="group" aria-label="Filter kepemilikan rekening">
         {OWNERSHIP_FILTERS.map(([value, label]) => <button key={value} type="button" className={styles.mobileOwnershipFilter} aria-pressed={ownershipFilter === value} onClick={() => onOwnershipFilterChange(value)}>{label}</button>)}
+      </div>
+
+      <div className={styles.mobileTotalBalance} aria-label="Total saldo seluruh rekening non-investasi">
+        <span>Total saldo rekening</span><strong><Money value={totalAccountBalance} /></strong>
       </div>
 
       <div ref={mobileStackStageRef} className={styles.mobileStackStage} tabIndex={0} aria-label="Rekening aktif. Geser kartu ke kiri atau kanan untuk mengganti rekening" aria-describedby="mobile-account-stack-hint" onKeyDown={handleMobileStackKeyDown}>

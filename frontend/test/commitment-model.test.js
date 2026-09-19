@@ -13,15 +13,17 @@ test("bunga flat menghitung pokok, bunga, dan cicilan bulanan dari kondisi sekar
 
 test("form Kewajiban hanya menampilkan data penting dan tidak menghidupkan lagi UX lama", async () => {
   const [page, api] = await Promise.all([read("src/features/commitments/CommitmentsPage.jsx"), read("src/features/commitments/commitments.api.js")]);
-  assert.match(page, /Cicilan &amp; Kewajiban/);
+  assert.match(page, /<h2>Kewajiban<\/h2>/);
   assert.match(page, /debt && !mortgage \? <FlatInterestField/);
   assert.match(page, /KPR memakai nominal cicilan aktual dari bank/);
   assert.match(page, /installments_paid: form.commitment_type === "mortgage"/);
-  assert.match(page, /Pembayaran otomatis aktif/);
-  assert.match(page, /Dana akan dibayar dari Alokasi saat jatuh tempo jika mencukupi/);
+  assert.match(page, /Pencatatan otomatis siap/);
+  assert.match(page, /Pembayaran ke bank atau penyedia tetap dilakukan di luar aplikasi/);
   assert.match(page, /Hentikan kewajiban\?/);
   assert.match(page, /Hentikan kewajiban/);
-  assert.match(page, /Otomatis dari Alokasi/);
+  assert.match(page, /Terhubung ke Kebutuhan/);
+  assert.match(page, />Bayar<\/ButtonLink>/);
+  assert.match(page, /workflowAction: "pay-recurring"/);
   assert.match(api, /archiveCommitment[\s\S]*commitments\.archive/);
   assert.doesNotMatch(api, /deleteCommitment/);
   assert.doesNotMatch(page, /Detail tambahan/);

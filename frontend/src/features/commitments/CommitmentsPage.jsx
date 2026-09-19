@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FiArchive, FiCheckCircle, FiEdit2, FiExternalLink, FiHome, FiMoreHorizontal, FiPlus, FiUsers } from "react-icons/fi";
+import { FiArchive, FiCheckCircle, FiEdit2, FiHome, FiMoreHorizontal, FiPlus, FiUsers } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -71,24 +71,40 @@ const CommitmentSummary = ({ items }) => {
   </section>;
 };
 
-const CommitmentMeta = ({ item, arisan }) => <dl className={styles.meta}>
-  <div><dt>{arisan ? "Setoran" : "Cicilan"}</dt><dd>{formatRupiah(item.installment_amount || 0)} / bulan</dd></div>
-  <div><dt>Berikutnya</dt><dd>{nextDueLabel(item)}</dd></div>
-  <div><dt>Dibayar dari</dt><dd>{item.account_name || "Rekening"}</dd></div>
-  {item.budget_id ? <div><dt>Pembayaran</dt><dd>Otomatis dari Alokasi</dd></div> : null}
-  {!arisan && Number(item.flat_principal_amount || 0) > 0 ? <div><dt>Pokok + bunga/biaya</dt><dd>{formatRupiah(item.flat_principal_amount)} + {formatRupiah(item.flat_interest_amount || 0)}</dd></div> : null}
-  {arisan && Number(item.received_amount || 0) > 0 ? <div><dt>Sudah diterima</dt><dd>{formatRupiah(item.received_amount)}</dd></div> : null}
-</dl>;
+const CommitmentMeta = ({ item, arisan }) => <>
+  <dl className={styles.meta}>
+    <div><dt>{arisan ? "Setoran" : "Cicilan"}</dt><dd>{formatRupiah(item.installment_amount || 0)} / bulan</dd></div>
+    <div><dt>Berikutnya</dt><dd>{nextDueLabel(item)}</dd></div>
+    <div><dt>Dibayar dari</dt><dd>{item.account_name || "Rekening"}</dd></div>
+  </dl>
+  {(item.budget_id || (!arisan && Number(item.flat_principal_amount || 0) > 0) || (arisan && Number(item.received_amount || 0) > 0)) ? <details className={styles.cardDetails}>
+    <summary>Rincian</summary>
+    <dl>
+      {item.budget_id ? <div><dt>Alokasi</dt><dd>Terhubung ke Kebutuhan</dd></div> : null}
+      {!arisan && Number(item.flat_principal_amount || 0) > 0 ? <div><dt>Pokok + bunga/biaya</dt><dd>{formatRupiah(item.flat_principal_amount)} + {formatRupiah(item.flat_interest_amount || 0)}</dd></div> : null}
+      {arisan && Number(item.received_amount || 0) > 0 ? <div><dt>Sudah diterima</dt><dd>{formatRupiah(item.received_amount)}</dd></div> : null}
+    </dl>
+  </details> : null}
+</>;
+
+const commitmentPaymentState = (item) => ({
+  workflowSource: "commitment",
+  workflowAction: "pay-recurring",
+  occurrenceId: item.next_occurrence_id || "",
+  ...(item.next_due_date ? { period: String(item.next_due_date).slice(0, 7) } : {}),
+});
 
 const CommitmentActions = ({ item, onEdit, onStop }) => {
   const active = item.status === "active";
+  const hasPayment = Boolean(active && item.next_occurrence_id);
   const hasManagement = (item.can_manage && active) || item.can_delete;
   if (!active && !hasManagement) return null;
   return <div className={styles.actions}>
-    {active ? <ButtonLink variant="primary" icon={FiExternalLink} to="/perencanaan/kantong" state={{ workflowSource: "commitment", workflowAction: "commitment-plan", commitmentId: item.commitment_id, budgetId: item.budget_id || "", sourceAccountId: item.default_account_id || "" }}>Buka Alokasi</ButtonLink> : null}
-    {hasManagement ? <details className={styles.manageMenu}>
-      <summary aria-label={`Kelola kewajiban ${item.name}`}><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary>
+    {hasPayment ? <ButtonLink variant="primary" icon={FiCheckCircle} to="/perencanaan/jadwal" state={commitmentPaymentState(item)}>Bayar</ButtonLink> : null}
+    {(active || hasManagement) ? <details className={styles.manageMenu}>
+      <summary aria-label={`Kelola kewajiban ${item.name}`} title="Kelola kewajiban"><FiMoreHorizontal aria-hidden="true" /></summary>
       <div className={styles.manageMenuItems}>
+        {active ? <ButtonLink to="/perencanaan/kantong" state={{ workflowSource: "commitment", workflowAction: "commitment-plan", commitmentId: item.commitment_id, budgetId: item.budget_id || "", sourceAccountId: item.default_account_id || "" }}>Buka Alokasi</ButtonLink> : null}
         {item.can_manage && active ? <Button icon={FiEdit2} onClick={() => onEdit(item)}>Edit kewajiban</Button> : null}
         {item.can_delete ? <Button icon={FiArchive} variant="danger" onClick={() => onStop(item)}>Hentikan kewajiban</Button> : null}
       </div>
@@ -181,7 +197,7 @@ const CommitmentDueField = ({ form, setForm, editing, mortgage }) => mortgage &&
 const CommitmentPlanningFields = ({ form, setForm, accounts, categories, budgets }) => <>
   <AccountPicker value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => planningPatch(current, budgets, { default_account_id }))} />
   <CategoryPicker value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => planningPatch(current, budgets, { category_id }))} />
-  {form.budget_id ? <CompactNotice className="form-grid__full" tone="success" title="Pembayaran otomatis aktif">Dana akan dibayar dari Alokasi saat jatuh tempo jika mencukupi.</CompactNotice> : null}
+  {form.budget_id ? <CompactNotice className="form-grid__full" tone="success" title="Pencatatan otomatis siap">Saat jatuh tempo, pembayaran dicatat dari Kebutuhan/Alokasi hanya jika dana benar-benar mencukupi. Pembayaran ke bank atau penyedia tetap dilakukan di luar aplikasi.</CompactNotice> : null}
 </>;
 
 const MortgageDetails = ({ form, setForm }) => <details className={`form-grid__full ${styles.loanDetails}`}><summary>Detail pinjaman</summary><div className="form-grid">
@@ -313,7 +329,7 @@ const CommitmentsPage = () => {
 
   return <div className={styles.page}>
     <RefreshWarning error={resource.refreshError || budgetResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), budgetResource.reload()])} />
-    <div className={styles.header}><div><h2>Cicilan &amp; Kewajiban</h2><p>{items.length ? "Pantau sisa, jatuh tempo, dan pembayaran kewajiban yang masih berjalan." : "Catat kewajiban yang masih berjalan dari kondisi sekarang."}</p></div>{items.length ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button> : null}</div>
+    <div className={styles.header}><div><h2>Kewajiban</h2></div>{items.length ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button> : null}</div>
     {items.length ? <>
       <CommitmentSummary items={items} />
       {activeItems.length ? <section className={styles.grid}>{activeItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} {...cardProps} />)}</section> : <EmptyState icon={FiCheckCircle} title="Semua kewajiban selesai" description="Belum ada cicilan atau kewajiban aktif yang perlu dipantau." />}

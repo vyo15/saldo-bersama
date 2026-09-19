@@ -18,7 +18,6 @@ const SettingsNavigationRow = ({ item, maintenanceMode }) => {
       <span className={styles.settingsListIcon}><Icon aria-hidden="true" /></span>
       <span className={styles.settingsListCopy}>
         <strong>{item.label}</strong>
-        <small>{item.description}</small>
       </span>
       <span className={styles.settingsListMeta}>
         {maintenanceLabel ? <span className={styles.settingsListAlert}>{maintenanceLabel}</span> : null}
@@ -48,7 +47,7 @@ const MobileSettingsOverview = ({ user, backend, timezone, maintenanceMode }) =>
         </div>
         <div className={styles.settingsAccountStatus}>
           <span className={`status-badge status-badge--${backend.tone}`} role="status" aria-live="polite">{backend.label}</span>
-          <p>{backend.summary}</p>
+          {backend.tone === "danger" || maintenanceMode ? <p>{backend.summary}</p> : null}
         </div>
       </section>
 

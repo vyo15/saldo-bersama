@@ -380,3 +380,8 @@ input[type="file"] {
 [data-native-enter] { animation: native-item-enter var(--motion-feedback) var(--ease-enter) both; }
 @keyframes native-item-enter { from { opacity: 0; transform: translateY(.25rem); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { [data-native-enter] { animation: none; } }
+
+/* Compact hierarchy: headings stay clear without consuming showcase-like space. */
+.page-header { gap: 16px; }
+.page-header h1 { font-size: clamp(26px, 2.6vw, 34px); }
+.page-header p { margin-top: 6px; line-height: 1.5; }

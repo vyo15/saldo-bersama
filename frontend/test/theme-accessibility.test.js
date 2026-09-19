@@ -315,7 +315,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(components, /\.quick-amounts button \{ min-height:\s*44px;/);
   assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
   assert.match(pages, /\.allocation-filters button\s*\{[^}]*min-height:\s*44px;/);
-  assert.match(pages, /\.allocation-card__expand\s*\{[^}]*min-height:\s*44px;/);
+  assert.match(pages, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
   assert.match(pages, /\.allocation-detail-back\s*\{[^}]*width:\s*max-content;[^}]*min-height:\s*44px;/);
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
   assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*22px;[^}]*height:\s*7px;[^}]*transform:\s*scaleX\(\.318\)/);
@@ -528,7 +528,7 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.match(transactionForm, /\.form \.notesField textarea \{[\s\S]*?min-height:\s*3\.25rem;/);
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
   assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
-  assert.match(budgetCard, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-card__expand \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgetCard, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-needs-filter__button,[\s\S]*?\.allocation-limit-row__quick-action,[\s\S]*?\.allocation-limit-row__menu > summary \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-limit-row__balance,[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.doesNotMatch(pages, /allocation-limit-row__more|allocation-related-row/);

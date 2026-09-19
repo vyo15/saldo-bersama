@@ -257,8 +257,9 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(allocations, /PageHeader title="Alokasi Dana"/);
   assert.match(allocations, /allocation-funding-summary/);
   assert.match(allocations, /allocation-filters/);
-  assert.match(allocations, /allocation-card__expand/);
-  assert.doesNotMatch(allocations, /FiMoreHorizontal/);
+  assert.match(allocations, /role="button"/);
+  assert.match(allocations, /Buka detail Alokasi/);
+  assert.doesNotMatch(allocations, /allocation-card__expand|allocation-card__fund/);
   assert.match(allocations, /mobileSwipeToClose/);
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
   assert.match(goals, /goalClass\("goal-action-menu"\)/);
@@ -310,7 +311,7 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
   assert.match(reports, /@media \(max-width: 820px\)[\s\S]*?\.downloadMenu > summary \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.headingLink \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(budgets, /\.allocation-detail-back \{[^}]*min-height:\s*44px;/s);
-  assert.match(budgetCard, /@media \(max-width: 820px\)[\s\S]*?\.allocation-card__expand \{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(budgetCard, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
   assert.match(dashboard, /\.mobile-quick-action \{[^}]*min-height:\s*64px;/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(accountActivity, /\.mobileRecentHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);

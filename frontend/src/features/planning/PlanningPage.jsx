@@ -33,23 +33,22 @@ const PlanningPage = () => {
 
   return <div className={`page-stack ${styles.page}`}>
     <PageHeader
-      title="Atur dana"
-      description="Arahkan uang ke Alokasi dan Kebutuhan, lalu atur Jadwal Rutin serta Kewajiban."
-      help="Alokasi Dana memisahkan dana berdasarkan tujuan. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Kewajiban memantau KPR, cicilan, pinjaman, dan Arisan sampai selesai. Kewajiban yang dananya sudah siap di Alokasi dapat tercatat otomatis saat jatuh tempo."
+      title="Atur Dana"
+      help="Alokasi Dana memisahkan dana berdasarkan tujuan. Jadwal Rutin menentukan kapan transaksi diperkirakan terjadi. Kewajiban memantau KPR, cicilan, pinjaman, dan Arisan sampai selesai. Jika dana Kewajiban sudah siap di Alokasi, catatan pembayaran di aplikasi dapat dibuat otomatis saat jatuh tempo; pembayaran ke bank atau penyedia tetap dilakukan di luar aplikasi."
     />
-    <div className={styles.tabs} role="tablist" aria-label="Perencanaan keuangan">
+    <div className={styles.tabs} role="tablist" aria-label="Atur Dana">
       <button id="planning-tab-allocation" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "allocation"} tabIndex={activeTab === "allocation" ? 0 : -1} className={`${styles.tab}${activeTab === "allocation" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("allocation")} onKeyDown={handleTabKeyDown}>
-        <strong>Alokasi Dana</strong><span>Dana berdasarkan tujuan dan kebutuhan</span>
+        <strong>Alokasi</strong>
       </button>
       <button id="planning-tab-jadwal" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "jadwal"} tabIndex={activeTab === "jadwal" ? 0 : -1} className={`${styles.tab}${activeTab === "jadwal" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("jadwal")} onKeyDown={handleTabKeyDown}>
-        <strong>Jadwal Rutin</strong><span>Pembayaran dan pemasukan berulang</span>
+        <strong>Rutin</strong>
       </button>
       <button id="planning-tab-komitmen" type="button" role="tab" aria-controls="planning-tabpanel" aria-selected={activeTab === "komitmen"} tabIndex={activeTab === "komitmen" ? 0 : -1} className={`${styles.tab}${activeTab === "komitmen" ? ` ${styles.tabActive}` : ""}`} onClick={() => selectTab("komitmen")} onKeyDown={handleTabKeyDown}>
-        <strong>Kewajiban</strong><span>KPR, cicilan, pinjaman, dan Arisan</span>
+        <strong>Kewajiban</strong>
       </button>
     </div>
     <section id="planning-tabpanel" role="tabpanel" aria-labelledby={`planning-tab-${activeTab}`}>
-      <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat perencanaan…" />}>
+      <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat pengaturan dana…" />}>
         {activeTab === "allocation" ? <AllocationsPage embedded onOpenRecurring={() => selectTab("jadwal")} /> : activeTab === "jadwal" ? <RecurringPage embedded /> : <CommitmentsPage embedded />}
       </Suspense>
     </section>

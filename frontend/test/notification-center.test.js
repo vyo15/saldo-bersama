@@ -54,7 +54,7 @@ test("dashboard hanya menampilkan next action utama dan desktop/mobile mengarah 
   assert.doesNotMatch(mobile, /Sinkronkan data|FiRefreshCw/);
   assert.doesNotMatch(mobile, /MobileAlerts|alertsOpen|FinancialAlertList/);
   assert.match(desktop, /Perlu dilakukan/);
-  assert.match(desktop, /to="\/notifikasi">Lihat semua perhatian/);
+  assert.match(desktop, /to="\/notifikasi"[\s\S]{0,180}Lihat semua perhatian/);
   assert.doesNotMatch(desktop, /Sinkronkan data|FiRefreshCw/);
   assert.doesNotMatch(desktop, /FinancialAlertList|title="Perlu perhatian"/);
   assert.match(css, /\.mobile-next-action\s*\{/);

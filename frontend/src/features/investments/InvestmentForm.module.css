@@ -366,3 +366,20 @@ transition: none;
 @media (max-width: 420px) {
   .openingScope { grid-template-columns: 1fr; }
 }
+
+.holdingActions { align-items: stretch; }
+.holdingActionMenu { position: relative; flex: 0 0 auto; }
+.holdingActionMenu > summary {
+  width: 44px; min-width: 44px; height: 44px; padding: 0;
+  border: 1px solid var(--border); border-radius: var(--control-radius);
+  display: grid; place-items: center; background: var(--surface); color: var(--text-soft);
+  cursor: pointer; list-style: none;
+}
+.holdingActionMenu > summary::-webkit-details-marker { display: none; }
+.holdingActionMenu > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.holdingActionMenu > div {
+  min-width: 13rem; padding: 6px; position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 20;
+  border: 1px solid var(--border); border-radius: 12px; display: grid; gap: 4px;
+  background: var(--surface-elevated); box-shadow: var(--shadow-md);
+}
+.holdingActionMenu > div :global(.button) { justify-content: flex-start; width: 100%; }

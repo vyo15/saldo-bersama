@@ -6,7 +6,7 @@ import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import { accountDisplayLabel, accountOwnershipLabel } from "../../shared/presentation/account.js";
-import { allocationAssigneeLabel, allocationSourceLabel, allocationUsage } from "./allocationPresentation.js";
+import { allocationAssigneeLabel, allocationUsage } from "./allocationPresentation.js";
 import { allocationAvailableBalance } from "./allocationFundingModel.js";
 import { allocationClass } from "./allocationStyles.js";
 import { allocationDecoration } from "./allocationDecorations.js";
@@ -61,49 +61,63 @@ const AllocationFundingSummary = ({ accounts, hasActiveItems, canFund, canCreate
   </Card>;
 };
 
-const allocationCardPresentation = ({ item, sourceAccount, needs, scheduleItems, onFund }) => {
+const allocationCardPresentation = ({ item, needs, scheduleItems }) => {
   const usage = allocationUsage(item);
   const decoration = allocationDecoration({ decorationKey: item.decoration_key, name: item.name, id: item.envelope_rule_id });
-  const needNames = needs.slice(0, 4).map((budget) => budget.name).filter(Boolean);
-  const extraNeeds = Math.max(0, needs.length - needNames.length);
-  const needPreview = needNames.length ? `${needNames.join(" · ")}${extraNeeds ? ` · +${extraNeeds}` : ""}` : "Belum ada kebutuhan";
+  const overBudget = needs.find((budget) => Number(budget.used_amount || 0) > Number(budget.amount || 0)) || null;
   const nextSchedule = [...scheduleItems]
     .filter((entry) => entry.due_date && !["paid", "received", "cancelled", "skipped"].includes(entry.status))
     .sort((left, right) => String(left.due_date).localeCompare(String(right.due_date)))[0] || null;
-  const canFund = Boolean(item.can_adjust && item.source_account_id && allocationAvailableBalance(sourceAccount) > 0 && onFund);
-  return { usage, decoration, needPreview, nextSchedule, canFund };
+  return { usage, decoration, overBudget, nextSchedule };
 };
 
-const AllocationCard = ({ item, onAddNeed, onFund, sourceAccount, attention = false, onOpenDetail, needs = [], scheduleItems = [] }) => {
-  const { usage, decoration, needPreview, nextSchedule, canFund } = allocationCardPresentation({ item, sourceAccount, needs, scheduleItems, onFund });
-  return <Card className={allocationClass(`allocation-card allocation-card--decoration-${decoration.key}${attention ? " allocation-card--attention" : ""}`)} data-envelope-period-id={item.envelope_period_id} data-native-enter>
+const AllocationCard = ({ item, attention = false, onOpenDetail, needs = [], scheduleItems = [] }) => {
+  const { usage, decoration, overBudget, nextSchedule } = allocationCardPresentation({ item, needs, scheduleItems });
+  const remainingTone = Number(item.remaining_amount || 0) < 0 ? "negative" : "default";
+  const openDetail = () => onOpenDetail(item);
+  const onKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDetail(); }
+  };
+  return <Card
+    as="article"
+    interactive
+    role="button"
+    tabIndex={0}
+    aria-label={`Buka detail Alokasi ${item.name}`}
+    className={allocationClass(`allocation-card allocation-card--decoration-${decoration.key}${attention ? " allocation-card--attention" : ""}`)}
+    data-envelope-period-id={item.envelope_period_id}
+    data-native-enter
+    onClick={openDetail}
+    onKeyDown={onKeyDown}
+  >
     <div className={allocationClass("allocation-card__content")}>
-      <div className={allocationClass("allocation-card__header")}><span className={allocationClass("allocation-card__icon")}><img src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /></span><div className={allocationClass("allocation-card__heading")}><h2>{item.name}</h2><p>{allocationAssigneeLabel(item)} · {allocationSourceLabel(item)}</p></div></div>
-      <div className={allocationClass("allocation-card__balance")}><span className={allocationClass("allocation-card__balance-label")}><i aria-hidden="true" />Masih tersedia</span><Money className={allocationClass("allocation-card__remaining")} value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /><div className={allocationClass("allocation-card__progress-meta")}><span>Terpakai <strong><Money value={usage.used} /></strong></span><strong>dari <Money value={usage.allocated} /></strong></div><div className={allocationClass("allocation-card__progress")}><ProgressBar value={usage.committed} max={usage.allocated} label={item.name} /></div></div>
-      {usage.reserved > 0 ? <div className={allocationClass("allocation-card__quick allocation-card__quick--single")}><div><span>Disiapkan untuk jadwal</span><strong><Money value={usage.reserved} /></strong></div></div> : null}
-      {needs.length ? <p className={allocationClass("allocation-card__needs-preview")} title={needPreview}>{needPreview}</p> : null}
-      {nextSchedule ? <p className={allocationClass("allocation-card__needs-preview")}><strong>Berikutnya:</strong> {nextSchedule.name || nextSchedule.category_name || "Pembayaran"} · {nextSchedule.due_date}</p> : null}
-      {!needs.length && item.can_manage_needs ? <div className={allocationClass("allocation-card__next-step")}><p><strong>Belum ada kebutuhan.</strong> Tambahkan kebutuhan pertama agar tujuan dana jelas.</p><Button variant="primary" icon={FiPlus} onClick={() => onAddNeed(item)}>Tambah kebutuhan</Button></div> : null}
-      {canFund ? <button type="button" className={allocationClass("allocation-card__fund")} onClick={() => onFund(item)}><FiPlus aria-hidden="true" />Dana ke {item.name}</button> : null}
-      <button type="button" className={allocationClass("allocation-card__expand")} onClick={() => onOpenDetail(item)}>Lihat detail<FiArrowRight aria-hidden="true" /></button>
+      <div className={allocationClass("allocation-card__header")}><span className={allocationClass("allocation-card__icon")}><img src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /></span><div className={allocationClass("allocation-card__heading")}><h2>{item.name}</h2><p>{allocationAssigneeLabel(item)}</p></div></div>
+      <div className={allocationClass("allocation-card__balance")}>
+        <div className={allocationClass("allocation-card__balance-line")}><span><Money className={allocationClass("allocation-card__remaining")} value={item.remaining_amount} tone={remainingTone} /> <small>tersisa</small></span><strong>{usage.allocated > 0 ? `${Math.max(0, Math.round((usage.committed / usage.allocated) * 100))}%` : "0%"}</strong></div>
+        <div className={allocationClass("allocation-card__progress")}><ProgressBar value={usage.committed} max={usage.allocated} label={item.name} /></div>
+        <div className={allocationClass("allocation-card__progress-meta")}><span><Money value={usage.used} /> terpakai</span><strong>dari <Money value={usage.allocated} /></strong></div>
+      </div>
+      {overBudget ? <p className={allocationClass("allocation-card__signal allocation-card__signal--warning")}><strong>{overBudget.name}</strong> melewati rencana <Money value={Number(overBudget.used_amount || 0) - Number(overBudget.amount || 0)} /></p>
+        : nextSchedule ? <p className={allocationClass("allocation-card__signal")}><strong>Berikutnya</strong> {nextSchedule.name || nextSchedule.category_name || "Pembayaran"} · {nextSchedule.due_date}</p>
+          : usage.reserved > 0 ? <p className={allocationClass("allocation-card__signal")}><strong>Disiapkan untuk jadwal</strong> <Money value={usage.reserved} /></p>
+            : !needs.length ? <p className={allocationClass("allocation-card__signal")}><strong>Belum ada kebutuhan</strong> · buka detail untuk menambahkan</p> : null}
     </div>
     <img className={allocationClass("allocation-card__watermark")} src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" />
   </Card>;
 };
 
-const AllocationCards = ({ items, totalItems, onAddNeed, onFund, accounts, attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, linkedBudgetsForItem, relatedRecurringForItem, clearFilter }) => {
-  const accountLookup = new Map((accounts || []).map((account) => [account.account_id, account]));
+const AllocationCards = ({ items, totalItems, attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, linkedBudgetsForItem, relatedRecurringForItem, clearFilter }) => {
   return <section className={allocationClass("allocation-grid")} aria-label="Daftar Alokasi Dana aktif">{items.length ? items.map((item) => {
     const needs = linkedBudgetsForItem(budgets, item);
     const scheduleItems = relatedRecurringForItem(recurringItems, budgets, item);
-    return <AllocationCard key={item.envelope_period_id} item={item} onAddNeed={onAddNeed} onFund={onFund} sourceAccount={accountLookup.get(item.source_account_id) || null} attention={item.envelope_period_id === attentionEnvelopeId} onOpenDetail={onOpenDetail} needs={needs} scheduleItems={scheduleItems} />;
+    return <AllocationCard key={item.envelope_period_id} item={item} attention={item.envelope_period_id === attentionEnvelopeId} onOpenDetail={onOpenDetail} needs={needs} scheduleItems={scheduleItems} />;
   }) : <EmptyState className={allocationClass("allocation-empty")} variant="inline" icon={FiPieChart} title={totalItems ? "Tidak ada Alokasi Dana yang sesuai filter" : canCreate ? "Belum ada Alokasi Dana" : "Belum ada rekening yang dapat digunakan"} description={totalItems ? "Pilih filter lain untuk menampilkan Alokasi Dana aktif." : canCreate ? "Buat Alokasi pertama dari dana yang masih tersedia di rekening." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum membuat Alokasi Dana."} action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua Alokasi</Button> : canCreate ? null : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>} />}</section>;
 };
 
 const AllocationOverviewLayer = ({
-  activeItems, filteredActiveItems, allocationFilter, setAllocationFilter, onAddNeed,
+  activeItems, filteredActiveItems, allocationFilter, setAllocationFilter,
   attentionEnvelopeId, budgets, recurringItems, onOpenDetail, canCreate, canFund,
-  openCreate, onOpenFunding, onFundAllocation, accounts, actor,
+  openCreate, onOpenFunding, accounts, actor,
   linkedBudgetsForItem, relatedRecurringForItem,
 }) => {
   const showFilters = shouldShowOwnershipFilters(activeItems, actor);
@@ -113,7 +127,7 @@ const AllocationOverviewLayer = ({
     <section className={allocationClass("allocation-active")} aria-labelledby="allocation-active-title">
       <div className={allocationClass("allocation-section-heading")}><h2 id="allocation-active-title">Alokasi aktif</h2>{activeItems.length ? <span>{showFilters ? `${visibleItems.length} dari ${activeItems.length}` : `${activeItems.length} item`}</span> : null}</div>
       {showFilters ? <div className={allocationClass("allocation-filters")} role="group" aria-label="Filter Alokasi Dana aktif">{ALLOCATION_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationClass(allocationFilter === filter.value ? "is-active" : "")} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}
-      <AllocationCards items={visibleItems} totalItems={activeItems.length} onAddNeed={onAddNeed} onFund={onFundAllocation} accounts={accounts} attentionEnvelopeId={attentionEnvelopeId} budgets={budgets} recurringItems={recurringItems} onOpenDetail={onOpenDetail} canCreate={canCreate} linkedBudgetsForItem={linkedBudgetsForItem} relatedRecurringForItem={relatedRecurringForItem} clearFilter={() => setAllocationFilter("all")} />
+      <AllocationCards items={visibleItems} totalItems={activeItems.length} attentionEnvelopeId={attentionEnvelopeId} budgets={budgets} recurringItems={recurringItems} onOpenDetail={onOpenDetail} canCreate={canCreate} linkedBudgetsForItem={linkedBudgetsForItem} relatedRecurringForItem={relatedRecurringForItem} clearFilter={() => setAllocationFilter("all")} />
     </section>
   </>;
 };

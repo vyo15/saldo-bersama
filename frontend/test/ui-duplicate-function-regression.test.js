@@ -73,7 +73,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.match(dashboard, /<DashboardQuickActions \/>/);
   assert.match(dashboard, /Belum ada aktivitas/);
   assert.doesNotMatch(dashboard, /onClick=\{onOpenTransaction\}/);
-  assert.match(mobileNavigation, /aria-label="Catat transaksi"/);
+  assert.match(mobileNavigation, /aria-label="Catat aktivitas"/);
 
   assert.match(settingsNavigation, /label: "Notifikasi perangkat"/);
   assert.match(settingsLayout, /title: "Notifikasi perangkat"/);

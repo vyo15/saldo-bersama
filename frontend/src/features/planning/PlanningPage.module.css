@@ -6,25 +6,25 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  padding: 6px;
+  padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 15px;
   background: var(--surface-elevated);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .tab {
   min-width: 0;
-  min-height: 58px;
-  padding: 10px 14px;
+  min-height: 46px;
+  padding: 8px 12px;
   border: 0;
   border-radius: 13px;
   display: grid;
   gap: 3px;
-  justify-items: start;
+  justify-items: center;
   background: transparent;
   color: var(--text-soft);
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
 }
@@ -90,3 +90,4 @@
     display: none;
   }
 }
+

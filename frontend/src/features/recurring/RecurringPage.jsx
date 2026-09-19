@@ -131,12 +131,75 @@ const useRecurringEnvelopeSuggestion = ({ payment, setPayment, envelopeResource,
   }, [budgetResource.status, envelopeResource.status, payment, setPayment, suggestedPaymentEnvelope]);
 };
 
+const workflowPeriodFromState = (state) => /^\d{4}-\d{2}$/.test(String(state?.period || "")) ? String(state.period) : "";
+
+const applyCreateRecurringWorkflow = ({ workflow, bootstrap, overview, rules, setKind }) => {
+  const categoryId = String(workflow.categoryId || "");
+  const accountId = String(workflow.defaultAccountId || "");
+  const categoryValid = activeCategories(bootstrap, "expense").some((item) => item.category_id === categoryId);
+  const accountValid = activeAccounts(bootstrap, overview).some((item) => item.account_id === accountId && item.can_transact !== false);
+  rules.openCreate();
+  rules.setForm((current) => ({
+    ...current,
+    name: String(workflow.name || current.name || "").slice(0, 100),
+    kind: "expense",
+    expected_amount: workflow.expectedAmount ? String(workflow.expectedAmount) : current.expected_amount,
+    category_id: categoryValid ? categoryId : "",
+    default_account_id: accountValid ? accountId : "",
+  }));
+  setKind("expense");
+};
+
+const applyOccurrenceWorkflow = ({ workflow, items, setKind, setFilter, setExpandedId, openPayment, notify }) => {
+  if (!["pay-recurring", "view-recurring"].includes(workflow.workflowAction)) return;
+  const occurrenceId = String(workflow.occurrenceId || "");
+  const item = (items || []).find((entry) => entry.occurrence_id === occurrenceId) || null;
+  if (!item) {
+    if (occurrenceId) notify({ message: "Jadwal yang dipilih tidak tersedia pada periode ini.", tone: "warning", dedupeKey: "recurring:workflow-not-found" });
+    return;
+  }
+  const paying = workflow.workflowAction === "pay-recurring";
+  setKind(item.kind === "income" ? "income" : "expense");
+  setFilter(paying ? "open" : "all");
+  setExpandedId(item.occurrence_id);
+  if (paying && item.can_pay !== false) openPayment(item);
+};
+
+const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod, resource, bootstrap, overview, rules, setKind, setFilter, setExpandedId, openPayment, notify }) => {
+  const workflowHandled = useRef("");
+  const workflowPeriodSwitch = useRef("");
+
+  useEffect(() => {
+    const workflow = location.state;
+    if (!workflow?.workflowAction) return;
+    const workflowKey = `${location.key}|${workflow.workflowAction}`;
+    const workflowPeriod = workflowPeriodFromState(workflow);
+    if (workflowPeriod && workflowPeriod !== period) {
+      workflowPeriodSwitch.current = workflowKey;
+      setPeriod(workflowPeriod);
+      return;
+    }
+    if (workflowPeriodSwitch.current === workflowKey) {
+      workflowPeriodSwitch.current = "";
+      return;
+    }
+    if (resource.status !== "ready" || workflowHandled.current === workflowKey) return;
+    workflowHandled.current = workflowKey;
+
+    if (workflow.workflowAction === "create-recurring") {
+      applyCreateRecurringWorkflow({ workflow, bootstrap, overview, rules, setKind });
+    } else {
+      applyOccurrenceWorkflow({ workflow, items: resource.data?.items, setKind, setFilter, setExpandedId, openPayment, notify });
+    }
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+  }, [bootstrap, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, period, resource.data?.items, resource.status, rules, setExpandedId, setFilter, setKind, setPeriod]);
+};
+
 const RecurringPage = ({ embedded = false }) => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const location = useLocation();
   const navigate = useNavigate();
-  const workflowHandled = useRef("");
-  const [period, setPeriod] = useState(currentMonthInJakarta());
+  const [period, setPeriod] = useState(() => workflowPeriodFromState(location.state) || currentMonthInJakarta());
   const [filter, setFilter] = useState("all");
   const [kind, setKind] = useState("expense");
   const [expandedId, setExpandedId] = useState(null);
@@ -163,43 +226,21 @@ const RecurringPage = ({ embedded = false }) => {
     budgets: view.budgets,
   });
 
-  useEffect(() => {
-    const workflow = location.state;
-    if (resource.status !== "ready" || !workflow?.workflowAction) return;
-    const workflowKey = `${location.key}|${workflow.workflowAction}`;
-    if (workflowHandled.current === workflowKey) return;
-    workflowHandled.current = workflowKey;
-
-    if (workflow.workflowAction === "create-recurring") {
-      const categoryId = String(workflow.categoryId || "");
-      const accountId = String(workflow.defaultAccountId || "");
-      const categoryValid = activeCategories(bootstrap, "expense").some((item) => item.category_id === categoryId);
-      const accountValid = activeAccounts(bootstrap, overview).some((item) => item.account_id === accountId && item.can_transact !== false);
-      rules.openCreate();
-      rules.setForm((current) => ({
-        ...current,
-        name: String(workflow.name || current.name || "").slice(0, 100),
-        kind: "expense",
-        expected_amount: workflow.expectedAmount ? String(workflow.expectedAmount) : current.expected_amount,
-        category_id: categoryValid ? categoryId : "",
-        default_account_id: accountValid ? accountId : "",
-      }));
-      setKind("expense");
-    } else if (["pay-recurring", "view-recurring"].includes(workflow.workflowAction)) {
-      const occurrenceId = String(workflow.occurrenceId || "");
-      const item = (resource.data?.items || []).find((entry) => entry.occurrence_id === occurrenceId) || null;
-      if (item) {
-        setKind(item.kind === "income" ? "income" : "expense");
-        setFilter(workflow.workflowAction === "pay-recurring" ? "open" : "all");
-        setExpandedId(item.occurrence_id);
-        if (workflow.workflowAction === "pay-recurring" && item.can_pay !== false) openPayment(item);
-      } else if (occurrenceId) {
-        notify({ message: "Jadwal yang dipilih tidak tersedia pada periode ini.", tone: "warning", dedupeKey: "recurring:workflow-not-found" });
-      }
-    }
-
-    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-  }, [bootstrap, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, resource.data?.items, resource.status, rules]);
+  useRecurringWorkflowNavigation({
+    location,
+    navigate,
+    period,
+    setPeriod,
+    resource,
+    bootstrap,
+    overview,
+    rules,
+    setKind,
+    setFilter,
+    setExpandedId,
+    openPayment,
+    notify,
+  });
 
   if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat jadwal rutin…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
@@ -217,7 +258,7 @@ const RecurringPage = ({ embedded = false }) => {
       {memberMode ? <CompactNotice tone="info" role="status">Anda dapat membuat dan mengubah jadwal rutin Bersama atau jadwal dari rekening yang Anda pegang. Jadwal dari rekening yang dipegang anggota lain dan tindakan arsip tetap dikelola Administrator.</CompactNotice> : null}
       {!canManagePlanning ? <CompactNotice tone="warning" title="Belum ada rekening yang dapat digunakan." role="status">Siapkan atau aktifkan rekening terlebih dahulu sebelum membuat Jadwal Rutin. <Link to="/rekening">Lihat Rekening</Link>.</CompactNotice> : null}
       {payments.incomeSuccess ? <div className={styles.incomeSuccess}><CompactNotice tone="success" title="Penerimaan rutin berhasil dicatat." role="status">Dana sudah masuk ke rekening. Anda dapat mengalokasikannya sekarang atau nanti.</CompactNotice><div className={styles.incomeSuccessActions}><Button type="button" onClick={() => payments.setIncomeSuccess(null)}>Nanti</Button><Button type="button" variant="primary" onClick={() => { const success = payments.incomeSuccess; payments.setIncomeSuccess(null); navigate("/perencanaan/kantong", { state: { workflowSource: "recurring-income", workflowAction: "fund", sourceAccountId: success.sourceAccountId, suggestedAmount: success.suggestedAmount } }); }}>Alokasikan dana</Button></div></div> : null}
-      {embedded ? <div className={styles.embeddedHeader}><div><h2>Jadwal Rutin</h2><p>Pembayaran dan pemasukan yang berulang.</p></div>{headerActions}</div> : <PageHeader title="Jadwal Rutin" help="Atur transaksi berulang dan catat nominal sebenarnya saat jadwal terjadi." actions={headerActions} />}{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal dan rekening untuk periode ini.</CompactNotice> : null}
+      {embedded ? <div className={styles.embeddedHeader}><div><h2>Jadwal Rutin</h2></div>{headerActions}</div> : <PageHeader title="Jadwal Rutin" help="Atur transaksi berulang dan catat nominal sebenarnya saat jadwal terjadi." actions={headerActions} />}{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal dan rekening untuk periode ini.</CompactNotice> : null}
       <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi jadwal rutin..." />}>
         <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} budgets={budgets} canCreate={canManagePlanning} />
       </Suspense>

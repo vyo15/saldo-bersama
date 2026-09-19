@@ -118,3 +118,42 @@
   .mortgageProgress { grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
   .mortgageProgressInputs input,.mortgageProgressInputs > span { width: 43px; }
 }
+
+/* Compact obligation cards: balance, progress, installment, due date, then primary action. */
+.card {
+  gap: 9px 11px;
+  padding: 14px;
+  box-shadow: none;
+}
+.amountBlock { grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px 10px; }
+.amountBlock > span { grid-column: 1 / -1; }
+.amountBlock strong { font-size: clamp(21px, 2.2vw, 25px); }
+.amountBlock small { text-align: right; }
+.meta { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 7px; border-top: 1px solid var(--border); }
+.meta dd { font-size: 12px; }
+.actions { align-items: center; justify-content: space-between; }
+.actions > :global(.button), .actions > :global(a.button) { min-width: 112px; }
+.manageMenu { margin-left: auto; }
+.manageMenu > summary { width: 44px; min-width: 44px; height: 44px; padding: 0; justify-content: center; border-color: transparent; background: transparent; }
+.manageMenu > summary span { display: none; }
+.manageMenuItems { right: 0; left: auto; }
+.cardDetails { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+.cardDetails > summary { min-height: 40px; display: flex; align-items: center; color: var(--text-muted); font-size: 12px; font-weight: 650; cursor: pointer; list-style: none; }
+.cardDetails > summary::-webkit-details-marker { display: none; }
+.cardDetails > summary::after { content: "›"; margin-left: auto; font-size: 17px; transform: rotate(90deg); }
+.cardDetails[open] > summary::after { transform: rotate(-90deg); }
+.cardDetails > dl { margin: 0 0 8px; display: grid; gap: 6px; }
+.cardDetails > dl > div { display: flex; justify-content: space-between; gap: 12px; }
+.cardDetails dt, .cardDetails dd { margin: 0; font-size: 12px; }
+.cardDetails dt { color: var(--text-muted); }
+.cardDetails dd { text-align: right; font-weight: 650; }
+
+@media (max-width: 760px) {
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 8px; }
+  .summary strong { font-size: 17px; }
+  .summary small { display: none; }
+  .header { flex-direction: row; align-items: center; }
+  .header button { width: auto; }
+  .meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .meta > div:last-child { grid-column: 1 / -1; }
+}

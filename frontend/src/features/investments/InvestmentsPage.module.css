@@ -296,3 +296,9 @@
   .firstInvestmentPaths { grid-template-columns: 1fr; }
   .firstInvestmentSetup :global(.button) { width: 100%; }
 }
+
+@media (max-width: 820px) {
+  .segment { padding: 3px; box-shadow: none; }
+  .segment .segmentActive { box-shadow: none; }
+  .firstInvestment { box-shadow: none; }
+}

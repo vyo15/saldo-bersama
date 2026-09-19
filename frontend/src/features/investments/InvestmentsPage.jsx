@@ -116,6 +116,22 @@ const InvestmentsPage = () => {
 
   useLegacyInvestmentContinuation({ location, navigate, data, ready: overview.status === "ready" && !overview.isRefreshing, setSetupOpen, setDialog, setHoldingDetail });
   useEffect(() => {
+    if (overview.status !== "ready" || overview.isRefreshing || location.state?.workflowAction !== "record-investment") return;
+    const operablePortfolios = (data.portfolios || []).filter((portfolio) => portfolio.can_operate !== false);
+    if (operablePortfolios.length === 1) {
+      setDialog({ mode: "buy", portfolio: operablePortfolios[0] });
+    } else if (operablePortfolios.length === 0) {
+      setSetupOpen(true);
+    } else {
+      notify({
+        message: "Pilih aset investasi yang ingin ditambah, lalu gunakan aksi Beli.",
+        tone: "info",
+        dedupeKey: "investments:quick-record:choose-asset",
+      });
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [data.portfolios, location.pathname, location.state, navigate, notify, overview.isRefreshing, overview.status]);
+  useEffect(() => {
     if (!attention || !["investment_reconciliation_stale", "investment_reconciliation_difference"].includes(attention.attentionType)) return;
     notify({ message: "Pencatatan investasi kini berbasis aset. Rekonsiliasi RDN lama tetap tersimpan sebagai histori dan tidak diperlukan untuk pencatatan baru.", tone: "info", dedupeKey: "investments:legacy-reconciliation" });
     consumeAttention();
@@ -129,7 +145,6 @@ const InvestmentsPage = () => {
     <RefreshWarning error={overview.refreshError} onRetry={() => overview.reload().catch(() => {})} />
     <PageHeader
       title="Investasi"
-      description={assetCount ? "Pantau nilai dan aktivitas saham serta reksa dana yang Anda catat." : undefined}
       actions={assetCount > 0 ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => setSetupOpen(true)} aria-label="Tambah investasi">Tambah investasi</Button> : null}
       help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak memindahkan saldo rekening, dan tidak mengambil harga pasar live."
     />

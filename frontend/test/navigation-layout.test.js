@@ -80,24 +80,31 @@ test("tab utama mobile memulihkan scroll per tab, route sekunder mulai dari atas
   assert.match(restorationHook, /window\.scrollTo\(\{ top, left: 0, behavior: "auto" \}\)/);
 });
 
-test("quick add transaksi mobile selalu tersedia sementara aksi floating desktop tetap menghormati create lokal Administrator", async () => {
-  const [shell, mobileNavigation, responsiveCss] = await Promise.all([
+test("quick add aktivitas mobile selalu tersedia sementara aksi floating desktop tetap menghormati create lokal Administrator", async () => {
+  const [shell, mobileNavigation, responsiveCss, quickRecord, providers] = await Promise.all([
     read("src/layouts/AppShell.jsx"),
     read("src/components/navigation/MobileNavigation.jsx"),
     read("src/styles/responsive.css"),
+    read("src/app/QuickRecordContext.jsx"),
+    read("src/app/AppProviders.jsx"),
   ]);
   assert.match(shell, /DESKTOP_LOCAL_CREATE_ROUTES = new Set/);
   for (const route of ["/rekening", "/perencanaan", "/target", "/kategori"]) assert.match(shell, new RegExp(`"${route}"`));
-  assert.match(shell, /DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES = new Set/);
+  assert.match(shell, /DESKTOP_ACTIVITY_QUICK_ADD_BLOCKED_ROUTES = new Set/);
   for (const route of ["/404", "/anggota", "/laporan", "/notifikasi", "/pengaturan", "/persetujuan", "/rekonsiliasi"]) assert.match(shell, new RegExp(`"${route}"`));
-  assert.match(shell, /DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES\.has\(normalizedPath\)/);
+  assert.match(shell, /DESKTOP_ACTIVITY_QUICK_ADD_BLOCKED_ROUTES\.has\(normalizedPath\)/);
   assert.match(shell, /normalizedPath\.startsWith\("\/pengaturan\/"\)/);
   assert.match(shell, /role === "owner" && \(DESKTOP_LOCAL_CREATE_ROUTES\.has\(normalizedPath\) \|\| normalizedPath\.startsWith\("\/perencanaan\/"\)\)/);
-  assert.match(shell, /desktopTransactionQuickAddVisible/);
+  assert.match(shell, /desktopActivityQuickAddVisible/);
+  assert.match(shell, /useQuickRecord/);
+  assert.match(shell, /onQuickAdd=\{openQuickRecord\}/);
+  assert.match(quickRecord, /<QuickRecordMenu open/);
+  assert.match(quickRecord, /onOpenTransaction=\{openTransactionComposer\}/);
+  assert.match(providers, /<TransactionComposerProvider><QuickRecordProvider>/);
   assert.match(shell, /<MobileNavigation[\s\S]*quickAddDisabled=\{offline\}/);
   assert.match(mobileNavigation, /className="mobile-navigation__add"/);
-  assert.match(mobileNavigation, /aria-label="Catat transaksi"/);
-  assert.match(mobileNavigation, /title="Catat transaksi"/);
+  assert.match(mobileNavigation, /aria-label="Catat aktivitas"/);
+  assert.match(mobileNavigation, /title="Catat aktivitas"/);
   assert.match(responsiveCss, /\.mobile-navigation__add::after \{ content: "Catat";/);
   assert.doesNotMatch(mobileNavigation, /quickAddVisible|mobile-navigation--without-add/);
   assert.doesNotMatch(responsiveCss, /mobile-navigation--without-add/);
@@ -271,8 +278,8 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   assert.match(source, /to: "\/rekonsiliasi", label: "Cocokkan saldo"/);
   assert.match(source, /to: "\/notifikasi", label: "Notifikasi"/);
   assert.match(source, /to: "\/anggota", label: "Anggota"[\s\S]*ownerOnly: true/);
-  assert.match(source, /label: "Perencanaan"/);
-  assert.match(source, /to: "\/perencanaan", label: "Perencanaan"/);
+  assert.match(source, /label: "Atur Dana"/);
+  assert.match(source, /to: "\/perencanaan", label: "Atur Dana"/);
   assert.doesNotMatch(source, /to: "\/anggaran", label: "Anggaran"/);
   assert.doesNotMatch(source, /to: "\/(?:alokasi|tagihan)"/);
   assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target"\)/);
@@ -287,7 +294,8 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   const mobileSecondaryBlock = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   assert.doesNotMatch(mobileSecondaryBlock, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
-  assert.match(source, /pickNavigation\("\/", "\/transaksi", "\/laporan"\)/);
+  assert.match(source, /pickNavigation\("\/", "\/perencanaan", "\/transaksi"\)/);
+  assert.match(source, /id: "insight", label: "Insight", items: pickNavigation\("\/laporan"\)/);
   assert.doesNotMatch(source, /PRIMARY_NAVIGATION\[\d+\]/);
 });
 

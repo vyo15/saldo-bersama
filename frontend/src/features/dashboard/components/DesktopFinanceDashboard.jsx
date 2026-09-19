@@ -24,7 +24,7 @@ const DesktopFinanceDashboard = ({
   setSelectedTransactionId,
   balanceVisible,
   onToggleBalance,
-  onOpenTransaction,
+  onOpenQuickRecord,
   setupContent,
 }) => {
   const model = buildDesktopModel({
@@ -44,7 +44,7 @@ const DesktopFinanceDashboard = ({
         displayName={displayName}
         balanceVisible={balanceVisible}
         onToggleBalance={onToggleBalance}
-        onOpenTransaction={onOpenTransaction}
+        onOpenQuickRecord={onOpenQuickRecord}
       />
 
       <div className={dashboardClass("desktop-overview-grid")}>

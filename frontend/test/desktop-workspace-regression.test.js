@@ -20,14 +20,15 @@ test("desktop transaksi meredam CTA per baris tanpa menghilangkan aksi detail", 
   assert.match(css, /@media \(max-width: 820px\)[\s\S]*\.actionMenu \{ display: none; \}/);
 });
 
-test("kartu kewajiban mempertahankan Buka Alokasi sebagai CTA utama dan memindahkan aksi kelola ke overflow", async () => {
+test("kartu kewajiban memakai Bayar sebagai CTA utama dan memindahkan aksi kelola ke overflow", async () => {
   const [page, css] = await Promise.all([
     read("src/features/commitments/CommitmentsPage.jsx"),
     read("src/features/commitments/CommitmentsPage.module.css"),
   ]);
-  assert.match(page, /Buka Alokasi/);
+  assert.match(page, />Bayar<\/ButtonLink>/);
+  assert.match(page, />Buka Alokasi<\/ButtonLink>/);
   assert.match(page, /<details className=\{styles\.manageMenu\}>/);
-  assert.match(page, /<span>Kelola<\/span>/);
+  assert.match(page, /aria-label={`Kelola kewajiban \${item\.name}`}/);
   assert.match(page, /Edit kewajiban/);
   assert.match(page, /Hentikan kewajiban/);
   assert.match(css, /\.manageMenuItems \{/);
@@ -38,8 +39,8 @@ test("target menjelaskan eksekusi Alokasi sekali di level halaman, bukan berulan
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/goals/components/GoalCards.jsx"),
   ]);
-  assert.match(page, /title="Eksekusi lewat Alokasi"/);
-  assert.doesNotMatch(cards, /Eksekusi lewat Alokasi/);
+  assert.match(page, /help="Target hanya memantau rencana dan progres\. Dana tetap disisihkan melalui Alokasi/);
+  assert.doesNotMatch(cards, /Target hanya memantau rencana dan progres|Eksekusi lewat Alokasi/);
 });
 
 test("laporan desktop menjaga konteks filter saat analisis panjang dan mobile tetap statis", async () => {

@@ -567,6 +567,41 @@
     }
   }
 
+
+
+  .mobileTotalBalance {
+    min-height: 44px;
+    margin: .5rem var(--mobile-page-gutter) -.15rem;
+    padding: 0 .15rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .75rem;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .mobileTotalBalance strong,
+  .mobileTotalBalance :global(.money) {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: var(--font-weight-bold);
+  }
+
+  .mobileStackStage {
+    height: clamp(14.75rem, 61vw, 17rem);
+    margin-top: 0;
+  }
+
+  .mobileBalanceSummary {
+    margin-top: .2rem;
+    padding: .72rem .85rem .7rem;
+    box-shadow: none;
+  }
+
+  .mobileBalanceSummary::after {
+    display: none;
+  }
 }
 
 @media (max-width: 390px) {
@@ -634,3 +669,4 @@
     transition: none;
   }
 }
+

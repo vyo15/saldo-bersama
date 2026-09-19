@@ -24,3 +24,8 @@
 @media (prefers-reduced-motion: reduce) {
   .card { transition: none; }
 }
+
+@media (max-width: 820px) {
+  .card { box-shadow: none; }
+  .card[data-interactive="true"]:active { transform: scale(.995); }
+}

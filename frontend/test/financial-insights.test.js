@@ -60,14 +60,15 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.doesNotMatch(desktop, /shared-alert-count-button/);
   assert.match(desktop, /Perlu dilakukan/);
   assert.match(desktop, /\{alerts\.length\} tugas/);
-  assert.match(desktop, /to="\/notifikasi">Lihat semua perhatian<\/Link>/);
+  assert.match(desktop, /to="\/notifikasi"[\s\S]{0,180}Lihat semua perhatian/);
   assert.doesNotMatch(desktop, /FinancialAlertList|title="Perlu perhatian"/);
   assert.match(mobile, /overview\.alerts/);
   assert.match(mobile, /MobileNextAction alerts=\{overview\.alerts\}/);
   assert.match(mobile, /to="\/notifikasi"/);
   assert.match(mobile, /useFinancialNotificationReadState/);
   assert.match(notifications, /Perlu dilakukan/);
-  assert.match(notifications, /Pengingat/);
+  assert.match(notifications, /Perlu tindakan/);
+  assert.match(notifications, /Lainnya/);
   assert.match(notifications, /financialAlertGuidance/);
   assert.match(notifications, /markAllRead/);
   assert.match(notificationState, /readStates/);
@@ -82,14 +83,15 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/reports/ReportsPage.module.css"),
   ]);
-  for (const label of ["Penggunaan Alokasi", "Kebutuhan vs Pengeluaran", "Pengeluaran per kategori", "Transaksi terbaru", "Dokumen laporan", "Rincian lainnya"]) {
+  for (const label of ["Arus kas", "Kondisi Alokasi", "Penggunaan Alokasi", "Kebutuhan vs Pengeluaran", "Pengeluaran per kategori", "Transaksi terbaru", "Analisis lengkap", "Rincian lainnya"]) {
     assert.match(reports, new RegExp(label));
   }
   assert.match(reports, /allocation_rule_id/);
   assert.match(reports, /reportScope/);
   assert.match(reports, /downloadFinancialReport/);
-  assert.match(reports, /PDF rekening koran/);
-  assert.match(reports, /Excel terolah/);
+  assert.match(reports, /<strong>PDF<\/strong>/);
+  assert.match(reports, /<strong>Excel<\/strong>/);
+  assert.match(reports, /Data terolah dengan sheet yang rapi/);
   assert.match(reports, /TREND_OPTIONS = \[1, 3, 6, 12\]/);
   assert.match(reports, /to="\/perencanaan\/kantong"/);
   assert.doesNotMatch(reports, /FinancialAlertList|MobileSummaryAlerts|ReportAlerts|overview\?\.alerts/);
@@ -103,7 +105,7 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
   assert.match(reportStyles, /@media \(min-width: 821px\)[\s\S]*?\.reportContextBar[\s\S]*?position:\s*sticky/);
   assert.match(reports, /const HeroOverview/);
   assert.match(reports, /const PlanningReport/);
-  assert.match(reports, /Kondisi keuangan/);
+  assert.match(reports, /Kondisi Alokasi/);
   assert.doesNotMatch(reports, /AppShell|DesktopModuleDock|DesktopSidebar/);
   assert.match(reportStyles, /prefers-reduced-motion: reduce/);
 });
@@ -255,8 +257,8 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(recurring, /"envelopes\.list"/);
   assert.doesNotMatch(recurring, /filterByAssigneeAccess|canUseAssignedItem/);
   assert.match(recurring, /item\.can_record_expense === true/);
-  assert.match(navigation, /Kelola Alokasi Dana, kebutuhan, dan Jadwal Rutin/);
-  assert.match(navigation, /Kumpulkan dana ke rekening tujuan/);
+  assert.match(navigation, /Kelola Alokasi Dana, Jadwal Rutin, dan Kewajiban dalam satu tempat/);
+  assert.match(navigation, /Pantau tujuan, progres, sisa, dan kebutuhan dana/);
 });
 
 test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap tetap canonical di desktop/transaksi", async () => {
@@ -291,7 +293,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /<MobileNextAction alerts=\{overview\.alerts\} \/>/);
   assert.match(mobile, /\{setupContent\}/);
   assert.match(mobile, /<DashboardQuickActions \/>/);
-  assert.match(mobile, /<MobileCashFlow overview=\{overview\} balanceVisible=\{balanceVisible\} \/>/);
+  assert.match(mobile, /mobile-finance-cash-strip/);
   assert.doesNotMatch(setupChecklist, /usableEnvelopes|sharedAccounts|planningStep/);
   assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);
   assert.match(mobile, /Rencana terdekat/);
@@ -302,9 +304,9 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(quickActions, /\{ to: "\/target", label: "Target"/);
   assert.match(quickActions, /\{ to: "\/rekonsiliasi", label: "Cocokkan"/);
   assert.doesNotMatch(quickActions, /label: "Kategori"|label: "Jadwal"/);
-  assert.match(mobile, /Aman dipakai \/ hari/);
-  assert.match(mobile, />Masuk<\/span>/);
-  assert.match(mobile, />Keluar<\/span>/);
+  assert.match(mobile, /Aman dipakai[\s\S]{0,180}\/ hari/);
+  assert.match(mobile, /Masuk <strong>/);
+  assert.match(mobile, /Keluar <strong>/);
   assert.doesNotMatch(mobile, /Jadwal Terdekat/);
   assert.match(mobile, /Aktivitas terbaru/);
   assert.match(mobile, /Total investasi tercatat/);
@@ -318,19 +320,20 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(desktop, /dashboardNeedEmptyAction\(overview\)/);
   assert.match(desktop, /Target tabungan/);
   assert.match(desktop, /Perlu dilakukan/);
-  assert.match(desktop, /to="\/notifikasi">Lihat semua perhatian/);
+  assert.match(desktop, /to="\/notifikasi"[\s\S]{0,180}Lihat semua perhatian/);
   assert.doesNotMatch(desktop, /<FinancialAlertList|title="Perlu perhatian"/);
   assert.doesNotMatch(desktop, /Aksi cepat/);
   assert.doesNotMatch(desktop, /shared-quick-actions/);
   assert.match(desktop, /Masuk bulan ini/);
   assert.match(desktop, /Keluar bulan ini/);
-  assert.equal((desktop.match(/>Catat transaksi<\/Button>/g) || []).length, 1);
+  assert.equal((desktop.match(/>Catat<\/Button>/g) || []).length, 1);
   assert.match(mobile, /Dana Tersedia/);
-  assert.match(mobile, /Sisa uang yang aman dipakai setelah kebutuhan dan tagihan/);
+  assert.match(mobile, /Total saldo rekening/);
+  assert.match(mobile, /Sisa di Alokasi/);
   assert.match(mobile, /Selisih/);
   assert.match(desktop, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(desktop, /overview\.alerts\.slice/);
-  assert.match(mobile, /Aman dipakai \/ hari/);
+  assert.match(mobile, /Aman dipakai[\s\S]{0,180}\/ hari/);
   assert.match(mobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
   assert.doesNotMatch(mobile, /dashboardInsightState/);
   assert.doesNotMatch(mobile, /mobile-accounts-title|MobileAccounts|AccountVisual/);
@@ -388,7 +391,7 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
   assert.doesNotMatch(setup, /label: "Target"/);
 });
 
-test("dashboard empty state menjaga satu aksi canonical dan mobile transaksi memakai quick-add global", async () => {
+test("dashboard empty state menjaga satu aksi canonical dan mobile memakai quick-add aktivitas global", async () => {
   const [mobile, desktop, page, allocations, recurring, goals, css] = await Promise.all([
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     readDesktopDashboardSource(),

@@ -12,7 +12,7 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
 
   assert.match(page, /useApiResource\("investments\.overview"\)/);
   assert.match(page, /Mulai catat aset investasi/);
-  assert.match(page, /description=\{assetCount \? "Pantau nilai dan aktivitas saham serta reksa dana yang Anda catat\." : undefined\}/);
+  assert.match(page, /help="Investasi adalah pencatatan manual\. Saldo Bersama tidak terhubung ke broker/);
   assert.match(page, /actions=\{assetCount > 0 \? <Button/);
   assert.match(page, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
   assert.match(overview, /const total = Number\(values\.market_value \|\| 0\)/);

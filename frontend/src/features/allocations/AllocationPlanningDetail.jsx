@@ -266,11 +266,15 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
     });
   };
   const openRecurringWorkflow = (workflow) => navigate("/perencanaan/jadwal", { state: workflow });
-  const openSchedule = (scheduleItem, payNow) => openRecurringWorkflow({
-    workflowSource: "allocation-need",
-    workflowAction: payNow ? "pay-recurring" : "view-recurring",
-    occurrenceId: scheduleItem?.occurrence_id || "",
-  });
+  const openSchedule = (scheduleItem, payNow) => {
+    const duePeriod = String(scheduleItem?.due_date || "").match(/^(\d{4}-\d{2})-\d{2}$/)?.[1] || "";
+    openRecurringWorkflow({
+      workflowSource: "allocation-need",
+      workflowAction: payNow ? "pay-recurring" : "view-recurring",
+      occurrenceId: scheduleItem?.occurrence_id || "",
+      ...(duePeriod ? { period: duePeriod } : {}),
+    });
+  };
   return {
     usage: allocationUsage(item),
     sourceLabel: allocationSourceLabel(item),
@@ -299,15 +303,23 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
     <button type="button" className={allocationClass("allocation-detail-back")} onClick={onBack}><FiArrowLeft aria-hidden="true" />Semua Alokasi Dana</button>
     <Card className={allocationClass("allocation-detail-shell")}>
       <section className={allocationClass("allocation-detail-hero")} aria-labelledby="allocation-detail-title">
-        <div><span>Alokasi Dana</span><h2 id="allocation-detail-title">{item.name}</h2><p>{state.sourceLabel} · {state.assigneeLabel} · {state.periodLabel}</p></div>
+        <div className={allocationClass("allocation-detail-hero__heading")}>
+          <div><span>Alokasi Dana</span><h2 id="allocation-detail-title">{item.name}</h2><p>{state.sourceLabel} · {state.assigneeLabel} · {state.periodLabel}</p></div>
+          {(canMoveAllocation || item.can_set_reminder || item.can_archive_rule) ? <details className={allocationClass("allocation-detail-menu")}>
+            <summary aria-label={`Kelola Alokasi ${item.name}`} title="Kelola Alokasi"><FiMoreHorizontal aria-hidden="true" /></summary>
+            <div className={allocationClass("allocation-detail-menu__items")}>
+              {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}
+              {item.can_set_reminder ? <Button icon={FiBell} onClick={() => onAllocationReminder(item)}>Pengingat</Button> : null}
+              {item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Hapus dari daftar</Button> : null}
+            </div>
+          </details> : null}
+        </div>
         {showGlobalExpenseAction(state.canRecordExpense, linkedBudgets) ? <div className={allocationClass("allocation-detail-hero__action")}><Button variant="primary" icon={FiPlus} onClick={state.recordAllocationExpense}>Catat pengeluaran</Button></div> : null}
-        <div className={allocationClass("allocation-detail-hero__metrics")}>
+        <div className={allocationClass("allocation-detail-hero__metrics allocation-detail-hero__metrics--compact")}>
           <div><span>Masih tersedia</span><strong><Money value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /></strong></div>
-          <div><span>Total disiapkan</span><strong><Money value={state.usage.allocated} /></strong></div>
-          <div><span>Sudah dipakai</span><strong><Money value={state.usage.used} /></strong></div>
+          <div><span>Sudah dipakai</span><strong><Money value={state.usage.used} /></strong><small>dari <Money value={state.usage.allocated} /></small></div>
           <div><span>Untuk jadwal</span><strong><Money value={state.usage.reserved} /></strong></div>
         </div>
-        {state.usage.reserved > 0 ? <p className={allocationClass("allocation-detail-reserved-note")}>Dana untuk jadwal belum menjadi transaksi, tetapi sudah disiapkan sehingga tidak lagi bebas digunakan.</p> : null}
       </section>
       <AllocationNeedsPanel
         item={item}
@@ -325,14 +337,6 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         openSchedule={state.openSchedule}
         editBudget={state.editBudget}
       />
-      <section className={allocationClass("allocation-detail-section")} aria-labelledby="allocation-management-title">
-        <div className={allocationClass("allocation-detail-panel__header")}><div><h3 id="allocation-management-title">Kelola dana</h3><p>Sesuaikan dana atau pengingat tanpa mengubah transaksi yang sudah tercatat.</p></div></div>
-        <div className={allocationClass("allocation-management-actions")}>
-          {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}
-          {item.can_set_reminder ? <Button icon={FiBell} onClick={() => onAllocationReminder(item)}>Pengingat</Button> : null}
-          {item.can_archive_rule ? <Button className={allocationClass("allocation-management-actions__lifecycle")} onClick={() => onOpenAllocationActions(item)}>Hapus dari daftar</Button> : null}
-        </div>
-      </section>
     </Card>
   </div>
   <AllocationBudgetDialog

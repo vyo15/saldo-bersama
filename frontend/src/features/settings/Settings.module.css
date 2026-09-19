@@ -1383,3 +1383,17 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .cadenceItem:last-child { border-bottom: 0; }
 .cadenceItem :global(.field) { margin: 0; }
 @media (max-width: 560px) { .cadenceItem { grid-template-columns: 1fr; gap: var(--space-2); } }
+
+/* Settings behaves like a compact native list: labels first, explanations after navigation. */
+@media (max-width: 820px) {
+  .settingsHome, .settingsMobileOverview { gap: 12px; }
+  .settingsAccountCard { padding: 12px 13px; gap: 10px; }
+  .settingsAccountAvatar { width: 2.85rem; height: 2.85rem; box-shadow: none; }
+  .settingsAccountStatus { padding-top: 8px; }
+  .settingsListRow { min-height: 56px; padding: 8px 11px; gap: 10px; }
+  .settingsListIcon { width: 34px; height: 34px; border-radius: 10px; }
+  .settingsListCopy { gap: 0; }
+  .settingsListCopy strong { font-size: 13px; }
+  .settingsGroup { gap: 6px; }
+  .settingsGroup > h2 { padding-inline: 3px; }
+}

@@ -39,7 +39,9 @@
 - [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
 - [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: header row memuat ikon + nama + pola/status + quick actions, sementara Sisa/total/persentase + progress memakai lebar penuh di bawahnya agar nominal tidak terpotong; aksi `Catat`/Jadwal memakai quick action icon-only dengan accessible label dan target sentuh minimal 44px; Edit berada di overflow; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
-- [ ] Section `Kelola dana` tidak memakai tiga tombol sempit dalam satu baris: aksi utama memakai grid 2 kolom dan lifecycle **Hapus / arsipkan** mengambil satu baris penuh sehingga label terbaca pada mobile.
+- [ ] Detail Alokasi tidak memiliki section permanen `Kelola dana`; aksi administratif **Pindahkan dana / Pengingat / Hapus dari daftar** berada di menu overflow `•••`, sedangkan aksi transaksi/kebutuhan tetap berada dekat konteksnya.
+- [ ] Beranda mobile compact: **Dana Tersedia tetap nominal pertama**, sementara **Total saldo rekening**, **Sisa di Alokasi**, Aman/hari, dan Masuk/Keluar/Selisih tetap terlihat tanpa standalone card `Bulan ini`.
+- [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
 - [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, dan tidak menghapus draft/form.
 - [ ] Reconnect/foreground/offline recovery tidak memicu duplicate mutation atau refresh ganda yang tidak perlu.

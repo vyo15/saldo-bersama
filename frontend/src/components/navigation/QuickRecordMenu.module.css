@@ -1,0 +1,152 @@
+.modal :global(.modal__header) {
+  border-bottom-color: color-mix(in srgb, var(--border) 76%, transparent);
+}
+
+.actionMenu { display: grid; gap: 10px; }
+.primaryGrid,
+.futureGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.actionCard {
+  width: 100%;
+  min-width: 0;
+  min-height: 62px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing),
+    box-shadow var(--motion-fast) var(--motion-easing);
+}
+.actionCardSecondary {
+  min-height: 54px;
+  background: color-mix(in srgb, var(--primary-soft) 44%, var(--surface));
+}
+.actionCard:active { transform: scale(.985); }
+.actionCard:focus-visible,
+.commitmentRow:focus-visible,
+.backAction:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.actionIcon,
+.commitmentIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.actionCardSecondary .actionIcon { background: var(--surface); }
+.actionIcon svg,
+.commitmentIcon svg { width: 18px; height: 18px; }
+.actionCopy,
+.commitmentCopy { min-width: 0; display: grid; gap: 2px; }
+.actionCopy strong,
+.commitmentCopy strong { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); line-height: 1.25; }
+.actionCopy small,
+.commitmentCopy small { min-width: 0; overflow: hidden; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.futureLabel { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+.futureLabel::after { content: ""; height: 1px; flex: 1; background: var(--border); }
+
+.commitmentList { display: grid; }
+.commitmentStep { display: grid; gap: 8px; }
+.backAction {
+  width: fit-content;
+  min-height: 44px;
+  margin: -4px 0 2px;
+  padding: 0 4px;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+.backAction svg { width: 17px; height: 17px; }
+.commitmentRow {
+  width: 100%;
+  min-height: 82px;
+  padding: 12px 4px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.commitmentRow:last-child { border-bottom: 0; }
+.commitmentRow:disabled { cursor: not-allowed; opacity: .55; }
+.commitmentHeading { min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.commitmentHeading strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.commitmentHeading b { flex: 0 0 auto; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.chevron { width: 18px; height: 18px; color: var(--text-muted); }
+.state {
+  min-height: 84px;
+  padding: 18px 4px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+.state strong { color: var(--text); }
+
+@media (hover: hover) and (pointer: fine) {
+  .actionCard:hover,
+  .commitmentRow:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+    background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface));
+  }
+  .actionCard:hover { box-shadow: var(--shadow-control-hover); }
+}
+
+@media (max-width: 820px) {
+  .modal :global(.modal__header) { padding: 14px 14px 10px; }
+  .modal :global(.modal__body) { padding: 10px 14px calc(14px + env(safe-area-inset-bottom)); }
+  .modal :global(.modal__header h2) { font-size: 17px; }
+  .modal :global(.modal__header p) { margin-top: 2px; font-size: 12px; line-height: 1.35; }
+  .primaryGrid,
+  .futureGrid { gap: 7px; }
+  .actionMenu { gap: 9px; }
+  .actionCard { min-height: 58px; padding: 8px 9px; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; border-radius: 13px; }
+  .actionCardSecondary { min-height: 52px; }
+  .actionIcon,
+  .commitmentIcon { width: 32px; height: 32px; border-radius: 10px; }
+  .actionIcon svg,
+  .commitmentIcon svg { width: 17px; height: 17px; }
+  .actionCopy strong { font-size: 12px; }
+  .actionCopy small { font-size: var(--font-size-xs); }
+  .futureLabel { font-size: var(--font-size-xs); }
+  .commitmentRow { min-height: 80px; }
+}
+
+@media (max-width: 360px) {
+  .actionCard { grid-template-columns: 30px minmax(0, 1fr); padding-inline: 8px; }
+  .actionIcon { width: 30px; height: 30px; }
+  .actionCopy small { font-size: var(--font-size-xs); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actionCard,
+  .commitmentRow { transition: none; }
+}

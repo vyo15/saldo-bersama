@@ -17,16 +17,14 @@ const flowWidth = (value, maximum) => {
   return Math.max(8, Math.round((amount / maximum) * 100));
 };
 
-export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggleBalance, onOpenTransaction }) => (
+export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggleBalance, onOpenQuickRecord }) => (
   <header className={dashboardClass("shared-dashboard__header")}>
     <div>
       <div className={dashboardClass("shared-dashboard__title-row")}>
         <h1>Hai, {displayName}</h1>
-        <PageInfoButton title="Tentang Beranda">
-          Beranda desktop adalah ruang analisis utama: saldo, arus uang, transaksi, Alokasi, dan perhatian penting dirangkum tanpa mengubah alur cepat di mobile.
-        </PageInfoButton>
+        <PageInfoButton title="Tentang Beranda">Dana Tersedia menunjukkan uang yang belum punya tugas. Total saldo rekening tetap ditampilkan sebagai konteks seluruh uang kas yang tercatat.</PageInfoButton>
       </div>
-      <p>Command center keuangan keluarga · <strong>{formatPeriod(overview.periodKey)}</strong></p>
+      <p>Ringkasan keluarga · <strong>{formatPeriod(overview.periodKey)}</strong></p>
     </div>
     <div className={dashboardClass("shared-dashboard__actions")}>
       <button
@@ -38,7 +36,7 @@ export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggl
       >
         {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
       </button>
-      <Button variant="primary" icon={FiPlus} onClick={onOpenTransaction}>Catat transaksi</Button>
+      <Button variant="primary" icon={FiPlus} onClick={onOpenQuickRecord}>Catat</Button>
     </div>
   </header>
 );
@@ -68,7 +66,7 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
         <div className={dashboardClass("desktop-balance-card__heading")}>
           <span>Dana Tersedia</span>
           <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
-          <small>Sisa uang yang aman dipakai setelah kebutuhan dan tagihan.</small>
+          <small>Uang yang belum punya tugas dan masih bebas digunakan.</small>
           <div className={dashboardClass("desktop-balance-card__allocation-note")}>
             <span>{allocation.count || 0} Alokasi aktif</span>
             <strong>{Number(allocation.percentage || 0)}% terpakai / disiapkan</strong>
@@ -96,7 +94,7 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
 
       <div className={dashboardClass("desktop-balance-card__safe")}>
         <div>
-          <span>Saldo rekening</span>
+          <span>Total saldo rekening</span>
           <SensitiveMoney visible={balanceVisible} value={nonInvestmentBalance} />
         </div>
         <div>
@@ -139,9 +137,9 @@ export const DashboardAttention = ({ alerts }) => {
         </div>
         <div className={dashboardClass("desktop-attention-card__clear")}>
           <FiShield aria-hidden="true" />
-          <p>Tidak ada tindakan mendesak dari kondisi aktif saat ini. Kamu bisa lanjut menganalisis transaksi dan rencana bulan ini.</p>
+          <p>Tidak ada tindakan mendesak.</p>
         </div>
-        <Link to="/notifikasi">Lihat semua perhatian</Link>
+        <Link to="/notifikasi">Lihat notifikasi</Link>
       </section>
     );
   }

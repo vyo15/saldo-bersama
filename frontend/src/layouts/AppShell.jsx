@@ -13,6 +13,7 @@ import { MOBILE_SECONDARY_GROUPS } from "../config/navigation.js";
 import { mergeNotificationCenterItems, useFinancialNotificationReadState } from "../shared/workflows/financialNotifications.js";
 import { useFinance } from "../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../app/TransactionComposerContext.jsx";
+import { useQuickRecord } from "../app/quickRecordContext.js";
 import { useApiResource } from "../hooks/useApiResource.js";
 import { useInstallPrompt } from "../hooks/useInstallPrompt.js";
 import { useNetworkStatus } from "../hooks/useNetworkStatus.js";
@@ -30,6 +31,7 @@ import MobilePullToRefresh from "../components/pwa/MobilePullToRefresh.jsx";
 import "../styles/app.css";
 import "../styles/responsive.css";
 
+
 const DESKTOP_LOCAL_CREATE_ROUTES = new Set([
   "/rekening",
   "/perencanaan",
@@ -38,7 +40,7 @@ const DESKTOP_LOCAL_CREATE_ROUTES = new Set([
   "/investasi",
 ]);
 
-const DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES = new Set([
+const DESKTOP_ACTIVITY_QUICK_ADD_BLOCKED_ROUTES = new Set([
   "/404",
   "/anggota",
   "/laporan",
@@ -48,9 +50,9 @@ const DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES = new Set([
   "/rekonsiliasi",
 ]);
 
-const desktopTransactionQuickAddAllowed = (pathname, role) => {
+const desktopActivityQuickAddAllowed = (pathname, role) => {
   const normalizedPath = pathname === "/" ? "/" : `/${String(pathname || "").replace(/^\/+|\/+$/g, "")}`;
-  if (DESKTOP_TRANSACTION_QUICK_ADD_BLOCKED_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/pengaturan/")) return false;
+  if (DESKTOP_ACTIVITY_QUICK_ADD_BLOCKED_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/pengaturan/")) return false;
   if (role === "owner" && (DESKTOP_LOCAL_CREATE_ROUTES.has(normalizedPath) || normalizedPath.startsWith("/perencanaan/"))) return false;
   return true;
 };
@@ -142,8 +144,8 @@ const DesktopAppHeader = ({ isRefreshing, notificationState, user, onLogout }) =
   </header>
 );
 
-const DesktopFloatingTransactionAdd = ({ visible, offline, onClick }) => visible ? (
-  <button type="button" className="floating-add" data-preload-action="transaction" disabled={offline} onClick={onClick} aria-label="Catat transaksi"><FiPlus aria-hidden="true" /></button>
+const DesktopFloatingActivityAdd = ({ visible, offline, onClick }) => visible ? (
+  <button type="button" className="floating-add" data-preload-action="transaction" disabled={offline} onClick={onClick} aria-label="Catat aktivitas"><FiPlus aria-hidden="true" /></button>
 ) : null;
 
 const AppContentNotices = ({ dashboardRoute, installPrompt, logoutError, refreshError, syncWarning, refreshAll, manualRefresh }) => (
@@ -212,7 +214,8 @@ const useAppShellRuntime = ({ overview, user, composerOpen, syncNow }) => {
 const AppShell = () => {
   const { user, logout } = useAuth();
   const { isRefreshing, refreshError, refreshAll, manualRefresh, syncNow, syncWarning, overview } = useFinance();
-  const { openTransactionComposer, composerOpen } = useTransactionComposer();
+  const { composerOpen } = useTransactionComposer();
+  const { openQuickRecord } = useQuickRecord();
   const location = useLocation();
   const navigationType = useNavigationType();
   const [mobileMenuRoute, setMobileMenuRoute] = useState("");
@@ -224,7 +227,7 @@ const AppShell = () => {
   const transactionsRoute = location.pathname === "/transaksi";
   const notificationsRoute = location.pathname === "/notifikasi";
   const wideContentRoute = dashboardRoute || ["/laporan", "/investasi", "/notifikasi"].includes(location.pathname);
-  const desktopTransactionQuickAddVisible = desktopTransactionQuickAddAllowed(location.pathname, user?.role);
+  const desktopActivityQuickAddVisible = desktopActivityQuickAddAllowed(location.pathname, user?.role);
   const { installPrompt, network, notificationState, serviceWorkerUpdate, pullRefreshBlocked } = useAppShellRuntime({ overview, user, composerOpen, syncNow });
   const { offline, degraded, recovering } = network;
   useMobileTabScrollRestoration(location, navigationType);
@@ -261,8 +264,9 @@ const AppShell = () => {
       <MobilePullToRefresh onRefresh={manualRefresh} blocked={pullRefreshBlocked || mobileMenuOpen} offline={offline} />
       <PwaStatusStack offline={offline} degraded={degraded} recovering={recovering} serviceWorkerUpdate={serviceWorkerUpdate} />
 
-      <DesktopFloatingTransactionAdd visible={desktopTransactionQuickAddVisible && !dashboardRoute && !transactionsRoute} offline={offline} onClick={openTransactionComposer} />
-      <MobileNavigation onQuickAdd={openTransactionComposer} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
+      <DesktopFloatingActivityAdd visible={desktopActivityQuickAddVisible && !dashboardRoute && !transactionsRoute} offline={offline} onClick={openQuickRecord} />
+      <MobileNavigation onQuickAdd={openQuickRecord} onMore={() => setMobileMenuRoute(location.pathname)} moreOpen={mobileMenuOpen} quickAddDisabled={offline} />
+
 
       <MobileMoreMenu
         key={`mobile-more-${location.pathname}`}

@@ -92,8 +92,8 @@ export const DashboardPlanning = ({ model, balanceVisible }) => (
   <section className={dashboardClass("desktop-planning-section")} aria-labelledby="desktop-planning-title">
     <div className={dashboardClass("desktop-planning-section__heading")}>
       <div>
-        <span>Rencana & kewajiban</span>
-        <h2 id="desktop-planning-title">Perencanaan keuangan</h2>
+        <span>Alokasi, rutin & target</span>
+        <h2 id="desktop-planning-title">Atur Dana</h2>
       </div>
     </div>
     <div className={dashboardClass("shared-dashboard-widgets")}>

@@ -34,7 +34,8 @@ test("lifecycle action membedakan hard-delete, archive, dan penghentian Kewajiba
 
   assert.match(commitments, /Hentikan kewajiban\?/);
   assert.match(commitments, /confirmLabel="Hentikan kewajiban"/);
-  assert.match(commitments, /Otomatis dari Alokasi/);
+  assert.match(commitments, /Terhubung ke Kebutuhan/);
+  assert.match(commitments, /Pembayaran ke bank atau penyedia tetap dilakukan di luar aplikasi/);
   assert.doesNotMatch(commitments, /Hapus kewajiban|>\s*Hapus\s*</);
   assert.match(commitmentApi, /archiveCommitment[\s\S]*commitments\.archive/);
   assert.doesNotMatch(commitmentApi, /deleteCommitment/);
@@ -47,8 +48,8 @@ test("Target mengarahkan eksekusi dana melalui Alokasi tanpa CTA mutasi langsung
     "src/features/goals/components/GoalDialogs.jsx",
   ]);
 
-  assert.match(source, /Buka Alokasi/);
-  assert.match(source, /Eksekusi lewat Alokasi/);
+  assert.match(source, /Atur dana/);
+  assert.match(source, /Target hanya memantau rencana dan progres/);
   assert.doesNotMatch(source, /Setor dana|Tarik dana|Tambah dana target|Simpan transfer/);
 });
 

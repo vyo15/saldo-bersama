@@ -9,7 +9,7 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
     read("src/features/planning/PlanningPage.jsx"),
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
   ]);
-  assert.match(planning, /title="Atur dana"/);
+  assert.match(planning, /title="Atur Dana"/);
   assert.match(planning, /Alokasi Dana/);
   assert.match(planning, /Jadwal Rutin/);
   assert.match(planning, /Kewajiban/);
@@ -20,14 +20,16 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
   assert.doesNotMatch(overview, /wallet\.webp/);
 });
 
-test("aksi funding generik memilih rekening dulu dan contextual mengunci source plus target", async () => {
-  const [workspace, funding] = await Promise.all([
+test("aksi funding generik memilih rekening dulu dan contextual tetap mengunci source plus target", async () => {
+  const [workspace, attention, funding] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
+    read("src/features/allocations/allocationAttentionNavigation.js"),
     read("src/features/allocations/AllocationFundingFlow.jsx"),
   ]);
-  assert.match(workspace, /lockSelection:\s*true/);
-  assert.match(workspace, /sourceAccountId:\s*item\.source_account_id/);
-  assert.match(workspace, /envelopePeriodId:\s*item\.envelope_period_id/);
+  assert.doesNotMatch(workspace, /onFundAllocation:|lockSelection:\s*true/);
+  assert.match(attention, /sourceAccountId:\s*targetEnvelope\?\.source_account_id/);
+  assert.match(attention, /envelopePeriodId:\s*targetEnvelope\?\.envelope_period_id/);
+  assert.match(attention, /lockSelection:\s*Boolean\(targetEnvelope\)/);
   assert.match(funding, /label="Dari rekening mana\?"/);
   assert.match(funding, /allocationTargetsForAccount\(items, form\.sourceAccountId\)/);
   assert.match(funding, /FundingLockedContext/);

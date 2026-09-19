@@ -126,32 +126,29 @@ const ScheduleAttention = ({ item, guidance, actions }) => {
   );
 };
 
+const ScheduleManagementActions = ({ item, actions }) => <div className={styles.managePanel}>
+  {item.can_set_reminder ? <Button className={styles.manageAction} icon={FiBell} onClick={() => actions.openReminder(item)}>Pengingat</Button> : null}
+  {item.can_restore_occurrence ? <Button className={styles.manageAction} icon={FiRotateCcw} onClick={() => actions.openRestore(item)}>Pulihkan periode</Button> : null}
+  {item.can_edit_rule ? <Button className={styles.manageAction} icon={FiEdit2} onClick={() => actions.openRuleEditor(item)}>Edit jadwal</Button> : null}
+  {item.can_cancel_occurrence ? <Button className={styles.manageAction} onClick={() => actions.openSkip(item)}>Lewati periode</Button> : null}
+  {item.can_reverse ? <Button className={styles.manageAction} icon={FiRotateCcw} onClick={() => actions.openReverse(item)}>Batalkan catatan terakhir</Button> : null}
+  {item.can_archive_rule ? <Button className={styles.manageAction} variant="danger" icon={FiArchive} onClick={() => actions.openArchive(item)}>Hapus dari daftar</Button> : null}
+</div>;
+
+const scheduleHasManagement = (item) => Boolean(item.can_set_reminder || item.can_reverse || item.can_cancel_occurrence || item.can_restore_occurrence || item.can_edit_rule || item.can_archive_rule);
+
 const ScheduleActions = ({ item, actions, expanded, onToggle, hidePay = false }) => {
-  const hasManagement = item.can_reverse || item.can_cancel_occurrence || item.can_restore_occurrence || item.can_edit_rule || item.can_archive_rule;
-  const canRemind = Boolean(item.can_set_reminder);
+  const canPay = item.can_pay && !hidePay;
+  const completed = completedStatuses.has(item.status);
+  const manageable = scheduleHasManagement(item);
   return (
     <div className={styles.actions}>
       <div className={styles.actionPrimary}>
-        {item.can_pay && !hidePay ? <Button variant="primary" onClick={() => actions.openPayment(item)}>{item.kind === "income" ? "Catat pemasukan" : "Catat pembayaran"}</Button> : null}
-        {canRemind ? <Button icon={FiBell} onClick={() => actions.openReminder(item)}>Pengingat</Button> : null}
-        {item.can_restore_occurrence ? <Button icon={FiRotateCcw} onClick={() => actions.openRestore(item)}>Pulihkan periode</Button> : null}
-        {completedStatuses.has(item.status) ? <span className={styles.completedMark}><FiCheckCircle aria-hidden="true" /> Sudah tercatat</span> : null}
-        {hasManagement ? (
-          <button type="button" className={styles.manageButton} onClick={onToggle} aria-expanded={expanded}>
-            <FiMoreHorizontal aria-hidden="true" />
-            <span>Kelola jadwal</span>
-            {expanded ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}
-          </button>
-        ) : null}
+        {canPay ? <Button variant="primary" onClick={() => actions.openPayment(item)}>{item.kind === "income" ? "Catat" : "Bayar"}</Button> : null}
+        {completed ? <span className={styles.completedMark}><FiCheckCircle aria-hidden="true" /> Sudah tercatat</span> : null}
+        {manageable ? <button type="button" className={styles.manageButton} onClick={onToggle} aria-expanded={expanded} aria-label={`Kelola jadwal ${item.name}`} title="Kelola jadwal"><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span>{expanded ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}</button> : null}
       </div>
-      {expanded ? (
-        <div className={styles.managePanel}>
-          {item.can_edit_rule ? <Button className={styles.manageAction} icon={FiEdit2} onClick={() => actions.openRuleEditor(item)}>Edit jadwal</Button> : null}
-          {item.can_cancel_occurrence ? <Button className={styles.manageAction} onClick={() => actions.openSkip(item)}>Lewati periode</Button> : null}
-          {item.can_reverse ? <Button className={styles.manageAction} icon={FiRotateCcw} onClick={() => actions.openReverse(item)}>Batalkan catatan terakhir</Button> : null}
-          {item.can_archive_rule ? <Button className={styles.manageAction} variant="danger" icon={FiArchive} onClick={() => actions.openArchive(item)}>Hapus dari daftar</Button> : null}
-        </div>
-      ) : null}
+      {expanded ? <ScheduleManagementActions item={item} actions={actions} /> : null}
     </div>
   );
 };

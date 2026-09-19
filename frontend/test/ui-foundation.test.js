@@ -112,7 +112,7 @@ test("canonical account terms stay user-facing near balances", async () => {
   assert.match(mobileAccounts, /\{ACCOUNT_BALANCE_GUIDANCE\}/);
   assert.match(desktopAccounts, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
   assert.doesNotMatch(dashboardMobile, /ACCOUNT_AVAILABLE_BALANCE_HINT|AccountVisual/, "Beranda mobile compact tidak menduplikasi detail saldo rekening.");
-  assert.match(dashboardMobile, /Saldo rekening/);
+  assert.match(dashboardMobile, /Total saldo rekening/);
   assert.match(dashboardMobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
   assert.match(dashboardMobile, /Dana Tersedia/);
   assert.match(dashboardMobile, /overview\.safeToSpend/);
@@ -476,13 +476,13 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
   assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
-  const order = ["<MobileCashFlow", "<MobileNextAction", "<DashboardQuickActions", "<MobileUpcomingPlan", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
+  const order = ["<MobileFinanceHero", "<MobileNextAction", "<DashboardQuickActions", "<MobileUpcomingPlan", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile decision-first harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan arus uang → perhatian → akses cepat → rencana terdekat → aktivitas → investasi.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan hero arus uang → perhatian → akses cepat → rencana terdekat → aktivitas → investasi.");
   assert.doesNotMatch(mobile, /const MobileFinancialInsight\b|const MobileBudgetPlan\b|const MobileUpcomingSchedule\b/);
-  assert.match(mobile, /Aman dipakai \/ hari/);
-  assert.match(mobile, />Masuk<\/span>/);
-  assert.match(mobile, />Keluar<\/span>/);
+  assert.match(mobile, /Aman dipakai[\s\S]{0,180}\/ hari/);
+  assert.match(mobile, /Masuk <strong>/);
+  assert.match(mobile, /Keluar <strong>/);
   assert.doesNotMatch(mobile, /MobileAccounts|MobileAllocation|AccountVisual/, "Dashboard mobile tidak boleh kembali menumpuk detail rekening atau alokasi yang sudah punya route khusus.");
 });
 

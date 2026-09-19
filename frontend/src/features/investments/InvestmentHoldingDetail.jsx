@@ -1,4 +1,4 @@
-import { FiEdit3 } from "react-icons/fi";
+import { FiEdit3, FiMoreHorizontal } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -50,11 +50,10 @@ const InvestmentHoldingDetail = ({ portfolio, holding, onClose, onAction }) => {
   const quantityLabel = mutualFund ? `${shares.toLocaleString("id-ID")} unit` : `${lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
   const returnPercent = investmentReturnPercent(holding.unrealized_pl, holding.cost_basis);
   const canSell = portfolio.can_operate && shares >= lotSize;
-  const footer = <div className="form-actions">
-    <Button type="button" onClick={onClose}>Tutup</Button>
-    {portfolio.can_operate ? <Button type="button" icon={FiEdit3} onClick={() => onAction("price", portfolio, { initialInstrumentId: holding.instrument_id })}>Perbarui nilai</Button> : null}
-    {portfolio.can_operate ? <Button type="button" onClick={() => onAction("buy", portfolio, { initialInstrumentId: holding.instrument_id })}>Beli</Button> : null}
+  const footer = <div className={`${formStyles.holdingActions} form-actions`}>
+    {portfolio.can_operate ? <Button type="button" variant={canSell ? "secondary" : "primary"} onClick={() => onAction("buy", portfolio, { initialInstrumentId: holding.instrument_id })}>Beli</Button> : null}
     {canSell ? <Button type="button" variant="primary" onClick={() => onAction("sell", portfolio, { initialInstrumentId: holding.instrument_id })}>Jual</Button> : null}
+    {portfolio.can_operate ? <details className={formStyles.holdingActionMenu}><summary aria-label="Aksi investasi lainnya" title="Aksi lainnya"><FiMoreHorizontal aria-hidden="true" /></summary><div><Button type="button" icon={FiEdit3} onClick={() => onAction("price", portfolio, { initialInstrumentId: holding.instrument_id })}>Perbarui nilai</Button><Button type="button" onClick={onClose}>Tutup detail</Button></div></details> : <Button type="button" onClick={onClose}>Tutup</Button>}
   </div>;
   return <Modal open title={`Detail ${holding.ticker || "investasi"}`} description="Detail holding aktual dari catatan investasi. Nilai berasal dari catatan manual atau transaksi terakhir, bukan harga pasar live." onClose={onClose} footer={footer}>
     <div className={formStyles.review}>

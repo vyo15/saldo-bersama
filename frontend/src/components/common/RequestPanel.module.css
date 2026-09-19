@@ -55,3 +55,18 @@
 @media (max-width: 360px) {
   .actions { grid-template-columns: 1fr; }
 }
+
+.reviewDisclosure { min-width: 0; }
+.reviewDisclosure > summary {
+  min-height: 44px; width: 100%; padding: 0 12px; border: 1px solid var(--border);
+  border-radius: var(--control-radius); display: inline-flex; align-items: center; justify-content: center;
+  list-style: none; background: var(--surface-soft); color: var(--primary); font-size: 13px;
+  font-weight: var(--font-weight-semibold); cursor: pointer;
+}
+.reviewDisclosure > summary::-webkit-details-marker { display: none; }
+.reviewDisclosure > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.reviewDisclosure > .actions { margin-top: 8px; }
+@media (max-width: 820px) {
+  .list { box-shadow: none; }
+  .reviewDisclosure > summary { min-height: var(--mobile-control-height); }
+}

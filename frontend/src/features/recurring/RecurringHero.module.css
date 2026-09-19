@@ -274,3 +274,20 @@ button.heroStatus {
     transition: none;
   }
 }
+
+/* Compact overview: recurring is a financial to-do list, not a second dashboard. */
+.heroCard { padding: 14px 15px; box-shadow: none; }
+.heroContent { width: min(76%, 43rem); }
+.heroValue { margin-top: 8px; font-size: clamp(1.75rem, 1.35rem + 1.5vw, 2.45rem); }
+.heroDescription { margin-top: 3px; font-size: 12px; }
+.heroProgress { margin-top: 10px; height: 5px; }
+.heroMetrics { margin-top: 8px; gap: 5px 12px; }
+.heroArt { opacity: .48; width: min(10rem, 24%); max-height: 8.5rem; filter: none; }
+@media (max-width: 560px) {
+  .heroCard { min-height: 9.5rem; padding: 13px 14px; border-radius: 16px; }
+  .heroContent { width: 74%; }
+  .heroTop { flex-direction: row; align-items: center; gap: 7px; }
+  .heroStatus { min-height: 36px; padding: 4px 8px; }
+  .heroValue { margin-top: 7px; font-size: clamp(1.6rem, 7.6vw, 2rem); }
+  .heroArt { opacity: .32; width: min(6.2rem, 25%); max-height: 6.5rem; }
+}

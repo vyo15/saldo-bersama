@@ -176,7 +176,7 @@ const AccountListSection = ({ mobileLayout, accounts, allAccounts, selectedAccou
     <section aria-labelledby="account-list-title" className={`${styles.accountSection}${initialEmpty ? ` ${styles.accountSectionInitialEmpty}` : ""}`}>
       <h2 id="account-list-title" className="sr-only">Rekening aktif</h2>
       {accounts.length ? (mobileLayout
-        ? <Suspense fallback={<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" />}><MobileAccountsExperience accounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode}
+        ? <Suspense fallback={<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" />}><MobileAccountsExperience accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode}
             openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} /></Suspense>
         : <Suspense fallback={<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" />}><DesktopAccountsWorkspace accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode} bootstrap={bootstrap}
             onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
