@@ -166,6 +166,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `goals.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.move` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.investments.allocate` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `goals.investments.release` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.reverseMovement` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `reports.monthly` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
@@ -325,6 +327,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - Transfer **personal A → personal B** memakai ownership rekening sumber A pada row transaksi. `owner_user_id` transaksi selalu merepresentasikan pihak debit/sumber, bukan pemilik rekening tujuan.
 - Member tetap tidak memperoleh hak operasi rekening personal pasangan: rekening tersebut tidak boleh menjadi source/debit Member, walaupun boleh menjadi destination transfer. Owner/role dari client tidak menjadi authority.
 - `goals.move` memakai aturan representability yang sama. Untuk Target shared, sumber setoran boleh rekening shared atau rekening personal actor yang operable; rekening Target tetap harus menjadi destination pada deposit dan source pada withdrawal. Target personal hanya dapat dipasangkan dengan shared atau rekening personal pemilik Target yang sama. Read model `goals.list` hanya memberi `can_withdraw=true` bila ada rekening tujuan lain yang valid untuk actor; bila progress ada tetapi destination tidak tersedia, response membawa alasan presentasi aman dan UI tidak boleh menawarkan penarikan dead-end.
+- Target memiliki `funding_mode` `cash`, `investment`, atau `mixed`. `goals.list.current_amount` adalah satu progress authoritative: cash movement + market value aset yang dialokasikan + hasil penjualan investasi yang masih dipertahankan untuk Target. Nilai pasar tidak pernah membuat status Target selesai otomatis; `completed` tetap aksi eksplisit user.
+- `goals.investments.allocate` menautkan sebagian holding existing ke satu Target tanpa membuat trade atau transaksi saldo baru. `goals.investments.release` melepaskan sebagian holding atau retained sale cash dari Target. Buy/Sell investasi dapat membawa `goal_id`; Buy menambah alokasi Target dalam mutation trade yang sama, Sell hanya boleh menjual bagian yang terkait Target tersebut dan dapat mempertahankan hasil jual di Target atau melepasnya. Satu kejadian investasi tidak boleh diduplikasi menjadi `goals.move`.
 - Transfer dan mutasi Target tetap neutral terhadap income/expense; tidak boleh dihitung sebagai pemasukan/pengeluaran laporan.
 
 ### Pembagian beban biaya transaksi shared (compatibility)

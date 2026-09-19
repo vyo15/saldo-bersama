@@ -5,7 +5,6 @@ import PageInfoButton from "../../components/common/PageInfoButton.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import {
   desktopSettingsCategoriesForRole,
-  desktopSettingsCategoryForPath,
   normalizeSettingsPath,
   settingsItemMatchesPath,
 } from "./settingsNavigation.js";
@@ -15,10 +14,10 @@ const SETTINGS_ROUTE_META = Object.freeze({
   "/pengaturan": {
     title: "Pengaturan",
     description: "Atur akun, integrasi, data, dan kontrol sistem dari satu tempat.",
-    summary: "Pilih kategori dan menu yang ingin dikelola. Desktop memakai navigasi bertingkat agar ruang lebar tetap rapi; mobile tetap ringkas.",
+    summary: "Pilih menu yang ingin dikelola.",
     help: {
       title: "Tentang Pengaturan",
-      content: "Pada mobile, Pengaturan memakai grouped-list yang ringkas. Pada desktop, fungsi yang sama disusun sebagai kategori, submenu, dan panel detail agar tidak terasa seperti tampilan mobile yang dibentangkan.",
+      content: "Kelola akun, notifikasi, integrasi, data, dan pemeliharaan aplikasi dari satu tempat.",
     },
   },
   "/pengaturan/notifikasi": {
@@ -150,57 +149,39 @@ const SettingsDetailHeader = ({ meta }) => (
 
 const SettingsDesktopNavigation = ({ pathname, role }) => {
   const categories = desktopSettingsCategoriesForRole(role);
-  const activeCategory = desktopSettingsCategoryForPath(pathname, role);
-  if (!activeCategory) return null;
-
   return (
-    <>
-      <aside className={styles.settingsDesktopCategories} aria-label="Kategori pengaturan">
-        <span className={styles.settingsDesktopPaneLabel}>Kategori</span>
-        <nav className={styles.settingsDesktopNavList}>
-          {categories.map((category) => {
-            const Icon = category.icon;
-            const active = category.items.some((item) => settingsItemMatchesPath(item, pathname));
-            return (
-              <Link key={category.id} className={`${styles.settingsDesktopCategory}${active ? ` ${styles.isActive}` : ""}`} to={category.items[0].to} aria-current={active ? "page" : undefined}>
-                <span className={styles.settingsDesktopCategoryIcon}><Icon aria-hidden="true" /></span>
-                <span className={styles.settingsDesktopCategoryCopy}>
-                  <strong>{category.label}</strong>
-                  <small>{category.description}</small>
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      <aside className={styles.settingsDesktopSubmenu} aria-label={`Menu ${activeCategory.label}`}>
-        <span className={styles.settingsDesktopPaneLabel}>Menu</span>
-        <nav className={styles.settingsDesktopNavList}>
-          {activeCategory.items.map((item) => {
-            const Icon = item.icon;
-            const active = settingsItemMatchesPath(item, pathname);
-            return (
-              <NavLink key={item.to} className={`${styles.settingsDesktopSubmenuItem}${active ? ` ${styles.isActive}` : ""}`} to={item.to} aria-current={active ? "page" : undefined}>
-                <span className={styles.settingsDesktopSubmenuIcon}><Icon aria-hidden="true" /></span>
-                <span className={styles.settingsDesktopSubmenuCopy}>
-                  <strong>{item.label}</strong>
-                  <small>{item.description}</small>
-                </span>
-                <FiChevronRight aria-hidden="true" />
-              </NavLink>
-            );
-          })}
-        </nav>
-      </aside>
-    </>
+    <aside className={styles.settingsDesktopSubmenu} aria-label="Menu pengaturan">
+      <span className={styles.settingsDesktopPaneLabel}>Menu</span>
+      <nav className={styles.settingsDesktopGroupedNav}>
+        {categories.map((category) => (
+          <section key={category.id} className={styles.settingsDesktopGroup} aria-labelledby={`settings-group-${category.id}`}>
+            <h2 id={`settings-group-${category.id}`}>{category.label}</h2>
+            <div className={styles.settingsDesktopNavList}>
+              {category.items.map((item) => {
+                const Icon = item.icon;
+                const active = settingsItemMatchesPath(item, pathname);
+                return (
+                  <NavLink key={item.to} className={`${styles.settingsDesktopSubmenuItem}${active ? ` ${styles.isActive}` : ""}`} to={item.to} aria-current={active ? "page" : undefined}>
+                    <span className={styles.settingsDesktopSubmenuIcon}><Icon aria-hidden="true" /></span>
+                    <span className={styles.settingsDesktopSubmenuCopy}>
+                      <strong>{item.label}</strong>
+                      <small>{item.description}</small>
+                    </span>
+                    <FiChevronRight aria-hidden="true" />
+                  </NavLink>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </nav>
+    </aside>
   );
 };
 
 const SettingsDesktopHeader = ({ meta }) => (
   <header className={styles.settingsDesktopDetailHeader}>
     <div>
-      <span className={styles.settingsDesktopEyebrow}>Pengaturan</span>
       <div className={styles.settingsDesktopTitleLine}>
         <h1>{meta.title}</h1>
         <PageInfoButton title={meta.help.title}>{meta.help.content}</PageInfoButton>

@@ -43,7 +43,7 @@
 - [ ] Beranda mobile compact: **Dana Tersedia tetap nominal pertama**, sementara **Total saldo rekening**, **Sisa di Alokasi**, Aman/hari, dan Masuk/Keluar/Selisih tetap terlihat tanpa standalone card `Bulan ini`.
 - [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
-- [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, dan tidak menghapus draft/form.
+- [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, tidak menghapus draft/form, dan node gesture hanya dirender pada viewport mobile (`<=820px`), bukan disembunyikan belakangan di desktop.
 - [ ] Reconnect/foreground/offline recovery tidak memicu duplicate mutation atau refresh ganda yang tidak perlu.
 
 ## 5. UI/UX dan accessibility
@@ -52,6 +52,9 @@
 - [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak.
 - [ ] Mobile control penting ≥44×44px; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
 - [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
+- [ ] Cocokkan Saldo desktop tidak menyembunyikan kolom **Selisih/Status**; breakpoint dua-panel hanya aktif bila riwayat memiliki lebar yang cukup dan tidak ada overflow kritis tanpa affordance.
+- [ ] Collection kecil tidak mempertahankan kontrol yang tidak berguna: ringkasan satu-item, search/filter dataset kecil, atau tab jenis bernilai nol disembunyikan secara progresif.
+- [ ] Container desktop tidak berganti lebar antar route; tepi konten shell canonical tetap stabil, sedangkan kebutuhan lebar khusus diselesaikan di layout feature.
 - [ ] Modal diuji buka → tutup/batal → buka lagi; Browser Back/focus/body scroll lock tidak stale.
 - [ ] True-empty hanya memiliki satu primary next action; filtered-empty menawarkan reset/show-all, bukan membuat entity baru.
 - [ ] Create CTA pada true-empty tidak muncul bersamaan di header/toolbar dan empty state. Kewajiban/Investasi/collection lain hanya mengembalikan header create setelah data pertama ada.

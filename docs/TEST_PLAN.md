@@ -20,7 +20,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 23 sebelum runtime current menerima traffic.
+- Schema Production harus versi 24 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -68,7 +68,7 @@ Minimum contract:
 
 - Income, expense, transfer, refund, adjustment mematuhi transaction shape database/service.
 - Smart default rekening/kategori/Kebutuhan tidak auto-submit. Tepat satu Kebutuhan matching boleh auto-link dan harus tetap terlihat/editable di **Penggunaan dana**; dua atau lebih kandidat—including kategori sama pada Alokasi yang sama—harus meminta pilihan user; state ambigu belum memilih tidak boleh disamakan dengan Dana Tersedia; **Dana Tersedia** dapat dipilih eksplisit; nol kandidat langsung tampil sebagai Dana Tersedia dan dapat disimpan tanpa picker Alokasi manual atau konfirmasi kedua.
-- Quick `+ Catat` menguji prinsip context-aware: history hanya mengurutkan rekening/kategori/sumber dan tidak auto-select; satu Kewajiban/Target/portofolio valid boleh dilanjutkan otomatis; banyak pilihan wajib meminta user; Target quick-record menuju `goal-plan` Alokasi dengan nominal kosong kecuali suggested amount eksplisit; Investasi quick-record tidak mengisi aset/kuantitas/harga dari histori dan tetap memakai dialog Investasi canonical.
+- Quick `+ Catat` menguji prinsip context-aware: history hanya mengurutkan rekening/kategori/sumber dan tidak auto-select; satu Kewajiban/Target/portofolio valid boleh dilanjutkan otomatis; banyak pilihan wajib meminta user; Target quick-record menuju `goal-fund` pada halaman Target dengan nominal kosong kecuali suggested amount eksplisit; user memilih Rekening atau Investasi sesuai `funding_mode`, sedangkan Investasi quick-record tidak mengisi aset/kuantitas/harga dari histori dan tetap memakai dialog Investasi canonical.
 - Composer mobile menjaga tanggal default hari ini terlihat pada jalur utama, sedangkan metode pembayaran/catatan berada pada disclosure `Catatan & metode pembayaran`; entry `+ Catat` mengunci jenis yang sudah dipilih, memakai copy rekening/CTA kontekstual, dan tetap mempertahankan semua capability form.
 - Desktop transaksi memakai `reports.monthly` canonical untuk ringkasan seluruh periode, bukan agregasi dari page slice 50 transaksi; panel aktivitas, kategori terbesar, dan net cashflow wajib tetap benar saat filter ledger aktif.
 - Ledger desktop menampilkan konteks Kebutuhan/Alokasi/Jadwal/Target/Kewajiban dari read model backend, menjaga satu overflow action per row, dan membuka detail sebagai drawer; mobile tetap memakai history/card + modal tanpa business flow duplikat.
@@ -182,7 +182,7 @@ Minimum contract:
 - Modal: buka → tutup/batal → buka lagi serta modal A → B → kembali tidak meninggalkan overlay/history/body-lock/focus stale.
 - Browser Back menutup modal lebih dulu bila contract modal berlaku.
 - True-empty hanya memiliki satu primary next action dan tidak membuat record palsu.
-- Regression action-ownership mencakup Kewajiban, Investasi, Alokasi Dana, Jadwal Rutin, Target, Rekening, Kategori, Transaksi, dan Dashboard: header create tidak boleh tampil bersamaan dengan create CTA true-empty; filtered-empty hanya menawarkan reset/show-all; quick-add global `Catat` menjadi launcher aktivitas tunggal. Pengeluaran/Pemasukan/Transfer harus tetap memakai composer transaksi, pembayaran Kewajiban harus memakai `pay-recurring`, Target harus meneruskan ke Alokasi, dan Investasi harus memakai flow asset-centric existing tanpa mutation ledger duplikat.
+- Regression action-ownership mencakup Kewajiban, Investasi, Alokasi Dana, Jadwal Rutin, Target, Rekening, Kategori, Transaksi, dan Dashboard: header create tidak boleh tampil bersamaan dengan create CTA true-empty; filtered-empty hanya menawarkan reset/show-all; quick-add global `Catat` menjadi launcher aktivitas tunggal. Pengeluaran/Pemasukan/Transfer harus tetap memakai composer transaksi, pembayaran Kewajiban harus memakai `pay-recurring`, Target harus memakai flow pendanaan Target langsung (cash/investment/mixed), dan Investasi harus memakai flow asset-centric existing tanpa mutation ledger duplikat.
 - Detail object dengan sub-item erat memakai hierarchy section/list, bukan tumpukan card setara tanpa kebutuhan.
 - Honest Action Contract diuji lintas Rekening, Kategori, Alokasi, Kebutuhan, Jadwal Rutin, Target, dan Kewajiban: entry lifecycle memakai `Hapus dari daftar` sebelum preview; `Hapus permanen` hanya untuk `canDeleteUnused=true`; record berhistori harus memakai `Arsipkan`, sedangkan `commitments.archive` memakai `Hentikan kewajiban`.
 - Regression harus menolak facade/action berlabel `delete/hapus` yang sebenarnya memanggil archive, serta menolak success copy yang menyatakan data dihapus bila server hanya mengarsipkan.
@@ -212,7 +212,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 23 sebelum deployment current menerima traffic.
+- Schema Production harus versi 24 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 

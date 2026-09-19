@@ -22,6 +22,8 @@ import useRoutePrefetch from "../hooks/useRoutePrefetch.js";
 import useActionPrefetch from "../hooks/useActionPrefetch.js";
 import useVisualViewportInsets from "../hooks/useVisualViewportInsets.js";
 import useModalActivity from "../hooks/useModalActivity.js";
+import useMediaQuery from "../hooks/useMediaQuery.js";
+import { APP_MEDIA } from "../config/layout.js";
 import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate.js";
 import { apiClient, getMutationActivitySnapshot, subscribeToMutationActivity } from "../services/api/client.js";
 import InstallAppCard from "../components/pwa/InstallAppCard.jsx";
@@ -226,7 +228,7 @@ const AppShell = () => {
   const accountsRoute = location.pathname === "/rekening";
   const transactionsRoute = location.pathname === "/transaksi";
   const notificationsRoute = location.pathname === "/notifikasi";
-  const wideContentRoute = dashboardRoute || ["/laporan", "/investasi", "/notifikasi"].includes(location.pathname);
+  const mobileLayout = useMediaQuery(APP_MEDIA.mobile);
   const desktopActivityQuickAddVisible = desktopActivityQuickAddAllowed(location.pathname, user?.role);
   const { installPrompt, network, notificationState, serviceWorkerUpdate, pullRefreshBlocked } = useAppShellRuntime({ overview, user, composerOpen, syncNow });
   const { offline, degraded, recovering } = network;
@@ -254,14 +256,14 @@ const AppShell = () => {
         <DesktopAppHeader isRefreshing={isRefreshing} notificationState={notificationState} user={user} onLogout={handleLogout} />
 
         <div className="app-shell__main">
-          <main className={`app-content ${wideContentRoute ? "app-content--wide" : "app-content--standard"}`}>
+          <main className="app-content">
             <AppContentNotices dashboardRoute={dashboardRoute} installPrompt={installPrompt} logoutError={logoutError} refreshError={refreshError} syncWarning={syncWarning} refreshAll={refreshAll} manualRefresh={manualRefresh} />
             <Outlet />
           </main>
         </div>
       </div>
 
-      <MobilePullToRefresh onRefresh={manualRefresh} blocked={pullRefreshBlocked || mobileMenuOpen} offline={offline} />
+      {mobileLayout ? <MobilePullToRefresh onRefresh={manualRefresh} blocked={pullRefreshBlocked || mobileMenuOpen} offline={offline} /> : null}
       <PwaStatusStack offline={offline} degraded={degraded} recovering={recovering} serviceWorkerUpdate={serviceWorkerUpdate} />
 
       <DesktopFloatingActivityAdd visible={desktopActivityQuickAddVisible && !dashboardRoute && !transactionsRoute} offline={offline} onClick={openQuickRecord} />

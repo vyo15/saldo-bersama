@@ -12,6 +12,7 @@ const goalFeatureSource = () => sourceMany([
   "src/features/goals/GoalsPage.jsx",
   "src/features/goals/components/GoalCards.jsx",
   "src/features/goals/components/GoalDialogs.jsx",
+  "src/features/goals/components/GoalFundingModal.jsx",
 ]);
 
 test("halaman transaksi mengekspos filter rekening, kategori, dan pencatat", async () => {
@@ -128,7 +129,7 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   for (const type of ["investment_reconciliation_difference", "investment_reconciliation_stale", "reconciliation_difference", "reconciliation_stale", "unallocated_funds", "unallocated_expense", "budget_threshold", "envelope_threshold", "recurring_overdue", "recurring_due", "goal_behind"]) {
     assert.match(alertWorkflow, new RegExp(type));
   }
-  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Rapikan transaksi", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Buka Alokasi"]) {
+  for (const label of ["Cocokkan saldo", "Tambahkan dana alokasi", "Rapikan transaksi", "Periksa kebutuhan", "Periksa Alokasi Dana", "Catat pembayaran", "Buka tagihan ini", "Tambah dana"]) {
     assert.match(alertWorkflow, new RegExp(label));
   }
   assert.match(alertWorkflow, /safeTargetPath/);
@@ -153,37 +154,40 @@ test("semua permukaan alert memakai kontrak guidance yang sama dan deep-link dik
   assert.match(recurringActions, /consumeAttention\(\)/);
   assert.match(recurringActions, /const openPayment = useCallback/);
   assert.match(goals, /attentionGoalId/);
-  assert.match(goals, /navigate\("\/perencanaan\/kantong"/);
-  assert.match(goals, /workflowAction: "goal-plan"/);
-  assert.match(goals, /replace: true/);
-  assert.doesNotMatch(goals, /openMovement\(goal, "deposit"\)|GoalMovementModal/);
+  assert.match(goals, /openFunding\(goal, \{ suggestedAmount:/);
+  assert.match(goals, /consumeAttention\?\.\(\)/);
+  assert.match(goals, /workflowAction !== "create-goal"/);
+  assert.doesNotMatch(goals, /goal-plan|GoalMovementModal|navigate\("\/perencanaan\/kantong"/);
   assert.match(budgets, /attentionBudgetId/);
   assert.match(budgets, /attentionBudgetId/);
   assert.match(budgets, /Kebutuhan/);
   assert.match(allocations, /attentionEnvelopeId/);
   assert.match(allocations, /consumeAttention\(\)/);
   assert.match(allocations, /Dana kembali tersedia/);
-  assert.match(allocations, /Setor ke Target/);
+  assert.match(allocations, /Tambah ke Target/);
+  assert.match(allocations, /workflowAction: "choose-goal-funding"/);
   assert.match(allocations, /released_amount/);
   assert.match(allocations, /reuse_needs: closeReuseNeeds/);
   assert.match(allocations, /Kembalikan ke dana tersedia|Tetap di alokasi berikutnya/);
 });
 
-test("target menampilkan sisa dan proyeksi, sedangkan eksekusi dana tetap satu arah melalui Alokasi", async () => {
-  const [goals, allocationExecution] = await Promise.all([
+test("target menampilkan sisa dan proyeksi, lalu menambah dana langsung lewat rekening atau investasi tanpa flow Alokasi lama", async () => {
+  const [goals, funding] = await Promise.all([
     goalFeatureSource(),
-    source("src/features/allocations/AllocationGoalExecutionModal.jsx"),
+    source("src/features/goals/components/GoalFundingModal.jsx"),
   ]);
   assert.match(goals, /remaining_amount/);
   assert.match(goals, /required_monthly_amount/);
   assert.match(goals, /pace_status/);
-  assert.match(goals, /Buka Alokasi/);
-  assert.match(goals, /Target hanya memantau rencana dan progres/);
-  assert.match(goals, /const canCreate = creationAccounts\.length > 0/);
-  assert.doesNotMatch(goals, /withdraw_blocked_reason|GoalMovementModal|Setor dana ke target|Tarik dana dari target/);
-  assert.match(allocationExecution, /moveGoalFromAllocation/);
-  assert.match(allocationExecution, /movement_type: "deposit"/);
-  assert.match(allocationExecution, /directRoute\(transferRoutes/);
+  assert.match(goals, /Tambah dana/);
+  assert.match(goals, /Satu tujuan dapat berisi dana tunai, investasi, atau keduanya/);
+  assert.match(goals, /const canCreate = creationAccounts\.length > 0 \|\| investmentPortfolios\.length > 0/);
+  assert.doesNotMatch(goals, /withdraw_blocked_reason|GoalMovementModal|goal-plan|Target hanya memantau rencana dan progres/);
+  assert.match(funding, /moveGoal/);
+  assert.match(funding, /movement_type: "deposit"/);
+  assert.match(funding, /allocateGoalInvestment/);
+  assert.match(funding, /releaseGoalInvestment/);
+  assert.match(funding, /Satu pencatatan/);
 });
 
 test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis", async () => {
@@ -203,12 +207,12 @@ test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis",
   assert.match(allocations, /<AllocationFundingSummary accounts=\{accounts\}/);
   assert.match(recurring, /finance-checklist\.webp/);
   assert.match(recurring, /aria-label="Ringkasan jadwal rutin periode ini"/);
-  assert.match(members, /house\.webp/);
-  assert.match(members, /<MembersSummaryHero members=\{members\}/);
+  assert.doesNotMatch(members, /house\.webp|MembersSummaryHero/);
+  assert.match(members, /membersCount > 5 \|\| filtersActive/);
   for (const page of [dashboard, transactions, reports]) {
     assert.doesNotMatch(page, /piggy-bank\.webp|finance-checklist\.webp|\/house\.webp|\/wallet\.webp/);
   }
-  const assetNames = ["piggy-bank.webp", "wallet.webp", "finance-checklist.webp", "house.webp"];
+  const assetNames = ["piggy-bank.webp", "wallet.webp", "finance-checklist.webp"];
   for (const name of assetNames) {
     const buffer = await readFile(path.join(root, "public", "login", "assets", "mobile", name));
     assert.ok(buffer.length > 10_000, `${name} harus tetap tersedia sebagai aset visual existing`);
@@ -370,9 +374,9 @@ test("continuity flow memakai prefill dan action existing tanpa mutation finansi
   assert.match(funding, /onSubmit/);
   assert.doesNotMatch(funding, /apiClient|createTransaction|transactions\.create/);
 
-  assert.match(notices, /workflowAction: "goal-deposit"/);
+  assert.match(notices, /workflowAction: "choose-goal-funding"/);
   assert.match(notices, /sourceAccountId/);
-  assert.match(goals, /workflowAction !== "goal-deposit"/);
+  assert.match(goals, /\["goal-fund", "choose-goal-funding"\]\.includes\(workflowAction\)/);
   assert.match(goals, /suggestedAmount/);
 
   assert.match(recurring, /workflowSource: "recurring-income"/);

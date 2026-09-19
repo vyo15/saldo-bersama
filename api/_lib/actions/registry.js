@@ -24,7 +24,7 @@ import {
 import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
   adjustEnvelopeAllocation, archiveBudget, archiveEnvelopeRule, archiveGoal, archiveRecurringRule, cancelOccurrence, closeEnvelope, createBudgetsBatch, createEnvelope, createEnvelopeWithNeeds, createGoal, createRecurringRule, deleteUnusedBudget,
-  deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, payOccurrence,
+  deleteUnusedEnvelopeRule, deleteUnusedGoal, deleteUnusedRecurringRule, listBudgets, listEnvelopes, listGoals, listRecurring, moveEnvelope, moveGoal, allocateGoalInvestment, releaseGoalInvestment, payOccurrence,
   previewBudgetLifecycle, previewEnvelopeRuleLifecycle, previewGoalLifecycle, previewRecurringRuleLifecycle, removeBudget, restoreBudget, restoreEnvelopeRule, restoreGoal, restoreOccurrence, restoreRecurringRule,
   reverseEnvelopeMovement, reverseGoalMovement, reverseOccurrencePayment, updateGoal, updateRecurringRule, upsertBudget,
   archiveCommitment, createCommitment, listCommitments, recordCommitmentReceipt, updateCommitment,
@@ -178,6 +178,8 @@ const ACTION_HANDLERS = Object.freeze({
   "goals.archive": archiveGoal,
   "goals.deleteUnused": deleteUnusedGoal,
   "goals.move": moveGoal,
+  "goals.investments.allocate": allocateGoalInvestment,
+  "goals.investments.release": releaseGoalInvestment,
   "goals.reverseMovement": reverseGoalMovement,
   "goals.restore": restoreGoal,
   "reports.monthly": monthlyReport,

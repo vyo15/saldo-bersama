@@ -45,7 +45,25 @@ const exportData = async (db) => {
       LEFT JOIN users au ON au.user_id=r.assignee_user_id
       ORDER BY p.period_start DESC,p.name`),
     db.all("SELECT o.occurrence_id,r.name,r.kind,o.due_date,o.expected_amount,o.actual_amount,o.status,r.frequency,r.payment_method,r.scope FROM recurring_occurrences o JOIN recurring_rules r ON r.recurring_rule_id=o.recurring_rule_id ORDER BY o.due_date DESC,r.name"),
-    db.all("SELECT g.goal_id,g.name,g.goal_type,g.target_amount,g.target_date,g.priority,g.scope,g.status,COALESCE((SELECT SUM(CASE WHEN m.movement_type='deposit' THEN m.amount ELSE -m.amount END) FROM goal_movements m WHERE m.goal_id=g.goal_id AND m.status='active'),0) AS current_amount FROM savings_goals g ORDER BY g.status,g.target_date"),
+    db.all(`WITH goal_cash AS (
+      SELECT goal_id,COALESCE(SUM(CASE WHEN movement_type='deposit' THEN amount WHEN movement_type='withdrawal' THEN -amount ELSE amount END),0) AS cash_amount
+      FROM goal_movements WHERE status='active' GROUP BY goal_id
+    ), price_events AS (
+      SELECT portfolio_id,instrument_id,valuation_date AS price_date,created_at,price_per_share,3 AS priority,rowid AS source_order FROM investment_valuations
+      UNION ALL SELECT portfolio_id,instrument_id,trade_date,created_at,price_per_share,2,rowid FROM investment_trades
+      UNION ALL SELECT portfolio_id,instrument_id,correction_date,created_at,reference_price,1,rowid FROM investment_corrections WHERE correction_type='opening_position' AND reference_price>0
+    ), latest_prices AS (
+      SELECT portfolio_id,instrument_id,price_per_share FROM (SELECT price_events.*,ROW_NUMBER() OVER (PARTITION BY portfolio_id,instrument_id ORDER BY price_date DESC,created_at DESC,priority DESC,source_order DESC) AS rn FROM price_events) WHERE rn=1
+    ), allocated AS (
+      SELECT goal_id,portfolio_id,instrument_id,COALESCE(SUM(share_delta),0) AS shares,COALESCE(SUM(cost_basis_delta),0) AS cost_basis,COALESCE(SUM(cash_delta),0) AS retained_cash,COALESCE(SUM(realized_pl_delta),0) AS realized_pl
+      FROM goal_investment_events WHERE status='active' GROUP BY goal_id,portfolio_id,instrument_id
+    ), investment_progress AS (
+      SELECT a.goal_id,COALESCE(SUM(CASE WHEN a.shares>0 THEN a.shares*COALESCE(lp.price_per_share,0) ELSE 0 END),0) AS investment_market_value,COALESCE(SUM(a.cost_basis),0) AS investment_cost_basis,COALESCE(SUM(a.retained_cash),0) AS investment_cash,COALESCE(SUM(a.realized_pl),0) AS investment_realized_pl
+      FROM allocated a LEFT JOIN latest_prices lp ON lp.portfolio_id=a.portfolio_id AND lp.instrument_id=a.instrument_id GROUP BY a.goal_id
+    ) SELECT g.goal_id,g.name,g.goal_type,g.funding_mode,g.target_amount,g.target_date,g.priority,g.scope,g.status,
+      COALESCE(gc.cash_amount,0) AS cash_amount,COALESCE(ip.investment_market_value,0) AS investment_market_value,COALESCE(ip.investment_cost_basis,0) AS investment_cost_basis,COALESCE(ip.investment_cash,0) AS investment_cash,COALESCE(ip.investment_realized_pl,0) AS investment_realized_pl,
+      COALESCE(gc.cash_amount,0)+COALESCE(ip.investment_market_value,0)+COALESCE(ip.investment_cash,0) AS current_amount
+      FROM savings_goals g LEFT JOIN goal_cash gc ON gc.goal_id=g.goal_id LEFT JOIN investment_progress ip ON ip.goal_id=g.goal_id ORDER BY g.status,g.target_date`),
     db.all("SELECT r.reconciliation_id,r.reconciled_at,a.name AS account_name,r.system_balance,r.actual_balance,r.difference,r.notes,r.status FROM reconciliations r JOIN accounts a ON a.account_id=r.account_id ORDER BY r.reconciled_at DESC"),
     db.all("SELECT timestamp,actor_email,action,entity_type,entity_id,result FROM audit_log ORDER BY timestamp DESC LIMIT 10000"),
   ]);

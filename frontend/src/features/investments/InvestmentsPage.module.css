@@ -248,10 +248,11 @@
 .firstInvestmentSetup {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--primary-soft) 26%, var(--surface-soft));
+  padding: var(--space-3) 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
 }
 
 .firstInvestmentEyebrow {
@@ -270,10 +271,11 @@
 
 .firstInvestmentPaths > div {
   min-width: 0;
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-inline-start: 2px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+  border-radius: 0;
+  background: transparent;
 }
 
 .firstInvestmentPaths strong,
@@ -292,7 +294,7 @@
 
 @media (max-width: 620px) {
   .firstInvestment { padding: var(--space-3); }
-  .firstInvestmentSetup { padding: var(--space-3); }
+  .firstInvestmentSetup { padding: var(--space-3) 0 0; }
   .firstInvestmentPaths { grid-template-columns: 1fr; }
   .firstInvestmentSetup :global(.button) { width: 100%; }
 }

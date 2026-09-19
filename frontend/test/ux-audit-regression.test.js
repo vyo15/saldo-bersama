@@ -281,14 +281,15 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(recurringSchedule, /title=\{hasAnyItems \? "Tidak ada jadwal yang sesuai" : "Punya pembayaran yang berulang\?"\}/);
   assert.match(recurringSchedule, /action=\{hasAnyItems \? <Button onClick=\{onReset\}>Tampilkan jadwal tersedia<\/Button> : canCreate \?/);
   assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleFilters/);
-  assert.match(recurringSchedule, /\{allItems\.length \? <ScheduleKindTabs/);
+  assert.match(recurringSchedule, /<div className=\{styles\.sectionHeader\}>[\s\S]*\{allItems\.length \? <ScheduleKindTabs/);
+  assert.match(recurringSchedule, /if \(!expenseCount \|\| !incomeCount\) return null;/);
 
   assert.match(commitments, /\{items\.length \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
   assert.match(commitments, /action=\{<Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button>\}/);
   assert.equal((commitments.match(/>Tambah kewajiban<\/Button>/g) || []).length, 2, "label boleh ada di dua branch source, tetapi branch header wajib kondisional terhadap items.length");
 
   assert.match(goals, /\{items\.length \? <GoalSummary items=\{items\} \/> : null\}/);
-  assert.match(goals, /const goalHeaderActions = \(\{ canCreate, itemCount, openCreate \}\) => \(canCreate && itemCount/);
+  assert.match(goals, /const headerActions = canCreate && items\.length \? <Button/);
   assert.match(goalCards, /title=\{canCreate \? "Belum ada target keuangan"/);
   assert.match(goalCards, /action=\{canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
   assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>\{ownerMode \? "Tambah rekening" : "Ajukan rekening"\}<\/Button> : null\}/);
@@ -378,9 +379,62 @@ test("quick Catat mobile tidak mengulang keputusan dan dashboard tidak mengganda
     read("src/features/dashboard/components/DashboardQuickActions.jsx"),
   ]);
   assert.match(quickRecord, /Bayar kewajiban/);
-  assert.match(quickRecord, /Arahkan dana/);
+  assert.match(quickRecord, /Tambah dana/);
   assert.match(quickRecord, /Beli \/ tambah aset/);
   assert.match(composer, /lockType=\{composer\.lockType\}/);
   assert.doesNotMatch(dashboardQuick, /label: "Atur Dana"/);
   assert.match(dashboardQuick, /label: "Investasi"/);
+});
+
+test("audit density menjaga desktop stabil, kontrol progresif, dan kolom finansial penting tetap terlihat", async () => {
+  const [
+    shell,
+    appCss,
+    reconciliationCss,
+    transactions,
+    transactionCss,
+    approvals,
+    commitments,
+    members,
+    recurring,
+    settings,
+    settingsCss,
+    categoriesCss,
+    planningCss,
+  ] = await Promise.all([
+    read("src/layouts/AppShell.jsx"),
+    read("src/styles/app.css"),
+    read("src/features/reconciliations/ReconciliationsPage.module.css"),
+    read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/transactions/TransactionsPage.module.css"),
+    read("src/features/approvals/ApprovalCenterPage.jsx"),
+    read("src/features/commitments/CommitmentsPage.jsx"),
+    read("src/features/settings/MembersSettingsPage.jsx"),
+    read("src/features/recurring/RecurringSchedule.jsx"),
+    read("src/features/settings/SettingsLayout.jsx"),
+    read("src/features/settings/Settings.module.css"),
+    read("src/features/categories/CategoriesPage.module.css"),
+    read("src/features/planning/PlanningPage.module.css"),
+  ]);
+
+  assert.match(shell, /<main className="app-content">/);
+  assert.match(shell, /mobileLayout \? <MobilePullToRefresh/);
+  assert.doesNotMatch(shell, /app-content--wide|app-content--standard/);
+  assert.match(appCss, /\.app-content \{[\s\S]*max-width:\s*1320px;[\s\S]*padding:\s*16px/);
+
+  assert.match(reconciliationCss, /@media \(min-width: 1280px\)[\s\S]*grid-template-columns:\s*minmax\(300px, \.55fr\) minmax\(0, 1\.45fr\)/);
+  assert.match(transactions, /item\.status && item\.status !== "active" \? <StatusBadge/);
+  assert.match(transactionCss, /\.ledgerOpen \{[\s\S]*min-height:\s*3\.5rem;/);
+
+  assert.match(approvals, /if \(!pendingCount\) return <OwnerSettingsGuard[\s\S]*<EmptyState title="Tidak ada pengajuan yang menunggu"/);
+  assert.match(commitments, /activeItems\.length > 1 \? <CommitmentSummary/);
+  assert.match(members, /membersCount > 5 \|\| filtersActive/);
+  assert.match(recurring, /if \(!expenseCount \|\| !incomeCount\) return null;/);
+
+  assert.match(settings, /settingsDesktopGroupedNav/);
+  assert.doesNotMatch(settings, /desktopSettingsCategoryForPath/);
+  assert.match(settingsCss, /\.settingsWorkspace \{[\s\S]*grid-template-columns:\s*minmax\(14rem, 16rem\) minmax\(0, 1fr\)/);
+  assert.doesNotMatch(settingsCss, /settingsDesktopCategories/);
+  assert.match(categoriesCss, /repeat\(auto-fit, minmax\(11\.5rem, 1fr\)\)/);
+  assert.match(planningCss, /\.tabs \{[\s\S]*width:\s*max-content;[\s\S]*grid-template-columns:\s*repeat\(3, max-content\)/);
 });

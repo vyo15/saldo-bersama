@@ -2,9 +2,14 @@
 
 .goal-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
 }
+
+.goal-grid > * { grid-column: span 2; }
+.goal-grid > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+.goal-grid > :nth-last-child(2):nth-child(3n + 1),
+.goal-grid > :last-child:nth-child(3n + 2) { grid-column: span 3; }
 
 .goal-grid__empty {
   grid-column: 1 / -1;
@@ -272,6 +277,7 @@
   .goal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .goal-grid > * { grid-column: auto; }
 }
 
 @media (max-width: 820px) {
@@ -402,3 +408,19 @@
   .goal-summary__description { font-size: 12px; }
   .goal-summary__art { opacity: .42; }
 }
+
+.goal-card__funding {
+  display: flex;
+  align-items: center;
+  gap: 6px 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.goal-card__funding span { display: inline-flex; align-items: baseline; gap: 4px; }
+.goal-card__funding strong, .goal-card__funding :global(.money) { color: var(--text); font-size: inherit; }
+.goal-card__funding [data-tone="positive"], .goal-card__funding [data-tone="positive"] strong, .goal-card__funding [data-tone="positive"] :global(.money) { color: var(--positive); }
+.goal-card__funding [data-tone="negative"], .goal-card__funding [data-tone="negative"] strong, .goal-card__funding [data-tone="negative"] :global(.money) { color: var(--negative); }

@@ -5,7 +5,7 @@ export const QUICK_RECORD_ACTIONS = Object.freeze([
   Object.freeze({ id: "commitment", label: "Bayar kewajiban", description: "KPR, cicilan, pinjaman, atau Arisan." }),
   Object.freeze({ id: "income", label: "Pemasukan", description: "Gaji, pendapatan, atau uang masuk lainnya." }),
   Object.freeze({ id: "transfer", label: "Transfer", description: "Pindahkan uang antar rekening." }),
-  Object.freeze({ id: "goal", label: "Target", description: "Pilih target lalu arahkan dana melalui Alokasi." }),
+  Object.freeze({ id: "goal", label: "Target", description: "Tambah dana tunai atau investasi langsung ke Target." }),
   Object.freeze({ id: "investment", label: "Investasi", description: "Catat pembelian atau posisi aset investasi." }),
 ]);
 
@@ -41,7 +41,7 @@ export const quickRecordTransactionOptions = (actionId) => {
 export const quickRecordNavigation = (actionId) => {
   if (actionId === "goal") return {
     to: "/target",
-    state: { workflowSource: "quick-record", workflowAction: "goal-deposit" },
+    state: { workflowSource: "quick-record", workflowAction: "choose-goal-funding" },
   };
   if (actionId === "investment") return {
     to: "/investasi",
@@ -54,8 +54,8 @@ export const quickRecordGoalNavigation = (goal) => {
   const goalId = String(goal?.goal_id || "");
   if (!goalId) return quickRecordNavigation("goal");
   return {
-    to: "/perencanaan/kantong",
-    state: { workflowSource: "quick-record", workflowAction: "goal-plan", goalId, manualAmount: true },
+    to: "/target",
+    state: { workflowSource: "quick-record", workflowAction: "goal-fund", goalId, manualAmount: true },
   };
 };
 

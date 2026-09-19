@@ -2,9 +2,14 @@
 
 .allocation-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-4);
 }
+
+.allocation-grid > * { grid-column: span 2; }
+.allocation-grid > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+.allocation-grid > :nth-last-child(2):nth-child(3n + 1),
+.allocation-grid > :last-child:nth-child(3n + 2) { grid-column: span 3; }
 
 .allocation-card {
   padding: var(--space-5);
@@ -268,6 +273,7 @@
   .allocation-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .allocation-grid > * { grid-column: auto; }
 }
 
 @media (max-width: 820px) {

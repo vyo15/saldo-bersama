@@ -56,13 +56,13 @@ const BUDGET_DEPENDENCIES = Object.freeze(unique(
 const GOAL_DEPENDENCIES = Object.freeze(unique(
   CORE_OVERVIEW,
   AUDIT,
-  ["accounts.list", "transactions.list", "goals.list", "goals.previewLifecycle", "reports.monthly", "reminders.get", "periods.previewClose", "archive.list"],
+  ["accounts.list", "transactions.list", "goals.list", "goals.previewLifecycle", "reports.monthly", "reminders.get", "periods.previewClose", "archive.list", "investments.overview"],
 ));
 
 const INVESTMENT_DEPENDENCIES = Object.freeze(unique(
   CORE_OVERVIEW,
   AUDIT,
-  ["investments.overview", "accounts.list", "reports.monthly"],
+  ["investments.overview", "accounts.list", "reports.monthly", "goals.list", "goals.previewLifecycle"],
 ));
 
 const ALL_BUSINESS_READS = Object.freeze(unique(
@@ -156,6 +156,8 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
   "goals.archive": GOAL_DEPENDENCIES,
   "goals.deleteUnused": GOAL_DEPENDENCIES,
   "goals.move": GOAL_DEPENDENCIES,
+  "goals.investments.allocate": GOAL_DEPENDENCIES,
+  "goals.investments.release": GOAL_DEPENDENCIES,
   "goals.reverseMovement": GOAL_DEPENDENCIES,
   "goals.restore": GOAL_DEPENDENCIES,
 

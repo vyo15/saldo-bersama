@@ -64,6 +64,6 @@ test("notification center dan settings mempunyai presentation desktop khusus", a
   assert.match(notifications, /Tandai semua dibaca/);
   assert.match(notifications, /filterCounts/);
   assert.match(notificationCss, /@media \(min-width: 821px\)[\s\S]*\.header \{ display: none; \}/);
-  assert.match(settingsCss, /@media \(max-width: 1060px\) and \(min-width: 821px\)[\s\S]*\.settingsDesktopCategories \{ display: none; \}/);
-  assert.match(settingsCss, /grid-template-columns:\s*minmax\(12\.5rem, 15rem\) minmax\(0, 1fr\)/);
+  assert.doesNotMatch(settingsCss, /settingsDesktopCategories/);
+  assert.match(settingsCss, /\.settingsWorkspace \{[\s\S]*grid-template-columns:\s*minmax\(14rem, 16rem\) minmax\(0, 1fr\)/);
 });

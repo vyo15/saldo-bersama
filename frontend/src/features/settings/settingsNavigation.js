@@ -4,7 +4,6 @@ import {
   FiDatabase,
   FiLock,
   FiMonitor,
-  FiSettings,
   FiShield,
   FiTool,
 } from "react-icons/fi";
@@ -49,8 +48,6 @@ export const DESKTOP_SETTINGS_CATEGORIES = Object.freeze([
   {
     id: "umum",
     label: "Umum",
-    description: "Preferensi harian",
-    icon: FiSettings,
     items: [
       { to: "/pengaturan/notifikasi", label: "Notifikasi perangkat", description: "Push dan jenis pengingat", icon: FiBell },
     ],
@@ -58,8 +55,6 @@ export const DESKTOP_SETTINGS_CATEGORIES = Object.freeze([
   {
     id: "data",
     label: "Data",
-    description: "Cadangan & pemeliharaan",
-    icon: FiDatabase,
     ownerOnly: true,
     items: [
       {
@@ -75,8 +70,6 @@ export const DESKTOP_SETTINGS_CATEGORIES = Object.freeze([
   {
     id: "sistem",
     label: "Sistem",
-    description: "Integritas & audit",
-    icon: FiLock,
     ownerOnly: true,
     items: [
       { to: "/pengaturan/periode", label: "Periode & integritas", description: "Kontrol periode dan pemeriksaan", icon: FiLock },
@@ -86,8 +79,6 @@ export const DESKTOP_SETTINGS_CATEGORIES = Object.freeze([
   {
     id: "integrasi",
     label: "Integrasi",
-    description: "Google & layanan",
-    icon: FiCalendar,
     items: [
       { to: "/pengaturan/integrasi", label: "Integrasi Google", description: "Sheets, Calendar & Drive", icon: FiCalendar },
     ],
@@ -95,8 +86,6 @@ export const DESKTOP_SETTINGS_CATEGORIES = Object.freeze([
   {
     id: "keamanan",
     label: "Sesi & keamanan",
-    description: "Perangkat aktif",
-    icon: FiMonitor,
     items: [
       { to: "/pengaturan/perangkat", label: "Perangkat & sesi", description: "Kelola sesi login aktif", icon: FiMonitor },
     ],
@@ -122,7 +111,3 @@ export const desktopSettingsCategoriesForRole = (role) => DESKTOP_SETTINGS_CATEG
   }))
   .filter((category) => category.items.length);
 
-export const desktopSettingsCategoryForPath = (pathname, role) => {
-  const categories = desktopSettingsCategoriesForRole(role);
-  return categories.find((category) => category.items.some((item) => settingsItemMatchesPath(item, pathname))) || categories[0] || null;
-};

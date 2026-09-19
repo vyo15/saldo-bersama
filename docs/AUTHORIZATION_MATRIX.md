@@ -120,6 +120,8 @@
 | `goals.archive` | Ya | Tidak |
 | `goals.deleteUnused` | Ya | Tidak |
 | `goals.move` | Ya | Ya |
+| `goals.investments.allocate` | Ya | Ya |
+| `goals.investments.release` | Ya | Ya |
 | `goals.reverseMovement` | Ya | Ya |
 | `goals.restore` | Ya | Tidak |
 | `reports.monthly` | Ya | Ya |

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
@@ -45,13 +45,14 @@ const useLegacyInvestmentContinuation = ({ location, navigate, data, ready, setS
 };
 
 const InvestmentOverlays = ({ page }) => {
-  const { data, user, setupOpen, setSetupOpen, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction } = page;
+  const { data, goals, user, setupOpen, setupGoalId, setSetupOpen, clearSetupGoal, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction } = page;
   return <Suspense fallback={<LazyActionFallback surface="modal" title="Investasi" label="Menyiapkan aksi Investasi..." />}>
     {setupOpen ? <InvestmentSetupDialog
       instruments={data.instruments || []}
       portfolios={data.portfolios || []}
       owner={user?.role === "owner"}
-      onClose={() => setSetupOpen(false)}
+      initialGoalId={setupGoalId}
+      onClose={() => { setSetupOpen(false); clearSetupGoal(); }}
       onSuccess={onSetupSuccess}
     /> : null}
     {holdingDetail ? <InvestmentHoldingDetail
@@ -68,6 +69,8 @@ const InvestmentOverlays = ({ page }) => {
       userRole={user?.role}
       initialInstrumentId={dialog.initialInstrumentId || ""}
       initialDraft={dialog.initialDraft || null}
+      initialGoalId={dialog.initialGoalId || ""}
+      goals={goals}
       onClose={() => setDialog(null)}
       onSuccess={onInvestmentSuccess}
     /> : null}
@@ -98,35 +101,55 @@ const InvestmentsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const overview = useApiResource("investments.overview");
+  const goalResource = useApiResource("goals.list");
   const [setupOpen, setSetupOpen] = useState(false);
+  const [setupGoalId, setSetupGoalId] = useState("");
   const [dialog, setDialog] = useState(null);
+  const workflowHandled = useRef("");
   const [holdingDetail, setHoldingDetail] = useState(null);
   const data = overview.data || { summary: {}, portfolios: [], instruments: [], activity: [] };
+  const goals = goalResource.data?.items || [];
   const assetCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.holdings || []).length, 0), [data.portfolios]);
 
   const openAction = (mode, portfolio, options = {}) => setDialog({ mode, portfolio, ...options });
-  const onSetupSuccess = (_saved, asset) => {
-    notify({ message: `${asset?.ticker || "Aset investasi"} berhasil ditambahkan.`, tone: "success", dedupeKey: "investments:asset:create" });
-    overview.reload().catch(() => {});
+  const clearSetupGoal = () => setSetupGoalId("");
+  const openSetup = (goalId = "") => { setSetupGoalId(String(goalId || "")); setSetupOpen(true); };
+  const onSetupSuccess = (saved, asset) => {
+    clearSetupGoal();
+    notify({
+      message: saved?.goal_id
+        ? `${asset?.ticker || "Aset investasi"} berhasil ditambahkan dan terhubung ke Target.`
+        : `${asset?.ticker || "Aset investasi"} berhasil ditambahkan.`,
+      tone: "success",
+      dedupeKey: saved?.goal_id ? "investments:asset:create:goal" : "investments:asset:create",
+    });
+    Promise.allSettled([overview.reload(), goalResource.reload()]);
   };
   const onInvestmentSuccess = (mode) => {
     notify({ message: investmentSuccessMessage(mode), tone: "success", dedupeKey: `investments:${mode}` });
-    overview.reload().catch(() => {});
+    Promise.allSettled([overview.reload(), goalResource.reload()]);
   };
 
   useLegacyInvestmentContinuation({ location, navigate, data, ready: overview.status === "ready" && !overview.isRefreshing, setSetupOpen, setDialog, setHoldingDetail });
+  // Workflow routing coordinates route state, available portfolios, setup fallback, and dialog continuation.
+  // eslint-disable-next-line complexity
   useEffect(() => {
-    if (overview.status !== "ready" || overview.isRefreshing || location.state?.workflowAction !== "record-investment") return;
+    const workflowAction = String(location.state?.workflowAction || "");
+    const workflowKey = workflowAction ? `${location.key}|${workflowAction}` : "";
+    if (overview.status !== "ready" || overview.isRefreshing || workflowAction !== "record-investment" || workflowHandled.current === workflowKey) return;
+    workflowHandled.current = workflowKey;
     const operablePortfolios = (data.portfolios || []).filter((portfolio) => portfolio.can_operate !== false);
     const requestedPortfolioId = String(location.state?.portfolioId || "");
     const requested = requestedPortfolioId ? operablePortfolios.find((portfolio) => portfolio.portfolio_id === requestedPortfolioId) || null : null;
     const initialDraft = location.state?.initialDraft && typeof location.state.initialDraft === "object" ? location.state.initialDraft : null;
+    const initialGoalId = String(location.state?.goalId || "");
+    navigate(location.pathname, { replace: true, state: null });
     if (requested) {
-      setDialog({ mode: "buy", portfolio: requested, initialDraft });
+      setDialog({ mode: "buy", portfolio: requested, initialDraft, initialGoalId });
     } else if (operablePortfolios.length === 1) {
-      setDialog({ mode: "buy", portfolio: operablePortfolios[0], initialDraft });
+      setDialog({ mode: "buy", portfolio: operablePortfolios[0], initialDraft, initialGoalId });
     } else if (operablePortfolios.length === 0) {
-      setSetupOpen(true);
+      openSetup(initialGoalId);
     } else {
       notify({
         message: requestedPortfolioId ? "Portofolio pilihan sudah tidak tersedia. Pilih portofolio investasi lain." : "Pilih portofolio investasi yang ingin dicatat dari tombol Catat.",
@@ -134,8 +157,7 @@ const InvestmentsPage = () => {
         dedupeKey: "investments:quick-record:choose-asset",
       });
     }
-    navigate(location.pathname, { replace: true, state: null });
-  }, [data.portfolios, location.pathname, location.state, navigate, notify, overview.isRefreshing, overview.status]);
+  }, [data.portfolios, location.key, location.pathname, location.state, navigate, notify, overview.isRefreshing, overview.status]);
   useEffect(() => {
     if (!attention || !["investment_reconciliation_stale", "investment_reconciliation_difference"].includes(attention.attentionType)) return;
     notify({ message: "Pencatatan investasi kini berbasis aset. Rekonsiliasi RDN lama tetap tersimpan sebagai histori dan tidak diperlukan untuk pencatatan baru.", tone: "info", dedupeKey: "investments:legacy-reconciliation" });
@@ -145,12 +167,12 @@ const InvestmentsPage = () => {
   if (overview.status === "loading") return <NativePageSkeleton kind="investments" label="Memuat investasi…" />;
   if (overview.status === "error") return <ErrorState error={overview.error} onRetry={overview.reload} />;
 
-  const page = { data, user, setupOpen, setSetupOpen, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction };
+  const page = { data, goals, user, setupOpen, setupGoalId, setSetupOpen, clearSetupGoal, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction };
   return <div className={`page-stack ${styles.page}`}>
     <RefreshWarning error={overview.refreshError} onRetry={() => overview.reload().catch(() => {})} />
     <PageHeader
       title="Investasi"
-      actions={assetCount > 0 ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => setSetupOpen(true)} aria-label="Tambah investasi">Tambah investasi</Button> : null}
+      actions={assetCount > 0 ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup()} aria-label="Tambah investasi">Tambah investasi</Button> : null}
       help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak memindahkan saldo rekening, dan tidak mengambil harga pasar live."
     />
     {assetCount === 0 ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>

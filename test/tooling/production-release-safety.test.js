@@ -177,7 +177,7 @@ test("Production runtime menolak deployment live yang tertinggal dari schema sou
     checkProductionRuntime({ fetchImpl }),
     (error) => error?.code === "PRODUCTION_DEGRADED"
       && error?.blockers?.includes("PRODUCTION_RELEASE_BEHIND_SOURCE")
-      && /source membutuhkan v23/.test(error.message),
+      && /source membutuhkan v24/.test(error.message),
   );
 });
 

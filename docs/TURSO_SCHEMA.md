@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `021_notification_attention_state.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `022_goal_investment_funding.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -29,8 +29,9 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `commitment_movements` — ledger progres pembayaran/penerimaan Kewajiban dan snapshot pokok/bunga.
 - `budgets` — Kebutuhan operasional periode terbuka.
 - `budget_history` — representasi compact Kebutuhan setelah periode ditutup; dipakai report/reopen tanpa mempertahankan row operasional aktif.
-- `savings_goals`
-- `goal_movements`
+- `savings_goals` — Target tujuan dengan `funding_mode` `cash`, `investment`, atau `mixed`; status selesai tetap keputusan eksplisit user.
+- `goal_movements` — mutasi cash Target yang terhubung satu-ke-satu ke transaksi ledger.
+- `goal_investment_events` — event append-only untuk menautkan/release holding, Buy/Sell yang terkait Target, dan retained sale cash tanpa menduplikasi mutasi ledger.
 - `reconciliations`
 - `period_closures`
 - `transfer_requests` — pengajuan transfer shared → personal Member yang memerlukan approval Administrator; approval menautkan tepat satu `approved_transaction_id`.
@@ -85,6 +86,8 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `investment_portfolios` tetap memiliki FK `rdn_account_id` untuk compatibility histori. Flow current dapat memakai portfolio legacy yang operable atau membuat compatibility portfolio baru di atas rekening hidden Rp0; broker selalu metadata legacy, bukan hierarchy produk.
 - Trade investasi menyimpan `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, dan `cash_amount` sebagai INTEGER. Service + integrity checker memastikan `share_quantity = lots × lot_size`, gross = lembar × harga, buy cash = gross + fee, dan sell cash = gross - fee.
 - `investment_trades.cash_effect_enabled` dan `investment_corrections.cash_effect_enabled` mempertahankan `1` pada histori yang memang berdampak cash. Record Buy/Sell dan direct opening-position current memakai `0`; nominal cash/cost tetap tersimpan untuk cost basis/P&L tetapi tidak memutasikan rekening.
+- `savings_goals.funding_mode` dibatasi ke `cash`, `investment`, atau `mixed`. Progress Target dihitung dari cash movement + nilai pasar alokasi investasi + hasil penjualan yang masih dipertahankan; market value tidak mengubah `status` secara otomatis.
+- `goal_investment_events` menyimpan delta saham/cost basis/cash append-only. `trade_id` unik bila ada agar satu Buy/Sell tidak tercatat dua kali untuk Target; alokasi lintas Target tidak boleh melebihi holding aktual dan retained cash tidak boleh negatif.
 - View `investment_account_events` hanya memproyeksikan row dengan `cash_effect_enabled=1`. Karena itu cash RDN legacy tetap dapat direplay tanpa membuat trade current memengaruhi saldo rekening.
 - Event compatibility tidak boleh mendahului `accounts.initial_balance_date` portfolio. Trade tidak boleh future, perubahan holding mengikuti chronology/checkpoint yang sudah ada, dan direct asset position tidak boleh menulis ke periode yang sudah direkonsiliasi.
 - Reconciliation legacy bersifat snapshot as-of tanggal yang diminta dan tidak mengubah holding/cash. Correction reguler append-only Administrator-only; hasil holding/cost basis negatif atau tidak konsisten ditolak.
@@ -119,9 +122,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `23`
+Versi aktif: `24`
 
-Latest migration: `021_notification_attention_state.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `022_goal_investment_funding.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 

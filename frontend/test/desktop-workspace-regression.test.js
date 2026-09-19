@@ -34,13 +34,14 @@ test("kartu kewajiban memakai Bayar sebagai CTA utama dan memindahkan aksi kelol
   assert.match(css, /\.manageMenuItems \{/);
 });
 
-test("target menjelaskan eksekusi Alokasi sekali di level halaman, bukan berulang pada setiap kartu", async () => {
+test("target menjelaskan progress tunai dan investasi sekali di level halaman, bukan menghidupkan flow Alokasi lama", async () => {
   const [page, cards] = await Promise.all([
     read("src/features/goals/GoalsPage.jsx"),
     read("src/features/goals/components/GoalCards.jsx"),
   ]);
-  assert.match(page, /help="Target hanya memantau rencana dan progres\. Dana tetap disisihkan melalui Alokasi/);
-  assert.doesNotMatch(cards, /Target hanya memantau rencana dan progres|Eksekusi lewat Alokasi/);
+  assert.match(page, /help="Satu tujuan dapat berisi dana tunai, investasi, atau keduanya\. Nilai investasi mengikuti catatan harga terakhir dan setiap kejadian uang dihitung satu kali\."/);
+  assert.match(cards, /Tambah dana/);
+  assert.doesNotMatch(`${page}\n${cards}`, /Target hanya memantau rencana dan progres|Eksekusi lewat Alokasi|goal-plan/);
 });
 
 test("laporan desktop menjaga konteks filter saat analisis panjang dan mobile tetap statis", async () => {
@@ -63,7 +64,7 @@ test("rekonsiliasi desktop menjadi workspace perbandingan dua panel tanpa mengub
   const input = page.indexOf("<ReconciliationInputPanel", layout);
   const history = page.indexOf("className={styles.historyDisclosure}", layout);
   assert.ok(layout >= 0 && input > layout && history > input);
-  assert.match(css, /@media \(min-width: 1100px\)[\s\S]*\.layout \{[\s\S]*grid-template-columns: minmax\(320px, \.72fr\) minmax\(0, 1\.28fr\);/);
+  assert.match(css, /@media \(min-width: 1280px\)[\s\S]*\.layout \{[\s\S]*grid-template-columns: minmax\(300px, \.55fr\) minmax\(0, 1\.45fr\);/);
   assert.match(css, /\.formPanel \{[\s\S]*position: sticky;[\s\S]*top: 82px;/);
   assert.match(css, /@media \(max-width: 820px\)[\s\S]*\.historyDisclosureButton \{[\s\S]*display: flex;/);
 });
@@ -86,7 +87,8 @@ test("transaksi desktop memakai workspace analitik, ledger, dan drawer detail ta
   assert.match(workspace, /Aktivitas bulan ini/);
   assert.match(workspace, /Transaksi cepat/);
   assert.match(workspace, /Pengeluaran terbesar/);
-  assert.match(workspace, /Pakai lagi/);
+  assert.match(workspace, /Transaksi yang baru digunakan/);
+  assert.doesNotMatch(workspace, /<span className=\{styles\.activityEyebrow\}>Pakai lagi<\/span>/);
   assert.match(css, /\.desktopWorkspace \{/);
   assert.match(css, /:global\(\.modal\)\.detailDrawer \{/);
   assert.match(presentation, /transactionPlanningContext/);

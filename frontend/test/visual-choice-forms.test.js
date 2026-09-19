@@ -48,7 +48,7 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
     read("features/budgets/BudgetDialogLayer.jsx"),
     Promise.all([read("features/allocations/AllocationsPage.jsx"), read("features/allocations/AllocationDialogLayer.jsx")]).then((parts) => parts.join("\n")),
     read("features/recurring/RecurringDialogs.jsx"),
-    Promise.all([read("features/goals/GoalsPage.jsx"), read("features/goals/components/GoalDialogs.jsx")]).then((parts) => parts.join("\n")),
+    Promise.all([read("features/goals/GoalsPage.jsx"), read("features/goals/components/GoalDialogs.jsx"), read("features/goals/components/GoalFundingModal.jsx")]).then((parts) => parts.join("\n")),
     readCategoryFeatureSource(),
     read("features/settings/MembersSettingsPage.jsx"),
   ]);
@@ -62,7 +62,9 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
   assert.match(sources[2], /label="Kategori"/);
   assert.match(sources[3], /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.match(sources[4], /label = "Rekening default"/);
-  assert.match(sources[5], /label="Rekening tujuan"/);
+  assert.match(sources[5], /legend="Cara menabung"/);
+  assert.match(sources[5], /label="Rekening tabungan"/);
+  assert.match(sources[5], /label="Dari rekening"/);
   assert.match(sources[6], /SelectionField/);
   assert.match(sources[7], /SelectionField/);
 
@@ -123,14 +125,14 @@ test("ownership identity picker stays compact until expanded inline", async () =
 });
 
 test("inline account picker stays compact, searchable, and expands in the same form", async () => {
-  const [source, css, allocations, funding, accounts, goals, goalExecution, recurring, reconciliation, transaction, transfer, budgets] = await Promise.all([
+  const [source, css, allocations, funding, accounts, goals, goalFunding, recurring, reconciliation, transaction, transfer, budgets] = await Promise.all([
     read("components/common/InlineSelectionPicker.jsx"),
     read("components/common/InlineSelectionPicker.module.css"),
     read("features/allocations/AllocationDialogLayer.jsx"),
     read("features/allocations/AllocationFundingFlow.jsx"),
     read("features/accounts/components/AccountEditorDialogs.jsx"),
     read("features/goals/components/GoalDialogs.jsx"),
-    read("features/allocations/AllocationGoalExecutionModal.jsx"),
+    read("features/goals/components/GoalFundingModal.jsx"),
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/reconciliations/components/ReconciliationForm.jsx"),
     read("features/transactions/MobileTransactionFields.jsx"),
@@ -165,9 +167,9 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.match(accounts, /<InlineOwnershipPicker[\s\S]*legend="Pemegang rekening"/);
   assert.match(accounts, /badge: `\$\{userRoleLabel\(member\.role\)\}/);
   assert.doesNotMatch(accounts, /name="account-ownership"/);
-  assert.match(goals, /<InlineSelectionPicker[\s\S]*label="Rekening tujuan"/);
+  assert.match(goals, /<InlineSelectionPicker[\s\S]*label="Rekening tabungan"/);
   assert.doesNotMatch(goals, /GoalMovementModal|label="Rekening sumber"/);
-  assert.match(goalExecution, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
+  assert.match(goalFunding, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.match(recurring, /<InlineSelectionPicker label=\{label\}/);
   assert.match(reconciliation, /<InlineSelectionPicker[\s\S]*label="Rekening"/);
   assert.match(transaction, /<InlineSelectionPicker[\s\S]*label=\{label\}/);

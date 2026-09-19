@@ -47,7 +47,7 @@ const heldAssetEntries = (portfolios) => {
   return [...values].filter(Boolean).map((value) => ({ ticker: value }));
 };
 
-const createAssetPositionPayload = (form, asset, instruments) => {
+const createAssetPositionPayload = (form, asset, instruments, goalId = "") => {
   const registered = instruments.find((item) => ticker(item.ticker) === ticker(asset.ticker) && item.status === "active") || null;
   const preview = assetPositionPreview(form, asset);
   const instrument = registered ? { instrument_id: registered.instrument_id } : {
@@ -64,6 +64,7 @@ const createAssetPositionPayload = (form, asset, instruments) => {
     reference_price: Number(form.reference_price),
     position_date: form.position_date,
     notes: form.notes || "",
+    ...(goalId ? { goal_id: goalId } : {}),
   };
 };
 
@@ -91,7 +92,7 @@ const InvestmentPositionFields = ({ form, asset, heldTickers, allowedTickers, ou
   </fieldset>;
 };
 
-const InvestmentSetupDialog = ({ instruments = [], portfolios = [], owner = false, onClose, onSuccess }) => {
+const InvestmentSetupDialog = ({ instruments = [], portfolios = [], owner = false, initialGoalId = "", onClose, onSuccess }) => {
   const formRef = useRef(null);
   const [form, setForm] = useState({
     ticker: "",
@@ -140,7 +141,7 @@ const InvestmentSetupDialog = ({ instruments = [], portfolios = [], owner = fals
       globalThis.requestAnimationFrame?.(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
       return;
     }
-    const payload = createAssetPositionPayload(form, asset, instruments);
+    const payload = createAssetPositionPayload(form, asset, instruments, initialGoalId);
     setBusy(true);
     setError("");
     try {
@@ -160,7 +161,7 @@ const InvestmentSetupDialog = ({ instruments = [], portfolios = [], owner = fals
   return <Modal
     open
     title="Tambah investasi"
-    description="Pilih saham atau reksa dana, lalu catat posisi yang Anda miliki saat ini."
+    description={initialGoalId ? "Pilih aset dan catat posisi awal. Posisi ini akan langsung terhubung ke Target tanpa pencatatan kedua." : "Pilih saham atau reksa dana, lalu catat posisi yang Anda miliki saat ini."}
     onClose={busy || outcomeUnknown ? undefined : guard.requestClose}
     discardGuard={guard}
     discardSubject="investasi"

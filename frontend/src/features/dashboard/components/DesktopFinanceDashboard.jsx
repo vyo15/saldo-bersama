@@ -58,7 +58,6 @@ const DesktopFinanceDashboard = ({
       <section className={dashboardClass("desktop-analysis-section")} aria-labelledby="desktop-analysis-title">
         <div className={dashboardClass("desktop-analysis-section__heading")}>
           <div>
-            <span>Analisis bulan ini</span>
             <h2 id="desktop-analysis-title">Apa yang paling memengaruhi kondisi keuangan?</h2>
           </div>
         </div>

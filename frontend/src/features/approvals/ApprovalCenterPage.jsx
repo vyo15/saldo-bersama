@@ -2,6 +2,8 @@ import { useState } from "react";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
+import EmptyState from "../../components/feedback/EmptyState.jsx";
+import ButtonLink from "../../components/common/ButtonLink.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -55,6 +57,10 @@ const ApprovalCenterContent = ({
         : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
     activateTab(TABS[nextIndex].key, { focus: true });
   };
+  if (!pendingCount) return <OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda">
+    <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
+    <EmptyState title="Tidak ada pengajuan yang menunggu" description="Semua pengajuan rekening, kategori, dan transfer sudah ditinjau." action={<ButtonLink to="/">Kembali ke Beranda</ButtonLink>} />
+  </OwnerSettingsGuard>;
   return <OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda">
     <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
     <section className={styles.summary} aria-label="Ringkasan persetujuan"><strong>{pendingCount}</strong><span>pengajuan menunggu keputusan</span></section>
@@ -64,7 +70,6 @@ const ApprovalCenterContent = ({
     <div id="approval-tabpanel" className={styles.tabpanel} role="tabpanel" aria-labelledby={`approval-tab-${tab}`}>
       {showMaster ? <MasterDataRequestsPanel items={visibleMasterItems} ownerMode title={tab === "all" ? "Rekening dan kategori" : `Pengajuan ${tab === "account" ? "rekening" : "kategori"}`} busyId={masterReview.busyId} unresolvedIntent={masterReview.unresolvedIntent} onRetryUnresolved={masterReview.retryUnresolvedIntent} onApprove={(request) => masterReview.reviewRequest(request, "approve")} onReject={(request, reason) => masterReview.reviewRequest(request, "reject", reason)} /> : null}
       {showTransfer ? <TransferRequestsPanel items={transferItems} accounts={accounts} ownerMode busyId={transferReview.busyId} unresolvedIntent={transferReview.unresolvedIntent} onRetryUnresolved={transferReview.retryUnresolvedIntent} onApprove={(request, reason) => transferReview.reviewTransferRequest(request, "approve", reason)} onReject={(request, reason) => transferReview.reviewTransferRequest(request, "reject", reason)} /> : null}
-      {!pendingCount ? <p className={styles.empty}>Tidak ada pengajuan yang menunggu persetujuan.</p> : null}
     </div>
   </OwnerSettingsGuard>;
 };

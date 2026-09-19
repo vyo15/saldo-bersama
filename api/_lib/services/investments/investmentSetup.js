@@ -1,6 +1,7 @@
 import { appendAudit } from "../audit.js";
 import { appError, assertOwner, assertVersion, dateValue, nowIso, operableAccountSql, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { createAccountInternal } from "../masterData/accounts.js";
+import { allocateGoalInvestment } from "../planning/goalInvestments.js";
 import { assertActivityAfterReconciliation, assertPortfolioHistoryDate, assertPortfolioOperable, bumpPortfolio, exchangeValue, instrumentRow, portfolioRow, tickerValue } from "./investmentState.js";
 
 const nextAutomaticRdnName = async (db, sourceLabel) => {
@@ -159,7 +160,29 @@ export const createInvestmentAssetPosition = async (db, context) => {
   };
   await db.execute(`INSERT INTO investment_corrections(correction_id,portfolio_id,instrument_id,correction_date,share_delta,cost_basis_delta,cash_delta,reason,correction_type,reference_price,cash_effect_enabled,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   const rowVersion = await bumpPortfolio(db, context, portfolio);
-  await appendAudit(db, context, { entityType: "investment_asset_position", entityId: record.correction_id, next: { ...record, row_version: rowVersion } });
-  return { ...publicRow(record), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, row_version: rowVersion };
+  let goalLink = null;
+  if (payload.goal_id) {
+    goalLink = await allocateGoalInvestment(db, {
+      ...context,
+      action: "goals.investments.allocate",
+      payload: {
+        goal_id: payload.goal_id,
+        portfolio_id: portfolio.portfolio_id,
+        instrument_id: instrument.instrument_id,
+        shares,
+        event_date: positionDate,
+        reason: `Posisi awal ${instrument.ticker || instrument.name || "investasi"} ditautkan ke Target`,
+      },
+    });
+  }
+  await appendAudit(db, context, { entityType: "investment_asset_position", entityId: record.correction_id, next: { ...record, row_version: rowVersion, goal_id: goalLink?.goal_id || "" } });
+  return {
+    ...publicRow(record),
+    portfolio_id: portfolio.portfolio_id,
+    instrument_id: instrument.instrument_id,
+    row_version: rowVersion,
+    goal_id: goalLink?.goal_id || "",
+    goal_investment_event: goalLink?.event || null,
+  };
 };
 

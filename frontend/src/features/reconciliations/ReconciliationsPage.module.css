@@ -204,9 +204,9 @@
 
 
 /* Desktop analysis workspace: compare the current balance flow and history side by side. */
-@media (min-width: 1100px) {
+@media (min-width: 1280px) {
   .layout {
-    grid-template-columns: minmax(320px, .72fr) minmax(0, 1.28fr);
+    grid-template-columns: minmax(300px, .55fr) minmax(0, 1.45fr);
     gap: clamp(18px, 2vw, 28px);
   }
   .formPanel {

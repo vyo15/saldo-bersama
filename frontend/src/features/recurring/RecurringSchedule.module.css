@@ -96,38 +96,38 @@
 }
 
 .kindTabs {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  padding: 4px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 15px;
+  border-radius: var(--radius-pill);
   background: var(--surface-soft);
 }
 
 .kindTab {
-  min-height: var(--control-height-md);
-  min-width: 0;
-  padding: 0 var(--space-3);
+  min-height: 36px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 11px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: 6px;
   cursor: pointer;
   font: inherit;
-  font-size: var(--font-size-body-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
+  white-space: nowrap;
 }
 
 .kindTab > span {
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0 .35rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 .3rem;
   border-radius: var(--radius-pill);
   background: var(--surface-strong);
   display: inline-grid;
@@ -148,12 +148,17 @@
 .kindTabActive {
   background: var(--surface);
   color: var(--primary);
-  box-shadow: var(--shadow-control);
 }
 
 .kindTabActive > span {
   background: var(--primary-soft);
   color: var(--primary);
+}
+
+@media (max-width: 620px) {
+  .sectionHeader { align-items: center; }
+  .kindTab { min-height: var(--mobile-control-height); padding-inline: 9px; }
+  .kindTab > span { display: none; }
 }
 
 .scheduleList {

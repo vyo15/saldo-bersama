@@ -20,15 +20,15 @@ test("launcher Catat mendelegasikan setiap aktivitas ke flow canonical tanpa mut
 
   assert.deepEqual(quickRecordNavigation("goal"), {
     to: "/target",
-    state: { workflowSource: "quick-record", workflowAction: "goal-deposit" },
+    state: { workflowSource: "quick-record", workflowAction: "choose-goal-funding" },
   });
   assert.deepEqual(quickRecordNavigation("investment"), {
     to: "/investasi",
     state: { workflowSource: "quick-record", workflowAction: "record-investment" },
   });
   assert.deepEqual(quickRecordGoalNavigation({ goal_id: "goal-trip" }), {
-    to: "/perencanaan/kantong",
-    state: { workflowSource: "quick-record", workflowAction: "goal-plan", goalId: "goal-trip", manualAmount: true },
+    to: "/target",
+    state: { workflowSource: "quick-record", workflowAction: "goal-fund", goalId: "goal-trip", manualAmount: true },
   });
   assert.deepEqual(quickRecordInvestmentNavigation({ portfolio_id: "portfolio-1" }), {
     to: "/investasi",
@@ -82,12 +82,32 @@ test("entry Kewajiban dan Alokasi memakai pay-recurring serta RecurringPage meng
 });
 
 
+
+test("workflow route Catat dikonsumsi sekali sehingga modal tidak reopen setelah Batal atau X", async () => {
+  const [goals, investments, recurring] = await Promise.all([
+    read("src/features/goals/GoalsPage.jsx"),
+    read("src/features/investments/InvestmentsPage.jsx"),
+    read("src/features/recurring/RecurringPage.jsx"),
+  ]);
+
+  for (const source of [goals, investments, recurring]) {
+    assert.match(source, /workflowHandled/);
+    assert.match(source, /workflowKey/);
+  }
+  assert.match(goals, /workflowHandled\.current === workflowKey/);
+  assert.match(goals, /clearWorkflowState\(\);[\s\S]{0,500}openFunding/);
+  assert.match(goals, /workflowAction !== "create-goal"/);
+  assert.match(goals, /clearWorkflowState\(\)/);
+  assert.match(goals, /creation\.openCreate\(\)/);
+  assert.match(investments, /workflowHandled\.current === workflowKey/);
+  assert.match(investments, /navigate\(location\.pathname, \{ replace: true, state: null \}\);[\s\S]{0,180}setDialog/);
+});
+
 test("Catat cepat context-aware hanya mengotomasi pilihan yang pasti dan tetap memakai picker existing", async () => {
-  const [menu, goalModal, workspace, navigation] = await Promise.all([
+  const [menu, goalModal, goalsPage] = await Promise.all([
     read("src/components/navigation/QuickRecordMenu.jsx"),
-    read("src/features/allocations/AllocationGoalExecutionModal.jsx"),
-    read("src/features/allocations/AllocationsWorkspace.jsx"),
-    read("src/features/allocations/allocationWorkflowNavigation.js"),
+    read("src/features/goals/components/GoalFundingModal.jsx"),
+    read("src/features/goals/GoalsPage.jsx"),
   ]);
 
   assert.match(menu, /quickRecordGoalNavigation/);
@@ -97,14 +117,14 @@ test("Catat cepat context-aware hanya mengotomasi pilihan yang pasti dan tetap m
   assert.match(menu, /quickRecordInvestmentNavigation/);
   assert.match(menu, /step === "goals"/);
   assert.match(menu, /step === "investments"/);
-  assert.match(menu, /Arahkan dana/);
+  assert.match(menu, /Tambah dana/);
   assert.match(menu, /active\.length === 1/);
   assert.match(menu, /operable\.length === 1/);
 
-  assert.match(goalModal, /<InlineSelectionPicker/);
+  assert.match(goalModal, /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.match(goalModal, /compatibleAccounts\.length === 1/);
-  assert.match(goalModal, /if \(manualAmount\) return ""/);
-  assert.match(workspace, /initialSourceAccountId=\{goalActionTarget\.allocation_intent\?\.sourceAccountId/);
-  assert.match(workspace, /manualAmount=\{goalActionTarget\.allocation_intent\?\.manualAmount === true\}/);
-  assert.match(navigation, /manualAmount: location\.state\.manualAmount === true/);
+  assert.match(goalModal, /const preferred = manualAmount \? 0 :/);
+  assert.match(goalsPage, /manualAmount: location\.state\?\.manualAmount === true/);
+  assert.match(goalsPage, /manualAmount=\{fundingTarget\.manualAmount\}/);
+  assert.doesNotMatch(`${goalModal}\n${goalsPage}`, /goal-plan|AllocationGoalExecutionModal/);
 });

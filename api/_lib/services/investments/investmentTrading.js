@@ -1,6 +1,7 @@
 import { appendAudit } from "../audit.js";
 import { appError, assertVersion, dateValue, nonNegativeInteger, nowIso, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { assertActivityAfterReconciliation, assertChronology, assertPortfolioHistoryDate, assertPortfolioOperable, bumpPortfolio, instrumentRow, portfolioRow, portfolioState, safeAdd, safeInteger, safeMultiply } from "./investmentState.js";
+import { prepareGoalLinkedTrade, recordPreparedGoalLinkedTrade } from "../planning/goalInvestments.js";
 
 const createTrade = async (db, context, tradeType) => {
   const payload = context.payload || {};
@@ -25,14 +26,18 @@ const createTrade = async (db, context, tradeType) => {
     const holding = currentState.holdings.find((item) => item.instrument_id === instrument.instrument_id);
     if (!holding || shares > holding.shares) throw appError("INSUFFICIENT_HOLDING", "Jumlah yang dijual melebihi kepemilikan yang tersedia.", 409, { availableShares: holding?.shares || 0 });
   }
+  const goalLink = await prepareGoalLinkedTrade(db, context, {
+    portfolio, instrument, tradeType, shares, tradeDate, cashAmount, currentState, retainForGoal: payload.retain_for_goal !== false,
+  });
   // Schema v17 treats Buy/Sell as an investment position record only. The cash amount
   // remains part of the immutable trade history for cost basis/realized P&L, but it no
   // longer mutates an RDN/account balance. Historical v16 rows keep their old cash impact.
   const record = { trade_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, trade_type: tradeType, trade_date: tradeDate, lots, share_quantity: shares, price_per_share: price, fee_amount: fee, gross_amount: gross, cash_amount: cashAmount, cash_effect_enabled: 0, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
   await db.execute(`INSERT INTO investment_trades(trade_id,portfolio_id,instrument_id,trade_type,trade_date,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,cash_effect_enabled,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  const goalEvent = await recordPreparedGoalLinkedTrade(db, context, goalLink, { portfolio, instrument, trade: record, tradeDate });
   const rowVersion = await bumpPortfolio(db, context, portfolio);
-  await appendAudit(db, context, { entityType: "investment_trade", entityId: record.trade_id, next: { ...record, row_version: rowVersion } });
-  return { ...publicRow(record), row_version: rowVersion };
+  await appendAudit(db, context, { entityType: "investment_trade", entityId: record.trade_id, next: { ...record, row_version: rowVersion, goal_id: goalEvent?.goal_id || "" } });
+  return { ...publicRow(record), row_version: rowVersion, goal_investment_event: goalEvent };
 };
 
 export const buyInvestment = (db, context) => createTrade(db, context, "buy");

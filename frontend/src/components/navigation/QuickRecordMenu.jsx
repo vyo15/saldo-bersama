@@ -54,7 +54,7 @@ const ACTION_PRESENTATION = Object.freeze({
   income: Object.freeze({ label: "Pemasukan", description: "Gaji & uang masuk" }),
   transfer: Object.freeze({ label: "Transfer", description: "Antar rekening" }),
   commitment: Object.freeze({ label: "Bayar kewajiban", description: "KPR & cicilan" }),
-  goal: Object.freeze({ label: "Target", description: "Arahkan dana" }),
+  goal: Object.freeze({ label: "Target", description: "Tambah dana" }),
   investment: Object.freeze({ label: "Investasi", description: "Beli / tambah aset" }),
 });
 
@@ -223,7 +223,7 @@ const QuickRecordMenu = ({ open, onClose, onOpenTransaction }) => {
     onOpenTransaction(transactionOptions);
   };
 
-  const title = step === "commitments" ? "Bayar kewajiban" : step === "goals" ? "Arahkan dana ke Target" : step === "investments" ? "Catat investasi" : "Catat aktivitas";
+  const title = step === "commitments" ? "Bayar kewajiban" : step === "goals" ? "Tambah dana ke Target" : step === "investments" ? "Catat investasi" : "Catat aktivitas";
   const description = step === "commitments"
     ? "Pilih kewajiban yang ingin dibayar."
     : step === "goals"

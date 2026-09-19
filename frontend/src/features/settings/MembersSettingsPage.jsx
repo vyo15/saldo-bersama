@@ -30,31 +30,7 @@ const MemberActivityPanel = lazy(() => import("./components/MemberActivityPanel.
 const EMPTY_MEMBERS = Object.freeze([]);
 const EMPTY_MEMBER_FORM = Object.freeze({ email: "", name: "", role: "member" });
 
-const MEMBERS_HERO_ART = "/login/assets/mobile/house.webp";
-
-const MembersSummaryHero = ({ members }) => {
-  const activeMembers = members.filter((member) => member.status === "active");
-  const administrators = activeMembers.filter((member) => member.role === "owner").length;
-  const regularMembers = activeMembers.filter((member) => member.role === "member").length;
-  const inactiveMembers = members.length - activeMembers.length;
-  return (
-    <section className={memberStyles.membersSummary} aria-labelledby="members-summary-title">
-      <div className={memberStyles.membersSummaryContent}>
-        <p className={memberStyles.membersSummaryEyebrow} id="members-summary-title">Ruang bersama</p>
-        <strong className={memberStyles.membersSummaryValue}>{activeMembers.length} anggota aktif</strong>
-        <p className={memberStyles.membersSummaryDescription}>Akses aktif untuk pengelolaan keuangan bersama.</p>
-        <div className={memberStyles.membersSummaryMeta}>
-          <span>Administrator <strong>{administrators}</strong></span>
-          <span>Member <strong>{regularMembers}</strong></span>
-          <span>Nonaktif <strong>{inactiveMembers}</strong></span>
-        </div>
-      </div>
-      <img className={memberStyles.membersSummaryArt} src={MEMBERS_HERO_ART} width="900" height="778" alt="" aria-hidden="true" draggable="false" decoding="async" />
-    </section>
-  );
-};
-
-const MemberToolbar = ({ searchQuery, setSearchQuery, roleFilter, setRoleFilter, count }) => <div className={memberStyles.memberToolbar}><label className={memberStyles.memberSearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari anggota</span><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari nama atau email" /></label><SelectionField className="field--compact" label="Filter role anggota" hideLabel compact value={roleFilter} onChange={setRoleFilter} options={[{ value: "all", label: "Semua role" }, { value: "owner", label: "Administrator" }, { value: "member", label: "Member" }]} /><span className={memberStyles.memberToolbarSummary}>{count} ditampilkan</span></div>;
+const MemberToolbar = ({ searchQuery, setSearchQuery, roleFilter, setRoleFilter }) => <div className={memberStyles.memberToolbar}><label className={memberStyles.memberSearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari anggota</span><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari nama atau email" /></label><SelectionField className="field--compact" label="Filter role anggota" hideLabel compact value={roleFilter} onChange={setRoleFilter} options={[{ value: "all", label: "Semua role" }, { value: "owner", label: "Administrator" }, { value: "member", label: "Member" }]} /></div>;
 
 const MemberMenu = ({ member, menuOpen, activeMenuRef, menuTriggerRefs, setOpenMenuId, openAction }) => <div className={memberStyles.memberMenuWrap} ref={menuOpen ? activeMenuRef : undefined}><button ref={(node) => { if (node) menuTriggerRefs.current.set(member.user_id, node); else menuTriggerRefs.current.delete(member.user_id); }} type="button" className={memberStyles.memberMenuTrigger} aria-label={`Aksi untuk ${member.name || member.email}`} aria-haspopup="true" aria-expanded={menuOpen} onClick={() => setOpenMenuId((current) => current === member.user_id ? "" : member.user_id)}><FiMoreHorizontal aria-hidden="true" /></button>{menuOpen ? <div className={memberStyles.memberMenu}>{member.status === "active" ? <button type="button" onClick={() => openAction("edit", member)}><FiEdit2 aria-hidden="true" />Ubah akses</button> : null}{member.status === "active" && !member.is_current ? <button className={memberStyles.memberMenuDanger} type="button" onClick={() => openAction("deactivate", member)}><FiUserMinus aria-hidden="true" />Nonaktifkan</button> : null}{member.status === "inactive" ? <button type="button" onClick={() => openAction("reactivate", member)}><FiRotateCcw aria-hidden="true" />Aktifkan kembali</button> : null}</div> : null}</div>;
 
@@ -75,10 +51,12 @@ const MemberCard = ({ member, user, menuProps, setActivityMember }) => {
   return <Card className={memberStyles.memberCard}><div className={memberStyles.memberCardTop}><div className={memberStyles.memberHeader}><UserAvatar user={member} className={memberStyles.memberAvatar} /><span className={memberStyles.memberCopy}><strong>{member.name || member.email}</strong><small>{member.email}</small><span className={memberStyles.memberRole}>{roleLabel(member.role)}</span></span></div><MemberMenu member={member} menuOpen={menuOpen} {...menuProps} /></div><MemberStatusBadges member={member} /><Button className={memberStyles.memberActivityButton} type="button" onClick={() => setActivityMember(member)}>Lihat aktivitas transaksi</Button></Card>;
 };
 
-const MembersContent = ({ resource, filteredMembers, toolbarProps, user, menuProps, setActivityMember }) => {
+const MembersContent = ({ resource, membersCount, filteredMembers, toolbarProps, user, menuProps, setActivityMember }) => {
   if (resource.status === "loading") return <NativePageSkeleton kind="members" variant="panel" label="Memuat data anggota…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
-  return <><MemberToolbar {...toolbarProps} count={filteredMembers.length} />{filteredMembers.length ? <div className={memberStyles.memberGrid}>{filteredMembers.map((member) => <MemberCard key={member.user_id} member={member} user={user} menuProps={menuProps} setActivityMember={setActivityMember} />)}</div> : <EmptyState title="Anggota tidak ditemukan" description="Tidak ada anggota yang cocok dengan pencarian atau filter saat ini." action={<Button onClick={() => { toolbarProps.setSearchQuery(""); toolbarProps.setRoleFilter("all"); }}>Hapus pencarian dan filter</Button>} />}</>;
+  const filtersActive = Boolean(toolbarProps.searchQuery.trim()) || toolbarProps.roleFilter !== "all";
+  const showToolbar = membersCount > 5 || filtersActive;
+  return <>{showToolbar ? <MemberToolbar {...toolbarProps} /> : null}{filteredMembers.length ? <div className={memberStyles.memberGrid}>{filteredMembers.map((member) => <MemberCard key={member.user_id} member={member} user={user} menuProps={menuProps} setActivityMember={setActivityMember} />)}</div> : <EmptyState title="Anggota tidak ditemukan" description="Tidak ada anggota yang cocok dengan pencarian atau filter saat ini." action={<Button onClick={() => { toolbarProps.setSearchQuery(""); toolbarProps.setRoleFilter("all"); }}>Hapus pencarian dan filter</Button>} />}</>;
 };
 
 const MemberFormModal = ({ open, close, editingMember, memberForm, setMemberForm, saveMember, saving, result }) => {
@@ -212,7 +190,7 @@ const MembersSettingsPage = () => {
 
   const toolbarProps = { searchQuery, setSearchQuery, roleFilter, setRoleFilter };
   const menuProps = { openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId, openAction };
-  return <div className="page-stack"><PageHeader eyebrow="Akses" title="Anggota" help="Kelola siapa yang boleh memakai Saldo Bersama, perannya, dan aktivitas pencatatannya. Perubahan akses mengikuti akun Google yang terdaftar." /><OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda"><section className={memberStyles.membersStandalonePage} aria-labelledby="members-settings-title"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} />{resource.status === "ready" ? <MembersSummaryHero members={members} /> : null}<div className={memberStyles.membersPageHeader}><div className={styles.pageHeading}><h2 id="members-settings-title"><span className={memberStyles.memberCount}>{members.length}</span> Anggota</h2></div><Button variant="primary" icon={FiPlus} type="button" onClick={() => openMemberForm()}>Tambah anggota</Button></div><SettingsNotice result={memberFormOpen ? null : result} /><MembersContent resource={resource} filteredMembers={filteredMembers} toolbarProps={toolbarProps} user={user} menuProps={menuProps} setActivityMember={setActivityMember} /><MemberFormModal open={memberFormOpen} close={closeMemberForm} editingMember={editingMember} memberForm={memberForm} setMemberForm={setMemberForm} saveMember={saveMember} saving={saving} result={result} />{activityMember ? <Suspense fallback={<LazyActionFallback surface="modal" title="Aktivitas anggota" label="Menyiapkan aktivitas anggota..." />}><MemberActivityPanel open member={activityMember} currentUser={user} onClose={() => setActivityMember(null)} /></Suspense> : null}<MemberActionModals target={target} actionState={actionState} setTarget={setTarget} confirmUserAction={confirmUserAction} /></section></OwnerSettingsGuard></div>;
+  return <div className="page-stack"><PageHeader title="Anggota" help="Kelola siapa yang boleh memakai Saldo Bersama, perannya, dan aktivitas pencatatannya. Perubahan akses mengikuti akun Google yang terdaftar." /><OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda"><section className={memberStyles.membersStandalonePage} aria-labelledby="members-settings-title"><RefreshWarning error={resource.refreshError} onRetry={resource.reload} /><div className={memberStyles.membersPageHeader}><div className={styles.pageHeading}><h2 id="members-settings-title"><span className={memberStyles.memberCount}>{members.length}</span> Anggota</h2></div><Button variant="primary" icon={FiPlus} type="button" onClick={() => openMemberForm()}>Tambah anggota</Button></div><SettingsNotice result={memberFormOpen ? null : result} /><MembersContent resource={resource} membersCount={members.length} filteredMembers={filteredMembers} toolbarProps={toolbarProps} user={user} menuProps={menuProps} setActivityMember={setActivityMember} /><MemberFormModal open={memberFormOpen} close={closeMemberForm} editingMember={editingMember} memberForm={memberForm} setMemberForm={setMemberForm} saveMember={saveMember} saving={saving} result={result} />{activityMember ? <Suspense fallback={<LazyActionFallback surface="modal" title="Aktivitas anggota" label="Menyiapkan aktivitas anggota..." />}><MemberActivityPanel open member={activityMember} currentUser={user} onClose={() => setActivityMember(null)} /></Suspense> : null}<MemberActionModals target={target} actionState={actionState} setTarget={setTarget} confirmUserAction={confirmUserAction} /></section></OwnerSettingsGuard></div>;
 };
 
 export default MembersSettingsPage;

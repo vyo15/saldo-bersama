@@ -5,3 +5,7 @@ export const updateGoal = (payload, options) => apiClient.request("goals.update"
 export const previewGoalLifecycle = (payload, options) => apiClient.request("goals.previewLifecycle", payload, options);
 export const archiveGoal = (payload, options) => apiClient.request("goals.archive", payload, options);
 export const deleteUnusedGoal = (payload, options) => apiClient.request("goals.deleteUnused", payload, options);
+
+export const moveGoal = (payload, options) => apiClient.request("goals.move", payload, options);
+export const allocateGoalInvestment = (payload, options) => apiClient.request("goals.investments.allocate", payload, options);
+export const releaseGoalInvestment = (payload, options) => apiClient.request("goals.investments.release", payload, options);

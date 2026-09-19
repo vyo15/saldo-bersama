@@ -1,5 +1,6 @@
 import { publicRow } from "../core.js";
 import { openingPositionAvailable, portfolioState } from "./investmentState.js";
+import { goalInvestmentAllocationsForPortfolio } from "../planning/goalInvestments.js";
 
 export const listInvestmentInstruments = async (db) => ({ items: (await db.all("SELECT * FROM investment_instruments ORDER BY status,ticker")).map((row) => publicRow(row)) });
 
@@ -12,9 +13,30 @@ export const investmentOverview = async (db, context) => {
   const items = [];
   let totalMarket = 0; let totalCost = 0; let totalCash = 0; let totalRealized = 0; let totalUnrealized = 0;
   for (const portfolio of rows) {
-    const state = await portfolioState(db, portfolio);
+    const [state, goalAllocations] = await Promise.all([
+      portfolioState(db, portfolio),
+      goalInvestmentAllocationsForPortfolio(db, portfolio.portfolio_id),
+    ]);
     const canOperate = context.actor.role === "owner" || portfolio.owner_scope === "shared" || portfolio.owner_user_id === context.actor.user_id;
-    const holdings = state.holdings.map((holding) => ({ ...holding, ...publicRow(instrumentMap.get(holding.instrument_id) || {}) }));
+    const allocationsByInstrument = new Map();
+    let goalRetainedCash = 0;
+    for (const allocation of goalAllocations) {
+      goalRetainedCash += Number(allocation.retained_cash || 0);
+      if (!allocation.instrument_id || Number(allocation.shares || 0) <= 0) continue;
+      if (!allocationsByInstrument.has(allocation.instrument_id)) allocationsByInstrument.set(allocation.instrument_id, []);
+      allocationsByInstrument.get(allocation.instrument_id).push(publicRow(allocation));
+    }
+    const holdings = state.holdings.map((holding) => {
+      const goalAllocationsForHolding = allocationsByInstrument.get(holding.instrument_id) || [];
+      const allocatedShares = goalAllocationsForHolding.reduce((sum, item) => sum + Number(item.shares || 0), 0);
+      return {
+        ...holding,
+        ...publicRow(instrumentMap.get(holding.instrument_id) || {}),
+        allocated_goal_shares: allocatedShares,
+        unallocated_shares: Math.max(0, Number(holding.shares || 0) - allocatedShares),
+        goal_allocations: goalAllocationsForHolding,
+      };
+    });
     const activity = (await db.all(`SELECT 'trade' AS activity_type,trade_id AS activity_id,trade_date AS activity_date,trade_type,instrument_id,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,'' AS reason,notes,created_at,1 AS activity_priority,rowid AS source_order FROM investment_trades WHERE portfolio_id=?
       UNION ALL SELECT 'valuation',valuation_id,valuation_date,'valuation',instrument_id,NULL,NULL,price_per_share,0,0,0,0,0,'','',created_at,2,rowid FROM investment_valuations WHERE portfolio_id=?
       UNION ALL SELECT correction_type,correction_id,correction_date,correction_type,instrument_id,NULL,NULL,reference_price,0,0,cash_delta,share_delta,cost_basis_delta,reason,notes,created_at,3,rowid FROM investment_corrections WHERE portfolio_id=?
@@ -37,6 +59,8 @@ export const investmentOverview = async (db, context) => {
       realized_pl: state.realized_pl,
       unrealized_pl: state.unrealized_pl,
       opening_position_available: await openingPositionAvailable(db, portfolio.portfolio_id),
+      goal_retained_cash: goalRetainedCash,
+      goal_allocations: goalAllocations.map((item) => publicRow(item)),
       holdings,
       activity,
     });

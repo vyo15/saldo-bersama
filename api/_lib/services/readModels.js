@@ -216,9 +216,34 @@ export const mapEnvelopeItemRows = (rows) => rows.map((row) => ({
 }));
 
 
-export const goalProgress = async (db, goalId, cutoffDate = todayJakarta()) => {
+export const goalCashProgress = async (db, goalId, cutoffDate = todayJakarta()) => {
   const row = await db.one(`SELECT COALESCE(SUM(CASE WHEN m.movement_type='deposit' THEN m.amount WHEN m.movement_type='withdrawal' THEN -m.amount ELSE m.amount END),0) AS total
     FROM goal_movements m LEFT JOIN transactions t ON t.transaction_id=m.transaction_id
     WHERE m.goal_id=? AND m.status='active' AND COALESCE(t.transaction_date,substr(m.created_at,1,10)) <= ?`, [goalId, cutoffDate]);
   return Number(row?.total || 0);
+};
+
+export const goalProgress = async (db, goalId, cutoffDate = todayJakarta()) => {
+  const cashTotal = await goalCashProgress(db, goalId, cutoffDate);
+  const allocations = await db.all(`SELECT portfolio_id,instrument_id,COALESCE(SUM(share_delta),0) AS shares,COALESCE(SUM(cash_delta),0) AS retained_cash
+    FROM goal_investment_events
+    WHERE goal_id=? AND status='active' AND event_date<=?
+    GROUP BY portfolio_id,instrument_id`, [goalId, cutoffDate]);
+  let investmentTotal = 0;
+  for (const allocation of allocations) {
+    const shares = Number(allocation.shares || 0);
+    const retainedCash = Number(allocation.retained_cash || 0);
+    investmentTotal += retainedCash;
+    if (!allocation.instrument_id || shares <= 0) continue;
+    const price = await db.one(`SELECT price_per_share FROM (
+      SELECT valuation_date AS price_date,created_at,price_per_share,3 AS priority,rowid AS source_order FROM investment_valuations WHERE portfolio_id=? AND instrument_id=? AND valuation_date<=?
+      UNION ALL
+      SELECT trade_date,created_at,price_per_share,2,rowid FROM investment_trades WHERE portfolio_id=? AND instrument_id=? AND trade_date<=?
+      UNION ALL
+      SELECT correction_date,created_at,reference_price,1,rowid FROM investment_corrections WHERE portfolio_id=? AND instrument_id=? AND correction_type='opening_position' AND reference_price>0 AND correction_date<=?
+      ORDER BY price_date DESC,created_at DESC,priority DESC,source_order DESC LIMIT 1
+    )`, [allocation.portfolio_id, allocation.instrument_id, cutoffDate, allocation.portfolio_id, allocation.instrument_id, cutoffDate, allocation.portfolio_id, allocation.instrument_id, cutoffDate]);
+    investmentTotal += shares * Number(price?.price_per_share || 0);
+  }
+  return cashTotal + investmentTotal;
 };

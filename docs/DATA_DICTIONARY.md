@@ -5,7 +5,7 @@
 > **Update when:** Makna field/table atau lifecycle data berubah.  
 > **Boundary:** Tipe/constraint authoritative berada di migration; kronologi migration berada di Git/CHANGELOG.
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `021_notification_attention_state.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `022_goal_investment_funding.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -38,7 +38,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `recurring_occurrences` | Kejadian per jatuh tempo dari aturan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `commitments` | Domain internal Kewajiban untuk KPR, cicilan, pinjaman, Arisan, atau kewajiban berkala lain beserta sisa pokok/setoran, rekening pembayaran, dan jadwal canonical. | Tinggi | Service/API; jadwal ditautkan 1:1 ke `recurring_rules`; aksi UI **Hentikan kewajiban** menonaktifkan record tanpa menghapus histori finansial |
 | `commitment_movements` | Ledger progres Kewajiban untuk pembayaran, penerimaan Arisan, dan reversal; menyimpan pemisahan pokok/bunga ketika dapat ditentukan. | Tinggi | Dibentuk oleh service Kewajiban/Jadwal Rutin; tidak boleh ditulis langsung client |
-| `savings_goals` | Target tabungan yang terhubung ke rekening. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `savings_goals` | Target tujuan dengan nominal, tanggal, lifecycle, rekening compatibility, dan `funding_mode` `cash`/`investment`/`mixed`. | Sedang | Service/API; progress dapat berasal dari cash dan/atau investasi; hard delete hanya untuk target benar-benar belum dipakai |
 | `transactions` | Ledger transaksi income, expense, transfer, refund, dan adjustment. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `investment_portfolios` | Compatibility container yang mengikat histori investasi ke satu rekening `account_type=investment`; broker context dipertahankan untuk data lama tetapi tidak menjadi hierarchy UI current. | Tinggi | Service/API; satu RDN per portfolio; ikut backup/restore |
 | `investment_instruments` | Registry ticker, nama, exchange, lot size, status, dan `row_version`. | Sedang | Administrator mengelola; readable kedua role; ikut backup/restore |
@@ -49,7 +49,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `envelope_movements` | Realokasi atau mutasi Alokasi Dana yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `budgets` | Kebutuhan operasional per periode terbuka, termasuk metadata penghentian dan total dana yang sudah dilepas. | Sedang | User-facing remove memilih delete history-free atau ended/archive; row periode tertutup dipadatkan |
 | `budget_history` | Histori compact Kebutuhan periode tertutup: snapshot nama, nominal, pemakaian, dana dilepas, status akhir, ownership, dan metadata minimum untuk reopen. | Sedang | Dibuat saat period close, dibaca report, direhidrasi lalu dihapus saat reopen; ikut backup/restore |
-| `goal_movements` | Setoran/penarikan target yang terhubung ke transaksi. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
+| `goal_movements` | Setoran/penarikan cash Target yang terhubung ke transaksi. | Sedang | Service/API; satu kejadian cash tidak boleh diduplikasi sebagai event investasi |
+| `goal_investment_events` | Event append-only yang mengaitkan sebagian holding atau Buy/Sell ke Target, menyimpan cost-basis delta, retained sale cash, dan realized P/L terkait Target. | Tinggi | Dibentuk service Target/Investasi; trade link unik; reversal/history dipertahankan; ikut backup/restore |
 | `reconciliations` | Perbandingan saldo sistem dan saldo aktual. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `period_closures` | Snapshot serta status penutupan periode. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `audit_log` | Audit append-only untuk perubahan penting. | Tinggi | Append-only |
@@ -93,6 +94,8 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `investment_portfolios.rdn_account_id`: FK unik ke rekening `account_type=investment`; runtime mewajibkan rekening aktif, operable saat create, dan `allow_negative=0`. `row_version` portfolio menjadi optimistic-lock token seluruh mutation portfolio.
 - `investment_instruments.lot_size`: integer positif untuk konversi lot → lembar. Ticker unik uppercase; status `inactive` melarang buy baru tetapi tidak memblok sell holding existing.
 - `investment_trades`: `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, `cash_amount` semuanya integer; `cash_effect_enabled` default `1` untuk histori lama dan bernilai `0` pada Buy/Sell current; `notes` adalah catatan opsional maks. 500 karakter; service/integrity memastikan lembar = lot × lot size, gross = lembar × harga, buy cash = gross + fee, sell cash = gross - fee.
+- `savings_goals.funding_mode`: `cash`, `investment`, atau `mixed`. Rekening compatibility tetap tersimpan, tetapi progress authoritative adalah cash Target + market value investasi teralokasi + retained sale cash. Kenaikan market value tidak menandai Target `completed` otomatis.
+- `goal_investment_events`: `share_delta`, `cost_basis_delta`, `cash_delta`, dan `realized_pl_delta` adalah integer append-only. `instrument_id` boleh `NULL` hanya untuk retained cash; `trade_id` unik bila event lahir dari Buy/Sell; total alokasi aktif per portfolio/instrumen tidak boleh melampaui holding aktual.
 - `investment_valuations.price_per_share`: integer positif; snapshot harga tidak mengubah cash/ledger. Harga read-model paling baru dapat berasal dari valuation atau trade terakhir.
 - `investment_reconciliations.recorded_*` adalah snapshot state system **as-of `reconciliation_date`** dan `actual_*` adalah input broker user. `difference_json` hanya diagnosis; tidak mengubah data finansial.
 - `investment_corrections.share_delta`, `cost_basis_delta`, `cash_delta`: delta eksplisit append-only. `cash_effect_enabled` default `1` untuk compatibility; direct asset opening-position current memakai `0` agar tidak mengubah saldo rekening. `correction_type` membedakan `correction` vs `opening_position`; opening position juga dapat menyimpan `reference_price` dan `notes`. Untuk baseline Saldo RDN tanpa aset, `instrument_id` boleh `NULL`, share/cost delta tetap nol, dan `cash_delta` wajib nonzero. Correction reguler hanya Administrator, sedangkan opening position mengikuti operability portfolio dan hanya tersedia sebelum aktivitas reguler.
@@ -135,7 +138,7 @@ Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API cont
 
 ## Current schema marker
 
-Versi runtime aktif: `23`. Latest migration canonical: `021_notification_attention_state.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
+Versi runtime aktif: `24`. Latest migration canonical: `022_goal_investment_funding.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
 
 Compatibility penting yang tetap current:
 

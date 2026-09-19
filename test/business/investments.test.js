@@ -8,6 +8,8 @@ import { snapshotDatabase, validateSnapshot } from "../../api/_lib/services/main
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
 import { visibleAccounts } from "../../api/_lib/services/readModels.js";
 import { prepareAccountCreatePayload } from "../../api/_lib/services/masterData/accounts.js";
+import { createGoal, listGoals } from "../../api/_lib/services/planning/goals.js";
+import { dispatchAction } from "../../api/_lib/actionDispatcher.js";
 
 const NOW = "2026-09-02T01:00:00.000Z";
 const TODAY = "2026-09-02";
@@ -95,6 +97,64 @@ test("posisi aset langsung membuat compatibility portfolio tersembunyi tanpa men
     assert.equal(overview.summary.cost_basis, 11_382_400);
     assert.equal(overview.summary.portfolio_value, 10_280_000);
     assert.equal(overview.portfolios[0].holdings[0].shares, 1_600);
+  } finally { db.close(); }
+});
+
+test("posisi investasi pertama dari Target terhubung atomik tanpa pencatatan progress ganda", async () => {
+  const db = await seed({ initialBalance: 0 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const goal = await createGoal(db, context(owner, "goals.create", {
+      name: "DP Rumah", goal_type: "savings", target_amount: 20_000_000, target_date: "2028-12-31",
+      funding_mode: "investment", portfolio_id: portfolio.portfolio_id,
+    }, { key: "goal-investment-first-position:12345678" }));
+
+    const position = await createInvestmentAssetPosition(db, context(owner, "investments.assets.create", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, shares: 1_600,
+      cost_basis: 11_382_400, reference_price: 6_425, position_date: TODAY, notes: "Posisi awal untuk DP Rumah",
+      goal_id: goal.goal_id,
+    }, { key: "asset-position-goal:12345678" }));
+
+    assert.equal(position.goal_id, goal.goal_id);
+    assert.equal(position.goal_investment_event?.goal_id, goal.goal_id);
+    assert.equal(Number(position.goal_investment_event?.share_delta || 0), 1_600);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM goal_investment_events WHERE goal_id=?", [goal.goal_id]).then((row) => Number(row.count)), 1);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM goal_movements WHERE goal_id=?", [goal.goal_id]).then((row) => Number(row.count)), 0);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM transactions WHERE goal_id=?", [goal.goal_id]).then((row) => Number(row.count)), 0);
+
+    const listed = await listGoals(db, context(owner, "goals.list"));
+    const item = listed.items.find((candidate) => candidate.goal_id === goal.goal_id);
+    assert.equal(item.current_amount, 10_280_000);
+    assert.equal(item.cash_amount, 0);
+    assert.equal(item.investment_market_value, 10_280_000);
+  } finally { db.close(); }
+});
+
+test("create posisi dari Target rollback atomik bila Target tidak valid", async () => {
+  const db = await seed({ initialBalance: 0 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const beforePortfolio = await db.one("SELECT row_version FROM investment_portfolios WHERE portfolio_id=?", [portfolio.portfolio_id]);
+    const beforeAudit = await db.one("SELECT COUNT(*) AS count FROM audit_log");
+
+    await assert.rejects(() => dispatchAction({
+      signedActor: { uid: "uid-owner", email: owner.email, role: owner.role },
+      action: "investments.assets.create",
+      payload: {
+        portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, shares: 1_600,
+        cost_basis: 11_382_400, reference_price: 6_425, position_date: TODAY,
+        goal_id: "goal-tidak-ada",
+      },
+      requestId: "asset-position-invalid-goal-request",
+      idempotencyKey: "asset-position-invalid-goal:12345678",
+      database: db,
+    }), (error) => error.code === "GOAL_NOT_AVAILABLE");
+
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM investment_corrections WHERE portfolio_id=? AND instrument_id=?", [portfolio.portfolio_id, instrument.instrument_id]).then((row) => Number(row.count)), 0);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM goal_investment_events").then((row) => Number(row.count)), 0);
+    assert.equal(await db.one("SELECT row_version FROM investment_portfolios WHERE portfolio_id=?", [portfolio.portfolio_id]).then((row) => Number(row.row_version)), Number(beforePortfolio.row_version));
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM audit_log").then((row) => Number(row.count)), Number(beforeAudit.count));
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM idempotency_keys WHERE idempotency_key=?", ["asset-position-invalid-goal:12345678"]).then((row) => Number(row.count)), 0);
   } finally { db.close(); }
 });
 
@@ -483,7 +543,7 @@ test("backup canonical mencakup authoritative investment history dan integrity c
     const { portfolio, instrument } = await setupPortfolio(db);
     await buy(db, owner, portfolio, instrument);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 23);
+    assert.equal(snapshot.manifest.schemaVersion, 24);
     for (const table of ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
       assert.ok(Array.isArray(snapshot.tables[table]));
     }

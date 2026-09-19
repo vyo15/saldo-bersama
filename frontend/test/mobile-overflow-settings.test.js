@@ -103,7 +103,8 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(layout, /SettingsDesktopNavigation/);
   assert.match(layout, /SettingsDesktopHeader/);
   assert.match(layout, /desktopSettingsCategoriesForRole/);
-  assert.match(layout, /desktopSettingsCategoryForPath/);
+  assert.doesNotMatch(layout, /desktopSettingsCategoryForPath/);
+  assert.doesNotMatch(navigation, /desktopSettingsCategoryForPath/);
   assert.match(layout, /settingsItemMatchesPath/);
   assert.match(layout, /useLocation/);
   assert.match(layout, /settingsMetaForPath\(normalizedPath\)/);
@@ -131,8 +132,8 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(overview, /settingsAccountStatus/);
   assert.doesNotMatch(overview, /accountInitial/);
   assert.doesNotMatch(overview, /users\.list|audit\.list|archive\.list|periods\.list|integrations\.status/);
-  assert.match(settingsStyles, /\.settingsWorkspace\s*\{[\s\S]*grid-template-columns:\s*minmax\(11\.5rem, 13rem\) minmax\(12\.5rem, 14\.5rem\) minmax\(0, 1fr\);/);
-  assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsDesktopCategories,[\s\S]*\.settingsDesktopOverview\s*\{[\s\S]*display:\s*none;/);
+  assert.match(settingsStyles, /\.settingsWorkspace\s*\{[\s\S]*grid-template-columns:\s*minmax\(14rem, 16rem\) minmax\(0, 1fr\);/);
+  assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsDesktopSubmenu,[\s\S]*\.settingsDesktopOverview\s*\{[\s\S]*display:\s*none;/);
   assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsMobileOverview\s*\{[\s\S]*display:\s*grid;/);
   assert.match(settingsStyles, /\.settingsAccountAvatar\s*\{[\s\S]*border-color:[\s\S]*box-shadow:/);
   assert.match(settingsStyles, /\.settingsAccountStatus\s*\{[\s\S]*border-top:[\s\S]*grid-template-columns:/);

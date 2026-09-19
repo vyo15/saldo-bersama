@@ -113,6 +113,8 @@ export const ACTION_POLICIES = Object.freeze({
   "goals.archive": write(),
   "goals.deleteUnused": write(),
   "goals.move": write(),
+  "goals.investments.allocate": write(),
+  "goals.investments.release": write(),
   "goals.reverseMovement": write(),
   "goals.restore": write(),
   "reports.monthly": snapshotRead(),

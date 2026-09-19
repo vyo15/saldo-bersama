@@ -147,11 +147,11 @@ const ALERT_GUIDANCE_BUILDERS = Object.freeze({
     baseState,
   }),
   goal_behind: ({ to, baseState, entityId }) => guidance({
-    instruction: "Target berada di bawah ritme rencana. Buka Alokasi bila ingin menyiapkan kontribusi bulan ini.",
-    actionLabel: "Buka Alokasi",
+    instruction: "Target berada di bawah ritme rencana. Tambahkan dana tunai atau investasi langsung dari Target.",
+    actionLabel: "Tambah dana",
     to,
     baseState,
-    state: { ...entityState("attentionGoalId", entityId), attentionAction: "plan" },
+    state: { ...entityState("attentionGoalId", entityId), attentionAction: "fund" },
   }),
 });
 

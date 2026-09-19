@@ -41,16 +41,20 @@ test("lifecycle action membedakan hard-delete, archive, dan penghentian Kewajiba
   assert.doesNotMatch(commitmentApi, /deleteCommitment/);
 });
 
-test("Target mengarahkan eksekusi dana melalui Alokasi tanpa CTA mutasi langsung yang duplikatif", async () => {
+test("Target mengeksekusi dana langsung lewat satu flow rekening atau investasi tanpa jalur Alokasi lama", async () => {
   const source = await readMany([
     "src/features/goals/GoalsPage.jsx",
     "src/features/goals/components/GoalCards.jsx",
     "src/features/goals/components/GoalDialogs.jsx",
+    "src/features/goals/components/GoalFundingModal.jsx",
   ]);
 
-  assert.match(source, /Atur dana/);
-  assert.match(source, /Target hanya memantau rencana dan progres/);
-  assert.doesNotMatch(source, /Setor dana|Tarik dana|Tambah dana target|Simpan transfer/);
+  assert.match(source, /Tambah dana/);
+  assert.match(source, /Satu pencatatan/);
+  assert.match(source, /movement_type: "deposit"/);
+  assert.match(source, /allocateGoalInvestment/);
+  assert.match(source, /releaseGoalInvestment/);
+  assert.doesNotMatch(source, /goal-plan|AllocationGoalExecutionModal|Target hanya memantau rencana dan progres/);
 });
 
 test("side effect dan model akses dijelaskan sebelum user mengambil tindakan", async () => {

@@ -83,20 +83,21 @@ test("dana darurat memakai copy suportif yang tidak mengubah kondisi finansial m
   assert.doesNotMatch(`${presentation.title} ${presentation.message}`, /boros|saldo tinggal|jangan sampai putus/i);
 });
 
-test("Goal achievement tampil setelah server sukses di Alokasi, finite, non-blocking, dan tidak menggandakan toast proses", async () => {
-  const [workspace, execution, component, css, feedback] = await Promise.all([
-    source("src/features/allocations/AllocationsWorkspace.jsx"),
-    source("src/features/allocations/AllocationGoalExecutionModal.jsx"),
+test("Goal achievement tampil setelah penambahan dana Target sukses di server, finite, non-blocking, dan tidak menggandakan toast proses", async () => {
+  const [page, funding, component, css, feedback] = await Promise.all([
+    source("src/features/goals/GoalsPage.jsx"),
+    source("src/features/goals/components/GoalFundingModal.jsx"),
     source("src/features/goals/components/GoalAchievementPostcard.jsx"),
     source("src/features/goals/components/GoalAchievementPostcard.module.css"),
     source("src/components/feedback/FeedbackProvider.jsx"),
   ]);
 
-  assert.match(execution, /const result = await moveGoalFromAllocation/);
-  assert.match(execution, /goalAfter: result\?\.goal \|\| null/);
-  assert.match(execution, /onSuccess\?\.\(\{ goalBefore: goal, goalAfter:/);
-  assert.match(workspace, /setGoalAchievement\(achievement\)/);
-  assert.match(workspace, /GoalAchievementPostcard/);
+  assert.match(funding, /const result = await request\(payload, \{\}\)/);
+  assert.match(funding, /await onChanged\?\.\(\{ result, goal, amount \}\)/);
+  assert.match(page, /const onFundingChanged = async/);
+  assert.match(page, /const nextGoal =/);
+  assert.match(page, /setAchievement\(\{ goalBefore: goal, goalAfter: nextGoal, amount \}\)/);
+  assert.match(page, /GoalAchievementPostcard/);
   assert.match(component, /role="status"/);
   assert.match(component, /aria-live="polite"/);
   assert.match(component, /setTimeout\(\(\) => onClose\?\.\(\), duration\)/);

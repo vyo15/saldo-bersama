@@ -113,43 +113,14 @@ export const investmentOpeningPositionPreview = (form = {}, instruments = []) =>
 };
 
 
-export const investmentOwnershipLabel = (portfolio = {}) => {
-  if (portfolio.owner_scope !== "personal") return "Bersama";
-  return portfolio.is_owned_by_actor ? "Pribadi" : "Pasangan";
-};
-
-export const investmentPriceSourceLabel = (holding = {}) => holding.price_source === "valuation"
-  ? "Harga manual terakhir"
-  : holding.price_source === "trade"
-    ? "Harga transaksi terakhir"
-    : holding.price_source === "opening_position"
-      ? "Harga referensi posisi awal"
-      : "Harga terakhir dicatat";
-
-export const investmentProfitLossLabel = (value) => Number(value || 0) > 0
-  ? "Untung"
-  : Number(value || 0) < 0
-    ? "Rugi"
-    : "Impas";
-
-export const investmentActivityForInstrument = (activity = [], instrumentId = "") => activity
-  .filter((item) => item.instrument_id === instrumentId)
-  .slice(0, 20);
-
-export const investmentActivityLabel = (activity = {}) => {
-  const ticker = activity.ticker || "saham";
-  if (activity.activity_type === "trade") return `${activity.trade_type === "buy" ? "Pembelian dicatat" : "Penjualan dicatat"} · ${ticker}`;
-  if (activity.activity_type === "valuation") return `${activity.asset_type === "mutual_fund" ? "Nilai manual diperbarui" : "Harga manual diperbarui"} · ${ticker}`;
-  if (activity.activity_type === "opening_position") return activity.instrument_id ? `Posisi awal dicatat · ${ticker}` : "Saldo awal RDN dicatat";
-  return `Koreksi dicatat · ${activity.instrument_id ? ticker : "Saldo RDN"}`;
-};
-
-export const investmentReturnPercent = (profitLoss, costBasis) => {
-  const profit = Number(profitLoss || 0);
-  const basis = Number(costBasis || 0);
-  if (!Number.isFinite(profit) || !Number.isFinite(basis) || basis <= 0) return null;
-  return (profit / basis) * 100;
-};
+export {
+  investmentActivityForInstrument,
+  investmentActivityLabel,
+  investmentOwnershipLabel,
+  investmentPriceSourceLabel,
+  investmentProfitLossLabel,
+  investmentReturnPercent,
+} from "./investmentPresentation.js";
 
 const instrumentForMode = (mode, form, instruments, portfolio) => {
   const selectionMode = mode === "price" ? "price" : mode;
@@ -161,10 +132,34 @@ const tradeInstrumentLabels = (instrument) => isMutualFundInstrument(instrument 
   ? { quantity: "Unit", price: "Nilai per unit", availability: "unit" }
   : { quantity: "Lot", price: "Harga per saham", availability: "lot" };
 
-const availableTradeQuantity = (instrument, holding) => {
-  if (isMutualFundInstrument(instrument || {})) return Number(holding?.shares || 0);
+const sharesAvailableForTrade = (holding, goalId = "") => {
+  if (!holding) return 0;
+  if (goalId) {
+    const allocation = (holding.goal_allocations || []).find((item) => item.goal_id === goalId);
+    return Math.max(0, Number(allocation?.shares || 0));
+  }
+  return Math.max(0, Number(holding.unallocated_shares ?? holding.shares ?? 0));
+};
+
+const availableTradeQuantity = (instrument, holding, goalId = "") => {
+  const shares = sharesAvailableForTrade(holding, goalId);
+  if (isMutualFundInstrument(instrument || {})) return shares;
   const lotSize = Number(instrument?.lot_size || holding?.lot_size || 100);
-  return Math.floor(Number(holding?.shares || 0) / lotSize);
+  return Math.floor(shares / lotSize);
+};
+
+const validateTradeGoal = (mode, form, context, holding, errors) => {
+  const goalId = String(form.goal_id || "");
+  if (!goalId) return;
+  if (mode === "buy") {
+    const goal = (context.goals || []).find((item) => item.goal_id === goalId);
+    if (!goal || goal.status !== "active" || !["investment", "mixed"].includes(goal.funding_mode) || goal.can_invest === false) {
+      errors.goal_id = "Target tidak dapat menerima investasi baru.";
+    }
+    return;
+  }
+  const allocation = (holding?.goal_allocations || []).find((item) => item.goal_id === goalId && Number(item.shares || 0) > 0);
+  if (!allocation) errors.goal_id = "Aset ini tidak memiliki porsi yang terhubung ke Target tersebut.";
 };
 
 const validateTrade = (mode, form, context) => {
@@ -182,11 +177,14 @@ const validateTrade = (mode, form, context) => {
   if (dateError) errors.trade_date = dateError;
   if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
 
-  if (mode !== "sell" || !instrument || lotsError) return errors;
-  const holding = (portfolio?.holdings || []).find((item) => item.instrument_id === instrument.instrument_id);
-  const availableQuantity = availableTradeQuantity(instrument, holding);
+  const holding = instrument ? (portfolio?.holdings || []).find((item) => item.instrument_id === instrument.instrument_id) : null;
+  validateTradeGoal(mode, form, context, holding, errors);
+  if (mode !== "sell" || !instrument || lotsError || errors.goal_id) return errors;
+  const availableQuantity = availableTradeQuantity(instrument, holding, String(form.goal_id || ""));
   if (Number(form.lots) > availableQuantity) {
-    errors.lots = `Maksimal ${availableQuantity.toLocaleString("id-ID")} ${labels.availability} sesuai kepemilikan saat ini.`;
+    errors.lots = form.goal_id
+      ? `Maksimal ${availableQuantity.toLocaleString("id-ID")} ${labels.availability} yang terhubung ke Target ini.`
+      : `Maksimal ${availableQuantity.toLocaleString("id-ID")} ${labels.availability} yang belum terhubung ke Target.`;
   }
   return errors;
 };
@@ -345,6 +343,7 @@ export const validateInvestmentOperation = (mode, form = {}, options = {}) => {
   const context = {
     instruments: options.instruments || [],
     portfolio: options.portfolio || null,
+    goals: options.goals || [],
     userRole: options.userRole || "",
     today: options.today || todayJakarta(),
   };

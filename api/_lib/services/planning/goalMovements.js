@@ -1,6 +1,6 @@
 import { appendAudit } from "../audit.js";
 import { assertTransactionDateUnlocked, cancelTransactionInternal, createTransactionInternal } from "../finance.js";
-import { goalProgress } from "../readModels.js";
+import { goalCashProgress, goalProgress } from "../readModels.js";
 import { appError, assertVersion, nowIso, positiveInteger, publicRow, sanitizeText, scopeFromAccountPair, todayJakarta, uuid } from "../core.js";
 import { accountWithAccess, assertOwnedAccess } from "./shared.js";
 
@@ -54,6 +54,9 @@ export const goalProjection = (row, currentAmount) => {
 const normalizeGoalMovementType = (value) => ({ contribution: "deposit", withdraw: "withdrawal" }[value] || value);
 
 const assertGoalMovementAccounts = (goal, type, source, destination) => {
+  if (goal.funding_mode === "investment") {
+    throw appError("GOAL_CASH_FUNDING_DISABLED", "Target investasi tidak menerima mutasi tunai. Gunakan pembelian atau hubungkan investasi ke target.", 409);
+  }
   scopeFromAccountPair(source, destination);
   if (type === "deposit" && destination.account_id !== goal.account_id) {
     throw appError("GOAL_ACCOUNT_MISMATCH", "Setoran target harus masuk ke rekening target.", 409);
@@ -63,26 +66,27 @@ const assertGoalMovementAccounts = (goal, type, source, destination) => {
   }
 };
 
-const assertGoalMovementAmount = (goal, type, amount, current) => {
+const assertGoalMovementAmount = (goal, type, amount, totalCurrent, cashCurrent) => {
   const targetAmount = Number(goal.target_amount || 0);
-  const remainingAmount = Math.max(0, targetAmount - current);
+  const remainingAmount = Math.max(0, targetAmount - totalCurrent);
   if (type === "deposit" && remainingAmount <= 0) {
-    throw appError("GOAL_REACHED", "Target sudah mencapai nominal tujuan. Selesaikan target atau naikkan nominal target sebelum menambah dana.", 409, { currentAmount: current, targetAmount });
+    throw appError("GOAL_REACHED", "Nilai target sudah mencapai nominal tujuan. Selesaikan target atau naikkan nominal target sebelum menambah dana.", 409, { currentAmount: totalCurrent, targetAmount });
   }
   if (type === "deposit" && amount > remainingAmount) {
-    throw appError("GOAL_OVERFUND", "Nominal setoran melebihi sisa target.", 409, { currentAmount: current, targetAmount, remainingAmount });
+    throw appError("GOAL_OVERFUND", "Nominal setoran melebihi sisa target.", 409, { currentAmount: totalCurrent, targetAmount, remainingAmount });
   }
-  if (type === "withdrawal" && amount > current) {
-    throw appError("GOAL_INSUFFICIENT", "Nominal penarikan melebihi progress target.", 409, { currentAmount: current });
+  if (type === "withdrawal" && amount > cashCurrent) {
+    throw appError("GOAL_INSUFFICIENT", "Nominal penarikan melebihi dana tunai target yang tersedia.", 409, { currentAmount: totalCurrent, cashAmount: cashCurrent });
   }
 };
 
-const buildGoalMovementResponse = (goal, movement, transaction, current, amount, type) => ({
+const buildGoalMovementResponse = (goal, movement, transaction, currentAmount, cashAmount) => ({
   movement: publicRow(movement),
   transaction,
   goal: {
     ...publicRow(goal),
-    current_amount: type === "deposit" ? current + amount : current - amount,
+    current_amount: currentAmount,
+    cash_amount: cashAmount,
   },
 });
 
@@ -99,8 +103,11 @@ export const moveGoal = async (db, context) => {
     accountWithAccess(db, context.actor, p.destination_account_id),
   ]);
   assertGoalMovementAccounts(goal, type, source, destination);
-  const current = await goalProgress(db, goal.goal_id);
-  assertGoalMovementAmount(goal, type, amount, current);
+  const [current, cashCurrent] = await Promise.all([
+    goalProgress(db, goal.goal_id),
+    goalCashProgress(db, goal.goal_id),
+  ]);
+  assertGoalMovementAmount(goal, type, amount, current, cashCurrent);
   const transaction = await createTransactionInternal(db, { ...context, action: "goals.move" }, {
     transaction_type: "transfer",
     transaction_date: p.transaction_date || todayJakarta(),
@@ -117,7 +124,11 @@ export const moveGoal = async (db, context) => {
   };
   if (!movement.reason) throw appError("REASON_REQUIRED", "Alasan mutasi target wajib diisi.", 400);
   await db.execute("INSERT INTO goal_movements(goal_movement_id,goal_id,transaction_id,movement_type,amount,reason,status,row_version,created_by,created_at,reversed_by,reversed_at,reversal_reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", Object.values(movement));
-  const response = buildGoalMovementResponse(goal, movement, transaction, current, amount, type);
+  const [currentAfter, cashAfter] = await Promise.all([
+    goalProgress(db, goal.goal_id),
+    goalCashProgress(db, goal.goal_id),
+  ]);
+  const response = buildGoalMovementResponse(goal, movement, transaction, currentAfter, cashAfter);
   await appendAudit(db, context, { entityType: "goal_movement", entityId: movement.goal_movement_id, next: response });
   await context.enqueueMirror?.(db, "goal", goal.goal_id);
   return response;
@@ -159,7 +170,8 @@ export const reverseGoalMovement = async (db, context) => {
     transaction: cancelledTransaction,
     goal: {
       ...publicRow(goal),
-      current_amount: await goalProgress(db, movement.goal_id)
+      current_amount: await goalProgress(db, movement.goal_id),
+      cash_amount: await goalCashProgress(db, movement.goal_id)
     }
   };
   await appendAudit(db, context, {

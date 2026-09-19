@@ -25,6 +25,7 @@ const envelopeDecorationMigrationUrl = new URL("018_envelope_decoration.sql", mi
 const budgetRecordingModeMigrationUrl = new URL("019_budget_recording_mode.sql", migrationDirectory);
 const commitmentsMigrationUrl = new URL("020_commitments.sql", migrationDirectory);
 const notificationAttentionMigrationUrl = new URL("021_notification_attention_state.sql", migrationDirectory);
+const goalInvestmentFundingMigrationUrl = new URL("022_goal_investment_funding.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -114,9 +115,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v23 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v24 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "23");
+  assert.equal(result.schema_version, "24");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -481,5 +482,17 @@ test("migration v23 menambah read-state lintas perangkat dan cadence notifikasi 
   assert.match(sql, /recording_consistency_days INTEGER NOT NULL DEFAULT 0/);
   assert.match(sql, /value='23'/);
   assert.doesNotMatch(sql, /ALTER TABLE transactions|ALTER TABLE accounts|ALTER TABLE recurring_rules/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+
+test("migration v24 menambahkan funding Target berbasis cash/investasi tanpa cascade delete", async () => {
+  const sql = await readFile(goalInvestmentFundingMigrationUrl, "utf8");
+  assert.match(sql, /ALTER TABLE savings_goals[\s\S]*ADD COLUMN funding_mode/);
+  assert.match(sql, /funding_mode IN \('cash','investment','mixed'\)/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS goal_investment_events/);
+  assert.match(sql, /event_type IN \('allocate','buy','sell_retain','sell_release','release','cash_release'\)/);
+  assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS idx_goal_investment_events_trade/);
+  assert.match(sql, /value='24'/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
 });

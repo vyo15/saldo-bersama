@@ -1,73 +1,5 @@
 /* Member settings and activity panel presentation. */
 
-.membersSummary {
-  position: relative;
-  min-height: 13.5rem;
-  overflow: hidden;
-  padding: var(--space-5);
-  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
-  border-radius: var(--radius-lg);
-  background: radial-gradient(circle at 86% 28%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 34%),
-    linear-gradient(145deg, color-mix(in srgb, var(--surface-elevated) 92%, var(--primary-soft)), var(--surface));
-  box-shadow: var(--shadow-md);
-}
-
-.membersSummaryContent {
-  position: relative;
-  z-index: 2;
-  width: min(66%, 42rem);
-}
-
-.membersSummaryEyebrow {
-  margin: 0;
-  color: var(--text-soft);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-}
-
-.membersSummaryValue {
-  display: block;
-  margin-top: var(--space-2);
-  color: var(--text);
-  font-size: clamp(2rem, 1.55rem + 1.7vw, 2.8rem);
-  line-height: 1;
-  letter-spacing: -.045em;
-}
-
-.membersSummaryDescription {
-  margin: .45rem 0 0;
-  color: var(--text-soft);
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
-}
-
-.membersSummaryMeta {
-  margin-top: var(--space-4);
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.membersSummaryMeta strong {
-  color: var(--text);
-}
-
-.membersSummaryArt {
-  position: absolute;
-  z-index: 1;
-  right: 3%;
-  bottom: -.45rem;
-  width: min(14rem, 28%);
-  max-height: 12rem;
-  object-fit: contain;
-  filter: drop-shadow(0 1.2rem 1.5rem color-mix(in srgb, var(--shadow-ink) 18%, transparent));
-  pointer-events: none;
-  user-select: none;
-}
-
 .membersPageHeader {
   display: flex;
   align-items: flex-end;
@@ -93,7 +25,7 @@
 
 .memberToolbar {
   display: grid;
-  grid-template-columns: minmax(16rem, 1fr) minmax(9rem, auto) auto;
+  grid-template-columns: minmax(16rem, 1fr) minmax(9rem, auto);
   align-items: end;
   gap: var(--space-3);
 }
@@ -132,16 +64,6 @@
   font-size: 1rem;
 }
 
-.memberToolbarSummary {
-  align-self: center;
-  justify-self: end;
-  padding: .45rem .7rem;
-  border-radius: var(--radius-pill);
-  color: var(--primary-strong);
-  background: var(--primary-soft);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-}
 
 .memberGrid {
   display: grid;
@@ -471,37 +393,6 @@
 }
 
 @media (max-width: 820px) {
-  .membersSummary {
-    min-height: 12rem;
-    padding: var(--space-4);
-    border-radius: var(--radius-md);
-    box-shadow: none;
-  }
-
-  .membersSummaryContent {
-    width: 70%;
-  }
-
-  .membersSummaryValue {
-    font-size: clamp(1.8rem, 8.5vw, 2.3rem);
-  }
-
-  .membersSummaryDescription {
-    max-width: 16rem;
-    font-size: var(--font-size-xs);
-  }
-
-  .membersSummaryMeta {
-    gap: .4rem .65rem;
-    margin-top: var(--space-3);
-  }
-
-  .membersSummaryArt {
-    right: -2%;
-    bottom: .15rem;
-    width: min(8.3rem, 31%);
-    max-height: 8.5rem;
-  }
 
   .membersPageHeader {
     display: grid;
@@ -517,10 +408,6 @@
   .memberToolbar {
     grid-template-columns: 1fr;
     align-items: stretch;
-  }
-
-  .memberToolbarSummary {
-    justify-self: start;
   }
 
   .memberGrid {
@@ -572,18 +459,6 @@
 }
 
 @media (max-width: 26rem) {
-  .membersSummaryContent {
-    width: 68%;
-  }
-
-  .membersSummaryArt {
-    right: -4%;
-    width: min(7.2rem, 29%);
-  }
-
-  .membersSummaryMeta {
-    font-size: var(--font-size-xs);
-  }
 
   .currentMemberAvatarRow {
     align-items: center;
@@ -599,14 +474,7 @@
 }
 
 @media (max-width: 820px) {
-  .membersSummary { min-height: 9.2rem; padding: 13px 14px; }
-  .membersSummaryContent { width: 76%; }
-  .membersSummaryValue { margin-top: 5px; font-size: clamp(1.55rem, 7vw, 1.95rem); }
-  .membersSummaryDescription { display: none; }
-  .membersSummaryMeta { margin-top: 9px; gap: 4px 10px; }
-  .membersSummaryArt { opacity: .38; filter: none; width: min(6.5rem, 25%); max-height: 6.5rem; }
   .memberToolbar { gap: 8px; }
-  .memberToolbarSummary { display: none; }
   .memberGrid { gap: 8px; }
   .memberCard { padding: 12px 13px; gap: 9px; box-shadow: none; }
   .memberAvatar { width: 2.85rem; height: 2.85rem; flex-basis: 2.85rem; }

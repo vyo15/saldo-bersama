@@ -11,12 +11,12 @@ const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 
 export const BACKUP_TABLES = [
   "system_config", "users", "accounts", "categories", "investment_instruments", "investment_portfolios", "master_data_requests", "transfer_requests", "envelope_rules", "envelope_periods",
-  "commitments", "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "commitment_movements", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections", "envelope_movements",
+  "commitments", "recurring_rules", "recurring_occurrences", "savings_goals", "transactions", "commitment_movements", "investment_trades", "goal_investment_events", "investment_valuations", "investment_reconciliations", "investment_corrections", "envelope_movements",
   "budgets", "budget_history", "goal_movements", "reconciliations", "period_closures", "notification_preferences", "notification_settings", "manual_reminders", "audit_log", "idempotency_keys",
 ];
 
 export const RESTORE_DELETE_ORDER = [
-  "notification_deliveries", "notification_queue", "notification_read_states", "integration_links", "integration_outbox", "request_nonces", "rate_limit_buckets", "goal_movements", "budget_history", "budgets", "envelope_movements",
+  "notification_deliveries", "notification_queue", "notification_read_states", "integration_links", "integration_outbox", "request_nonces", "rate_limit_buckets", "goal_investment_events", "goal_movements", "budget_history", "budgets", "envelope_movements",
   "investment_reconciliations", "investment_valuations", "investment_corrections", "investment_trades", "commitment_movements", "transactions", "recurring_occurrences", "recurring_rules", "commitments", "envelope_periods", "envelope_rules", "savings_goals",
   "reconciliations", "period_closures", "transfer_requests", "master_data_requests", "investment_portfolios", "investment_instruments", "categories", "accounts", "manual_reminders", "notification_settings", "notification_preferences", "push_subscriptions", "idempotency_keys",
 ];
@@ -133,7 +133,7 @@ const TRANSIENT_SYSTEM_CONFIG_KEYS = new Set([
 
 const backupTablesForSchemaVersion = (schemaVersion = DATABASE_SCHEMA_VERSION) => {
   const version = Number(schemaVersion || 0);
-  return BACKUP_TABLES.filter((table) => !(version < 19 && table === "budget_history") && !(version < 22 && ["commitments", "commitment_movements"].includes(table)) && !(version < 23 && table === "notification_settings"));
+  return BACKUP_TABLES.filter((table) => !(version < 19 && table === "budget_history") && !(version < 22 && ["commitments", "commitment_movements"].includes(table)) && !(version < 23 && table === "notification_settings") && !(version < 24 && table === "goal_investment_events"));
 };
 
 export const snapshotDatabase = async (db, { schemaVersion = DATABASE_SCHEMA_VERSION } = {}) => db.transaction(async (tx) => {
@@ -193,6 +193,7 @@ const isLegacyOptionalBackupTable = (schemaVersion, table) => (
   || (schemaVersion < 19 && table === "budget_history")
   || (schemaVersion < 22 && ["commitments", "commitment_movements"].includes(table))
   || (schemaVersion < 23 && table === "notification_settings")
+  || (schemaVersion < 24 && table === "goal_investment_events")
 );
 
 export const validateSnapshot = (snapshot) => {
@@ -266,6 +267,9 @@ export const normalizeRestoredRows = (table, rows) => {
   }
   if (table === "investment_trades") {
     return rows.map((row) => ({ ...row, notes: Object.hasOwn(row, "notes") ? String(row.notes || "") : "" }));
+  }
+  if (table === "savings_goals") {
+    return rows.map((row) => ({ ...row, funding_mode: Object.hasOwn(row, "funding_mode") ? String(row.funding_mode || "cash") : "cash" }));
   }
   if (table === "investment_corrections") {
     return rows.map((row) => ({

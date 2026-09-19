@@ -12,4 +12,4 @@ export const reconcileInvestment = (payload, rowVersion, options) => mutate("inv
 export const correctInvestment = (payload, rowVersion, options) => mutate("investments.corrections.create", payload, rowVersion, options);
 export const createOpeningPosition = (payload, rowVersion, options) => mutate("investments.openingPositions.create", payload, rowVersion, options);
 
-export const invalidateInvestmentReads = () => apiClient.invalidate(["investments.overview", "accounts.list", "dashboard.overview", "app.initialState"]);
+export const invalidateInvestmentReads = () => apiClient.invalidate(["investments.overview", "goals.list", "goals.previewLifecycle", "accounts.list", "dashboard.overview", "app.initialState"]);

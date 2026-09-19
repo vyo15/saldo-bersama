@@ -31,17 +31,18 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
 });
 
 test("aksi Investasi berada pada detail aset dan tetap capability-driven", async () => {
-  const [overview, detail, model] = await Promise.all([
+  const [overview, detail, model, presentation] = await Promise.all([
     read("src/features/investments/InvestmentOverview.jsx"),
     read("src/features/investments/InvestmentHoldingDetail.jsx"),
     read("src/features/investments/investments.model.js"),
+    read("src/features/investments/investmentPresentation.js"),
   ]);
   assert.match(overview, /!portfolio\.can_operate \? <span className="sr-only">Hanya dapat dilihat<\/span>/);
   assert.match(detail, /portfolio\.can_operate \? <Button[\s\S]*?>Perbarui nilai<\/Button>/);
   assert.match(detail, /portfolio\.can_operate \? <Button[\s\S]*?>Beli<\/Button>/);
   assert.match(detail, /canSell \? <Button[\s\S]*?>Jual<\/Button>/);
   assert.match(detail, /Aktivitas investasi terbaru/);
-  for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual", "Nilai manual", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(model, new RegExp(label));
+  for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual", "Nilai manual", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(`${model}\n${presentation}`, new RegExp(label));
 });
 
 test("styling Investasi memakai token tema dan kontrak responsive mobile canonical", async () => {
@@ -76,6 +77,8 @@ test("Tambah investasi mencatat posisi aset langsung tanpa membuat broker atau R
   assert.match(setup, /Tanggal posisi/);
   assert.match(setup, /Tidak ada saldo rekening yang dipindahkan dan tidak ada order yang dikirim ke broker/);
   assert.match(setup, /createInvestmentAssetPosition\(payload\)/);
+  assert.match(setup, /initialGoalId/);
+  assert.match(setup, /\.\.\.\(goalId \? \{ goal_id: goalId \} : \{\}\)/);
   assert.match(api, /investments\.assets\.create/);
   assert.match(model, /validateInvestmentAssetPosition/);
   assert.doesNotMatch(setup, /Rekening RDN|Buat RDN|source_label|auto_create_rdn/i);

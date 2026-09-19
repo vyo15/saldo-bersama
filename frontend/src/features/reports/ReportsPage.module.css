@@ -137,6 +137,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.48fr) minmax(310px, .72fr);
   gap: 16px;
+  align-items: start;
 }
 
 .heroPanel {

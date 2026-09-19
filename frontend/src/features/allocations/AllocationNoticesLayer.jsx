@@ -12,7 +12,7 @@ const AllocationGoalSuggestion = ({ releasedFunds, hasActiveGoal, onDismiss }) =
   <CompactNotice tone="success" title="Dana kembali tersedia." role="status">
     <span>
       Rp {Number(releasedFunds.amount).toLocaleString("id-ID")} sudah tidak terikat ke Alokasi Dana.{" "}
-      <Link to="/target" state={{ workflowSource: "allocation-release", workflowAction: "goal-deposit", sourceAccountId: releasedFunds.sourceAccountId || "", suggestedAmount: Number(releasedFunds.amount || 0) }} onClick={onDismiss}>Setor ke Target</Link> bila dana itu ingin langsung diarahkan ke tujuan tabungan.
+      <Link to="/target" state={{ workflowSource: "allocation-release", workflowAction: "choose-goal-funding", sourceAccountId: releasedFunds.sourceAccountId || "", suggestedAmount: Number(releasedFunds.amount || 0) }} onClick={onDismiss}>Tambah ke Target</Link> bila dana itu ingin langsung diarahkan ke tujuan tabungan atau investasi.
     </span>
   </CompactNotice>
 ) : null;

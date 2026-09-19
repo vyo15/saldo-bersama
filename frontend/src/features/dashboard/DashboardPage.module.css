@@ -397,7 +397,7 @@
 
 @media (max-width: 1180px) {
   .shared-dashboard__layout { grid-template-columns: minmax(0, 1fr); }
-  .shared-dashboard__side { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); align-items: stretch; }
+  .shared-dashboard__side { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); align-items: start; }
   .shared-statistics { grid-row: span 2; }
   .shared-dashboard-widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -503,7 +503,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.68fr) minmax(320px, .92fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
 }
 
 
@@ -606,9 +606,10 @@
   overflow: hidden;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
 }
 .desktop-balance-card__safe > div {
   min-width: 0;
@@ -967,7 +968,7 @@
 .shared-dashboard-widgets {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  align-items: stretch;
+  align-items: start;
 }
 .shared-widget {
   min-height: 164px;
@@ -1017,7 +1018,7 @@
   .shared-dashboard__layout { grid-template-columns: minmax(0, 1fr); }
   .shared-dashboard__side {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
+    align-items: start;
   }
   .shared-dashboard-widgets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -1101,7 +1102,7 @@
     min-width: 0;
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(280px, .92fr);
-    align-items: stretch;
+    align-items: start;
     gap: 22px;
   }
 
@@ -1163,14 +1164,15 @@
 
   .desktop-cashflow-visual {
     min-width: 0;
-    padding: 16px;
-    border: 1px solid color-mix(in srgb, var(--border-strong) 78%, transparent);
-    border-radius: 18px;
+    padding: 14px 0 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
     display: grid;
     align-content: center;
-    gap: 16px;
-    background: color-mix(in srgb, var(--surface) 82%, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 38%, transparent);
+    gap: 14px;
+    background: transparent;
+    box-shadow: none;
   }
 
   .desktop-cashflow-visual__heading {
@@ -1238,7 +1240,6 @@
 
   .desktop-balance-card__safe {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    background: color-mix(in srgb, var(--surface) 62%, transparent);
   }
 
   .desktop-balance-card__safe > div { min-height: 66px; }
@@ -1326,7 +1327,7 @@
     min-width: 0;
     display: grid;
     grid-template-columns: minmax(0, 1.34fr) minmax(320px, .66fr);
-    align-items: stretch;
+    align-items: start;
     gap: 16px;
   }
 

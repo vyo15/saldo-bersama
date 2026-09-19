@@ -113,6 +113,7 @@ Exception bukan izin untuk terus menambah kode. Melewati growth ceiling harus me
 - Selector CSS hanya dipertahankan bila memiliki owner runtime atau compatibility contract yang terdokumentasi. Selector mati dibersihkan secara surgical tanpa mengubah cascade komponen aktif.
 - Lazy boundary yang dibuka oleh aksi user wajib memberi fallback aksesibel yang terlihat. `fallback={null}` hanya boleh dipakai untuk layer non-interaktif/informasional yang tidak membuat klik user tampak gagal.
 - Dynamic import yang dijalankan dari effect/handler wajib menangani rejection dan mengembalikan workflow ke state aman; React Error Boundary tidak dianggap cukup untuk rejected Promise async.
+- Effect berbasis route `state` wajib idempotent dan consume-once. Gunakan key navigation stabil (mis. `location.key` + action), clear/replace route state sebelum membuka modal/action, dan depend pada primitive/data slice yang benar-benar dibutuhkan—bukan object hook/resource utuh yang dapat berubah referensi setiap render.
 - Formatter/label map presentasional yang identik lintas desktop/mobile atau destructive summary dipusatkan agar copy dan semantic tidak drift.
 
 - Route kompleks yang mendekati budget harus memakai shell tipis + lazy workspace bila itu memberi boundary yang jelas; Alokasi memakai `AllocationsPage` → `AllocationsWorkspace`, lalu overlay/dialog tetap dipisahkan lagi agar jalur normal tidak menarik interaction code.

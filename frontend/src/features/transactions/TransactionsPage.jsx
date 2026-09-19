@@ -110,7 +110,7 @@ const TransactionLedgerRow = ({ item, categoryLookup, accountLabel, categoryLabe
     <button type="button" className={styles.ledgerOpen} onClick={() => onOpenDetail(item)} aria-label={`Buka detail ${transactionTitle(item, categoryLookup)}`}>
       <span className={styles.ledgerTransaction}><span className={styles.categoryIcon} data-type={item.transaction_type || "default"}><Icon aria-hidden="true" /></span><span className={styles.tablePrimary}><strong>{transactionTitle(item, categoryLookup)}</strong><small>{categoryLabel(item)} · {TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</small></span></span>
       <span className={styles.ledgerContext}><strong>{accountLabel(item)}</strong><small data-tone={planning.tone}>↳ {planning.label}</small></span>
-      <span className={styles.ledgerWhen}><strong>{transactionWhenLabel(item)}</strong><StatusBadge status={item.status} /></span>
+      <span className={styles.ledgerWhen}><strong>{transactionWhenLabel(item)}</strong>{item.status && item.status !== "active" ? <StatusBadge status={item.status} /> : null}</span>
       <span className={`${styles.ledgerAmount} money--${transactionTone(item.transaction_type)}`}>{sign}<Money value={item.amount} tone={transactionTone(item.transaction_type)} /></span>
     </button>
     <div className={styles.ledgerAction}><TransactionActions item={item} linkedModule={managedModule(item)} menuOnly {...actions} /></div>

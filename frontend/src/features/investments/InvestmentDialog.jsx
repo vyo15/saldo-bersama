@@ -1,10 +1,13 @@
 import { useRef, useState } from "react";
 import Button from "../../components/common/Button.jsx";
+import CompactNotice from "../../components/common/CompactNotice.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
+import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
+import { TargetIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import { instrumentOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
@@ -13,7 +16,6 @@ import { investmentAssetByTicker, isMutualFundInstrument } from "../../shared/pr
 import InvestmentFormField from "./InvestmentFormField.jsx";
 import { buyInvestment, invalidateInvestmentReads, sellInvestment, updateInvestmentValuation } from "./investments.api.js";
 import { investmentProjectedAverage, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation } from "./investments.model.js";
-
 import formStyles from "./InvestmentForm.module.css";
 
 const TODAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
@@ -21,144 +23,108 @@ const TODAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" 
 const instrumentSelectionOption = (item = {}) => {
   const mutualFund = isMutualFundInstrument(item);
   const catalog = investmentAssetByTicker(item.ticker);
-  return {
-    value: item.instrument_id,
-    label: mutualFund ? (item.name || catalog?.name || "Reksa Dana") : item.ticker,
-    meta: mutualFund ? (catalog?.category || "Reksa Dana") : item.name,
-    ...instrumentOptionVisual(item),
-  };
+  return { value: item.instrument_id, label: mutualFund ? (item.name || catalog?.name || "Reksa Dana") : item.ticker, meta: mutualFund ? (catalog?.category || "Reksa Dana") : item.name, ...instrumentOptionVisual(item) };
 };
 
-const InstrumentField = ({ form, onFieldChange, instruments, error }) => <InlineSelectionPicker
-  className={formStyles.field}
-  label="Aset investasi"
-  required
-  error={error}
-  value={form.instrument_id || ""}
-  onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)}
-  placeholder="Pilih saham atau reksa dana"
-  placeholderOption={{ mark: "IDX" }}
-  searchable
-  searchPlaceholder="Cari kode atau nama aset…"
-  options={instruments.map(instrumentSelectionOption)}
-/>;
+const InstrumentField = ({ form, onFieldChange, instruments, error }) => <InlineSelectionPicker className={formStyles.field} label="Aset investasi" required error={error} value={form.instrument_id || ""} onChange={(instrumentId) => onFieldChange("instrument_id", instrumentId)} placeholder="Pilih saham atau reksa dana" placeholderOption={{ mark: "IDX" }} searchable searchPlaceholder="Cari kode atau nama aset…" options={instruments.map(instrumentSelectionOption)} />;
 
-const NotesField = ({ value, onChange, error }) => <InvestmentFormField id="investment-trade-notes" label="Catatan (opsional)" error={error}>
-  <textarea maxLength="500" value={value || ""} onChange={(event) => onChange(event.target.value)} />
-</InvestmentFormField>;
+const NotesField = ({ value, onChange, error }) => <InvestmentFormField id="investment-trade-notes" label="Catatan (opsional)" error={error}><textarea maxLength="500" value={value || ""} onChange={(event) => onChange(event.target.value)} /></InvestmentFormField>;
 
 const tradeSelectableInstruments = (mode, instruments, portfolio) => {
   if (mode !== "sell") return instruments;
-  const heldIds = new Set((portfolio.holdings || []).map((item) => item.instrument_id));
+  const heldIds = new Set((portfolio.holdings || []).filter((item) => Number(item.shares || 0) > 0).map((item) => item.instrument_id));
   return instruments.filter((item) => heldIds.has(item.instrument_id));
 };
 
-const SellAvailabilityHint = ({ holding, instrument }) => {
-  if (!holding) return null;
-  if (isMutualFundInstrument(instrument || holding)) return <small className={formStyles.formHint}>Tersedia {Number(holding.shares || 0).toLocaleString("id-ID")} unit.</small>;
-  const lotSize = Number(instrument?.lot_size || holding?.lot_size || 100);
-  const lots = Number(holding.shares || 0) / Math.max(1, lotSize);
-  return <small className={formStyles.formHint}>Tersedia {lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot.</small>;
+const goalOptionsForBuy = (goals = []) => goals.filter((goal) => goal.status === "active" && ["investment", "mixed"].includes(goal.funding_mode) && goal.can_invest !== false).map((goal) => ({ value: goal.goal_id, label: goal.name, meta: `Sisa Rp ${Number(goal.remaining_amount || 0).toLocaleString("id-ID")}`, icon: TargetIcon }));
+const allocationForGoal = (holding, goalId) => (holding?.goal_allocations || []).find((item) => item.goal_id === goalId && Number(item.shares || 0) > 0) || null;
+const goalOptionsForSell = (goals = [], holding) => (holding?.goal_allocations || []).filter((allocation) => Number(allocation.shares || 0) > 0).map((allocation) => {
+  const goal = goals.find((item) => item.goal_id === allocation.goal_id);
+  return { value: allocation.goal_id, label: goal?.name || allocation.goal_name || "Target", meta: `${Number(allocation.shares || 0).toLocaleString("id-ID")} lembar/unit terhubung`, icon: TargetIcon };
+});
+
+const availableShares = (holding, goalId) => {
+  if (!holding) return 0;
+  if (goalId) return Number(allocationForGoal(holding, goalId)?.shares || 0);
+  return Number(holding.unallocated_shares ?? holding.shares ?? 0);
 };
 
-const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, errors }) => {
+const SellAvailabilityHint = ({ holding, instrument, goalId }) => {
+  if (!holding) return null;
+  const shares = availableShares(holding, goalId);
+  if (isMutualFundInstrument(instrument || holding)) return <small className={formStyles.formHint}>Tersedia {shares.toLocaleString("id-ID")} unit {goalId ? "untuk Target ini" : "yang belum terhubung ke Target"}.</small>;
+  const lotSize = Number(instrument?.lot_size || holding?.lot_size || 100);
+  const lots = shares / Math.max(1, lotSize);
+  return <small className={formStyles.formHint}>Tersedia {lots.toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot {goalId ? "untuk Target ini" : "yang belum terhubung ke Target"}.</small>;
+};
+
+const GoalTradeField = ({ mode, form, onFieldChange, goals, holding, error }) => {
+  const options = mode === "buy" ? goalOptionsForBuy(goals) : goalOptionsForSell(goals, holding);
+  const placeholder = mode === "buy" ? "Tidak terkait Target" : "Jual aset yang tidak terkait Target";
+  return <>
+    <InlineSelectionPicker className={formStyles.field} label="Untuk Target (opsional)" error={error} value={form.goal_id || ""} onChange={(value) => onFieldChange("goal_id", value)} placeholder={placeholder} placeholderOption={{ icon: TargetIcon }} searchable={options.length > 8} options={options} />
+    {mode === "buy" && form.goal_id ? <CompactNotice tone="info" title="Pembelian terhubung Target">Nilai pasar aset ini akan ikut menjadi progress Target. Tidak dibuat catatan tabungan kedua.</CompactNotice> : null}
+    {mode === "sell" && form.goal_id ? <VisualChoiceGroup legend="Hasil penjualan" name="investment-goal-sale-proceeds" value={form.retain_for_goal === false ? "release" : "retain"} onChange={(value) => onFieldChange("retain_for_goal", value === "retain")} columns={2} compact options={[{ value: "retain", label: "Tetap untuk Target", description: "Hasil jual tetap dihitung sebagai dana Target", icon: TargetIcon }, { value: "release", label: "Lepaskan dari Target", description: "Hasil jual tidak lagi menjadi progress Target", icon: TargetIcon }]} /> : null}
+  </>;
+};
+
+const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, goals, errors }) => {
   const selectable = tradeSelectableInstruments(mode, instruments, portfolio);
   const holding = (portfolio.holdings || []).find((item) => item.instrument_id === form.instrument_id) || null;
   const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
   const mutualFund = isMutualFundInstrument(instrument || holding || {});
   return <>
-    <InstrumentField form={form} onFieldChange={onFieldChange} instruments={selectable} error={errors.instrument_id} />
+    <InstrumentField form={form} onFieldChange={(key, value) => { onFieldChange(key, value); if (key === "instrument_id" && mode === "sell") onFieldChange("goal_id", ""); }} instruments={selectable} error={errors.instrument_id} />
+    <GoalTradeField mode={mode} form={form} onFieldChange={onFieldChange} goals={goals} holding={holding} error={errors.goal_id} />
     <div className={formStyles.formRow}>
-      <InvestmentFormField id="investment-lots" label={mutualFund ? "Unit" : "Lot"} required error={errors.lots}>
-        <input min="1" step="1" type="number" value={form.lots} onChange={(event) => onFieldChange("lots", event.target.value)} />
-      </InvestmentFormField>
-      <InvestmentFormField id="investment-trade-date" label="Tanggal" required error={errors.trade_date}>
-        <TemporalInput type="date" max={TODAY()} value={form.trade_date} onChange={(event) => onFieldChange("trade_date", event.target.value)} />
-      </InvestmentFormField>
+      <InvestmentFormField id="investment-lots" label={mutualFund ? "Unit" : "Lot"} required error={errors.lots}><input min="1" step="1" type="number" value={form.lots} onChange={(event) => onFieldChange("lots", event.target.value)} /></InvestmentFormField>
+      <InvestmentFormField id="investment-trade-date" label="Tanggal" required error={errors.trade_date}><TemporalInput type="date" max={TODAY()} value={form.trade_date} onChange={(event) => onFieldChange("trade_date", event.target.value)} /></InvestmentFormField>
     </div>
     <MoneyInput id="investment-trade-price" label={mutualFund ? "Nilai per unit" : "Harga per saham"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
-    {mode === "buy" && instrument ? (() => {
-      const average = investmentProjectedAverage(form, instruments, portfolio);
-      return <div className={formStyles.averagePreview} role="status"><span>{mutualFund ? "Average nilai/unit" : "Average harga/lembar"}</span><strong><Money value={average.nextAverage} /></strong><small>{average.currentShares > 0 ? <>Sebelum pembelian <Money value={average.currentAverage} /></> : "Posisi baru"}</small></div>;
-    })() : null}
+    {mode === "buy" && instrument ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div className={formStyles.averagePreview} role="status"><span>{mutualFund ? "Average nilai/unit" : "Average harga/lembar"}</span><strong><Money value={average.nextAverage} /></strong><small>{average.currentShares > 0 ? <>Sebelum pembelian <Money value={average.currentAverage} /></> : "Posisi baru"}</small></div>; })() : null}
     <NotesField value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
     {mode === "buy" ? <small className={formStyles.formHint}>Pembelian ini hanya menambah catatan posisi investasi dan tidak memindahkan saldo rekening.</small> : null}
-    {mode === "sell" ? <SellAvailabilityHint holding={holding} instrument={instrument} /> : null}
+    {mode === "sell" ? <SellAvailabilityHint holding={holding} instrument={instrument} goalId={form.goal_id} /> : null}
   </>;
 };
 
-const TradeReview = ({ mode, form, instruments, portfolio }) => {
+const TradeReview = ({ mode, form, instruments, portfolio, goals }) => {
   const preview = investmentTradePreview(mode, form, instruments);
   const mutualFund = isMutualFundInstrument(preview.instrument || {});
-  return <section className={formStyles.review} aria-labelledby="investment-trade-review-title">
-    <div>
-      <h3 id="investment-trade-review-title">Tinjau catatan sebelum disimpan</h3>
-      <p className={formStyles.notice}>Ini hanya pencatatan. Saldo Bersama tidak mengirim order ke broker dan tidak memindahkan saldo rekening.</p>
-    </div>
-    <dl className={formStyles.reviewGrid}>
-      <div><dt>Aset</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
-      <div><dt>Kuantitas</dt><dd>{preview.lots.toLocaleString("id-ID")} {mutualFund ? "unit" : "lot"}</dd></div>
-      <div><dt>{mutualFund ? "Nilai per unit" : "Harga per saham"}</dt><dd><Money value={preview.pricePerShare} /></dd></div>
-      <div><dt>Nilai tercatat</dt><dd><Money value={preview.rdnAmount} /></dd></div>
-      {mode === "buy" ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div><dt>{mutualFund ? "Average nilai/unit setelah beli" : "Average harga/lembar setelah beli"}</dt><dd><Money value={average.nextAverage} /></dd></div>; })() : null}
-      <div><dt>Tanggal</dt><dd>{formatDateLongIndonesia(form.trade_date) || form.trade_date}</dd></div>
-      {form.notes ? <div><dt>Catatan</dt><dd>{form.notes}</dd></div> : null}
-    </dl>
-  </section>;
+  const goal = goals.find((item) => item.goal_id === form.goal_id) || null;
+  return <section className={formStyles.review} aria-labelledby="investment-trade-review-title"><div><h3 id="investment-trade-review-title">Tinjau catatan sebelum disimpan</h3><p className={formStyles.notice}>Ini hanya pencatatan. Saldo Bersama tidak mengirim order ke broker dan tidak memindahkan saldo rekening.</p></div><dl className={formStyles.reviewGrid}>
+    <div><dt>Aset</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
+    <div><dt>Kuantitas</dt><dd>{preview.lots.toLocaleString("id-ID")} {mutualFund ? "unit" : "lot"}</dd></div>
+    <div><dt>{mutualFund ? "Nilai per unit" : "Harga per saham"}</dt><dd><Money value={preview.pricePerShare} /></dd></div>
+    <div><dt>Nilai tercatat</dt><dd><Money value={preview.rdnAmount} /></dd></div>
+    {goal ? <div><dt>Target</dt><dd>{goal.name}</dd></div> : <div><dt>Target</dt><dd>Tidak terkait Target</dd></div>}
+    {mode === "sell" && goal ? <div><dt>Hasil penjualan</dt><dd>{form.retain_for_goal === false ? "Lepaskan dari Target" : "Tetap untuk Target"}</dd></div> : null}
+    {mode === "buy" ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div><dt>{mutualFund ? "Average nilai/unit setelah beli" : "Average harga/lembar setelah beli"}</dt><dd><Money value={average.nextAverage} /></dd></div>; })() : null}
+    <div><dt>Tanggal</dt><dd>{formatDateLongIndonesia(form.trade_date) || form.trade_date}</dd></div>{form.notes ? <div><dt>Catatan</dt><dd>{form.notes}</dd></div> : null}
+  </dl></section>;
 };
 
 const PriceFields = ({ form, onFieldChange, instruments, errors }) => {
   const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
   const mutualFund = isMutualFundInstrument(instrument || {});
-  return <>
-    <InstrumentField form={form} onFieldChange={onFieldChange} instruments={instruments} error={errors.instrument_id} />
-    <MoneyInput id="investment-price" label={mutualFund ? "Nilai per unit" : "Harga per saham"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
-    <InvestmentFormField id="investment-valuation-date" label="Tanggal nilai" required error={errors.valuation_date}>
-      <TemporalInput type="date" max={TODAY()} value={form.valuation_date} onChange={(event) => onFieldChange("valuation_date", event.target.value)} />
-    </InvestmentFormField>
-    <small className={formStyles.formHint}>Nilai ini menggantikan referensi manual terakhir untuk menghitung nilai aset. Tidak ada transaksi yang dibuat.</small>
-  </>;
+  return <><InstrumentField form={form} onFieldChange={onFieldChange} instruments={instruments} error={errors.instrument_id} /><MoneyInput id="investment-price" label={mutualFund ? "Nilai per unit" : "Harga per saham"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} /><InvestmentFormField id="investment-valuation-date" label="Tanggal nilai" required error={errors.valuation_date}><TemporalInput type="date" max={TODAY()} value={form.valuation_date} onChange={(event) => onFieldChange("valuation_date", event.target.value)} /></InvestmentFormField><small className={formStyles.formHint}>Nilai ini menggantikan referensi manual terakhir untuk menghitung nilai aset. Tidak ada transaksi yang dibuat.</small></>;
 };
 
 const dialogTitle = (mode) => ({ buy: "Catat pembelian", sell: "Catat penjualan", price: "Perbarui nilai" })[mode] || "Catat investasi";
-const dialogDescription = (mode) => ({
-  buy: "Tambahkan pembelian ke posisi aset. Pencatatan ini tidak memindahkan saldo rekening.",
-  sell: "Kurangi posisi aset sesuai penjualan yang sudah Anda lakukan di luar Saldo Bersama.",
-  price: "Perbarui harga atau nilai manual terakhir tanpa membuat transaksi.",
-})[mode] || "Perbarui catatan investasi.";
+const dialogDescription = (mode) => ({ buy: "Tambahkan pembelian ke posisi aset. Bisa ditautkan langsung ke Target.", sell: "Kurangi posisi aset dan tentukan apakah hasil jual tetap menjadi dana Target.", price: "Perbarui harga atau nilai manual terakhir tanpa membuat transaksi." })[mode] || "Perbarui catatan investasi.";
 
-const initialForm = ({ initialInstrumentId, initialDraft }) => ({
-  trade_date: TODAY(),
-  valuation_date: TODAY(),
-  lots: 1,
-  price_per_share: "",
-  instrument_id: initialInstrumentId || "",
-  notes: "",
-  ...(initialDraft && typeof initialDraft === "object" ? initialDraft : {}),
-});
-
+const initialForm = ({ initialInstrumentId, initialDraft, initialGoalId }) => ({ trade_date: TODAY(), valuation_date: TODAY(), lots: 1, price_per_share: "", instrument_id: initialInstrumentId || "", goal_id: initialGoalId || "", retain_for_goal: true, notes: "", ...(initialDraft && typeof initialDraft === "object" ? initialDraft : {}) });
 const payloadForMode = (mode, form, portfolioId) => {
   if (mode === "price") return { portfolio_id: portfolioId, instrument_id: form.instrument_id, price_per_share: Number(form.price_per_share), valuation_date: form.valuation_date };
-  return { portfolio_id: portfolioId, instrument_id: form.instrument_id, lots: Number(form.lots), price_per_share: Number(form.price_per_share), trade_date: form.trade_date, notes: form.notes || "" };
+  return { portfolio_id: portfolioId, instrument_id: form.instrument_id, lots: Number(form.lots), price_per_share: Number(form.price_per_share), trade_date: form.trade_date, notes: form.notes || "", ...(form.goal_id ? { goal_id: form.goal_id } : {}), ...(mode === "sell" && form.goal_id ? { retain_for_goal: form.retain_for_goal !== false } : {}) };
 };
+const actionForMode = (mode) => mode === "buy" ? buyInvestment : mode === "sell" ? sellInvestment : updateInvestmentValuation;
 
-const actionForMode = (mode) => {
-  if (mode === "buy") return buyInvestment;
-  if (mode === "sell") return sellInvestment;
-  return updateInvestmentValuation;
-};
+const InvestmentDialogFooter = ({ reviewing, busy, outcomeUnknown, isTrade, onEdit, onCancel }) => <>{reviewing ? <Button type="button" onClick={onEdit} disabled={busy || outcomeUnknown}>Ubah</Button> : <Button type="button" onClick={onCancel} disabled={busy || outcomeUnknown}>Batal</Button>}<Button variant="primary" type="submit" form="investment-dialog-form" loading={busy}>{outcomeUnknown ? "Coba lagi data yang sama" : reviewing ? "Simpan catatan" : isTrade ? "Tinjau" : "Simpan nilai"}</Button></>;
 
-const InvestmentDialogFooter = ({ reviewing, busy, outcomeUnknown, isTrade, onEdit, onCancel }) => {
-  const submitLabel = outcomeUnknown ? "Coba lagi data yang sama" : reviewing ? "Simpan catatan" : isTrade ? "Tinjau" : "Simpan nilai";
-  return <>
-    {reviewing ? <Button type="button" onClick={onEdit} disabled={busy || outcomeUnknown}>Ubah</Button> : <Button type="button" onClick={onCancel} disabled={busy || outcomeUnknown}>Batal</Button>}
-    <Button variant="primary" type="submit" form="investment-dialog-form" loading={busy}>{submitLabel}</Button>
-  </>;
-};
-
-const useInvestmentDialogController = ({ mode, portfolio, instruments, userRole, initialInstrumentId, initialDraft, onClose, onSuccess }) => {
+const useInvestmentDialogController = ({ mode, portfolio, instruments, goals, userRole, initialInstrumentId, initialDraft, initialGoalId, onClose, onSuccess }) => {
   const formRef = useRef(null);
-  const [form, setForm] = useState(() => initialForm({ initialInstrumentId, initialDraft }));
+  const [form, setForm] = useState(() => initialForm({ initialInstrumentId, initialDraft, initialGoalId }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
@@ -168,68 +134,39 @@ const useInvestmentDialogController = ({ mode, portfolio, instruments, userRole,
   const activeInstruments = selectInvestmentInstruments(instruments, portfolio?.holdings || [], "buy");
   const sellInstruments = selectInvestmentInstruments(instruments, portfolio?.holdings || [], "sell");
   const priceInstruments = selectInvestmentInstruments(instruments, portfolio?.holdings || [], "price");
-
-  const onFieldChange = (key, value) => {
-    setForm((current) => ({ ...current, [key]: value }));
-    setFieldErrors((current) => current[key] ? Object.fromEntries(Object.entries(current).filter(([name]) => name !== key && name !== "_form")) : current);
-    setError("");
-  };
+  const onFieldChange = (key, value) => { setForm((current) => ({ ...current, [key]: value })); setFieldErrors((current) => current[key] ? Object.fromEntries(Object.entries(current).filter(([name]) => name !== key && name !== "_form")) : current); setError(""); };
   const submit = async (event) => {
     event.preventDefault();
     setError("");
-    const next = validateInvestmentOperation(mode, form, { instruments, portfolio, userRole });
+    const next = validateInvestmentOperation(mode, form, { instruments, portfolio, goals, userRole });
     setFieldErrors(next);
-    if (!reviewing && Object.keys(next).length) {
-      globalThis.requestAnimationFrame?.(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
-      return;
-    }
+    if (!reviewing && Object.keys(next).length) { globalThis.requestAnimationFrame?.(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus()); return; }
     if (isTrade && !reviewing) { setReviewing(true); return; }
     setBusy(true);
     try {
       const result = await actionForMode(mode)(payloadForMode(mode, form, portfolio.portfolio_id), portfolio.row_version);
-      setOutcomeUnknown(false);
-      invalidateInvestmentReads();
-      onSuccess?.(mode, portfolio, result);
-      onClose();
-    } catch (caught) {
-      setOutcomeUnknown(isOutcomeUnknownError(caught));
-      setError(caught?.message || "Catatan investasi belum berhasil disimpan.");
-    } finally {
-      setBusy(false);
-    }
+      setOutcomeUnknown(false); invalidateInvestmentReads(); onSuccess?.(mode, portfolio, result); onClose();
+    } catch (caught) { setOutcomeUnknown(isOutcomeUnknownError(caught)); setError(caught?.message || "Catatan investasi belum berhasil disimpan."); } finally { setBusy(false); }
   };
   return { formRef, form, busy, error, fieldErrors, reviewing, setReviewing, outcomeUnknown, isTrade, activeInstruments, sellInstruments, priceInstruments, onFieldChange, submit };
 };
 
-const InvestmentDialogBody = ({ mode, portfolio, state }) => {
-  if (state.reviewing) {
-    const reviewInstruments = mode === "buy" ? state.activeInstruments : state.sellInstruments;
-    return <TradeReview mode={mode} form={state.form} instruments={reviewInstruments} portfolio={portfolio} />;
-  }
+const InvestmentDialogBody = ({ mode, portfolio, goals, state }) => {
+  if (state.reviewing) return <TradeReview mode={mode} form={state.form} instruments={mode === "buy" ? state.activeInstruments : state.sellInstruments} portfolio={portfolio} goals={goals} />;
   if (mode === "price") return <fieldset className={formStyles.intentFieldset} disabled={state.outcomeUnknown}><PriceFields form={state.form} onFieldChange={state.onFieldChange} instruments={state.priceInstruments} errors={state.fieldErrors} /></fieldset>;
-  const tradeInstruments = mode === "buy" ? state.activeInstruments : state.sellInstruments;
-  return <fieldset className={formStyles.intentFieldset} disabled={state.outcomeUnknown}><TradeFields mode={mode} form={state.form} onFieldChange={state.onFieldChange} instruments={tradeInstruments} portfolio={portfolio} errors={state.fieldErrors} /></fieldset>;
+  return <fieldset className={formStyles.intentFieldset} disabled={state.outcomeUnknown}><TradeFields mode={mode} form={state.form} onFieldChange={state.onFieldChange} instruments={mode === "buy" ? state.activeInstruments : state.sellInstruments} portfolio={portfolio} goals={goals} errors={state.fieldErrors} /></fieldset>;
 };
 
-const InvestmentDialog = ({ mode, portfolio, instruments, userRole, initialInstrumentId = "", initialDraft = null, onClose, onSuccess }) => {
-  const state = useInvestmentDialogController({ mode, portfolio, instruments, userRole, initialInstrumentId, initialDraft, onClose, onSuccess });
+const InvestmentDialog = ({ mode, portfolio, instruments, goals = [], userRole, initialInstrumentId = "", initialDraft = null, initialGoalId = "", onClose, onSuccess }) => {
+  const state = useInvestmentDialogController({ mode, portfolio, instruments, goals, userRole, initialInstrumentId, initialDraft, initialGoalId, onClose, onSuccess });
   const guard = useUnsavedChangesGuard({ open: Boolean(mode && portfolio), value: state.form, onClose, blocked: state.busy || state.outcomeUnknown });
   if (!mode || !portfolio) return null;
-  return <Modal
-    open
-    title={dialogTitle(mode)}
-    description={dialogDescription(mode)}
-    onClose={state.busy || state.outcomeUnknown ? undefined : guard.requestClose}
-    discardGuard={guard}
-    discardSubject="catatan investasi"
-    dismissible={!state.busy && !state.outcomeUnknown}
-    footer={<InvestmentDialogFooter reviewing={state.reviewing} busy={state.busy} outcomeUnknown={state.outcomeUnknown} isTrade={state.isTrade} onEdit={() => state.setReviewing(false)} onCancel={guard.discardAndClose} />}
-  >
+  return <Modal open title={dialogTitle(mode)} description={dialogDescription(mode)} onClose={state.busy || state.outcomeUnknown ? undefined : guard.requestClose} discardGuard={guard} discardSubject="catatan investasi" dismissible={!state.busy && !state.outcomeUnknown} footer={<InvestmentDialogFooter reviewing={state.reviewing} busy={state.busy} outcomeUnknown={state.outcomeUnknown} isTrade={state.isTrade} onEdit={() => state.setReviewing(false)} onCancel={guard.discardAndClose} />}>
     <form ref={state.formRef} id="investment-dialog-form" className={formStyles.form} onSubmit={state.submit} noValidate>
       {state.fieldErrors._form ? <div className="notice notice--danger" role="alert">{state.fieldErrors._form}</div> : null}
       {state.error ? <div className={`notice ${state.outcomeUnknown ? "notice--warning" : "notice--danger"}`} role="alert">{state.error}</div> : null}
       {state.outcomeUnknown ? <p className={formStyles.intentGuard} role="status">Data dikunci sementara. Jangan ubah aset, nominal, tanggal, atau jumlah. Tekan “Coba lagi data yang sama” untuk memverifikasi hasil tanpa menggandakan catatan.</p> : null}
-      <InvestmentDialogBody mode={mode} portfolio={portfolio} state={state} />
+      <InvestmentDialogBody mode={mode} portfolio={portfolio} goals={goals} state={state} />
     </form>
   </Modal>;
 };

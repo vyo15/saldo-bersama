@@ -89,7 +89,7 @@ const RepeatStrip = ({ items, categoryLookup, accountLabel, onRepeat }) => {
   const repeatItems = repeatableTransactions(items);
   if (!repeatItems.length) return null;
   return <section className={styles.repeatSection} aria-labelledby="desktop-repeat-transaction-title">
-    <div className={styles.repeatHeading}><div><span className={styles.activityEyebrow}>Pakai lagi</span><h2 id="desktop-repeat-transaction-title">Transaksi yang baru digunakan</h2></div><span>Pilih untuk membuat draft baru</span></div>
+    <div className={styles.repeatHeading}><div><h2 id="desktop-repeat-transaction-title">Transaksi yang baru digunakan</h2></div><span>Pilih untuk membuat draft baru</span></div>
     <div className={styles.repeatGrid}>{repeatItems.map((item) => <RepeatCard key={item.transaction_id} item={item} categoryLookup={categoryLookup} accountLabel={accountLabel} onRepeat={onRepeat} />)}</div>
   </section>;
 };
@@ -100,7 +100,7 @@ const DesktopTransactionWorkspace = ({ report, period, total, items, categoryLoo
     <section className={styles.historyPanel} aria-labelledby="desktop-transaction-history-title">
       <RepeatStrip items={items} categoryLookup={categoryLookup} accountLabel={accountLabel} onRepeat={onRepeat} />
       {attentionNotice}
-      <div className={styles.historyHeading}><div><span className={styles.activityEyebrow}>Riwayat transaksi</span><h2 id="desktop-transaction-history-title">Semua pergerakan uang</h2></div><span>Gunakan pencarian dan filter untuk mempersempit ledger.</span></div>
+      <div className={styles.historyHeading}><div><h2 id="desktop-transaction-history-title">Semua pergerakan uang</h2></div><span>Gunakan pencarian dan filter untuk mempersempit ledger.</span></div>
       {filters}
       {resourceStates}
       {results}

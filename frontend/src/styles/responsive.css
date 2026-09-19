@@ -54,9 +54,7 @@
   .app-shell__main { width: 100%; min-height: 0; flex: 1 1 auto; padding-inline-start: 0; }
   .desktop-module-dock { display: none; }
   .desktop-app-header { display: none; }
-  .app-content,
-  .app-content--standard,
-  .app-content--wide { width: 100%; max-width: none; margin-inline: 0; min-height: 0; flex: 1 1 auto; padding: 16px var(--mobile-page-gutter) calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom) + var(--mobile-navigation-content-gap)); }
+  .app-content { width: 100%; max-width: none; margin-inline: 0; min-height: 0; flex: 1 1 auto; padding: 16px var(--mobile-page-gutter) calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom) + var(--mobile-navigation-content-gap)); }
   .floating-add { display: none; }
   .mobile-navigation { position: fixed; inset-inline: 0; bottom: 0; z-index: 50; width: 100%; height: calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom)); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; background: var(--navigation-surface); border-top: 1px solid var(--border); box-shadow: 0 -5px 18px color-mix(in srgb, var(--text) 8%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
   .mobile-navigation a,
@@ -209,8 +207,7 @@
 }
 
 @media (max-width: 820px) {
-  .app-shell--notifications .app-content,
-  .app-shell--notifications .app-content--wide {
+  .app-shell--notifications .app-content {
     width: 100%;
     max-width: none;
     padding: 0 0 calc(var(--mobile-navigation-height) + env(safe-area-inset-bottom));

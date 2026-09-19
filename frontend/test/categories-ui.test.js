@@ -69,7 +69,7 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /event\.key === "ArrowDown"/);
   assert.match(page, /event\.key === "ArrowUp"/);
   assert.match(page, /role="menuitem"/);
-  assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(auto-fill, minmax\(11\.5rem, 1fr\)\)/);
+  assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(11\.5rem, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 820px\)[\s\S]*?\.categoryList \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.categoryMenu[\s\S]*position: fixed[\s\S]*mobile-navigation-height/);
   assert.doesNotMatch(styles, /\.categoryStatusActive/);

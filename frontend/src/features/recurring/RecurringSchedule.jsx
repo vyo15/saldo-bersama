@@ -216,6 +216,7 @@ const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, ac
 const ScheduleKindTabs = ({ kind, setKind, items }) => {
   const expenseCount = items.filter((item) => item.kind === "expense").length;
   const incomeCount = items.filter((item) => item.kind === "income").length;
+  if (!expenseCount || !incomeCount) return null;
   return (
     <div className={styles.kindTabs} role="group" aria-label="Jenis jadwal rutin">
       <button type="button" className={`${styles.kindTab} ${kind === "expense" ? styles.kindTabActive : ""}`} aria-pressed={kind === "expense"} onClick={() => setKind("expense")}>
@@ -247,7 +248,6 @@ export const ScheduleSummary = ({ items, onAttention }) => {
       <div className={styles.heroGlow} aria-hidden="true" />
       <div className={styles.heroContent}>
         <div className={styles.heroTop}>
-          <span className={styles.heroEyebrow}>Ringkasan periode</span>
           {status.attention ? (
             <button type="button" className={`${styles.heroStatus} ${styles.heroStatusAttention}`} aria-label="Lihat tindakan yang perlu perhatian" onClick={onAttention}>
               <span>{status.label}</span><FiArrowRight aria-hidden="true" />
@@ -304,9 +304,9 @@ export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, 
           <h2>Jadwal periode ini</h2>
           {allItems.length ? <span>{visibleItems.length} jadwal {typeLabel}</span> : null}
         </div>
+        {allItems.length ? <ScheduleKindTabs kind={kind} setKind={(next) => { setKind(next); setExpandedId(null); }} items={items} /> : null}
       </div>
       {allItems.length ? <ScheduleFilters filter={filter} setFilter={selectFilter} items={allItems} /> : null}
-      {allItems.length ? <ScheduleKindTabs kind={kind} setKind={(next) => { setKind(next); setExpandedId(null); }} items={items} /> : null}
       <ScheduleList
         items={visibleItems}
         emptyText={`Belum ada ${typeLabel} rutin pada status ini.`}
