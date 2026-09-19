@@ -243,37 +243,29 @@ const assertGoalAccountChangeAllowed = async (db, current, account, owned) => {
   throw appError("GOAL_ACCOUNT_LOCKED", "Rekening dan kepemilikan target tidak dapat diubah setelah memiliki riwayat dana atau investasi.", 409);
 };
 
-const goalInvestmentPortfolioAccount = async (db, portfolioId) => db.one(`SELECT p.portfolio_id,a.* FROM investment_portfolios p JOIN accounts a ON a.account_id=p.rdn_account_id
-  WHERE p.portfolio_id=? AND p.status='active' AND a.status='active' AND a.account_type='investment' AND a.owner_scope='shared'`, [portfolioId]);
-
-const validateGoalFundingAccount = (fundingMode, account) => {
+// Funding mode changes share one resolver so cash, investment, and mixed Target ownership stay atomic.
+// eslint-disable-next-line complexity
+const resolveGoalFundingAccount = async (db, context, payload, current = null) => {
+  const fundingMode = String(payload.funding_mode ?? current?.funding_mode ?? "cash");
+  if (!["cash", "investment", "mixed"].includes(fundingMode)) throw appError("INVALID_GOAL_FUNDING", "Cara menabung Target tidak valid.", 400);
+  const fundingModeChanged = current && fundingMode !== String(current.funding_mode || "cash");
+  if (fundingMode === "investment" && !payload.account_id && (!current || fundingModeChanged || payload.portfolio_id)) {
+    const portfolioId = String(payload.portfolio_id || "");
+    const row = await db.one(`SELECT p.portfolio_id,a.* FROM investment_portfolios p JOIN accounts a ON a.account_id=p.rdn_account_id
+      WHERE p.portfolio_id=? AND p.status='active' AND a.status='active' AND a.account_type='investment' AND a.owner_scope='shared'`, [portfolioId]);
+    if (!row) throw appError("GOAL_INVESTMENT_PORTFOLIO_REQUIRED", "Pilih investasi Bersama yang akan menjadi sumber awal Target.", 409);
+    return { account: row, owned: ruleScopeFromAccount(row), fundingMode };
+  }
+  const accountId = payload.account_id ?? current?.account_id;
+  const account = await accountWithAccess(db, context.actor, accountId);
   if (["cash", "mixed"].includes(fundingMode) && account.account_type === "investment") {
     throw appError("GOAL_CASH_ACCOUNT_REQUIRED", "Target tunai atau campuran harus memakai rekening non-investasi sebagai rekening tabungan.", 409);
   }
   if (fundingMode === "investment" && account.account_type !== "investment") {
     throw appError("GOAL_INVESTMENT_ACCOUNT_REQUIRED", "Target investasi harus memakai portfolio investasi sebagai sumber dananya.", 409);
   }
-};
-
-const shouldResolveGoalPortfolio = (payload, current, fundingMode) => {
-  if (fundingMode !== "investment" || payload.account_id) return false;
-  if (!current || payload.portfolio_id) return true;
-  return fundingMode !== String(current.funding_mode || "cash");
-};
-
-const resolveGoalFundingAccount = async (db, context, payload, current = null) => {
-  const fundingMode = String(payload.funding_mode ?? current?.funding_mode ?? "cash");
-  if (!["cash", "investment", "mixed"].includes(fundingMode)) throw appError("INVALID_GOAL_FUNDING", "Cara menabung Target tidak valid.", 400);
-
-  if (shouldResolveGoalPortfolio(payload, current, fundingMode)) {
-    const row = await goalInvestmentPortfolioAccount(db, String(payload.portfolio_id || ""));
-    if (!row) throw appError("GOAL_INVESTMENT_PORTFOLIO_REQUIRED", "Pilih investasi Bersama yang akan menjadi sumber awal Target.", 409);
-    return { account: row, owned: ruleScopeFromAccount(row), fundingMode };
-  }
-
-  const account = await accountWithAccess(db, context.actor, payload.account_id ?? current?.account_id);
-  validateGoalFundingAccount(fundingMode, account);
-  return { account, owned: ruleScopeFromAccount(account), fundingMode };
+  const owned = ruleScopeFromAccount(account);
+  return { account, owned, fundingMode };
 };
 
 const buildUpdatedGoal = (current, payload, account, owned, actorId) => {

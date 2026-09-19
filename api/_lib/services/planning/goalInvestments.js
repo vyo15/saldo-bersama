@@ -85,6 +85,7 @@ const appendGoalInvestmentEvent = async (db, context, {
   return publicRow(record);
 };
 
+
 export const allocateGoalInvestment = async (db, context) => {
   const payload = context.payload || {};
   const goal = await goalInvestmentTarget(db, context, payload.goal_id);
@@ -145,64 +146,48 @@ export const releaseGoalInvestment = async (db, context) => {
   return { event, goal_id: goal.goal_id, released_shares: shares, remaining_allocated_shares: goalShares - shares };
 };
 
-const assertStandaloneSellAvailability = async (db, { portfolio, instrument, tradeType, shares, tradeDate, currentState }) => {
-  if (tradeType !== "sell") return;
-  const totalAllocated = await allocatedSharesAcrossGoals(db, portfolio.portfolio_id, instrument.instrument_id, tradeDate);
-  const holding = currentState.holdings.find((item) => item.instrument_id === instrument.instrument_id);
-  const unallocated = Math.max(0, Number(holding?.shares || 0) - totalAllocated);
-  if (shares > unallocated) {
-    throw appError("GOAL_INVESTMENT_LINK_REQUIRED", "Sebagian aset ini terhubung ke Target. Pilih Target asal penjualan agar progres tetap konsisten.", 409, { availableUnallocatedShares: unallocated });
-  }
-};
-
-const preparedGoalBuy = ({ goal, instrument, shares, cashAmount }) => ({
-  goal,
-  eventType: "buy",
-  shareDelta: shares,
-  costBasisDelta: cashAmount,
-  cashDelta: 0,
-  realizedPlDelta: 0,
-  reason: `Pembelian ${instrument.ticker || instrument.name || "investasi"} untuk Target ${goal.name}`,
-});
-
-const preparedGoalSell = ({ goal, shares, cashAmount, removedBasis, retainForGoal }) => {
-  if (retainForGoal === false) {
-    return {
-      goal,
-      eventType: "sell_release",
-      shareDelta: -shares,
-      costBasisDelta: -removedBasis,
-      cashDelta: 0,
-      realizedPlDelta: 0,
-      reason: `Hasil penjualan dilepas dari Target ${goal.name}`,
-    };
-  }
-  return {
-    goal,
-    eventType: "sell_retain",
-    shareDelta: -shares,
-    costBasisDelta: -removedBasis,
-    cashDelta: cashAmount,
-    realizedPlDelta: cashAmount - removedBasis,
-    reason: `Hasil penjualan tetap untuk Target ${goal.name}`,
-  };
-};
-
+// Goal-linked buys and sells intentionally validate both unallocated and Target-bound positions in one transaction.
+// eslint-disable-next-line complexity
 export const prepareGoalLinkedTrade = async (db, context, { portfolio, instrument, tradeType, shares, tradeDate, cashAmount, currentState, retainForGoal = true }) => {
   const goalId = String(context.payload?.goal_id || "");
   if (!goalId) {
-    await assertStandaloneSellAvailability(db, { portfolio, instrument, tradeType, shares, tradeDate, currentState });
+    if (tradeType === "sell") {
+      const totalAllocated = await allocatedSharesAcrossGoals(db, portfolio.portfolio_id, instrument.instrument_id, tradeDate);
+      const holding = currentState.holdings.find((item) => item.instrument_id === instrument.instrument_id);
+      const unallocated = Math.max(0, Number(holding?.shares || 0) - totalAllocated);
+      if (shares > unallocated) {
+        throw appError("GOAL_INVESTMENT_LINK_REQUIRED", "Sebagian aset ini terhubung ke Target. Pilih Target asal penjualan agar progres tetap konsisten.", 409, { availableUnallocatedShares: unallocated });
+      }
+    }
     return null;
   }
   const goal = await goalInvestmentTarget(db, context, goalId, { allowCompleted: tradeType === "sell" });
   assertGoalPortfolioScope(goal, portfolio);
-  if (tradeType === "buy") return preparedGoalBuy({ goal, instrument, shares, cashAmount });
-
+  if (tradeType === "buy") {
+    return {
+      goal,
+      eventType: "buy",
+      shareDelta: shares,
+      costBasisDelta: cashAmount,
+      cashDelta: 0,
+      realizedPlDelta: 0,
+      reason: `Pembelian ${instrument.ticker || instrument.name || "investasi"} untuk Target ${goal.name}`,
+    };
+  }
   const allocated = await allocationRow(db, goal.goal_id, portfolio.portfolio_id, instrument.instrument_id, tradeDate);
   const goalShares = Number(allocated?.shares || 0);
   if (shares > goalShares) throw appError("GOAL_INVESTMENT_INSUFFICIENT", "Jumlah yang dijual melebihi aset yang terhubung ke Target ini.", 409, { availableShares: goalShares });
   const removedBasis = proportionalBasis(Number(allocated?.cost_basis || 0), shares, goalShares);
-  return preparedGoalSell({ goal, shares, cashAmount, removedBasis, retainForGoal });
+  const retained = retainForGoal !== false;
+  return {
+    goal,
+    eventType: retained ? "sell_retain" : "sell_release",
+    shareDelta: -shares,
+    costBasisDelta: -removedBasis,
+    cashDelta: retained ? cashAmount : 0,
+    realizedPlDelta: retained ? cashAmount - removedBasis : 0,
+    reason: retained ? `Hasil penjualan tetap untuk Target ${goal.name}` : `Hasil penjualan dilepas dari Target ${goal.name}`,
+  };
 };
 
 export const recordPreparedGoalLinkedTrade = async (db, context, prepared, { portfolio, instrument, trade, tradeDate }) => {

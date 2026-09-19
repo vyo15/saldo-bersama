@@ -134,7 +134,41 @@ const goalPageAccounts = (bootstrap, overview) => {
   return (bootstrap?.accounts || []).filter((item) => item.status === "active").map((item) => ({ ...item, ...(balanceLookup.get(item.account_id) || {}) }));
 };
 
-// Page-level orchestration intentionally coordinates creation, lifecycle, funding, reminders, and route continuations.
+
+const useGoalRouteWorkflow = ({ location, resourceStatus, canCreate, openCreate, clearWorkflowState, items, openFunding, setFundingPrompt, notify }) => {
+  const workflowHandled = useRef("");
+  useEffect(() => {
+    const workflowAction = String(location.state?.workflowAction || "");
+    const workflowKey = workflowAction ? `${location.key}|${workflowAction}` : "";
+    if (resourceStatus !== "ready" || workflowAction !== "create-goal" || workflowHandled.current === workflowKey) return;
+    workflowHandled.current = workflowKey;
+    clearWorkflowState();
+    if (canCreate) openCreate();
+    else notify({ message: "Siapkan rekening Bersama atau portfolio investasi Bersama sebelum membuat Target.", tone: "warning", dedupeKey: "goal:create-unavailable" });
+  }, [canCreate, clearWorkflowState, location.key, location.state, notify, openCreate, resourceStatus]);
+
+  useEffect(() => {
+    const workflowAction = String(location.state?.workflowAction || "");
+    const workflowKey = workflowAction ? `${location.key}|${workflowAction}` : "";
+    if (resourceStatus !== "ready" || !["goal-fund", "choose-goal-funding"].includes(workflowAction) || workflowHandled.current === workflowKey) return;
+    workflowHandled.current = workflowKey;
+    const goalId = String(location.state?.goalId || "");
+    const intent = { sourceAccountId: String(location.state?.sourceAccountId || ""), suggestedAmount: Number(location.state?.suggestedAmount || 0), manualAmount: location.state?.manualAmount === true };
+    clearWorkflowState();
+    if (workflowAction === "choose-goal-funding") {
+      const active = items.filter((item) => item.status === "active" && (item.can_deposit || item.can_invest));
+      if (active.length === 1) openFunding(active[0], intent);
+      else if (active.length > 1) setFundingPrompt(intent);
+      else notify({ message: "Belum ada Target aktif yang dapat menerima dana.", tone: "warning", dedupeKey: "goal:funding-unavailable" });
+      return;
+    }
+    const goal = items.find((item) => item.goal_id === goalId && item.status === "active");
+    if (goal) openFunding(goal, intent);
+    else notify({ message: "Target aktif tidak ditemukan atau sudah tidak dapat menerima dana.", tone: "warning", dedupeKey: "goal:funding-target-unavailable" });
+  }, [clearWorkflowState, items, location.key, location.state, notify, openFunding, resourceStatus, setFundingPrompt]);
+};
+
+// Route, resource, and modal orchestration intentionally stays in one canonical page owner.
 // eslint-disable-next-line complexity
 const GoalsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
@@ -149,7 +183,6 @@ const GoalsPage = () => {
   const [fundingTarget, setFundingTarget] = useState(null);
   const [fundingPrompt, setFundingPrompt] = useState(null);
   const [achievement, setAchievement] = useState(null);
-  const workflowHandled = useRef("");
   const accounts = useMemo(() => goalPageAccounts(bootstrap, overview), [bootstrap, overview]);
   const creationAccounts = useMemo(() => accounts.filter((item) => item.can_transact !== false && item.owner_scope === "shared" && item.account_type !== "investment"), [accounts]);
   const investmentPortfolios = useMemo(() => (investmentResource.data?.portfolios || []).filter((item) => item.can_operate !== false && item.owner_scope === "shared"), [investmentResource.data?.portfolios]);
@@ -166,35 +199,7 @@ const GoalsPage = () => {
     setFundingTarget({ goal, sourceAccountId: String(intent.sourceAccountId || ""), suggestedAmount: Number(intent.suggestedAmount || 0), manualAmount: intent.manualAmount === true });
   }, []);
 
-  useEffect(() => {
-    const workflowAction = String(location.state?.workflowAction || "");
-    const workflowKey = workflowAction ? `${location.key}|${workflowAction}` : "";
-    if (resource.status !== "ready" || workflowAction !== "create-goal" || workflowHandled.current === workflowKey) return;
-    workflowHandled.current = workflowKey;
-    clearWorkflowState();
-    if (canCreate) creation.openCreate();
-    else notify({ message: "Siapkan rekening Bersama atau portfolio investasi Bersama sebelum membuat Target.", tone: "warning", dedupeKey: "goal:create-unavailable" });
-  }, [canCreate, clearWorkflowState, creation, location.key, location.state, notify, resource.status]);
-
-  useEffect(() => {
-    const workflowAction = String(location.state?.workflowAction || "");
-    const workflowKey = workflowAction ? `${location.key}|${workflowAction}` : "";
-    if (resource.status !== "ready" || !["goal-fund", "choose-goal-funding"].includes(workflowAction) || workflowHandled.current === workflowKey) return;
-    workflowHandled.current = workflowKey;
-    const goalId = String(location.state?.goalId || "");
-    const intent = { sourceAccountId: String(location.state?.sourceAccountId || ""), suggestedAmount: Number(location.state?.suggestedAmount || 0), manualAmount: location.state?.manualAmount === true };
-    clearWorkflowState();
-    if (workflowAction === "choose-goal-funding") {
-      const active = items.filter((item) => item.status === "active" && (item.can_deposit || item.can_invest));
-      if (active.length === 1) openFunding(active[0], intent);
-      else if (active.length > 1) setFundingPrompt(intent);
-      else notify({ message: "Belum ada Target aktif yang dapat menerima dana.", tone: "warning", dedupeKey: "goal:funding-unavailable" });
-      return;
-    }
-    const goal = items.find((item) => item.goal_id === goalId && item.status === "active");
-    if (goal) openFunding(goal, intent);
-    else notify({ message: "Target aktif tidak ditemukan atau sudah tidak dapat menerima dana.", tone: "warning", dedupeKey: "goal:funding-target-unavailable" });
-  }, [clearWorkflowState, items, location.key, location.state, notify, openFunding, resource.status]);
+  useGoalRouteWorkflow({ location, resourceStatus: resource.status, canCreate, openCreate: creation.openCreate, clearWorkflowState, items, openFunding, setFundingPrompt, notify });
 
   useEffect(() => {
     const goalId = String(attention?.attentionGoalId || "");

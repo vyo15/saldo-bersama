@@ -58,7 +58,7 @@ const FundingBreakdown = ({ goal }) => {
   </div>;
 };
 
-// Action priority depends on lifecycle, funding availability, and reminder state.
+// Primary and lifecycle actions are deliberately resolved in one place so every card follows the same policy.
 // eslint-disable-next-line complexity
 const GoalActions = ({ goal, openEdit, openArchive, openStatusChange, openReminder, openFunding }) => {
   const canAdd = goal.status === "active" && (goal.can_deposit || goal.can_invest) && Number(goal.remaining_amount || 0) > 0;

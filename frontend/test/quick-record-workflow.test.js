@@ -98,7 +98,7 @@ test("workflow route Catat dikonsumsi sekali sehingga modal tidak reopen setelah
   assert.match(goals, /clearWorkflowState\(\);[\s\S]{0,500}openFunding/);
   assert.match(goals, /workflowAction !== "create-goal"/);
   assert.match(goals, /clearWorkflowState\(\)/);
-  assert.match(goals, /creation\.openCreate\(\)/);
+  assert.match(goals, /if \(canCreate\) openCreate\(\)/);
   assert.match(investments, /workflowHandled\.current === workflowKey/);
   assert.match(investments, /navigate\(location\.pathname, \{ replace: true, state: null \}\);[\s\S]{0,180}setDialog/);
 });

@@ -111,7 +111,7 @@ const CashFundingForm = ({ goal, accounts, transferRoutes, initialSourceAccountI
   </form>;
 };
 
-// Investment funding combines buy, link, release-holding, and retained-cash paths in one canonical modal.
+// Buy, link, and release share state so investment funding stays atomic inside one Target workflow.
 // eslint-disable-next-line complexity
 const InvestmentFundingForm = ({ goal, investmentOverview, initialAction = "buy", busy, error, onBuy, onAllocate, onRelease }) => {
   const allPortfolios = investmentOverview?.portfolios || [];

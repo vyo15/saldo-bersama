@@ -30,6 +30,14 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.doesNotMatch(`${page}\n${overview}`, /Top up RDN|Tarik RDN|Sumber catatan|Ajaib|Bibit|Indodax|Market Movers|Top Gainers|Top Losers/i);
 });
 
+test("route Investasi meneruskan konteks Target ke setup overlay tanpa reference error", async () => {
+  const page = await read("src/features/investments/InvestmentsPage.jsx");
+  assert.match(page, /const \{ data, goals, user, setupOpen, setupGoalId,/);
+  assert.match(page, /initialGoalId=\{setupGoalId\}/);
+  assert.match(page, /const page = \{ data, goals, user, setupOpen, setupGoalId,/);
+  assert.match(page, /resolveQuickRecordInvestment/);
+});
+
 test("aksi Investasi berada pada detail aset dan tetap capability-driven", async () => {
   const [overview, detail, model, presentation] = await Promise.all([
     read("src/features/investments/InvestmentOverview.jsx"),

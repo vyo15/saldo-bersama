@@ -94,6 +94,19 @@ const EmptyInvestmentState = ({ onAdd }) => <section className={styles.firstInve
   </div>
 </section>;
 
+
+const resolveQuickRecordInvestment = ({ portfolios, requestedPortfolioId }) => {
+  const operablePortfolios = (portfolios || []).filter((portfolio) => portfolio.can_operate !== false);
+  if (requestedPortfolioId) {
+    const requested = operablePortfolios.find((portfolio) => portfolio.portfolio_id === requestedPortfolioId) || null;
+    if (requested) return { kind: "dialog", portfolio: requested };
+    return { kind: operablePortfolios.length === 0 ? "setup" : "choose", requestedUnavailable: true };
+  }
+  if (operablePortfolios.length === 1) return { kind: "dialog", portfolio: operablePortfolios[0] };
+  if (operablePortfolios.length === 0) return { kind: "setup", requestedUnavailable: false };
+  return { kind: "choose", requestedUnavailable: false };
+};
+
 const InvestmentsPage = () => {
   const { user } = useAuth();
   const { notify } = useFeedback();
@@ -131,32 +144,23 @@ const InvestmentsPage = () => {
   };
 
   useLegacyInvestmentContinuation({ location, navigate, data, ready: overview.status === "ready" && !overview.isRefreshing, setSetupOpen, setDialog, setHoldingDetail });
-  // Workflow routing coordinates route state, available portfolios, setup fallback, and dialog continuation.
-  // eslint-disable-next-line complexity
   useEffect(() => {
     const workflowAction = String(location.state?.workflowAction || "");
     const workflowKey = workflowAction ? `${location.key}|${workflowAction}` : "";
     if (overview.status !== "ready" || overview.isRefreshing || workflowAction !== "record-investment" || workflowHandled.current === workflowKey) return;
     workflowHandled.current = workflowKey;
-    const operablePortfolios = (data.portfolios || []).filter((portfolio) => portfolio.can_operate !== false);
     const requestedPortfolioId = String(location.state?.portfolioId || "");
-    const requested = requestedPortfolioId ? operablePortfolios.find((portfolio) => portfolio.portfolio_id === requestedPortfolioId) || null : null;
     const initialDraft = location.state?.initialDraft && typeof location.state.initialDraft === "object" ? location.state.initialDraft : null;
     const initialGoalId = String(location.state?.goalId || "");
+    const next = resolveQuickRecordInvestment({ portfolios: data.portfolios, requestedPortfolioId });
     navigate(location.pathname, { replace: true, state: null });
-    if (requested) {
-      setDialog({ mode: "buy", portfolio: requested, initialDraft, initialGoalId });
-    } else if (operablePortfolios.length === 1) {
-      setDialog({ mode: "buy", portfolio: operablePortfolios[0], initialDraft, initialGoalId });
-    } else if (operablePortfolios.length === 0) {
-      openSetup(initialGoalId);
-    } else {
-      notify({
-        message: requestedPortfolioId ? "Portofolio pilihan sudah tidak tersedia. Pilih portofolio investasi lain." : "Pilih portofolio investasi yang ingin dicatat dari tombol Catat.",
-        tone: "info",
-        dedupeKey: "investments:quick-record:choose-asset",
-      });
-    }
+    if (next.kind === "dialog") setDialog({ mode: "buy", portfolio: next.portfolio, initialDraft, initialGoalId });
+    if (next.kind === "setup") openSetup(initialGoalId);
+    if (next.kind === "choose") notify({
+      message: next.requestedUnavailable ? "Portofolio pilihan sudah tidak tersedia. Pilih portofolio investasi lain." : "Pilih portofolio investasi yang ingin dicatat dari tombol Catat.",
+      tone: "info",
+      dedupeKey: "investments:quick-record:choose-asset",
+    });
   }, [data.portfolios, location.key, location.pathname, location.state, navigate, notify, overview.isRefreshing, overview.status]);
   useEffect(() => {
     if (!attention || !["investment_reconciliation_stale", "investment_reconciliation_difference"].includes(attention.attentionType)) return;

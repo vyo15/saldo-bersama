@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-19 — Investasi route/runtime hardening
+- Memperbaiki crash saat membuka flow Investasi dari menu/Quick Catat: `setupGoalId` sekarang diteruskan eksplisit dari `InvestmentsPage` ke overlay setup, sehingga setup investasi untuk Target tidak lagi melempar `ReferenceError`.
+- Mengganti ikon `FiUnlink` yang tidak tersedia di `react-icons/fi` dengan ikon canonical yang valid, sehingga lazy chunk Target/Investasi tidak gagal saat action investasi dirender.
+- Audit lint menyeluruh juga membersihkan helper backend investasi yang sudah tidak memiliki consumer dan menormalkan suppression complexity yang memang intentional; regression test baru mengunci wiring route Investasi agar bug serupa tidak kembali.
+- Quality gate yang dapat dijalankan pada source ini sekarang lolos lint serta seluruh frontend/backend regression. Production build tetap bergantung pada optional binary Rollup sesuai platform mesin yang menjalankan build.
+
 ## 2026-09-19 — Target pendanaan tunai + investasi
 - Memigrasikan flow Target lama yang bergantung pada Alokasi menjadi **pendanaan Target langsung**. Target sekarang memiliki `funding_mode` `cash`, `investment`, atau `mixed`; cash tetap memakai mutasi Target canonical, sedangkan investasi dapat memakai holding existing atau Buy baru tanpa membuat catatan saldo/ledger kedua.
 - Menambahkan schema **v24** melalui `022_goal_investment_funding.sql` dan ledger append-only `goal_investment_events`. Progress authoritative Target = cash movement + nilai pasar bagian investasi yang dialokasikan + hasil penjualan yang masih dipertahankan untuk Target. Perubahan harga pasar tidak pernah menyelesaikan Target otomatis; status selesai tetap keputusan eksplisit user.
