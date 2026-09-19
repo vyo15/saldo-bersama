@@ -56,6 +56,24 @@ test("kategori sering dipakai hanya memakai histori rekening sumber yang sama", 
   assert.deepEqual(frequentCategories({ recentTransactions, sourceAccountId: "a1", visibleCategories }).map((item) => item.category_id), ["c1", "c2"]);
 });
 
+test("sumber pemasukan sering dipakai mengikuti rekening tujuan dan tidak auto-select", () => {
+  const visibleCategories = [
+    { category_id: "income-salary", name: "Gaji" },
+    { category_id: "income-bonus", name: "Bonus" },
+  ];
+  const recentTransactions = [
+    { transaction_type: TRANSACTION_TYPES.INCOME, destination_account_id: "a1", category_id: "income-salary" },
+    { transaction_type: TRANSACTION_TYPES.INCOME, destination_account_id: "a2", category_id: "income-bonus" },
+    { transaction_type: TRANSACTION_TYPES.INCOME, destination_account_id: "a1", category_id: "income-bonus" },
+  ];
+  assert.deepEqual(frequentCategories({
+    recentTransactions,
+    destinationAccountId: "a1",
+    transactionType: TRANSACTION_TYPES.INCOME,
+    visibleCategories,
+  }).map((item) => item.category_id), ["income-salary", "income-bonus"]);
+});
+
 test("smart allocation memetakan Kebutuhan kategori ke Alokasi Dana pada rekening dan periode yang sama", () => {
   const budgets = [
     { budget_id: "b1", period_key: "2026-08", category_id: "c1", envelope_rule_id: "r1", name: "Bensin", status: "active" },

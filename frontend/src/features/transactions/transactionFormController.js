@@ -290,7 +290,7 @@ export const transactionDerivedData = ({ data, form, isTransfer }) => {
 
 export const useMobileTransferDestination = ({ open, enabled, destinationAccountId, compatibleDestinationAccounts, setForm, setErrors }) => {
   useEffect(() => {
-    if (!open || !enabled || destinationAccountId || compatibleDestinationAccounts.length === 0) return;
+    if (!open || !enabled || destinationAccountId || compatibleDestinationAccounts.length !== 1) return;
     const firstDestinationId = compatibleDestinationAccounts[0].account_id;
     setErrors((current) => clearTransactionFieldErrors(current, "destination_account_id"));
     setForm((current) => {

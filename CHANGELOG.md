@@ -1,6 +1,10 @@
 # Changelog
 
 ## 2026-09-19 — Quick Catat mobile contextual & compact
+- Menyelesaikan flow `+ Catat` lintas domain dengan prinsip **context-aware, bukan guess-heavy**: history hanya mengurutkan opsi, sedangkan rekening/kategori/sumber/target/aset tetap dipilih user kecuali entry point atau hanya satu pilihan valid membuat konteks benar-benar pasti.
+- `Bayar kewajiban`, Target, dan Investasi sekarang melewati decision point minimum: satu pilihan valid diteruskan otomatis; banyak pilihan meminta user memilih; Target langsung menuju Alokasi canonical dan Investasi membuka dialog buy untuk portofolio yang dipilih tanpa membuat mutation baru di launcher.
+- Flow Target quick-record tidak lagi mengisi rekening/nominal secara sewenang-wenang: rekening hanya auto bila context eksplisit atau hanya satu rute valid, sedangkan nominal quick-record dimulai kosong. Picker rekening/kategori/Target tetap memakai komponen canonical project.
+- Sumber pemasukan kini memakai ranking histori rekening tujuan yang sama sebagai **urutan rekomendasi**, bukan auto-selection, dan copy picker `Sumber` memakai placeholder/search/group yang sesuai domain.
 - Mematangkan tombol **`+ Catat`** mobile menjadi launcher 2 kolom yang hanya menanyakan aktivitas sekali: Pengeluaran, Pemasukan, Transfer, Bayar kewajiban, lalu Target/Investasi di grup **Untuk masa depan**.
 - Pengeluaran/Pemasukan/Transfer kini membuka composer canonical dengan jenis terkunci, judul/CTA/copy rekening kontekstual, nominal-first, tanggal visible, dan satu CTA footer full-width; user dapat kembali ke launcher tanpa memilih jenis transaksi ulang. Refund tetap capability transaksi tetapi bukan quick action global.
 - Success transaksi harian dibuat subtle tanpa money-rain, sementara milestone finansial lain tetap dapat memakai celebration penuh. Akses cepat Dashboard juga tidak lagi menggandakan `Atur Dana`; slot tersebut diganti `Investasi`.

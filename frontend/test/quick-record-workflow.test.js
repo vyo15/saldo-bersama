@@ -4,6 +4,8 @@ import test from "node:test";
 import { TRANSACTION_TYPES } from "../src/domain/constants.js";
 import {
   commitmentPaymentNavigation,
+  quickRecordGoalNavigation,
+  quickRecordInvestmentNavigation,
   quickRecordNavigation,
   quickRecordTransactionOptions,
 } from "../src/shared/workflows/quickRecord.js";
@@ -23,6 +25,14 @@ test("launcher Catat mendelegasikan setiap aktivitas ke flow canonical tanpa mut
   assert.deepEqual(quickRecordNavigation("investment"), {
     to: "/investasi",
     state: { workflowSource: "quick-record", workflowAction: "record-investment" },
+  });
+  assert.deepEqual(quickRecordGoalNavigation({ goal_id: "goal-trip" }), {
+    to: "/perencanaan/kantong",
+    state: { workflowSource: "quick-record", workflowAction: "goal-plan", goalId: "goal-trip", manualAmount: true },
+  });
+  assert.deepEqual(quickRecordInvestmentNavigation({ portfolio_id: "portfolio-1" }), {
+    to: "/investasi",
+    state: { workflowSource: "quick-record", workflowAction: "record-investment", portfolioId: "portfolio-1", initialDraft: { lots: "" } },
   });
 });
 
@@ -60,6 +70,8 @@ test("entry Kewajiban dan Alokasi memakai pay-recurring serta RecurringPage meng
   assert.match(recurring, /workflowPeriodFromState/);
   assert.match(recurring, /setPeriod\(workflowPeriod\)/);
   assert.match(investments, /workflowAction !== "record-investment"/);
+  assert.match(investments, /requestedPortfolioId/);
+  assert.match(investments, /initialDraft/);
   assert.match(investments, /mode: "buy"/);
   assert.match(quickRecordContext, /openQuickRecord/);
   assert.match(quickRecordContext, /onOpenTransaction=\{openQuickRecordTransaction\}/);
@@ -67,4 +79,32 @@ test("entry Kewajiban dan Alokasi memakai pay-recurring serta RecurringPage meng
   assert.match(dashboard, /useQuickRecord/);
   assert.match(dashboard, /onOpenQuickRecord=\{openQuickRecord\}/);
   assert.match(dashboardSummary, /onClick=\{onOpenQuickRecord\}>Catat<\/Button>/);
+});
+
+
+test("Catat cepat context-aware hanya mengotomasi pilihan yang pasti dan tetap memakai picker existing", async () => {
+  const [menu, goalModal, workspace, navigation] = await Promise.all([
+    read("src/components/navigation/QuickRecordMenu.jsx"),
+    read("src/features/allocations/AllocationGoalExecutionModal.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
+    read("src/features/allocations/allocationWorkflowNavigation.js"),
+  ]);
+
+  assert.match(menu, /quickRecordGoalNavigation/);
+  assert.match(menu, /resource\.status === "ready" && isEmpty/);
+  assert.match(menu, /isEmpty=\{!items\.length\}/);
+  assert.match(menu, /isEmpty=\{!portfolios\.length\}/);
+  assert.match(menu, /quickRecordInvestmentNavigation/);
+  assert.match(menu, /step === "goals"/);
+  assert.match(menu, /step === "investments"/);
+  assert.match(menu, /Arahkan dana/);
+  assert.match(menu, /active\.length === 1/);
+  assert.match(menu, /operable\.length === 1/);
+
+  assert.match(goalModal, /<InlineSelectionPicker/);
+  assert.match(goalModal, /compatibleAccounts\.length === 1/);
+  assert.match(goalModal, /if \(manualAmount\) return ""/);
+  assert.match(workspace, /initialSourceAccountId=\{goalActionTarget\.allocation_intent\?\.sourceAccountId/);
+  assert.match(workspace, /manualAmount=\{goalActionTarget\.allocation_intent\?\.manualAmount === true\}/);
+  assert.match(navigation, /manualAmount: location\.state\.manualAmount === true/);
 });

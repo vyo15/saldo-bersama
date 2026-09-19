@@ -160,6 +160,7 @@ test("presentasi transfer mobile tetap memakai mutation, idempotency, dan valida
   assert.match(form, /destination\.account_id === nextId/);
   assert.match(form, /canRepresentAccountTransfer\(nextAccount, destination\)/);
   assert.match(form, /clearTransactionFieldErrors/);
+  assert.match(form, /compatibleDestinationAccounts\.length !== 1/);
   assert.match(form, /compatibleDestinationAccounts\[0\]\.account_id/);
   assert.match(form, /<MobileTransferFields \{\.\.\.fields\} \/>/);
   assert.doesNotMatch(mobileFields, /createTransaction|updateTransaction|createIdempotencyKey|transactions\.api|apiClient/);
@@ -216,9 +217,11 @@ test("composer mobile memakai picker inline canonical untuk rekening, kategori, 
   assert.match(category, /frequentCategories/);
   assert.match(category, /const grouped = visibleCategories\.length > 6/);
   assert.match(category, /label: "Sering dipakai"/);
-  assert.match(category, /label: "Semua kategori"/);
+  assert.match(category, /label === "Sumber" \? "Semua sumber" : "Semua kategori"/);
+  assert.match(category, /placeholder=\{label === "Sumber" \? "Pilih sumber" : "Pilih kategori"\}/);
   assert.match(category, /searchable=\{visibleCategories\.length > 6\}/);
-  assert.match(category, /searchPlaceholder="Cari kategori…"/);
+  assert.match(category, /searchPlaceholder=\{label === "Sumber" \? "Cari sumber…" : "Cari kategori…"\}/);
+  assert.match(category, /destinationAccountId: form\.destination_account_id/);
   assert.match(picker, /groups = \[\]/);
   assert.match(picker, /filteredGroups/);
   assert.match(picker, /role="group"/);

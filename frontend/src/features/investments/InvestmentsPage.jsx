@@ -118,13 +118,18 @@ const InvestmentsPage = () => {
   useEffect(() => {
     if (overview.status !== "ready" || overview.isRefreshing || location.state?.workflowAction !== "record-investment") return;
     const operablePortfolios = (data.portfolios || []).filter((portfolio) => portfolio.can_operate !== false);
-    if (operablePortfolios.length === 1) {
-      setDialog({ mode: "buy", portfolio: operablePortfolios[0] });
+    const requestedPortfolioId = String(location.state?.portfolioId || "");
+    const requested = requestedPortfolioId ? operablePortfolios.find((portfolio) => portfolio.portfolio_id === requestedPortfolioId) || null : null;
+    const initialDraft = location.state?.initialDraft && typeof location.state.initialDraft === "object" ? location.state.initialDraft : null;
+    if (requested) {
+      setDialog({ mode: "buy", portfolio: requested, initialDraft });
+    } else if (operablePortfolios.length === 1) {
+      setDialog({ mode: "buy", portfolio: operablePortfolios[0], initialDraft });
     } else if (operablePortfolios.length === 0) {
       setSetupOpen(true);
     } else {
       notify({
-        message: "Pilih aset investasi yang ingin ditambah, lalu gunakan aksi Beli.",
+        message: requestedPortfolioId ? "Portofolio pilihan sudah tidak tersedia. Pilih portofolio investasi lain." : "Pilih portofolio investasi yang ingin dicatat dari tombol Catat.",
         tone: "info",
         dedupeKey: "investments:quick-record:choose-asset",
       });

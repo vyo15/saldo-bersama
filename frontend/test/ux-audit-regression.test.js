@@ -378,7 +378,7 @@ test("quick Catat mobile tidak mengulang keputusan dan dashboard tidak mengganda
     read("src/features/dashboard/components/DashboardQuickActions.jsx"),
   ]);
   assert.match(quickRecord, /Bayar kewajiban/);
-  assert.match(quickRecord, /Tambah tabungan/);
+  assert.match(quickRecord, /Arahkan dana/);
   assert.match(quickRecord, /Beli \/ tambah aset/);
   assert.match(composer, /lockType=\{composer\.lockType\}/);
   assert.doesNotMatch(dashboardQuick, /label: "Atur Dana"/);

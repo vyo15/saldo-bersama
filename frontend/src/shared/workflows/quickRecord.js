@@ -5,7 +5,7 @@ export const QUICK_RECORD_ACTIONS = Object.freeze([
   Object.freeze({ id: "commitment", label: "Bayar kewajiban", description: "KPR, cicilan, pinjaman, atau Arisan." }),
   Object.freeze({ id: "income", label: "Pemasukan", description: "Gaji, pendapatan, atau uang masuk lainnya." }),
   Object.freeze({ id: "transfer", label: "Transfer", description: "Pindahkan uang antar rekening." }),
-  Object.freeze({ id: "goal", label: "Setor ke target", description: "Pilih target lalu arahkan dana melalui Alokasi." }),
+  Object.freeze({ id: "goal", label: "Target", description: "Pilih target lalu arahkan dana melalui Alokasi." }),
   Object.freeze({ id: "investment", label: "Investasi", description: "Catat pembelian atau posisi aset investasi." }),
 ]);
 
@@ -48,6 +48,27 @@ export const quickRecordNavigation = (actionId) => {
     state: { workflowSource: "quick-record", workflowAction: "record-investment" },
   };
   return null;
+};
+
+export const quickRecordGoalNavigation = (goal) => {
+  const goalId = String(goal?.goal_id || "");
+  if (!goalId) return quickRecordNavigation("goal");
+  return {
+    to: "/perencanaan/kantong",
+    state: { workflowSource: "quick-record", workflowAction: "goal-plan", goalId, manualAmount: true },
+  };
+};
+
+export const quickRecordInvestmentNavigation = (portfolio) => {
+  const portfolioId = String(portfolio?.portfolio_id || "");
+  return {
+    to: "/investasi",
+    state: {
+      workflowSource: "quick-record",
+      workflowAction: "record-investment",
+      ...(portfolioId ? { portfolioId, initialDraft: { lots: "" } } : {}),
+    },
+  };
 };
 
 const periodFromDate = (value) => {

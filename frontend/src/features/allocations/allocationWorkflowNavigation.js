@@ -58,6 +58,7 @@ export const useAllocationGoalPlanNavigation = ({ resourceStatus, goalResource, 
     const allocationIntent = {
       sourceAccountId: String(location.state.sourceAccountId || ""),
       suggestedAmount: Number(location.state.suggestedAmount || 0),
+      manualAmount: location.state.manualAmount === true,
     };
     if (goal) setGoalActionTarget({ ...goal, allocation_intent: allocationIntent });
     else notify({ message: "Target aktif tidak ditemukan atau sudah tidak dapat menerima setoran.", tone: "warning", dedupeKey: "allocation:goal-plan-unavailable" });

@@ -253,6 +253,21 @@ test("reset data testing selalu mendefinisikan helper presentasi recovery dan st
   assert.match(reset, /backupStateLabel\(status\.backup\?\.status\)/);
 });
 
+test("Sisihkan ke Target memakai satu jalur tutup dan pulih setelah error non-pending", async () => {
+  const [goalModal, allocationsWorkspace] = await Promise.all([
+    read("src/features/allocations/AllocationGoalExecutionModal.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
+  ]);
+
+  assert.match(goalModal, /const \[busy, setBusy\] = useState\(false\)/);
+  assert.match(goalModal, /const requestClose = \(\) => \{[\s\S]*if \(busy\) return false;[\s\S]*onClose\(\);[\s\S]*return true;/);
+  assert.match(goalModal, /onClose=\{requestClose\}/);
+  assert.match(goalModal, /onClick=\{requestClose\}>Batal<\/Button>/);
+  assert.doesNotMatch(goalModal, /onBusyChange/);
+  assert.doesNotMatch(allocationsWorkspace, /goalActionBusy|setGoalActionBusy|onBusyChange/);
+  assert.match(allocationsWorkspace, /onClose=\{\(\) => setGoalActionTarget\(null\)\}/);
+});
+
 test("modal form mutation tidak dapat didismiss selama request masih berjalan", async () => {
   const [
     transactionForm, budgets, allocations, goals, recurring, categories, accountDialogs, members,

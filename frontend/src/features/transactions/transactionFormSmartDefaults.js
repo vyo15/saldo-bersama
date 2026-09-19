@@ -43,13 +43,16 @@ export const sourceAccountPicker = ({ accounts = [], transactionType, selectedAc
     });
 };
 
-export const frequentCategories = ({ recentTransactions = [], sourceAccountId = "", visibleCategories = [], limit = 4 }) => {
-  if (!sourceAccountId) return [];
+export const frequentCategories = ({ recentTransactions = [], sourceAccountId = "", destinationAccountId = "", transactionType = TRANSACTION_TYPES.EXPENSE, visibleCategories = [], limit = 4 }) => {
+  const accountId = transactionType === TRANSACTION_TYPES.INCOME ? destinationAccountId : sourceAccountId;
+  if (!accountId) return [];
   const allowed = new Map(visibleCategories.map((item) => [item.category_id, item]));
   const result = [];
   const seen = new Set();
   for (const item of recentTransactions) {
-    if (item.transaction_type !== TRANSACTION_TYPES.EXPENSE || item.source_account_id !== sourceAccountId) continue;
+    if (item.transaction_type !== transactionType) continue;
+    const transactionAccountId = transactionType === TRANSACTION_TYPES.INCOME ? item.destination_account_id : item.source_account_id;
+    if (transactionAccountId !== accountId) continue;
     const category = allowed.get(item.category_id);
     if (!category || seen.has(category.category_id)) continue;
     seen.add(category.category_id);
