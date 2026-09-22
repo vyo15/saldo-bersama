@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -7,6 +7,7 @@ import {
   DEVELOPMENT_DEPENDENCY_PROBES,
   DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS,
   ensureDevelopmentDependencies,
+  probeDevelopmentDependencies,
 } from "../../scripts/bootstrap-development-dependencies.mjs";
 import { developmentEnvironmentRemediation, ensureDevelopmentEnvironment, mergeDevelopmentEnvironment, normalizeVercelGitignore } from "../../scripts/bootstrap-development-env.mjs";
 import { CORE_RUNTIME_ENV_KEYS, LEGACY_ENV_KEYS, PRODUCTION_AUTH_ENV_KEYS } from "../../scripts/runtime-environment.mjs";
@@ -334,9 +335,39 @@ test("dependency bootstrap memprobe asset Manrope canonical", () => {
   assert.ok(DEVELOPMENT_DEPENDENCY_PROBES.includes("@fontsource-variable/manrope"));
 });
 
+test("dependency bootstrap tidak membawa probe axe-core yang sudah tidak dipakai browser smoke", () => {
+  assert.equal(DEVELOPMENT_DEPENDENCY_PROBES.includes("axe-core"), false);
+});
+
 test("dependency bootstrap memprobe Firebase melalui package metadata yang stabil", () => {
   assert.equal(DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS["@firebase/app"], "@firebase/app/package.json");
   assert.equal(DEVELOPMENT_DEPENDENCY_RESOLVE_TARGETS["@firebase/auth"], "@firebase/auth/package.json");
+});
+
+test("dependency probe membaca install baru dari proses Node segar tanpa cache negatif", async () => withTempRoot(async (root) => {
+  const frontend = path.join(root, "frontend");
+  await mkdir(frontend, { recursive: true });
+  await writeFile(path.join(frontend, "package.json"), '{"name":"probe-fixture","private":true}\n');
+
+  const installFixture = async (dependency) => {
+    const packageRoot = path.join(root, "node_modules", ...dependency.split("/"));
+    await mkdir(packageRoot, { recursive: true });
+    await writeFile(path.join(packageRoot, "package.json"), JSON.stringify({ name: dependency, version: "1.0.0", main: "index.js" }));
+    await writeFile(path.join(packageRoot, "index.js"), "module.exports = {};\n");
+  };
+
+  for (const dependency of DEVELOPMENT_DEPENDENCY_PROBES) {
+    if (dependency !== "vite") await installFixture(dependency);
+  }
+
+  assert.deepEqual(probeDevelopmentDependencies(root), ["vite"]);
+  await installFixture("vite");
+  assert.deepEqual(probeDevelopmentDependencies(root), []);
+}));
+
+test("dependency bootstrap memaksa dev dependency ikut npm ci otomatis", async () => {
+  const source = await readFile(new URL("../../scripts/bootstrap-development-dependencies.mjs", import.meta.url), "utf8");
+  assert.match(source, /"ci", "--include=dev"/);
 });
 
 test("dependency bootstrap tidak menjalankan npm ci ketika dependency sudah tersedia", async () => {

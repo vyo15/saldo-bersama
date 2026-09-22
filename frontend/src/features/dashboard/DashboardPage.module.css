@@ -44,13 +44,6 @@
 .mobile-finance-summary > div + div { border-left: 1px solid var(--glass-border); }
 .mobile-finance-summary span { display: block; min-height: 1.2em; color: var(--on-hero-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); line-height: 1.2; }
 .mobile-finance-summary :global(.money), .mobile-finance-summary .masked-money { display: block; margin-top: 3px; overflow-wrap: anywhere; white-space: normal; color: var(--on-hero); font-size: 12px; font-weight: var(--font-weight-bold); }
-.mobile-finance-cash-strip { position: relative; z-index: 1; min-height: 30px; margin-top: 7px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 3px 10px; color: var(--on-hero-muted); font-size: 12px; }
-.mobile-finance-cash-strip > span { min-width: 0; display: flex; align-items: center; gap: 3px; white-space: nowrap; }
-.mobile-finance-cash-strip > span:nth-child(2) { justify-content: flex-end; }
-.mobile-finance-cash-strip > span:last-child { grid-column: 1 / -1; justify-content: space-between; padding-top: 3px; border-top: 1px solid color-mix(in srgb, var(--glass-border) 72%, transparent); }
-.mobile-finance-cash-strip svg { width: 12px; height: 12px; flex: 0 0 auto; }
-.mobile-finance-cash-strip strong { min-width: 0; color: var(--on-hero); font-size: inherit; font-weight: var(--font-weight-bold); }
-.mobile-finance-cash-strip strong :global(.money), .mobile-finance-cash-strip strong .masked-money { color: inherit; font-size: inherit; }
 .mobile-finance-content { position: relative; z-index: 2; margin-top: -38px; padding: 0 14px 24px; border-radius: 22px 22px 0 0; background: var(--surface); }
 
 .mobile-quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 15px 0; border-bottom: 1px solid var(--border); }
@@ -60,14 +53,12 @@
 .mobile-quick-action--investment > span { color: var(--positive); background: color-mix(in srgb, var(--positive-soft) 78%, var(--surface)); }
 .mobile-quick-action--account > span { color: var(--info); background: var(--info-soft); }
 .mobile-quick-action--category > span { color: var(--warning); background: var(--warning-soft); }
-.mobile-quick-action--reconciliation > span { color: var(--secondary); background: color-mix(in srgb, var(--secondary) 12%, var(--surface)); }
 @media (hover: hover) and (pointer: fine) {
   .mobile-quick-action:hover > span { background: color-mix(in srgb, var(--primary-soft) 88%, var(--surface)); }
   .mobile-quick-action--goal:hover > span { background: color-mix(in srgb, var(--positive-soft) 88%, var(--surface)); }
   .mobile-quick-action--investment:hover > span { background: color-mix(in srgb, var(--positive-soft) 92%, var(--surface)); }
   .mobile-quick-action--account:hover > span { background: color-mix(in srgb, var(--info-soft) 88%, var(--surface)); }
   .mobile-quick-action--category:hover > span { background: color-mix(in srgb, var(--warning-soft) 88%, var(--surface)); }
-  .mobile-quick-action--reconciliation:hover > span { background: color-mix(in srgb, var(--secondary) 18%, var(--surface)); }
 }
 .mobile-quick-action:active > span { transform: scale(.94); }
 .mobile-quick-action:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: 12px; }
@@ -535,7 +526,6 @@
 .desktop-quick-action--account > span:first-child { color: var(--info); background: var(--info-soft); }
 .desktop-quick-action--goal > span:first-child { color: var(--positive); background: var(--positive-soft); }
 .desktop-quick-action--investment > span:first-child { color: var(--positive); background: color-mix(in srgb, var(--positive-soft) 78%, var(--surface)); }
-.desktop-quick-action--reconciliation > span:first-child { color: var(--secondary); background: color-mix(in srgb, var(--secondary) 12%, var(--surface)); }
 .desktop-quick-action > span:last-child { min-width: 0; display: grid; gap: 2px; }
 .desktop-quick-action strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .desktop-quick-action small { overflow: hidden; color: var(--text-muted); font-size: var(--font-size-xs); text-overflow: ellipsis; white-space: nowrap; }
@@ -1101,9 +1091,9 @@
   .desktop-balance-card__hero {
     min-width: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(280px, .92fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    gap: 22px;
+    gap: 12px;
   }
 
   .desktop-balance-card__heading {
@@ -1161,82 +1151,6 @@
     font-size: inherit;
     white-space: nowrap;
   }
-
-  .desktop-cashflow-visual {
-    min-width: 0;
-    padding: 14px 0 0;
-    border: 0;
-    border-top: 1px solid var(--border);
-    border-radius: 0;
-    display: grid;
-    align-content: center;
-    gap: 14px;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .desktop-cashflow-visual__heading {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .desktop-cashflow-visual__heading > span {
-    color: var(--text-soft);
-    font-size: 12px;
-    font-weight: var(--font-weight-semibold);
-  }
-
-  .desktop-cashflow-visual__heading > strong {
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    color: var(--positive);
-    font-size: 12px;
-  }
-
-  .desktop-cashflow-visual__heading > strong.is-negative { color: var(--negative); }
-  .desktop-cashflow-visual__heading > strong svg { width: 15px; height: 15px; }
-  .desktop-cashflow-visual__heading :global(.money),
-  .desktop-cashflow-visual__heading .masked-money { color: inherit; font-size: inherit; }
-
-  .desktop-cashflow-bar {
-    min-width: 0;
-    display: grid;
-    gap: 7px;
-  }
-
-  .desktop-cashflow-bar > span {
-    height: 8px;
-    overflow: hidden;
-    border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--positive) 11%, var(--surface-soft));
-  }
-
-  .desktop-cashflow-bar > span > i {
-    height: 100%;
-    display: block;
-    border-radius: inherit;
-    background: var(--positive);
-  }
-
-  .desktop-cashflow-bar--out > span { background: color-mix(in srgb, var(--negative) 10%, var(--surface-soft)); }
-  .desktop-cashflow-bar--out > span > i { background: var(--negative); }
-
-  .desktop-cashflow-bar > div {
-    min-width: 0;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .desktop-cashflow-bar small { color: var(--text-muted); font-size: 12px; }
-  .desktop-cashflow-bar :global(.money),
-  .desktop-cashflow-bar .masked-money { font-size: 12px; }
 
   .desktop-balance-card__safe {
     grid-template-columns: repeat(3, minmax(0, 1fr));

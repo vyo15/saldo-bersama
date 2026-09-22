@@ -76,7 +76,7 @@ const cadenceValue = (value, allowed, label) => {
 
 export const updateNotificationSettings = async (db, context) => {
   const p = context.payload || {};
-  const reconciliationDays = cadenceValue(p.reconciliation_days, RECONCILIATION_DAYS, "Jadwal pengingat cocokkan saldo");
+  const reconciliationDays = cadenceValue(p.reconciliation_days, RECONCILIATION_DAYS, "Jadwal pengingat pemeriksaan saldo");
   const recordingConsistencyDays = cadenceValue(p.recording_consistency_days, RECORDING_CONSISTENCY_DAYS, "Jadwal pengingat pencatatan");
   const current = await db.one("SELECT * FROM notification_settings WHERE user_id=?", [context.actor.user_id]);
   const timestamp = nowIso();

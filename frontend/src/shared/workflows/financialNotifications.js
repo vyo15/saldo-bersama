@@ -42,7 +42,7 @@ const ACTION_TYPES = new Set([
 ]);
 
 export const financialNotificationTitle = (alert = {}) => {
-  if (alert.type === "reconciliation_stale") return "Cocokkan saldo";
+  if (alert.type === "reconciliation_stale") return "Pastikan saldo sesuai";
   if (alert.type === "reconciliation_difference") return "Periksa selisih saldo";
   if (alert.type === "investment_reconciliation_stale") return "Cocokkan investasi";
   if (alert.type === "investment_reconciliation_difference") return "Periksa selisih investasi";
@@ -78,7 +78,7 @@ const reconciliationFact = (alert) => {
   const last = notificationDate(alert.lastReconciledAt);
   if (last) return `Terakhir ${last}`;
   if (alert.source === "event" && alert.message) return String(alert.message).replace(/[.!?]+$/, "");
-  return "Belum pernah dicocokkan";
+  return "Belum pernah diperiksa";
 };
 
 const percentageFact = (alert, expression, suffix, fallback) => {

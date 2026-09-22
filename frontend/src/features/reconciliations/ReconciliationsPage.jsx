@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiChevronDown } from "react-icons/fi";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
+import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { currentMonthInJakarta, formatDateTimeJakarta } from "../../domain/dates.js";
+import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { parseRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
@@ -57,13 +60,13 @@ const useReconciliationData = () => {
   return { accountsResource, historyResource, historyAccountId, setHistoryAccountId, accounts, reconcilableAccounts, accountLookup, historyItems };
 };
 
-const useDashboardAttentionPrefill = ({ attentionAccountId, resourceStatus, reconcilableAccounts, formAccountId, consumeAttention, setForm }) => {
+const useRequestedAccountPrefill = ({ requestedAccountId, resourceStatus, reconcilableAccounts, formAccountId, consumeAttention, shouldConsumeAttention, setForm }) => {
   useEffect(() => {
-    if (!attentionAccountId || resourceStatus !== "ready") return;
-    const attentionAccount = reconcilableAccounts.find((account) => account.account_id === attentionAccountId) || null;
-    if (!formAccountId && attentionAccount) setForm({ account_id: attentionAccountId, actual_balance: "", notes: "" });
-    consumeAttention();
-  }, [attentionAccountId, consumeAttention, formAccountId, reconcilableAccounts, resourceStatus, setForm]);
+    if (!requestedAccountId || resourceStatus !== "ready") return;
+    const requestedAccount = reconcilableAccounts.find((account) => account.account_id === requestedAccountId) || null;
+    if (!formAccountId && requestedAccount) setForm({ account_id: requestedAccountId, actual_balance: "", notes: "" });
+    if (shouldConsumeAttention) consumeAttention();
+  }, [consumeAttention, formAccountId, reconcilableAccounts, requestedAccountId, resourceStatus, setForm, shouldConsumeAttention]);
 };
 
 const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, refreshAll, invalidate }) => {
@@ -72,7 +75,7 @@ const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, ref
 
   const persistBalance = useCallback(async ({ actualBalance, notes }) => {
     if (["submitting", "syncing", "completed"].includes(submitState.status)) return;
-    if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat dicocokkan.") }); return; }
+    if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat diperiksa.") }); return; }
     const accountLabel = accountDisplayLabel(selectedAccount);
     setSubmitState({ status: "submitting", error: null });
     try {
@@ -97,14 +100,9 @@ const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, ref
     }
   }, [data.historyResource, invalidate, refreshAll, selectedAccount, setForm, submitState.status]);
 
-  const confirmSystemBalance = useCallback(() => {
-    if (!selectedAccount) return;
-    return persistBalance({ actualBalance: accountSystemBalance(selectedAccount), notes: "" });
-  }, [persistBalance, selectedAccount]);
-
   const submitDifference = useCallback((event) => {
     event.preventDefault();
-    if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat dicocokkan.") }); return; }
+    if (!selectedAccount) { setSubmitState({ status: "error", error: new Error("Pilih rekening yang dapat diperiksa.") }); return; }
     try {
       const actualBalance = parseActualBalance(form.actual_balance, selectedAccount.allow_negative);
       return persistBalance({ actualBalance, notes: form.notes });
@@ -113,13 +111,106 @@ const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, ref
     }
   }, [form.actual_balance, form.notes, persistBalance, selectedAccount]);
 
-  return { submitState, setSubmitState, resultOverlay, setResultOverlay, confirmSystemBalance, submitDifference };
+  return { submitState, setSubmitState, resultOverlay, setResultOverlay, submitDifference };
 };
+
+
+const reconciliationReturnPath = (accountEntry, attentionSource) => {
+  if (accountEntry) return "/rekening";
+  if (attentionSource === "notification-center") return "/notifikasi";
+  return "/";
+};
+
+const requestedReconciliationAccountId = (attention, locationState) => String(attention?.accountId || locationState?.accountId || "");
+
+const reconciliationContextLocked = (requestedAccountId, selectedAccount) => Boolean(requestedAccountId)
+  && Boolean(selectedAccount?.account_id)
+  && selectedAccount.account_id === requestedAccountId;
+
+const reconciliationPageTitle = (selectedAccount) => selectedAccount
+  ? `Pastikan saldo ${accountDisplayLabel(selectedAccount)} sesuai`
+  : "Pastikan Saldo Sesuai";
+
+const reconciliationAccountsRefreshing = (accountsResource, submitStatus) => accountsResource.isRefreshing
+  || ["submitting", "syncing"].includes(submitStatus);
+
+const ReconciliationAttentionNotice = ({ attentionType, contextLocked }) => {
+  const relevant = ["reconciliation_difference", "reconciliation_stale"].includes(attentionType);
+  if (!relevant || contextLocked) return null;
+  return <CompactNotice tone="warning" title="Rekening pengingat tidak tersedia." role="status">Pilih rekening yang masih aktif dan dapat diperiksa.</CompactNotice>;
+};
+
+const useMatchedReconciliationFeedback = ({ resultOverlay, setResultOverlay, notify, navigate, returnPathRef, accountEntry }) => {
+  useEffect(() => {
+    if (!resultOverlay?.matched) return;
+    const { accountId, accountLabel } = resultOverlay;
+    notify({ message: `Saldo ${accountLabel} sudah sesuai.`, tone: "success", dedupeKey: `reconciliation:matched:${accountId}` });
+    setResultOverlay(null);
+    navigate(returnPathRef.current, {
+      replace: accountEntry,
+      state: accountEntry ? { accountId } : undefined,
+    });
+  }, [accountEntry, navigate, notify, resultOverlay, returnPathRef, setResultOverlay]);
+};
+
+const useReconciliationResultActions = ({ resultOverlay, setResultOverlay, accountEntry, requestedAccountId, returnPathRef, navigate, openTransactionComposer }) => {
+  const finishReconciliation = useCallback(() => navigate(returnPathRef.current, {
+    replace: accountEntry,
+    state: accountEntry && requestedAccountId ? { accountId: requestedAccountId } : undefined,
+  }), [accountEntry, navigate, requestedAccountId, returnPathRef]);
+
+  const recordMissingTransaction = useCallback(() => {
+    if (!resultOverlay?.accountId || !resultOverlay.difference) return;
+    const isMissingExpense = resultOverlay.difference < 0;
+    const initialType = isMissingExpense ? TRANSACTION_TYPES.EXPENSE : TRANSACTION_TYPES.INCOME;
+    const amount = Math.abs(Number(resultOverlay.difference || 0));
+    setResultOverlay(null);
+    openTransactionComposer({
+      initialType,
+      initialSourceAccountId: isMissingExpense ? resultOverlay.accountId : "",
+      initialDraft: {
+        transaction_type: initialType,
+        source_account_id: isMissingExpense ? resultOverlay.accountId : "",
+        destination_account_id: isMissingExpense ? "" : resultOverlay.accountId,
+        amount,
+      },
+      title: "Catat transaksi yang tertinggal",
+      description: "Rekening dan nominal diisi dari selisih saldo. Periksa jenis serta detail transaksi sebelum menyimpan.",
+    });
+  }, [openTransactionComposer, resultOverlay, setResultOverlay]);
+
+  const reviewReconciliationTransactions = useCallback(() => {
+    if (!resultOverlay?.accountId) return finishReconciliation();
+    return navigate("/transaksi", { state: { accountId: resultOverlay.accountId, period: currentMonthInJakarta() } });
+  }, [finishReconciliation, navigate, resultOverlay]);
+
+  return { finishReconciliation, recordMissingTransaction, reviewReconciliationTransactions };
+};
+
+const ReconciliationHistoryDisclosure = ({ expanded, setExpanded, data }) => <section className={styles.historyDisclosure} aria-label="Riwayat pemeriksaan saldo">
+  <button
+    type="button"
+    className={styles.historyDisclosureButton}
+    aria-expanded={expanded}
+    aria-controls="reconciliation-history-content"
+    onClick={() => setExpanded((current) => !current)}
+  >
+    <span><strong>Riwayat pemeriksaan</strong><small>{data.historyItems.length} hasil pada filter saat ini</small></span>
+    <FiChevronDown className={styles.historyDisclosureChevron} data-expanded={expanded ? "true" : "false"} aria-hidden="true" />
+  </button>
+  <div id="reconciliation-history-content" className={`${styles.historyDisclosureContent}${expanded ? ` ${styles.isExpanded}` : ""}`}>
+    <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
+  </div>
+</section>;
 
 const ReconciliationsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const navigate = useNavigate();
-  const attentionReturnPathRef = useRef(attention?.attentionSource === "notification-center" ? "/notifikasi" : "/");
+  const location = useLocation();
+  const { notify } = useFeedback();
+  const { openTransactionComposer } = useTransactionComposer();
+  const accountEntry = location.state?.reconciliationSource === "account";
+  const attentionReturnPathRef = useRef(reconciliationReturnPath(accountEntry, attention?.attentionSource));
   const { refreshAll, invalidate } = useFinance();
   const data = useReconciliationData();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -127,6 +218,7 @@ const ReconciliationsPage = () => {
   const selectedAccount = data.reconcilableAccounts.find((account) => account.account_id === form.account_id) || null;
   const preview = useMemo(() => getDifferencePreview(selectedAccount, form.actual_balance), [selectedAccount, form.actual_balance]);
   const attentionAccountId = String(attention?.accountId || "");
+  const requestedAccountId = requestedReconciliationAccountId(attention, location.state);
   const submission = useReconciliationSubmission({ selectedAccount, form, setForm, data, refreshAll, invalidate });
 
   useEffect(() => {
@@ -134,60 +226,42 @@ const ReconciliationsPage = () => {
     else if (attention?.attentionSource === "dashboard") attentionReturnPathRef.current = "/";
   }, [attention?.attentionSource]);
 
-  useDashboardAttentionPrefill({ attentionAccountId, resourceStatus: data.accountsResource.status, reconcilableAccounts: data.reconcilableAccounts, formAccountId: form.account_id, consumeAttention, setForm });
+  useRequestedAccountPrefill({ requestedAccountId, resourceStatus: data.accountsResource.status, reconcilableAccounts: data.reconcilableAccounts, formAccountId: form.account_id, consumeAttention, shouldConsumeAttention: Boolean(attentionAccountId), setForm });
+  useMatchedReconciliationFeedback({ resultOverlay: submission.resultOverlay, setResultOverlay: submission.setResultOverlay, notify, navigate, returnPathRef: attentionReturnPathRef, accountEntry });
+  const resultActions = useReconciliationResultActions({ resultOverlay: submission.resultOverlay, setResultOverlay: submission.setResultOverlay, accountEntry, requestedAccountId, returnPathRef: attentionReturnPathRef, navigate, openTransactionComposer });
 
-  if (data.accountsResource.status === "loading" || data.historyResource.status === "loading") return <NativePageSkeleton kind="reconciliations" label="Memuat pencocokan saldo…" />;
+  if (data.accountsResource.status === "loading" || data.historyResource.status === "loading") return <NativePageSkeleton kind="reconciliations" label="Memuat pemeriksaan saldo…" />;
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
   if (data.historyResource.status === "error") return <ErrorState error={data.historyResource.error} onRetry={data.historyResource.reload} />;
 
-  const reconciliationAttention = ["reconciliation_difference", "reconciliation_stale"].includes(attention?.attentionType);
-  const contextLocked = reconciliationAttention && Boolean(selectedAccount?.account_id) && selectedAccount.account_id === attentionAccountId;
-  const finishReconciliation = () => navigate(attentionReturnPathRef.current);
-  const reviewReconciliationTransactions = () => submission.resultOverlay?.accountId
-    ? navigate("/transaksi", { state: { accountId: submission.resultOverlay.accountId, period: currentMonthInJakarta() } })
-    : finishReconciliation();
+  const contextLocked = reconciliationContextLocked(requestedAccountId, selectedAccount);
+  const pageTitle = reconciliationPageTitle(selectedAccount);
+  const accountsRefreshing = reconciliationAccountsRefreshing(data.accountsResource, submission.submitState.status);
 
-  return (
-    <div className={`page-stack ${styles.page}`}>
-      <RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} />
-      <RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} />
-      <PageHeader title="Cocokkan Saldo" help="Pastikan catatan aplikasi sama dengan saldo yang benar-benar Anda lihat." />
-      {reconciliationAttention && !contextLocked ? <CompactNotice tone="warning" title="Rekening pengingat tidak tersedia." role="status">Pilih rekening yang masih aktif dan dapat Anda cocokkan.</CompactNotice> : null}
-      <div className={styles.layout}>
-        <ReconciliationInputPanel
-          accountSystemBalance={accountSystemBalance}
-          contextLocked={contextLocked}
-          accounts={data.reconcilableAccounts}
-          selectedAccount={selectedAccount}
-          form={form}
-          setForm={setForm}
-          submitState={submission.submitState}
-          setSubmitState={submission.setSubmitState}
-          onConfirmSystemBalance={submission.confirmSystemBalance}
-          onSubmitDifference={submission.submitDifference}
-          preview={preview}
-          onRefreshAccounts={data.accountsResource.reload}
-          accountsRefreshing={data.accountsResource.isRefreshing || ["submitting", "syncing"].includes(submission.submitState.status)}
-        />
-        <section className={styles.historyDisclosure} aria-label="Riwayat pencocokan saldo">
-          <button
-            type="button"
-            className={styles.historyDisclosureButton}
-            aria-expanded={historyExpanded}
-            aria-controls="reconciliation-history-content"
-            onClick={() => setHistoryExpanded((current) => !current)}
-          >
-            <span><strong>Riwayat pencocokan</strong><small>{data.historyItems.length} hasil pada filter saat ini</small></span>
-            <FiChevronDown className={styles.historyDisclosureChevron} data-expanded={historyExpanded ? "true" : "false"} aria-hidden="true" />
-          </button>
-          <div id="reconciliation-history-content" className={`${styles.historyDisclosureContent}${historyExpanded ? ` ${styles.isExpanded}` : ""}`}>
-            <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
-          </div>
-        </section>
-      </div>
-      <ReconciliationResultOverlay result={submission.resultOverlay} onClose={finishReconciliation} onReviewTransactions={reviewReconciliationTransactions} />
+  return <div className={`page-stack ${styles.page}`}>
+    <RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} />
+    <RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} />
+    <PageHeader title={pageTitle} help="Bandingkan saldo yang tercatat dengan saldo yang Anda lihat saat ini." />
+    <ReconciliationAttentionNotice attentionType={attention?.attentionType} contextLocked={contextLocked} />
+    <div className={styles.layout}>
+      <ReconciliationInputPanel
+        accountSystemBalance={accountSystemBalance}
+        contextLocked={contextLocked}
+        accounts={data.reconcilableAccounts}
+        selectedAccount={selectedAccount}
+        form={form}
+        setForm={setForm}
+        submitState={submission.submitState}
+        setSubmitState={submission.setSubmitState}
+        onSubmitDifference={submission.submitDifference}
+        preview={preview}
+        onRefreshAccounts={data.accountsResource.reload}
+        accountsRefreshing={accountsRefreshing}
+      />
+      <ReconciliationHistoryDisclosure expanded={historyExpanded} setExpanded={setHistoryExpanded} data={data} />
     </div>
-  );
+    <ReconciliationResultOverlay result={submission.resultOverlay} onClose={resultActions.finishReconciliation} onRecordTransaction={resultActions.recordMissingTransaction} onReviewTransactions={resultActions.reviewReconciliationTransactions} />
+  </div>;
 };
 
 export default ReconciliationsPage;

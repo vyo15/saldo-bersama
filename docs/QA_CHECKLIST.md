@@ -38,7 +38,7 @@
 - [ ] Alokasi baru tidak meminta budget awal sebagai flow utama; Kebutuhan mengatur funding dari Dana Tersedia sesuai contract.
 - [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
-- [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: header row memuat ikon + nama + pola/status + quick actions, sementara Sisa/total/persentase + progress memakai lebar penuh di bawahnya agar nominal tidak terpotong; aksi `Catat`/Jadwal memakai quick action icon-only dengan accessible label dan target sentuh minimal 44px; Edit berada di overflow; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
+- [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: kebutuhan aktif memuat ikon + nama + pola/status dan Sisa/total/persentase + progress; `fixed_once` tepat 100% berubah menjadi row ringkas `✓ Selesai` tanpa progress/quick-add; `flexible`/`recurring` tepat 100% menjadi `Dana habis` dengan warning tone dan tanpa aksi pencatatan baru; overspend tetap danger. `Terpakai`, waktu selesai, dan Jadwal tersedia di **Detail kebutuhan**; Edit/Lihat jadwal berada di overflow; target sentuh minimal 44px; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
 - [ ] Detail Alokasi tidak memiliki section permanen `Kelola dana`; aksi administratif **Pindahkan dana / Pengingat / Hapus dari daftar** berada di menu overflow `•••`, sedangkan aksi transaksi/kebutuhan tetap berada dekat konteksnya.
 - [ ] Beranda mobile compact: **Dana Tersedia tetap nominal pertama**, sementara **Total saldo rekening**, **Sisa di Alokasi**, Aman/hari, dan Masuk/Keluar/Selisih tetap terlihat tanpa standalone card `Bulan ini`.
 - [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
@@ -52,7 +52,7 @@
 - [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak.
 - [ ] Mobile control penting ≥44×44px; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
 - [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
-- [ ] Cocokkan Saldo desktop tidak menyembunyikan kolom **Selisih/Status**; breakpoint dua-panel hanya aktif bila riwayat memiliki lebar yang cukup dan tidak ada overflow kritis tanpa affordance.
+- [ ] **Pastikan Saldo Sesuai** desktop tidak menyembunyikan kolom **Selisih/Status**; breakpoint dua-panel hanya aktif bila riwayat memiliki lebar yang cukup dan tidak ada overflow kritis tanpa affordance.
 - [ ] Collection kecil tidak mempertahankan kontrol yang tidak berguna: ringkasan satu-item, search/filter dataset kecil, atau tab jenis bernilai nol disembunyikan secara progresif.
 - [ ] Container desktop tidak berganti lebar antar route; tepi konten shell canonical tetap stabil, sedangkan kebutuhan lebar khusus diselesaikan di layout feature.
 - [ ] Modal diuji buka → tutup/batal → buka lagi; Browser Back/focus/body scroll lock tidak stale.
@@ -60,7 +60,7 @@
 - [ ] Create CTA pada true-empty tidak muncul bersamaan di header/toolbar dan empty state. Kewajiban/Investasi/collection lain hanya mengembalikan header create setelah data pertama ada.
 - [ ] Mobile global `Catat` tetap menjadi launcher aktivitas uang dan tidak diduplikasi oleh CTA transaksi lokal pada true-empty Dashboard/Transaksi. Launcher menampilkan Pengeluaran/Pemasukan/Transfer/Bayar kewajiban + grup Untuk masa depan (Target/Investasi); setelah jenis transaksi dipilih, form tidak menanyakan jenis untuk kedua kalinya.
 - [ ] Form quick Catat mobile memakai judul + rekening + CTA kontekstual, satu primary footer full-width, tanggal terlihat, detail metode/catatan opsional, dan tombol kembali ke launcher. Refund bukan quick action global.
-- [ ] Dashboard mobile tidak menggandakan `Atur Dana` pada Akses cepat karena sudah permanen di bottom navigation; shortcut canonical adalah Rekening/Target/Investasi/Cocokkan.
+- [ ] Dashboard mobile tidak menggandakan `Atur Dana` pada Akses cepat karena sudah permanen di bottom navigation; shortcut canonical adalah Rekening/Target/Investasi; pemeriksaan saldo tidak menjadi shortcut permanen dan diakses dari Rekening.
 - [ ] Detail object dengan sub-item erat memakai section/list hierarchy, bukan tumpukan card setara tanpa kebutuhan.
 - [ ] Satu fakta edukatif tidak diulang pada description, helper, card, dan notice di surface yang sama.
 - [ ] Normal state tidak memakai helper/notice hanya untuk mengulang label, placeholder, value, atau state yang sudah jelas.

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useState } from "react";
 import LazyActionFallback from "../../../components/feedback/LazyActionFallback.jsx";
-import { FiEye, FiEyeOff, FiList, FiPlus } from "react-icons/fi";
+import { FiCheckCircle, FiEye, FiEyeOff, FiList, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Money from "../../../components/common/Money.jsx";
 import PageInfoButton from "../../../components/common/PageInfoButton.jsx";
@@ -9,6 +9,7 @@ import {
 } from "../../../shared/presentation/account.js";
 import { AccountVisual } from "./AccountFinancialCard.jsx";
 import { accountAmbientTone, useMobileStackController } from "./useMobileAccountStack.js";
+import { reconciliationStatusLabel } from "../../../shared/presentation/reconciliation.js";
 import styles from "./MobileAccountsExperience.module.css";
 
 const MobileAccountActivity = lazy(() => import("./MobileAccountActivity.jsx"));
@@ -25,7 +26,7 @@ const PrivateMoney = ({ hidden, value }) => hidden
   ? <span className={styles.mobilePrivateMoney} aria-label="Nominal disembunyikan">••••••</span>
   : <Money value={value || 0} />;
 
-const MobileBalanceSummary = ({ account }) => {
+const MobileBalanceSummary = ({ account, onEnsureBalance, reconciliation, reconciliationLoaded }) => {
   const [hidden, setHidden] = useState(false);
   const investment = account.account_type === "investment";
   const available = account.available_balance ?? account.balance ?? 0;
@@ -46,6 +47,8 @@ const MobileBalanceSummary = ({ account }) => {
           <div><strong><PrivateMoney hidden={hidden} value={account.allocated_remaining || 0} /></strong><span>Dialokasikan</span></div>
         </>}
       </div>
+      {!investment && account.can_reconcile === true && reconciliationLoaded ? <p className={styles.mobileBalanceCheckStatus}>{reconciliationStatusLabel(reconciliation)}</p> : null}
+      {!investment && account.can_reconcile === true ? <button type="button" className={styles.mobileBalanceCheck} onClick={() => onEnsureBalance(account)}><FiCheckCircle aria-hidden="true" />Pastikan saldo sesuai</button> : null}
     </section>
   );
 };
@@ -59,7 +62,7 @@ const MobileQuickActions = ({ account, bootstrap, onTransferSaved, onViewTransac
   </div>
 );
 
-const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved }) => {
+const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved, reconciliationLookup = null }) => {
   const navigate = useNavigate();
   const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
   const {
@@ -68,6 +71,7 @@ const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAc
     handleMobileStackKeyDown, selectMobileStackAccount, selectMobileStackIndex,
   } = stack;
   const onViewTransactions = useCallback((item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } }), [navigate]);
+  const onEnsureBalance = useCallback((item) => navigate("/rekonsiliasi", { state: { accountId: item.account_id, reconciliationSource: "account" } }), [navigate]);
   const ambientTone = accountAmbientTone(selectedAccount);
   const totalAccountBalance = allAccounts.filter((item) => item.account_type !== "investment").reduce((sum, item) => sum + Number(item.balance || 0), 0);
 
@@ -108,7 +112,7 @@ const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAc
       </div> : null}
 
       {selectedAccount ? <>
-        <MobileBalanceSummary account={selectedAccount} />
+        <MobileBalanceSummary account={selectedAccount} onEnsureBalance={onEnsureBalance} reconciliation={reconciliationLookup?.[selectedAccount.account_id]} reconciliationLoaded={reconciliationLookup !== null} />
         <MobileQuickActions account={selectedAccount} bootstrap={bootstrap} onTransferSaved={onTransferSaved} onViewTransactions={onViewTransactions} />
       </> : null}
 

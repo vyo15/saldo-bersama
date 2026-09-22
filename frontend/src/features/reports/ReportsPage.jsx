@@ -10,6 +10,7 @@ import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { formatCompactRupiah, formatRupiah } from "../../domain/money.js";
+import { budgetVisualState } from "../../shared/presentation/budget.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { allocationDecoration } from "../allocations/allocationDecorations.js";
 import { downloadFinancialReport } from "./reports.api.js";
@@ -24,11 +25,10 @@ const monthLabel = (period) => {
 };
 
 const usageStatus = (budget) => {
-  const planned = Number(budget.amount || 0);
-  const used = Number(budget.used_amount || 0);
-  if (used > planned) return { label: "Melebihi", tone: "danger" };
-  if (planned > 0 && used >= planned) return { label: "Lunas", tone: "done" };
-  if (planned > 0 && used / planned >= .8) return { label: "Hampir habis", tone: "warning" };
+  const state = budgetVisualState(budget);
+  if (state.key === "danger") return { label: "Melebihi", tone: "danger" };
+  if (state.key === "completed") return { label: "Selesai", tone: "done" };
+  if (["empty", "warning", "pace"].includes(state.key)) return { label: state.label, tone: "warning" };
   return { label: "Aman", tone: "safe" };
 };
 
@@ -165,13 +165,14 @@ const globalHeroModel = (summary, period) => {
   const credit = reportNumber(summary.credit);
   const debit = reportNumber(summary.debit);
   const cashFlow = credit - debit;
+  const balanced = cashFlow === 0;
   return {
-    eyebrow: `Arus kas · ${monthLabel(period)}`,
+    eyebrow: `Selisih bulan ini · ${monthLabel(period)}`,
     value: cashFlow,
-    tone: cashFlow < 0 ? "negative" : "positive",
-    description: cashFlow < 0 ? "Pengeluaran lebih besar dari pemasukan." : "Pemasukan lebih besar dari pengeluaran.",
-    descriptionTone: cashFlow < 0 ? "negative" : "positive",
-    facts: [["Masuk", credit], ["Keluar", debit], ["Saldo akhir", reportNumber(summary.closingBalance)]],
+    tone: balanced ? "default" : cashFlow < 0 ? "negative" : "positive",
+    description: balanced ? "Pemasukan dan pengeluaran seimbang." : cashFlow < 0 ? "Pengeluaran lebih besar dari pemasukan." : "Pemasukan lebih besar dari pengeluaran.",
+    descriptionTone: balanced ? "default" : cashFlow < 0 ? "negative" : "positive",
+    facts: [["Masuk bulan ini", credit], ["Keluar bulan ini", debit], ["Saldo akhir", reportNumber(summary.closingBalance)]],
   };
 };
 

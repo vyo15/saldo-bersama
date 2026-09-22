@@ -81,8 +81,8 @@ const reconciliationAlertsFromRows = (rows, accounts) => {
       id: `reconciliation-stale:${row.account_id}`,
       type: "reconciliation_stale",
       severity: "info",
-      title: row.reconciled_at ? `Saatnya cocokkan saldo ${accountLabel}` : `Saldo ${accountLabel} belum pernah dicocokkan`,
-      message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir dicocokkan." : "Pastikan saldo aplikasi sama dengan saldo yang benar-benar Anda lihat.",
+      title: row.reconciled_at ? `Pastikan saldo ${accountLabel} masih sesuai` : `Saldo ${accountLabel} belum pernah diperiksa`, 
+      message: row.reconciled_at ? "Sudah lebih dari 30 hari sejak saldo terakhir diperiksa." : "Bandingkan saldo yang tercatat dengan saldo yang Anda lihat saat ini.",
       targetPath: "/rekonsiliasi",
       ...(row.reconciled_at ? { lastReconciledAt: String(row.reconciled_at).slice(0, 10) } : {}),
     });
@@ -164,7 +164,9 @@ const budgetAlerts = (budgets) => {
   for (const item of budgets) {
     const amount = Number(item.amount || 0);
     if (!amount) continue;
-    const percentage = Math.round((Number(item.used_amount || 0) / amount) * 100);
+    const used = Number(item.used_amount || 0);
+    const percentage = Math.round((used / amount) * 100);
+    if (item.recording_mode === "fixed_once" && used === amount) continue;
     const crossed = usageThreshold(percentage, Number(item.warning_threshold || 80));
     if (!crossed) continue;
     alerts.push({

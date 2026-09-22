@@ -76,7 +76,7 @@ Gunakan hanya pada fase setup/trial sebelum transaksi nyata mulai dicatat. Reset
 7. Jika client menerima `IDEMPOTENCY_OUTCOME_UNKNOWN`, **jangan kirim reset lagi**. Gunakan **Periksa status operasi**. `reset.status` memeriksa unresolved idempotency milik Administrator, audit `reset.apply`, deterministic safety backup, dan maintenance.
 8. Jika status `committed`, perlakukan reset lama sebagai sukses dan jangan kirim ulang. Bila kemudian memang ada data testing baru, jalankan preview baru dan gunakan intent/idempotency key baru hanya ketika `canStartNewIntent=true`. Jika status `not_committed`, jalankan preview baru sebelum membuat intent baru. Jika status `processing`, tunggu lalu periksa lagi.
 9. Jika status `recovery_required`, jalankan integrity recovery. Maintenance hanya boleh dibuka kembali bila integrity check `ok`; perubahan ini wajib menghasilkan audit `maintenance.recover`.
-10. Setelah pembersihan, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, Cocokkan Saldo, dan status integrasi sebelum melanjutkan input.
+10. Setelah pembersihan, cek dashboard, saldo rekening, transaksi, target, jadwal rutin, alokasi, anggaran, Pastikan Saldo Sesuai dari Rekening, dan status integrasi sebelum melanjutkan input.
 11. Begitu aplikasi mulai dipakai untuk transaksi nyata, hentikan penggunaan pembersihan massal ini. Koreksi data nyata wajib memakai cancel/archive/restore/reverse sesuai lifecycle domain.
 
 ## Reset semua data

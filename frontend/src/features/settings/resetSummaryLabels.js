@@ -2,7 +2,7 @@ const freezeLabels = (items) => Object.freeze(items.map(([key, label]) => Object
 
 export const RESET_DOMAIN_LABELS = freezeLabels([
   ["transactions", "Transaksi"],
-  ["reconciliations", "Pencocokan saldo"],
+  ["reconciliations", "Pemeriksaan saldo"],
   ["investmentTrades", "Transaksi saham"],
   ["investmentCorrections", "Koreksi investasi"],
   ["investmentValuations", "Harga investasi"],

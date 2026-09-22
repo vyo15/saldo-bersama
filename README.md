@@ -75,9 +75,9 @@ npm run dev   # hanya Development lokal → auto-pull Vercel Development + Turso
 npm run prod  # Vercel Production auto-sync → mirror lokal aman + Turso Production + live health, tanpa menulis DEV
 ```
 
-Untuk pemakaian harian cukup dua command di atas. Command `verify`, `zip`, database, environment sync, dan diagnosis tetap tersedia untuk quality gate/maintenance, tetapi tidak perlu dihafal untuk penggunaan rutin.
+Untuk pemakaian harian cukup dua command di atas. Command `verify`, `zip`, database, environment sync, dan diagnosis tetap tersedia untuk quality gate/maintenance, tetapi tidak perlu dihafal untuk penggunaan rutin. `npm run zip` akan memeriksa dependency development yang dibutuhkan quality gate dan menjalankan `npm ci --include=dev` otomatis hanya bila dependency tersebut memang belum tersedia; probe pasca-install dijalankan dari proses Node segar agar hasil resolve lama tidak tertahan sebagai cache negatif. Jika dependency sudah sinkron, archive gate langsung lanjut tanpa reinstall.
 
-`npm ci` hanya dipakai untuk clone/bootstrap baru, perubahan package/lockfile, dependency hilang/rusak, atau clean runner CI. Jangan menjalankan `npm ci` sebagai kebiasaan setelah setiap patch.
+`npm ci` manual hanya dipakai untuk clone/bootstrap baru, perubahan package/lockfile yang belum pernah dibootstrap, dependency hilang/rusak, atau clean runner CI. Jangan menjalankan `npm ci` sebagai kebiasaan setelah setiap patch.
 
 ## Git harian
 

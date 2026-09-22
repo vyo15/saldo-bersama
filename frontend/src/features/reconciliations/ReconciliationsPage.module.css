@@ -32,14 +32,9 @@
 .systemBalanceCard > span { display: block; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 .systemBalanceCard > strong, .systemBalanceCard > strong :global(.money) { display: block; margin-top: 6px; color: var(--text); font-size: clamp(1.9rem, 6vw, 2.35rem); font-weight: var(--font-weight-bold); line-height: 1.08; letter-spacing: -.045em; }
 .systemBalanceCard > small { display: block; margin-top: 6px; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
-.matchQuestion { min-width: 0; padding-top: 3px; display: grid; gap: 7px; }
-.matchQuestion h3 { margin: 0; color: var(--text); font-size: var(--font-size-body-sm); line-height: 1.4; }
-.matchQuestion h3 :global(.money) { font-size: inherit; }
-.matchQuestion p { margin: 0; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.5; }
-.matchActions { margin-top: 4px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.matchActions > :global(.button) { width: 100%; min-height: 48px; }
 .differenceFlow { min-width: 0; display: grid; gap: var(--space-3); padding-top: 3px; }
 .differenceFlow :global(.field) { min-width: 0; }
+.balanceHint { margin-top: -6px; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
 .differenceFlow :global(input), .notesField textarea { font-size: var(--font-size-body); }
 .differencePreview { min-width: 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--warning) 26%, var(--border)); border-radius: 13px; background: color-mix(in srgb, var(--warning-soft) 50%, var(--surface)); }
 .differencePreview[data-state="matched"] { border-color: color-mix(in srgb, var(--positive) 22%, var(--border)); background: color-mix(in srgb, var(--positive-soft) 48%, var(--surface)); }
@@ -145,7 +140,6 @@
   .refreshButton { width: var(--mobile-control-height); height: var(--mobile-control-height); }
   .systemBalanceCard { padding: 14px; }
   .systemBalanceCard > strong, .systemBalanceCard > strong :global(.money) { font-size: clamp(1.9rem, 9vw, 2.3rem); }
-  .matchActions { grid-template-columns: minmax(0, 1fr); }
   .notesField textarea { resize: none; }
   .historyHeader { align-items: center; flex-direction: row; gap: var(--space-3); }
   .historyHeader h2 { flex: 0 0 auto; }

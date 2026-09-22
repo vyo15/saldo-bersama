@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { allocationNeedsFundingSummary } from "../src/features/allocations/allocationPresentation.js";
-import { budgetRemainingAmount } from "../src/shared/presentation/budget.js";
+import { budgetRemainingAmount, budgetVisualState } from "../src/shared/presentation/budget.js";
 
 test("ringkasan Kebutuhan membandingkan rencana dengan dana alokasi tanpa memakai sisa setelah transaksi", () => {
   const summary = allocationNeedsFundingSummary(
@@ -53,4 +53,17 @@ test("sisa Kebutuhan mengikuti pemakaian aktual dan tidak mempertahankan nominal
   assert.equal(budgetRemainingAmount({ amount: 200_000, used_amount: 0 }), 200_000);
   assert.equal(budgetRemainingAmount({ amount: 200_000, used_amount: 50_000 }), 150_000);
   assert.equal(budgetRemainingAmount({ amount: 200_000, used_amount: 250_000 }), 0);
+});
+
+
+test("status kebutuhan membedakan selesai sekali bayar dari dana habis", () => {
+  const completed = budgetVisualState({ amount: 1_000_000, used_amount: 1_000_000, recording_mode: "fixed_once", warning_threshold: 80 });
+  const depleted = budgetVisualState({ amount: 1_000_000, used_amount: 1_000_000, recording_mode: "flexible", warning_threshold: 80 });
+  const recurringDepleted = budgetVisualState({ amount: 1_000_000, used_amount: 1_000_000, recording_mode: "recurring", warning_threshold: 80 });
+  const exceeded = budgetVisualState({ amount: 1_000_000, used_amount: 1_050_000, recording_mode: "fixed_once", warning_threshold: 80 });
+
+  assert.deepEqual({ key: completed.key, label: completed.label, attention: completed.attention }, { key: "completed", label: "Selesai", attention: false });
+  assert.deepEqual({ key: depleted.key, label: depleted.label, attention: depleted.attention }, { key: "empty", label: "Dana habis", attention: true });
+  assert.equal(recurringDepleted.key, "empty");
+  assert.deepEqual({ key: exceeded.key, label: exceeded.label, attention: exceeded.attention }, { key: "danger", label: "Melebihi rencana", attention: true });
 });

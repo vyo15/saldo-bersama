@@ -29,7 +29,7 @@ test("desktop mempertahankan module dock Saldo Bersama melengkung dengan entry p
 
   assert.match(navigation, /export const DESKTOP_NAVIGATION = Object\.freeze\(\[[\s\S]*navigationByPath\.get\("\/"\)[\s\S]*navigationByPath\.get\("\/transaksi"\)/);
   assert.match(navigation, /id: "planning"[\s\S]*items: pickNavigation\("\/perencanaan", "\/target"\)/);
-  assert.match(navigation, /id: "finance"[\s\S]*label: "Keuangan"[\s\S]*items: pickNavigation\("\/rekening", "\/kategori", "\/investasi", "\/rekonsiliasi"\)/);
+  assert.match(navigation, /id: "finance"[\s\S]*label: "Keuangan"[\s\S]*items: pickNavigation\("\/rekening", "\/kategori", "\/investasi"\)/);
   assert.match(navigation, /id: "management"[\s\S]*label: "Kelola"[\s\S]*ownerOnly: true[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
   const desktopBlock = navigation.match(/export const DESKTOP_NAVIGATION = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   const topLevelSlots = [...desktopBlock.matchAll(/^  (?:navigationByPath\.get|freezeGroup)\(/gm)];
@@ -276,9 +276,8 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   assert.match(source, /AccountIcon/);
   assert.match(source, /InvestmentIcon/);
   assert.match(source, /FiTag/);
-  assert.match(source, /FiCheckCircle/);
   assert.match(source, /to: "\/kategori", label: "Kategori"/);
-  assert.match(source, /to: "\/rekonsiliasi", label: "Cocokkan saldo"/);
+  assert.doesNotMatch(source, /to: "\/rekonsiliasi"/);
   assert.match(source, /to: "\/notifikasi", label: "Notifikasi"/);
   assert.match(source, /to: "\/anggota", label: "Anggota"[\s\S]*ownerOnly: true/);
   assert.match(source, /label: "Atur Dana"/);
@@ -288,8 +287,7 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target"\)/);
   assert.match(source, /label: "Data keuangan"/);
   assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
-  assert.match(source, /label: "Kontrol saldo"/);
-  assert.match(source, /items: pickNavigation\("\/rekonsiliasi"\)/);
+  assert.doesNotMatch(source, /label: "Kontrol saldo"|items: pickNavigation\("\/rekonsiliasi"\)/);
   assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
   assert.match(source, /label: "Aplikasi"[\s\S]*items: pickNavigation\("\/pengaturan"\)/);
   const secondary = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";

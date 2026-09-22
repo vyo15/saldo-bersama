@@ -35,6 +35,23 @@
   transition: inline-size var(--motion-standard) var(--ease-standard);
 }
 
+
+.root[data-tone="warning"] .progress::-webkit-progress-value {
+  background: var(--warning);
+}
+
+.root[data-tone="warning"] .progress::-moz-progress-bar {
+  background: var(--warning);
+}
+
+.root[data-tone="danger"] .progress::-webkit-progress-value {
+  background: var(--negative);
+}
+
+.root[data-tone="danger"] .progress::-moz-progress-bar {
+  background: var(--negative);
+}
+
 .value {
   min-width: 2.5rem;
   text-align: end;

@@ -189,7 +189,10 @@ const queueBudgetNotifications = async (db, state, budgets) => {
   const { period, users } = state;
   let queued = 0;
   for (const item of budgets) {
-    const percentage = Number(item.amount || 0) > 0 ? Math.round((Number(item.used_amount || 0) / Number(item.amount)) * 100) : 0;
+    const amount = Number(item.amount || 0);
+    const used = Number(item.used_amount || 0);
+    const percentage = amount > 0 ? Math.round((used / amount) * 100) : 0;
+    if (item.recording_mode === "fixed_once" && amount > 0 && used === amount) continue;
     const threshold = highestUsageThreshold(percentage, Number(item.warning_threshold || 80));
     if (!threshold) continue;
     queued += await queueForRecipients(db, users, item, {
@@ -281,10 +284,10 @@ const queueReconciliationNotifications = async (db, state, items) => {
       const result = await queueNotification(db, {
         userId: user.user_id,
         type: "reconciliation_stale",
-        title: `Saatnya cocokkan saldo ${shortName(item.name, "Rekening")}`,
+        title: `Pastikan saldo ${shortName(item.name, "Rekening")} masih sesuai`, 
         body: item.reconciled_at
-          ? `Sudah lebih dari ${days} hari sejak saldo terakhir dicocokkan.`
-          : "Pastikan saldo aplikasi sama dengan saldo yang benar-benar Anda lihat.",
+          ? `Sudah lebih dari ${days} hari sejak saldo terakhir diperiksa.`
+          : "Bandingkan saldo yang tercatat dengan saldo yang Anda lihat saat ini.",
         targetPath: "/rekonsiliasi",
         scheduledAt: nowIso(),
         dedupeKey: `reconciliation-stale:${item.account_id}:${String(checkpoint || "never").slice(0, 10)}:${days}:${user.user_id}`,

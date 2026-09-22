@@ -423,7 +423,9 @@ ${accountEditors}`;
   assert.match(mobileExperience, /mobileCarouselDots/);
   assert.doesNotMatch(accountPageSource, /aria-label="Baca penjelasan rekonsiliasi"/);
   assert.doesNotMatch(accountPageSource, /title="Tentang rekonsiliasi"/);
-  assert.match(reconciliationPage, /PageHeader title="Cocokkan Saldo"/);
+  assert.match(reconciliationPage, /Pastikan Saldo Sesuai/);
+  assert.match(mobileExperience, /Pastikan saldo sesuai/);
+  assert.match(accountPageSource, /reconciliationSource: "account"/);
   assert.match(reconciliationPage, /account\.can_reconcile === true/);
   assert.match(reconciliationPage, /account\.account_type !== "investment"/);
   assert.match(reconciliationPage, /reconciliations\.list/);
@@ -620,7 +622,7 @@ test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile 
   assert.doesNotMatch(dashboardStyles, /\.mobile-account-preview|\.mobile-account-scroller/);
 });
 
-test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celebration tetap aksesibel", async () => {
+test("Pastikan Saldo Sesuai memakai feedback ringan dan jalur selisih yang actionable", async () => {
   const [page, pageStyles, feedback, result, resultStyles, successOverlay, successStyles] = await Promise.all([
     Promise.all([
       read("src/features/reconciliations/ReconciliationsPage.jsx"),
@@ -639,19 +641,18 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(page, /ReconciliationResultOverlay/);
   assert.match(page, /status: "syncing"/);
   assert.match(page, /status: "completed"/);
-  assert.match(page, /finishReconciliation = \(\) => navigate\(attentionReturnPathRef\.current\)/);
+  assert.match(page, /finishReconciliation = useCallback\(\(\) => navigate\(returnPathRef\.current/);
   assert.match(page, /reviewReconciliationTransactions/);
   assert.match(page, /onReviewTransactions/);
   assert.match(page, /refreshOutcomes = await Promise\.allSettled/);
   assert.match(page, /actual_balance: "", notes: ""/);
-  assert.match(page, /setForm\(\{ account_id: attentionAccountId, actual_balance: "", notes: "" \}\)/);
-  assert.match(page, /onConfirmSystemBalance/);
-  assert.match(page, /Ya, saldonya sama/);
-  assert.match(page, /Tidak, berbeda/);
+  assert.match(page, /setForm\(\{ account_id: requestedAccountId, actual_balance: "", notes: "" \}\)/);
+  assert.doesNotMatch(page, /onConfirmSystemBalance|Ya, saldonya sama|Tidak, berbeda/);
+  assert.match(page, /Bandingkan saldo/);
   assert.match(page, /Saldo tercatat di aplikasi/);
-  assert.match(page, /Saldo aktual di bank/);
-  assert.match(page, /Pastikan catatan aplikasi sama dengan saldo yang benar-benar Anda lihat\./);
-  assert.match(page, /Dipilih otomatis/);
+  assert.match(page, /Saldo di bank saat ini/);
+  assert.match(page, /Bandingkan saldo yang tercatat dengan saldo yang Anda lihat saat ini\./);
+  assert.match(page, /Rekening yang akan diperiksa/);
   assert.match(page, /styles\.differencePreview/);
   assert.match(page, /styles\.mobileHistoryDifference/);
   assert.match(pageStyles, /\.systemBalanceCard\s*\{/);
@@ -661,14 +662,17 @@ test("pencocokan saldo mobile memakai feedback lokal tanpa toast ganda dan celeb
   assert.match(pageStyles, /\.differencePreview\[data-state="matched"\]/);
   assert.match(pageStyles, /\.mobileHistoryDifference/);
   assert.doesNotMatch(page, /<details className=\{styles\.helpDetails\}/);
-  assert.doesNotMatch(page, /notify\(/, "Pencocokan saldo tidak boleh menampilkan toast kedua setelah result overlay.");
+  assert.match(page, /notify\(\{ message: `Saldo \$\{accountLabel\} sudah sesuai\.`/);
   const localProcessActions = feedback.match(/const LOCAL_PROCESS_ACTIONS = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
   assert.match(localProcessActions, /"reconciliations\.create"/);
   assert.match(localProcessActions, /"transactions\.create"/);
   assert.match(feedback, /LOCAL_PROCESS_ACTIONS\.has\(visible\.action\)/);
-  assert.match(result, /FinancialSuccessOverlay/);
+  assert.doesNotMatch(result, /FinancialSuccessOverlay/);
+  assert.match(result, /result\.matched\) return null/);
   assert.match(result, /ReconciliationDifferenceOverlay/);
-  assert.match(result, /Lihat transaksi rekening/);
+  assert.match(result, /Catat transaksi yang tertinggal/);
+  assert.match(result, /Periksa aktivitas rekening/);
+  assert.match(result, /Selesaikan nanti/);
   assert.match(result, /onReviewTransactions/);
   assert.match(result, /refreshIncomplete/);
   assert.match(successOverlay, /MONEY_COUNT = 10/);

@@ -42,14 +42,15 @@ test("dashboard desktop memprioritaskan saldo, attention, aktivitas, lalu perenc
   const transactions = dashboard.indexOf("<AccountTransactions");
   const planning = dashboard.indexOf("<DashboardPlanning");
   assert.ok(header >= 0 && metrics > header && attention > metrics && analysis > attention && accounts > analysis && transactions > accounts && planning > transactions);
-  for (const label of ["Dana Tersedia", "Total saldo rekening", "Aman dipakai / hari", "Masuk bulan ini", "Keluar bulan ini", "Atur Dana", "Rekening", "Target", "Cocokkan", "Transaksi terbaru", "Alokasi, rutin & target"]) assert.match(dashboard, new RegExp(label));
+  for (const label of ["Dana Tersedia", "Total saldo rekening", "Aman dipakai / hari", "Atur Dana", "Rekening", "Target", "Investasi", "Transaksi terbaru", "Alokasi, rutin & target"]) assert.match(dashboard, new RegExp(label));
+  assert.doesNotMatch(dashboard, /Masuk bulan ini|Keluar bulan ini|Arus uang bulan ini/);
   assert.match(dashboard, /shared-investment-widget/);
   assert.match(dashboard, /Kondisi keuangan terkendali/);
   assert.match(dashboard, /<em>Tinjau<\/em>/);
   assert.doesNotMatch(dashboard, /const InsightWidget/);
   assert.match(styles, /\.desktop-overview-grid \{/);
   assert.match(styles, /\.shared-dashboard-widgets \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /\.desktop-cashflow-visual \{/);
+  assert.doesNotMatch(styles, /\.desktop-cashflow-visual/);
   assert.match(styles, /\.desktop-analysis-grid \{/);
   assert.doesNotMatch(styles, /desktop-module-dock/, "Dashboard module tidak boleh mengubah sidebar/dock shell canonical.");
 });

@@ -56,6 +56,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
 
   assert.match(mobileAccounts, /<span>Riwayat<\/span>/);
   assert.match(mobileAccounts, /<MobileAccountTransferAction/);
+  assert.match(mobileAccounts, /Pastikan saldo sesuai/);
   assert.doesNotMatch(mobileAccounts, /<span>Kelola<\/span>|<span>Detail<\/span>/);
   assert.doesNotMatch(mobileAccounts, /<span>Tersedia<\/span>/);
   assert.doesNotMatch(mobileAccounts, /<span>Saldo RDN<\/span><\/div>/);
@@ -65,11 +66,10 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     ["/rekening", "Rekening"],
     ["/target", "Target"],
     ["/investasi", "Investasi"],
-    ["/rekonsiliasi", "Cocokkan"],
   ]) {
     assert.match(dashboardQuickActions, new RegExp(`to: "${path.replaceAll("/", "\\/")}", label: "${label}"`));
   }
-  assert.doesNotMatch(dashboardQuickActions, /label: "Atur Dana"|label: "Kategori"|label: "Jadwal Rutin"/);
+  assert.doesNotMatch(dashboardQuickActions, /label: "Atur Dana"|label: "Kategori"|label: "Jadwal Rutin"|\/rekonsiliasi|Cocokkan/);
   assert.match(dashboard, /<DashboardQuickActions \/>/);
   assert.match(dashboard, /Belum ada aktivitas/);
   assert.doesNotMatch(dashboard, /onClick=\{onOpenTransaction\}/);

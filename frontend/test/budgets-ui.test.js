@@ -68,7 +68,7 @@ test("form Kebutuhan memisahkan nama kebutuhan, kategori, pola pencatatan, dan p
 test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat tab duplikat", async () => {
   const [allocations, detail, planning, styles] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
-    read("src/features/allocations/AllocationPlanningDetail.jsx"),
+    Promise.all([read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/allocations/AllocationNeedRow.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/planning/PlanningPage.jsx"),
     read("src/features/allocations/AllocationDetail.module.css"),
   ]);
@@ -83,8 +83,12 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /status\.attention \? status\.label : patternLabel/);
   assert.match(detail, /"Fleksibel"/);
   assert.match(detail, /Belum digunakan/);
-  assert.match(detail, /Kelola kebutuhan \${budget\.name}/);
+  assert.match(detail, /Detail kebutuhan<\/Button>/);
+  assert.match(detail, /aria-label={`Pilihan kebutuhan \${budget\.name}`}/);
   assert.match(detail, />Edit kebutuhan<\/Button>/);
+  assert.match(detail, /status\.key === "completed"/);
+  assert.match(detail, /\["completed", "empty", "danger"\]\.includes\(status\.key\)/);
+  assert.match(detail, /Dana untuk kebutuhan ini sudah habis/);
   assert.match(detail, /allocation-limit-row__header/);
   assert.match(styles, /grid-template-columns: 34px minmax\(0, 1fr\) auto/);
   assert.match(styles, /allocation-limit-row__content[\s\S]*margin-left: 42px/);

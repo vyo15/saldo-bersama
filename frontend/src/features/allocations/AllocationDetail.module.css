@@ -341,6 +341,7 @@
 }
 
 .allocation-limit-row__icon {
+  position: relative;
   width: 34px;
   height: 34px;
   flex: 0 0 34px;
@@ -453,6 +454,167 @@
 .allocation-limit-row__usage.is-warning { color: var(--warning); }
 .allocation-limit-row__usage.is-danger { color: var(--negative); }
 .allocation-limit-row__usage :global(.money) { color: inherit; font-size: inherit; }
+
+.allocation-limit-row.is-completed {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--positive) 4%, transparent), transparent 58%);
+}
+
+.allocation-limit-row.is-completed .allocation-limit-row__icon {
+  background: color-mix(in srgb, var(--positive) 10%, var(--surface-elevated));
+  color: color-mix(in srgb, var(--positive) 70%, var(--text-soft));
+}
+
+.allocation-limit-row.is-depleted .allocation-limit-row__icon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.allocation-limit-row__icon-check {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 17px;
+  height: 17px;
+  border: 2px solid var(--surface-elevated);
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: var(--positive);
+  color: var(--surface);
+}
+
+.allocation-limit-row__icon-check svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 3;
+}
+
+.allocation-limit-row__title.is-completed {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.allocation-limit-row__completed-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.allocation-limit-row__completed-meta > svg,
+.allocation-limit-row__completed-meta > strong {
+  color: var(--positive);
+}
+
+.allocation-limit-row__completed-meta > svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
+.allocation-limit-row__completed-meta > strong {
+  font-weight: var(--font-weight-bold);
+}
+
+.allocation-limit-row__completed-meta :global(.money) {
+  color: var(--text-muted);
+  font-size: inherit;
+}
+
+.allocation-limit-row.is-completed .allocation-limit-row__menu > summary {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.allocation-need-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.allocation-need-detail__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.allocation-need-detail__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+  color: var(--text-soft);
+  font-weight: var(--font-weight-bold);
+}
+
+.allocation-need-detail__status.is-completed {
+  background: var(--positive-soft);
+  color: var(--positive);
+}
+
+.allocation-need-detail__status.is-empty,
+.allocation-need-detail__status.is-warning,
+.allocation-need-detail__status.is-pace {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.allocation-need-detail__status.is-danger {
+  background: var(--negative-soft);
+  color: var(--negative);
+}
+
+.allocation-need-detail__status svg {
+  width: 14px;
+  height: 14px;
+}
+
+.allocation-need-detail__facts {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+}
+
+.allocation-need-detail__facts > div {
+  min-width: 0;
+  padding: 11px 12px;
+  background: var(--surface-elevated);
+}
+
+.allocation-need-detail__facts dt {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.allocation-need-detail__facts dd {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.allocation-need-detail__facts :global(.money) {
+  color: inherit;
+  font-size: inherit;
+}
 
 .allocation-limit-row__actions {
   position: relative;

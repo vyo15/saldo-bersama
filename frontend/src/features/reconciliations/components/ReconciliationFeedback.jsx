@@ -1,7 +1,6 @@
 import { useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { FiAlertTriangle, FiLoader, FiX } from "react-icons/fi";
-import FinancialSuccessOverlay from "../../../components/feedback/FinancialSuccessOverlay.jsx";
 import Money from "../../../components/common/Money.jsx";
 import { useFocusTrap } from "../../../hooks/useFocusTrap.js";
 import styles from "./ReconciliationFeedback.module.css";
@@ -20,8 +19,8 @@ export const ReconciliationSubmitProgress = ({ phase }) => {
     <div className={styles.progressCard} role="status" aria-live="polite" aria-atomic="true">
       <span className={styles.progressSpinner} aria-hidden="true"><FiLoader /></span>
       <span className={styles.progressCopy}>
-        <strong>{syncing ? "Memperbarui tampilan" : "Menyimpan pencocokan saldo"}</strong>
-        <small>{syncing ? "Memuat riwayat dan ringkasan terbaru." : "Menyimpan saldo yang Anda cocokkan."}</small>
+        <strong>{syncing ? "Memperbarui tampilan" : "Menyimpan pemeriksaan saldo"}</strong>
+        <small>{syncing ? "Memuat riwayat dan ringkasan terbaru." : "Menyimpan hasil perbandingan saldo."}</small>
         <ProgressSteps phase={phase} />
       </span>
     </div>
@@ -31,13 +30,13 @@ export const ReconciliationSubmitProgress = ({ phase }) => {
 const ResultSummary = ({ result }) => (
   <dl className={styles.resultSummary}>
     <div><dt>Rekening</dt><dd>{result.accountLabel}</dd></div>
-    <div><dt>Saldo sistem</dt><dd><Money value={result.systemBalance} /></dd></div>
+    <div><dt>Saldo tercatat</dt><dd><Money value={result.systemBalance} /></dd></div>
     <div><dt>Saldo aktual</dt><dd><Money value={result.actualBalance} /></dd></div>
     <div><dt>Selisih</dt><dd className={result.matched ? styles.resultMatched : styles.resultDifference}><Money value={result.difference} /></dd></div>
   </dl>
 );
 
-const ReconciliationDifferenceOverlay = ({ result, onClose, onReviewTransactions }) => {
+const ReconciliationDifferenceOverlay = ({ result, onClose, onRecordTransaction, onReviewTransactions }) => {
   const containerRef = useRef(null);
   const doneRef = useRef(null);
   const titleId = useId();
@@ -46,25 +45,26 @@ const ReconciliationDifferenceOverlay = ({ result, onClose, onReviewTransactions
   useFocusTrap({ open, containerRef, initialFocusRef: doneRef, onEscape: onClose, bodyClassName: "modal-open" });
   if (!result) return null;
 
-  const description = `Ada selisih Rp ${Math.abs(result.difference).toLocaleString("id-ID")}. Periksa transaksi tertinggal sebelum membuat penyesuaian.`;
+  const description = `Ada selisih Rp ${Math.abs(result.difference).toLocaleString("id-ID")}. Kemungkinan ada aktivitas yang belum tercatat atau nominal yang perlu diperiksa.`;
   const refreshNote = result.refreshIncomplete
-    ? "Pencocokan sudah tersimpan, tetapi sebagian ringkasan belum berhasil dimuat ulang. Muat ulang halaman bila angka belum berubah."
-    : "Riwayat pencocokan sudah diperbarui.";
+    ? "Pemeriksaan sudah tersimpan, tetapi sebagian ringkasan belum berhasil dimuat ulang. Muat ulang halaman bila angka belum berubah."
+    : "Riwayat pemeriksaan sudah diperbarui.";
 
   return createPortal(
     <div className={`${styles.resultBackdrop} ${styles.resultBackdropDifference}`} role="presentation">
       <section className={styles.resultDialog} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} ref={containerRef} tabIndex={-1}>
-        <button type="button" className={styles.resultClose} onClick={onClose} aria-label="Tutup hasil pencocokan"><FiX aria-hidden="true" /></button>
+        <button type="button" className={styles.resultClose} onClick={onClose} aria-label="Tutup hasil pemeriksaan"><FiX aria-hidden="true" /></button>
         <div className={styles.resultContent}>
           <div className={`${styles.resultIcon} ${styles.resultIconDifference}`} aria-hidden="true"><FiAlertTriangle /></div>
           <span className={styles.resultEyebrow}>Perlu diperiksa</span>
-          <h2 id={titleId}>Pencocokan tersimpan</h2>
+          <h2 id={titleId}>Ada selisih saldo</h2>
           <strong className={styles.resultAmount}><Money value={result.actualBalance} /></strong>
           <p id={descriptionId} className={styles.resultDescription}>{description}</p>
           <ResultSummary result={result} />
           <div className={styles.resultFooter}>
-            <button type="button" className={styles.resultReview} onClick={onReviewTransactions}>Lihat transaksi rekening</button>
-            <button ref={doneRef} type="button" className={styles.resultDone} onClick={onClose}>Selesai</button>
+            <button ref={doneRef} type="button" className={styles.resultDone} onClick={onRecordTransaction}>Catat transaksi yang tertinggal</button>
+            <button type="button" className={styles.resultReview} onClick={onReviewTransactions}>Periksa aktivitas rekening</button>
+            <button type="button" className={styles.resultLater} onClick={onClose}>Selesaikan nanti</button>
             <small>{refreshNote}</small>
           </div>
         </div>
@@ -74,24 +74,7 @@ const ReconciliationDifferenceOverlay = ({ result, onClose, onReviewTransactions
   );
 };
 
-export const ReconciliationResultOverlay = ({ result, onClose, onReviewTransactions }) => {
-  if (!result) return null;
-  if (!result.matched) return <ReconciliationDifferenceOverlay result={result} onClose={onClose} onReviewTransactions={onReviewTransactions} />;
-  const footerNote = result.refreshIncomplete
-    ? "Pencocokan tersimpan, tetapi sebagian ringkasan belum berhasil dimuat ulang. Muat ulang halaman bila angka belum berubah."
-    : "Riwayat pencocokan sudah diperbarui.";
-  return <FinancialSuccessOverlay
-    open
-    title="Pencocokan berhasil"
-    amount={result.actualBalance}
-    description="Saldo aktual sudah sesuai dengan saldo sistem. Tidak ada penyesuaian saldo yang dibuat."
-    summaryRows={[
-      { label: "Rekening", value: result.accountLabel },
-      { label: "Saldo sistem", value: <Money value={result.systemBalance} /> },
-      { label: "Saldo aktual", value: <Money value={result.actualBalance} /> },
-      { label: "Selisih", value: <Money value={result.difference} />, tone: "positive" },
-    ]}
-    onClose={onClose}
-    footerNote={footerNote}
-  />;
+export const ReconciliationResultOverlay = ({ result, onClose, onRecordTransaction, onReviewTransactions }) => {
+  if (!result || result.matched) return null;
+  return <ReconciliationDifferenceOverlay result={result} onClose={onClose} onRecordTransaction={onRecordTransaction} onReviewTransactions={onReviewTransactions} />;
 };

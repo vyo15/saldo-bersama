@@ -62,7 +62,8 @@ test("rekonsiliasi desktop menjadi workspace perbandingan dua panel tanpa mengub
   ]);
   const layout = page.indexOf("<div className={styles.layout}>");
   const input = page.indexOf("<ReconciliationInputPanel", layout);
-  const history = page.indexOf("className={styles.historyDisclosure}", layout);
+  const history = page.indexOf("<ReconciliationHistoryDisclosure", layout);
+  assert.match(page, /className=\{styles\.historyDisclosure\}/);
   assert.ok(layout >= 0 && input > layout && history > input);
   assert.match(css, /@media \(min-width: 1280px\)[\s\S]*\.layout \{[\s\S]*grid-template-columns: minmax\(300px, \.55fr\) minmax\(0, 1\.45fr\);/);
   assert.match(css, /\.formPanel \{[\s\S]*position: sticky;[\s\S]*top: 82px;/);

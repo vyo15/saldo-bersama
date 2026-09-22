@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import {
   FiArchive,
   FiArrowRight,
+  FiCheckCircle,
   FiChevronLeft,
   FiChevronRight,
   FiEdit2,
@@ -32,6 +33,7 @@ import {
   TRANSACTION_LABELS,
 } from "../../../shared/presentation/transaction.js";
 import { AccountVisual } from "./AccountFinancialCard.jsx";
+import { reconciliationStatusLabel } from "../../../shared/presentation/reconciliation.js";
 import styles from "./DesktopAccountsWorkspace.module.css";
 
 const RECENT_TRANSACTION_LIMIT = 6;
@@ -176,7 +178,7 @@ const SelectedAccountHeroHeading = ({ account, investment, readOnly }) => (
   </div>
 );
 
-const SelectedAccountHeroBalance = ({ account, investment }) => {
+const SelectedAccountHeroBalance = ({ account, investment, reconciliation, reconciliationLoaded }) => {
   const availableBalance = account.available_balance ?? account.balance ?? 0;
   const balance = investment ? (account.balance || 0) : availableBalance;
   return (
@@ -184,6 +186,7 @@ const SelectedAccountHeroBalance = ({ account, investment }) => {
       <span>{investment ? "Saldo RDN" : "Dana tersedia"}</span>
       <strong><Money value={balance} tone={balanceTone(balance)} /></strong>
       {!investment ? <small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small> : null}
+      {!investment && account.can_reconcile === true && reconciliationLoaded ? <small className={styles.reconciliationStatus}>{reconciliationStatusLabel(reconciliation)}</small> : null}
     </div>
   );
 };
@@ -199,15 +202,16 @@ const SelectedAccountHeroFacts = ({ account, investment }) => (
   </dl>
 );
 
-const SelectedAccountHeroActions = ({ account, investment, canManage, onEditAccount, onArchiveAccount, onViewInvestment }) => (
+const SelectedAccountHeroActions = ({ account, investment, canManage, onEditAccount, onArchiveAccount, onViewInvestment, onEnsureBalance }) => (
   <div className={styles.heroActions}>
     {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat investasi</Button> : null}
+    {!investment && account.status === "active" && account.can_reconcile === true ? <Button variant="primary" icon={FiCheckCircle} onClick={() => onEnsureBalance(account)}>Pastikan saldo sesuai</Button> : null}
     {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
     {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Hapus dari daftar</Button> : null}
   </div>
 );
 
-const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onEditAccount, onArchiveAccount, onViewInvestment }) => {
+const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, onEditAccount, onArchiveAccount, onViewInvestment, onEnsureBalance, reconciliation, reconciliationLoaded }) => {
   const canManage = Boolean(account.can_manage ?? ownerMode);
   const readOnly = Boolean(account.read_only);
   const investment = account.account_type === "investment";
@@ -215,9 +219,9 @@ const SelectedAccountHero = ({ accounts, account, ownerMode, onSelectAccount, on
     <section className={styles.heroPanel} aria-labelledby="desktop-selected-account-title">
       <div className={styles.heroCopy}>
         <SelectedAccountHeroHeading account={account} investment={investment} readOnly={readOnly} />
-        <SelectedAccountHeroBalance account={account} investment={investment} />
+        <SelectedAccountHeroBalance account={account} investment={investment} reconciliation={reconciliation} reconciliationLoaded={reconciliationLoaded} />
         <SelectedAccountHeroFacts account={account} investment={investment} />
-        <SelectedAccountHeroActions account={account} investment={investment} canManage={canManage} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} />
+        <SelectedAccountHeroActions account={account} investment={investment} canManage={canManage} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} onEnsureBalance={onEnsureBalance} />
       </div>
       <AccountCarousel accounts={accounts} account={account} onSelectAccount={onSelectAccount} />
     </section>
@@ -258,7 +262,7 @@ const AccountInsights = ({ accounts, totalBalance, investmentCash, balanceTrend,
   </aside>
 );
 
-const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, ownershipFilter, onOwnershipFilterChange, ownerMode, bootstrap, onSelectAccount, onViewTransactions, onViewInvestment, onEditAccount, onArchiveAccount }) => {
+const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, ownershipFilter, onOwnershipFilterChange, ownerMode, bootstrap, onSelectAccount, onViewTransactions, onViewInvestment, onEditAccount, onArchiveAccount, onEnsureBalance, reconciliationLookup = null }) => {
   const desktopEnabled = useDesktopWorkspaceEnabled();
   const period = currentMonthInJakarta();
   const selectedId = selectedAccount?.account_id || "";
@@ -287,7 +291,7 @@ const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, owne
       </div>
       <div className={styles.desktopWorkspace}>
         <div className={styles.leftColumn}>
-          <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} />
+          <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} onEnsureBalance={onEnsureBalance} reconciliation={reconciliationLookup?.[selectedAccount.account_id]} reconciliationLoaded={reconciliationLookup !== null} />
           <RecentTransactionsPanel resource={recentTransactionsResource} items={recentTransactionsResource.data?.items || []} categoryLookup={categoryLookup} selectedAccount={selectedAccount} onViewTransactions={onViewTransactions} />
         </div>
         <AccountInsights accounts={insightAccounts} totalBalance={totalBalance} investmentCash={investmentCash} balanceTrend={balanceTrend} distribution={distribution} reportStatus={reportResource.status} />

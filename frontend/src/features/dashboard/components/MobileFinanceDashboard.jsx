@@ -1,7 +1,5 @@
 import {
   FiAlertTriangle,
-  FiArrowDownLeft,
-  FiArrowUpRight,
   FiBell,
   FiCalendar,
   FiChevronRight,
@@ -24,11 +22,6 @@ import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
 const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
-  const cashFlow = overview?.cashFlow || {};
-  const cashIn = Number(cashFlow.income || 0) + Number(cashFlow.refund || 0);
-  const cashOut = Number(cashFlow.expense || 0);
-  const net = cashIn - cashOut;
-  const netTone = net < 0 ? "negative" : net > 0 ? "positive" : "default";
   return (
     <header className={dashboardClass("mobile-finance-hero")}>
       <div className={dashboardClass("mobile-finance-hero__bar")}>
@@ -66,12 +59,6 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
       <div className={dashboardClass("mobile-finance-summary")} aria-label="Konteks dana tersedia">
         <div><span>Total saldo rekening</span><SensitiveMoney visible={balanceVisible} value={overview.nonInvestmentBalance ?? overview.totalBalance} /></div>
         <div><span>Sisa di Alokasi</span><SensitiveMoney visible={balanceVisible} value={overview.allocatedRemaining || 0} /></div>
-      </div>
-
-      <div className={dashboardClass("mobile-finance-cash-strip")} aria-label="Arus kas bulan ini">
-        <span><FiArrowDownLeft aria-hidden="true" />Masuk <strong><SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" /></strong></span>
-        <span><FiArrowUpRight aria-hidden="true" />Keluar <strong><SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" /></strong></span>
-        <span>Selisih bulan ini <strong className={dashboardClass(`money--${netTone}`)}>{balanceVisible && net > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={net} tone={netTone} /></strong></span>
       </div>
     </header>
   );

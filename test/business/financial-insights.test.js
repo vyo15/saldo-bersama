@@ -355,6 +355,25 @@ test("laporan 1 bulan memakai seri harian penuh dan transfer tidak membuat cashf
   }
 });
 
+test("notifikasi ambang tidak mengganggu kebutuhan sekali bayar yang selesai tepat", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    const period = todayJakarta().slice(0, 7);
+    await insertTransaction(db, { id: "expense-fixed-complete", date: `${period}-01`, type: "expense", amount: 100_000, source: "account-bank", category: "category-food" });
+    await db.execute(
+      "INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id,recording_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      ["budget-fixed-complete", period, "category-food", null, "Sedekah", 100_000, 80, "active", 1, owner.user_id, now, owner.user_id, now, "shared", null, "fixed_once"],
+    );
+
+    await queueActionableNotifications(db);
+    const budgetQueued = await db.all("SELECT notification_type FROM notification_queue WHERE notification_type='budget_threshold'");
+    assert.equal(budgetQueued.length, 0);
+  } finally {
+    db.close();
+  }
+});
+
 test("notifikasi aksi penting idempotent untuk budget dan transaksi belum dialokasikan", async () => {
   const db = await createSqliteTestDatabase();
   try {

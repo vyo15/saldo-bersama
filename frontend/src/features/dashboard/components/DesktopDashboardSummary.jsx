@@ -1,4 +1,4 @@
-import { FiAlertCircle, FiArrowDownRight, FiArrowUpRight, FiEye, FiEyeOff, FiPlus, FiShield } from "react-icons/fi";
+import { FiAlertCircle, FiEye, FiEyeOff, FiPlus, FiShield } from "react-icons/fi";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
@@ -10,12 +10,6 @@ import { AccountVisual } from "../../accounts/components/AccountFinancialCard.js
 import { formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
-
-const flowWidth = (value, maximum) => {
-  const amount = Math.max(0, Number(value || 0));
-  if (!amount || maximum <= 0) return 0;
-  return Math.max(8, Math.round((amount / maximum) * 100));
-};
 
 export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggleBalance, onOpenQuickRecord }) => (
   <header className={dashboardClass("shared-dashboard__header")}>
@@ -45,11 +39,6 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
   const nonInvestmentBalance = overview.nonInvestmentBalance ?? model.accountBalances
     .filter((item) => item.account_type !== "investment")
     .reduce((sum, item) => sum + Number(item.balance || 0), 0);
-  const cashFlow = overview?.cashFlow || {};
-  const cashIn = Number(cashFlow.income || 0) + Number(cashFlow.refund || 0);
-  const cashOut = Number(cashFlow.expense || 0);
-  const net = cashIn - cashOut;
-  const maxFlow = Math.max(1, cashIn, cashOut);
   const allocation = model.allocationSummary || {};
 
   return (
@@ -70,24 +59,6 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
           <div className={dashboardClass("desktop-balance-card__allocation-note")}>
             <span>{allocation.count || 0} Alokasi aktif</span>
             <strong>{Number(allocation.percentage || 0)}% terpakai / disiapkan</strong>
-          </div>
-        </div>
-
-        <div className={dashboardClass("desktop-cashflow-visual")} aria-label="Arus uang bulan ini">
-          <div className={dashboardClass("desktop-cashflow-visual__heading")}>
-            <span>Arus uang bulan ini</span>
-            <strong className={dashboardClass(net < 0 ? "is-negative" : "is-positive")}>
-              {net < 0 ? <FiArrowDownRight aria-hidden="true" /> : <FiArrowUpRight aria-hidden="true" />}
-              <SensitiveMoney visible={balanceVisible} value={Math.abs(net)} />
-            </strong>
-          </div>
-          <div className={dashboardClass("desktop-cashflow-bar")}>
-            <span><i style={{ width: `${flowWidth(cashIn, maxFlow)}%` }} /></span>
-            <div><small>Masuk bulan ini</small><SensitiveMoney visible={balanceVisible} value={cashIn} tone="positive" /></div>
-          </div>
-          <div className={dashboardClass("desktop-cashflow-bar desktop-cashflow-bar--out")}>
-            <span><i style={{ width: `${flowWidth(cashOut, maxFlow)}%` }} /></span>
-            <div><small>Keluar bulan ini</small><SensitiveMoney visible={balanceVisible} value={cashOut} tone="negative" /></div>
           </div>
         </div>
       </div>

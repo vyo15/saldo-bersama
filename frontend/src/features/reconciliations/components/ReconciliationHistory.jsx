@@ -16,7 +16,7 @@ const HistoryTable = ({ items, accountLookup, formatReconciledAt }) => (
         <tbody>{items.map((item) => <tr key={item.reconciliation_id}><td>{formatReconciledAt(item.reconciled_at)}</td><td>{accountLookup[item.account_id] || item.account_name || "Rekening tidak tersedia"}</td><td className="align-right"><Money value={item.system_balance} /></td><td className="align-right"><Money value={item.actual_balance} /></td><td className="align-right"><Money value={item.difference} tone={item.difference === 0 ? "positive" : "negative"} /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody>
       </table>
     </div>
-    <div className={`mobile-data-list ${styles.mobileHistoryList}`} aria-label="Riwayat pencocokan saldo">
+    <div className={`mobile-data-list ${styles.mobileHistoryList}`} aria-label="Riwayat pemeriksaan saldo">
       {items.map((item) => {
         const matched = Number(item.difference || 0) === 0;
         return (
@@ -26,7 +26,7 @@ const HistoryTable = ({ items, accountLookup, formatReconciledAt }) => (
               <StatusBadge status={item.status} />
             </div>
             <dl className={styles.mobileHistoryMetrics}>
-              <div><dt>Saldo sistem</dt><dd><Money value={item.system_balance} /></dd></div>
+              <div><dt>Saldo tercatat</dt><dd><Money value={item.system_balance} /></dd></div>
               <div><dt>Saldo aktual</dt><dd><Money value={item.actual_balance} /></dd></div>
             </dl>
             <div className={styles.mobileHistoryDifference} data-state={matched ? "matched" : "difference"}>
@@ -48,7 +48,7 @@ const ReconciliationHistory = ({ accounts, items, accountLookup, historyAccountI
         <SelectionField label="Filter riwayat berdasarkan rekening" hideLabel compact value={historyAccountId} onChange={setHistoryAccountId} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={[{ value: "all", label: "Semua rekening" }, ...accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), ...accountOptionVisual(account) }))]} />
       </div>
     </div>
-    {items.length ? <HistoryTable items={items} accountLookup={accountLookup} formatReconciledAt={formatReconciledAt} /> : <EmptyState variant="inline" icon={FiDatabase} title="Belum ada hasil pencocokan" description="Belum ada riwayat rekonsiliasi untuk filter ini." headingLevel={3} />}
+    {items.length ? <HistoryTable items={items} accountLookup={accountLookup} formatReconciledAt={formatReconciledAt} /> : <EmptyState variant="inline" icon={FiDatabase} title="Belum ada pemeriksaan saldo" description="Riwayat pemeriksaan untuk filter ini masih kosong." headingLevel={3} />}
   </Card>
 );
 

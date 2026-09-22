@@ -55,14 +55,18 @@ export const budgetVisualState = (item = {}, periodMeta = {}) => {
   const amount = Number(item.amount || 0);
   const used = Number(item.used_amount || 0);
   const remaining = amount - used;
+  const singleUse = item.recording_mode === "fixed_once";
   const pacingAhead = Boolean(periodMeta.isCurrent)
     && usedPercent > Number(periodMeta.elapsedPercent || 0) + 8;
 
   if (usedPercent > 100) {
     return { key: "danger", label: "Melebihi rencana", attention: true, usedPercent, warningThreshold, remaining };
   }
+  if (usedPercent >= 100 && singleUse) {
+    return { key: "completed", label: "Selesai", attention: false, usedPercent, warningThreshold, remaining };
+  }
   if (usedPercent >= 100) {
-    return { key: "danger", label: "Rencana habis", attention: true, usedPercent, warningThreshold, remaining };
+    return { key: "empty", label: "Dana habis", attention: true, usedPercent, warningThreshold, remaining };
   }
   if (usedPercent >= warningThreshold) {
     return { key: "warning", label: "Hampir habis", attention: true, usedPercent, warningThreshold, remaining };

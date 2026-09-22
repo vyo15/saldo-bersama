@@ -1,4 +1,47 @@
+## 2026-09-22 — Status Kebutuhan selesai vs dana habis
+- Membedakan state 100% berdasarkan pola Kebutuhan: **Sekali bayar** yang tepat terpenuhi menjadi `✓ Selesai`, sedangkan Kebutuhan fleksibel/rutin yang mencapai batas menjadi `Dana habis`; overspend tetap `Melebihi rencana`.
+- Membuat row selesai lebih compact dan tenang, menghapus quick-add/progress pada state final, memindahkan `Terpakai`, waktu selesai, dan Jadwal ke **Detail kebutuhan**, serta memberi warning tone pada progress `Dana habis`.
+- Menyamakan status Laporan dan menghentikan alert/notifikasi ambang 100% untuk kebutuhan sekali bayar yang selesai tepat tanpa menutupi overspend. Regression presentation, alert, notification, QA, dan design contract diperbarui.
+
+## 2026-09-21 — Pastikan Saldo Sesuai
+- Mengubah UX rekonsiliasi rekening umum menjadi **Pastikan Saldo Sesuai**: entry point utama menempel pada Rekening, saldo aktual selalu dimasukkan user satu kali lalu dibandingkan sistem, dan pilihan lama `Ya, saldonya sama / Tidak, berbeda` dihapus.
+- Menghapus shortcut/menu permanen `Cocokkan` dari Dashboard dan navigasi utama agar pemeriksaan saldo tidak terasa sebagai pekerjaan rutin. Route internal `/rekonsiliasi` tetap dipertahankan untuk deep-link notifikasi dan kompatibilitas.
+- Saldo yang sesuai selesai dengan feedback ringan; mismatch tetap tersimpan sebagai checkpoint tanpa mengubah saldo otomatis dan menawarkan **Catat transaksi yang tertinggal / Periksa aktivitas rekening / Selesaikan nanti**. Status checkpoint terbaru ikut tampil di Rekening hanya setelah histori berhasil dimuat; copy reminder, settings, regression contract, dan dokumentasi diselaraskan.
+- Membersihkan sisa CSS flow Ya/Tidak lama dan wrapper grid ganda pada form pemeriksaan yang dapat menyempitkan layout desktop.
+
+## 2026-09-21 — Development dependency bootstrap cleanup
+- Menghapus probe `axe-core` yang tertinggal di bootstrap development setelah rendered browser smoke kembali tidak memakai dependency test tambahan. Probe stale tersebut membuat `npm run dev` selalu menjalankan `npm ci --include=dev` lalu gagal dengan `DEVELOPMENT_DEPENDENCY_INCOMPLETE` meskipun install sebenarnya sukses.
+- Mempertahankan regression fresh-process resolver dengan dependency canonical `vite`, sehingga hardening cache negatif Windows tetap terlindungi tanpa memaksa package yang tidak ada di package/lockfile.
+- Menyelaraskan workflow quality gate dengan implementasi browser smoke saat ini; full `axe` tetap merupakan gap terpisah sesuai status accessibility project.
+
+## 2026-09-20 — Windows dependency probe hardening
+- Memperbaiki false-negative bootstrap `axe-core` setelah `npm ci` pada quality gate ZIP: probe dependency sekarang dijalankan di proses Node segar sehingga hasil resolve sebelum install tidak dapat tertahan sebagai cache negatif pada runtime/OS tertentu.
+- Bootstrap otomatis memakai `npm ci --include=dev` agar `axe-core` dan dependency quality-gate lain tetap terpasang walau environment npm/Node membawa konfigurasi omit-dev/production.
+- Menambah regression yang mensimulasikan dependency awalnya hilang lalu muncul pada proses yang sama, serta menyelaraskan dokumentasi workflow dengan behavior final.
+
+## 2026-09-20 — ZIP dependency bootstrap untuk accessibility gate
+- Memperbaiki `npm run zip` setelah penambahan rendered `axe-core` gate: archive wrapper sekarang mem-bootstrap dependency development yang benar-benar hilang sebelum full verification, sehingga patch package/lockfile tidak berhenti terlambat di `browser-smoke` hanya karena `node_modules` lokal masih versi lama.
+- Probe dependency development kini mencakup `axe-core`; `npm run verify` tetap non-mutating tetapi preflight `npm ls` dipaksa menyertakan dev dependency agar environment `NODE_ENV=production`/omit-dev tidak menghasilkan false PASS.
+- Regression tooling dan dokumentasi diselaraskan. `PATCH_MANIFEST.txt` tetap bukan source canonical dan harus dihapus setelah patch diekstrak ke root project.
+
 # Changelog
+
+## 2026-09-20 — Accessibility runtime gate & shell semantics
+- Menambahkan **skip-to-main** pada authenticated shell, memperbaiki menu akun dan flyout sidebar menjadi disclosure semantic tanpa false ARIA-menu contract, memberi accessible name pada viewport onboarding keyboard, serta memastikan input jam/menit mempunyai focus indicator visible.
+- Mengunci reduced-motion existing melalui browser smoke agar transition/animation non-esensial benar-benar terpangkas pada hasil render, bukan hanya terdeteksi lewat source regression.
+- Menaikkan browser smoke menjadi accessibility runtime gate: `axe-core` memblok violation `serious`/`critical` pada login dan route authenticated utama dengan fixture deterministic test-only, sekaligus memverifikasi skip-link, focus, text spacing, reduced-motion, dan reflow ekuivalen zoom 125/150/200%.
+- Menyelaraskan regression contract, quality documentation, implementation matrix, QA, dan release checklist. Real-device/screen-reader serta Firefox/Safari/installed-PWA tetap merupakan validasi manual release.
+
+## 2026-09-19 — User-flow continuity & success-state refinement
+- Membawa origin `returnTo` internal yang aman dari global **Catat** ke flow Kewajiban/Jadwal, Target, dan Investasi; workflow state tetap dikonsumsi satu kali, sedangkan setelah sukses user dapat memilih **Kembali ke halaman sebelumnya** tanpa auto-redirect atau mutation tambahan.
+- Menyamakan outcome pembayaran/penerimaan Jadwal Rutin dengan success state finansial: nominal, jadwal, dampak saldo/Alokasi, progres Kewajiban, serta continuation **Alokasikan dana** untuk penerimaan.
+- Menyelesaikan first-use Dashboard sampai **Catatan pertama** dan menutup dead-end picker Kewajiban kosong dengan CTA ke halaman canonical. Error diagnostics `code/requestId` dipindahkan ke disclosure **Lihat detail masalah** agar recovery tetap utama.
+- Mengoptimalkan asset onboarding Investasi tanpa mengubah dimensi/semantik untuk mengembalikan headroom clean-source ZIP; batas artifact tetap tidak dilonggarkan. Regression flow, microcopy, dokumentasi, lint/build/quality gate diselaraskan.
+
+## 2026-09-19 — Empty state Investasi compact final
+- Menyelaraskan true-empty `/investasi` dengan desain yang sudah disetujui: ilustrasi pasangan Saldo Bersama tampil utuh tanpa crop, ringkasan Rp0 tidak digandakan, dan jalur **Sudah punya investasi? → Masukkan posisi saat ini** memakai setup canonical yang sama.
+- Memadatkan copy menjadi **Mulai catat investasi**, `Tambahkan aset yang kamu miliki dan pantau nilainya.`, **Pilih aset, lalu isi posisinya**, serta ringkasan field `Jumlah · Modal/harga rata-rata · Nilai saat ini · Tanggal. Saldo rekening tidak berubah.` agar layar lebih cepat dipindai tanpa kehilangan konteks.
+- Tidak ada perubahan schema, API contract, ledger, authorization, atau mutation investasi; patch hanya menyentuh presentation, asset, regression contract, dan dokumentasi.
 
 ## 2026-09-19 — Investasi route/runtime hardening
 - Memperbaiki crash saat membuka flow Investasi dari menu/Quick Catat: `setupGoalId` sekarang diteruskan eksplisit dari `InvestmentsPage` ke overlay setup, sehingga setup investasi untuk Target tidak lagi melempar `ReferenceError`.
@@ -773,6 +816,12 @@
 - Menghapus `MobileDashboardFilters.jsx` dan `transaction-wallet.svg` yang benar-benar orphan serta membersihkan selector Budget tanpa consumer. Regression baru mencakup continuity `unallocated`, `carry` dengan sisa/Rp0, copy Kebutuhan opt-in, target existing, dan parity status Kebutuhan.
 
 # Changelog
+
+## 2026-09-19 — User-flow continuity & success-state refinement
+- Membawa origin `returnTo` internal yang aman dari global **Catat** ke flow Kewajiban/Jadwal, Target, dan Investasi; workflow state tetap dikonsumsi satu kali, sedangkan setelah sukses user dapat memilih **Kembali ke halaman sebelumnya** tanpa auto-redirect atau mutation tambahan.
+- Menyamakan outcome pembayaran/penerimaan Jadwal Rutin dengan success state finansial: nominal, jadwal, dampak saldo/Alokasi, progres Kewajiban, serta continuation **Alokasikan dana** untuk penerimaan.
+- Menyelesaikan first-use Dashboard sampai **Catatan pertama** dan menutup dead-end picker Kewajiban kosong dengan CTA ke halaman canonical. Error diagnostics `code/requestId` dipindahkan ke disclosure **Lihat detail masalah** agar recovery tetap utama.
+- Mengoptimalkan asset onboarding Investasi tanpa mengubah dimensi/semantik untuk mengembalikan headroom clean-source ZIP; batas artifact tetap tidak dilonggarkan. Regression flow, microcopy, dokumentasi, lint/build/quality gate diselaraskan.
 
 ## 2026-09-18 — KPR onboarding aktual dan progress compact
 - Menyesuaikan Kewajiban **KPR** dengan data bank nyata tanpa membuat modul baru: create flow menerima sisa pokok saat ini, cicilan aktual, posisi **cicilan berikutnya X dari Y**, pembayaran berikutnya, rekening/kategori canonical, serta akhir kontrak opsional. Nilai `installments_paid` diturunkan otomatis dari posisi cicilan sehingga KPR lama tidak mulai dari 0.

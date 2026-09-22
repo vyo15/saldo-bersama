@@ -38,7 +38,8 @@
 | Recurring | Nama internal untuk aturan Jadwal Rutin yang menghasilkan occurrence. |
 | Occurrence | Kejadian per tanggal dari recurring rule. |
 | Target/Goal | Tujuan tabungan yang terhubung ke rekening dan mutasi. |
-| Rekonsiliasi | Perbandingan saldo sistem dengan saldo aktual. |
+| Pastikan Saldo Sesuai | Aksi user-facing pada Rekening untuk membandingkan saldo tercatat dengan saldo aktual yang dimasukkan user. Tidak mengubah saldo otomatis. |
+| Rekonsiliasi | Nama domain/route/API internal untuk checkpoint hasil **Pastikan Saldo Sesuai**; bukan istilah utama di UI. |
 | Periode tutup | Snapshot periode yang membatasi perubahan sesuai service rule. |
 | Source of truth | Sistem canonical yang menjadi dasar data; saat ini Turso. |
 | Mirror | Salinan satu arah untuk laporan; tidak menerima write balik. |

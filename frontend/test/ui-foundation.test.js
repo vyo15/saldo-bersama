@@ -462,7 +462,7 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(quickActions, /to: "\/rekening", label: "Rekening"/);
   assert.match(quickActions, /to: "\/target", label: "Target"/);
   assert.match(quickActions, /to: "\/investasi", label: "Investasi"/);
-  assert.match(quickActions, /to: "\/rekonsiliasi", label: "Cocokkan"/);
+  assert.doesNotMatch(quickActions, /\/rekonsiliasi|Cocokkan/);
   assert.doesNotMatch(quickActions, /label: "Atur Dana"/);
   assert.doesNotMatch(quickActions, /label: "Kategori"|label: "Jadwal Rutin"/);
   assert.match(quickActions, /mobile-quick-action/);
@@ -479,11 +479,11 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
   const order = ["<MobileFinanceHero", "<MobileNextAction", "<DashboardQuickActions", "<MobileUpcomingPlan", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile decision-first harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan hero arus uang → perhatian → akses cepat → rencana terdekat → aktivitas → investasi.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan hero saldo → perhatian → akses cepat → rencana terdekat → aktivitas → investasi.");
   assert.doesNotMatch(mobile, /const MobileFinancialInsight\b|const MobileBudgetPlan\b|const MobileUpcomingSchedule\b/);
   assert.match(mobile, /Aman dipakai[\s\S]{0,180}\/ hari/);
-  assert.match(mobile, /Masuk <strong>/);
-  assert.match(mobile, /Keluar <strong>/);
+  assert.doesNotMatch(mobile, /Masuk <strong>/);
+  assert.doesNotMatch(mobile, /Keluar <strong>/);
   assert.doesNotMatch(mobile, /MobileAccounts|MobileAllocation|AccountVisual/, "Dashboard mobile tidak boleh kembali menumpuk detail rekening atau alokasi yang sudah punya route khusus.");
 });
 

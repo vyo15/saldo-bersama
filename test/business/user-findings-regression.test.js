@@ -87,6 +87,26 @@ test("alert dashboard memprioritaskan tindakan manusia, bukan alfabet judul", ()
   assert.equal(exceededBeforeDue[0]?.type, "budget_threshold");
 });
 
+test("kebutuhan sekali bayar yang tepat terpenuhi tidak dianggap alert habis, tetapi overspend tetap diperingatkan", () => {
+  const base = {
+    period: "2026-09",
+    historical: false,
+    accounts: [], envelopes: [], recurring: [], goals: [], unallocatedCount: 0,
+    reconciliationRows: [], investmentReconciliationRows: [],
+  };
+  const completed = buildFinancialAlerts({
+    ...base,
+    budgets: [{ budget_id: "sedekah", name: "Sedekah", amount: 1_000_000, used_amount: 1_000_000, warning_threshold: 80, recording_mode: "fixed_once" }],
+  });
+  assert.equal(completed.some((item) => item.type === "budget_threshold"), false);
+
+  const exceeded = buildFinancialAlerts({
+    ...base,
+    budgets: [{ budget_id: "sedekah", name: "Sedekah", amount: 1_000_000, used_amount: 1_010_000, warning_threshold: 80, recording_mode: "fixed_once" }],
+  });
+  assert.equal(exceeded.find((item) => item.type === "budget_threshold")?.severity, "danger");
+});
+
 test("preview pembelian investasi menghitung weighted average otomatis", () => {
   const result = investmentProjectedAverage(
     { instrument_id: "bbca", lots: "10", price_per_share: "1500", fee: "0" },

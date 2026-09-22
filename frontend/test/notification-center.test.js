@@ -71,7 +71,7 @@ test("rekonsiliasi tetap dapat dirender sebelum rekening dipilih", async () => {
   assert.doesNotMatch(form, /Cocokkan Investasi/);
 });
 
-test("rekonsiliasi tidak menganggap saldo sistem sebagai saldo aktual sebelum konfirmasi user", async () => {
+test("pemeriksaan saldo selalu meminta saldo aktual dan tidak menyalin saldo sistem", async () => {
   const [page, form] = await Promise.all([
     source("src/features/reconciliations/ReconciliationsPage.jsx"),
     source("src/features/reconciliations/components/ReconciliationForm.jsx"),
@@ -82,11 +82,10 @@ test("rekonsiliasi tidak menganggap saldo sistem sebagai saldo aktual sebelum ko
   assert.match(page, /attentionReturnPathRef/);
   assert.match(page, /attention\?\.attentionSource === "notification-center"/);
   assert.match(form, /Saldo tercatat di aplikasi/);
-  assert.match(form, /Apakah saldo yang Anda lihat di bank juga/);
-  assert.match(form, /Ya, saldonya sama/);
-  assert.match(form, /Tidak, berbeda/);
-  assert.match(form, /Saldo aktual di bank/);
-  assert.match(form, /Dipilih otomatis/);
+  assert.match(form, /Saldo di bank saat ini/);
+  assert.match(form, /Bandingkan saldo/);
+  assert.doesNotMatch(form, /Ya, saldonya sama|Tidak, berbeda/);
+  assert.match(form, /Rekening yang akan diperiksa/);
   assert.match(form, /Saldo tidak diubah otomatis/);
   assert.doesNotMatch(page, /actual_balance:\s*accountSystemBalance|actual_balance:\s*selectedAccount/);
 });
