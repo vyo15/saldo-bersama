@@ -63,7 +63,7 @@ export const visibleAccountsStatement = (actor, { includeArchived = false, cutof
 export const mapVisibleAccountRows = (rows, actor) => rows.map((row) => {
   const item = publicRow(row, ["allow_negative"]);
   const actorOwnsAccount = item.owner_scope === "personal" && item.owner_user_id === actor.user_id;
-  const canOperate = actor.role === "owner" || item.owner_scope === "shared" || actorOwnsAccount;
+  const canOperate = item.owner_scope === "shared" || actorOwnsAccount;
   const balance = Number(item.balance || 0);
   const allocatedRemaining = Math.max(0, Number(item.allocated_remaining || 0));
   return {
@@ -75,8 +75,8 @@ export const mapVisibleAccountRows = (rows, actor) => rows.map((row) => {
     is_owned_by_actor: actorOwnsAccount,
     can_transact: canOperate,
     can_reconcile: canOperate && item.account_type !== "investment",
-    can_manage: actor.role === "owner",
-    read_only: !canOperate && actor.role !== "owner",
+    can_manage: canOperate,
+    read_only: !canOperate,
   };
 });
 

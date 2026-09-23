@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { FiArrowLeft, FiExternalLink, FiX } from "react-icons/fi";
+import { useEffect, useMemo, useState } from "react";
+import { FiExternalLink } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Button from "../../../components/common/Button.jsx";
+import Modal from "../../../components/common/Modal.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import SelectionField from "../../../components/common/SelectionField.jsx";
@@ -11,7 +11,6 @@ import ErrorState, { RefreshWarning } from "../../../components/feedback/ErrorSt
 import { useFinance } from "../../../app/FinanceContext.jsx";
 import { currentMonthInJakarta } from "../../../domain/dates.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
-import { useFocusTrap } from "../../../hooks/useFocusTrap.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionTone } from "../../../shared/presentation/transaction.js";
 import { roleLabel } from "../settingsPresentation.js";
@@ -39,22 +38,17 @@ const ActivityItem = ({ item, accountLookup, categoryLookup }) => {
   return <article className={activityStyles.memberActivityItem}><span className={activityStyles.memberActivityItemIcon}><Icon aria-hidden="true" /></span><div className={activityStyles.memberActivityItemCopy}><strong>{item.description || item.merchant || "Tanpa keterangan"}</strong><small>{formatTransactionDate(item.transaction_date)} · {transactionAccountLabel(item, accountLookup)}</small><span>{transactionCategoryLabel(item, categoryLookup)} · {TRANSACTION_LABELS[item.transaction_type] || item.transaction_type}</span></div><div className={activityStyles.memberActivityItemValue}><Money value={item.amount} tone={transactionTone(item.transaction_type)} /><StatusBadge status={item.status} /></div></article>;
 };
 
-const ActivityList = ({ transactions, items, accountLookup, categoryLookup }) => <section className={activityStyles.memberActivityListSection} aria-labelledby="member-activity-transactions"><div className={activityStyles.memberActivitySectionHeading}><div><p className="eyebrow">Ledger</p><h3 id="member-activity-transactions">Transaksi terbaru</h3></div>{transactions.data ? <small>{items.length} dari {transactions.data.total || 0}</small> : null}</div>{transactions.status === "loading" ? <div className={activityStyles.memberActivityLoading} role="status">Memuat aktivitas transaksi...</div> : null}{transactions.status === "error" ? <ErrorState error={transactions.error} onRetry={transactions.reload} /> : null}{transactions.status !== "loading" && transactions.status !== "error" && !items.length ? <div className={activityStyles.memberActivityEmpty}><strong>Belum ada transaksi</strong><span>Tidak ada transaksi yang cocok dengan periode dan filter ini.</span></div> : null}{items.length ? <div className={activityStyles.memberActivityList}>{items.map((item) => <ActivityItem key={item.transaction_id} item={item} accountLookup={accountLookup} categoryLookup={categoryLookup} />)}</div> : null}</section>;
+const ActivityList = ({ transactions, items, accountLookup, categoryLookup }) => <section className={activityStyles.memberActivityListSection} aria-labelledby="member-activity-transactions"><div className={activityStyles.memberActivitySectionHeading}><div><p className="eyebrow">Riwayat</p><h3 id="member-activity-transactions">Transaksi terbaru</h3></div>{transactions.data ? <small>{items.length} dari {transactions.data.total || 0}</small> : null}</div>{transactions.status === "loading" ? <div className={activityStyles.memberActivityLoading} role="status">Memuat aktivitas transaksi...</div> : null}{transactions.status === "error" ? <ErrorState error={transactions.error} onRetry={transactions.reload} /> : null}{transactions.status !== "loading" && transactions.status !== "error" && !items.length ? <div className={activityStyles.memberActivityEmpty}><strong>Belum ada transaksi</strong><span>Tidak ada transaksi yang cocok dengan periode dan filter ini.</span></div> : null}{items.length ? <div className={activityStyles.memberActivityList}>{items.map((item) => <ActivityItem key={item.transaction_id} item={item} accountLookup={accountLookup} categoryLookup={categoryLookup} />)}</div> : null}</section>;
 
 const ActivityBody = ({ member, profile, period, setPeriod, type, setType, transactions, report, expenseSummary, items, accountLookup, categoryLookup, openAllTransactions }) => <div className={activityStyles.memberActivityBody}><MemberProfile member={member} profile={profile} /><ActivityFilters period={period} setPeriod={setPeriod} type={type} setType={setType} /><RefreshWarning error={transactions.refreshError || report.refreshError} onRetry={() => Promise.all([transactions.reload(), report.reload()])} />{report.status === "error" ? <div className={activityStyles.memberActivityReportWarning} role="status"><span>Ringkasan pengeluaran belum dapat dimuat.</span><Button type="button" onClick={report.reload}>Coba lagi</Button></div> : null}<ActivityMetrics type={type} transactions={transactions} report={report} expenseSummary={expenseSummary} /><ActivityList transactions={transactions} items={items} accountLookup={accountLookup} categoryLookup={categoryLookup} /><Button className={activityStyles.memberActivityOpenAll} variant="primary" icon={FiExternalLink} type="button" onClick={openAllTransactions}>Lihat semua di halaman Transaksi</Button></div>;
-
-const ActivityDialog = ({ panelRef, closeRef, member, onClose, bodyProps }) => <div className={activityStyles.memberActivityBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={panelRef} className={activityStyles.memberActivityPanel} role="dialog" aria-modal="true" aria-labelledby="member-activity-title" tabIndex={-1}><header className={activityStyles.memberActivityHeader}><div className={activityStyles.memberActivityHeading}><strong id="member-activity-title">Aktivitas anggota</strong><small>Transaksi yang dicatat oleh anggota ini.</small></div><button ref={closeRef} className={activityStyles.memberActivityClose} type="button" onClick={onClose} aria-label="Tutup aktivitas anggota"><FiX className={activityStyles.memberActivityDesktopIcon} aria-hidden="true" /><FiArrowLeft className={activityStyles.memberActivityMobileIcon} aria-hidden="true" /></button></header><ActivityBody member={member} {...bodyProps} /></section></div>;
 
 const MemberActivityPanel = ({ open, member, currentUser, onClose }) => {
   const navigate = useNavigate();
   const { bootstrap } = useFinance();
-  const panelRef = useRef(null);
-  const closeRef = useRef(null);
   const [period, setPeriod] = useState(currentMonthInJakarta());
   const [type, setType] = useState("all");
   const enabled = Boolean(open && member?.user_id);
   useEffect(() => { if (member?.user_id) setType("all"); }, [member?.user_id]);
-  useFocusTrap({ open: enabled, containerRef: panelRef, initialFocusRef: closeRef, onEscape: onClose, bodyClassName: "modal-open" });
   const transactions = useApiResource("transactions.list", { period, limit: MEMBER_ACTIVITY_LIMIT, offset: 0, transaction_type: type, created_by: member?.user_id || "all" }, { enabled });
   const report = useApiResource("reports.monthly", { period, trend_months: 3 }, { enabled });
   const accountLookup = useMemo(() => Object.fromEntries((bootstrap?.accounts || []).map((item) => [item.account_id, item])), [bootstrap?.accounts]);
@@ -65,7 +59,17 @@ const MemberActivityPanel = ({ open, member, currentUser, onClose }) => {
   const items = transactions.data?.items || [];
   const openAllTransactions = () => { onClose(); navigate("/transaksi", { state: { creatorId: member.user_id, period } }); };
   const bodyProps = { profile, period, setPeriod, type, setType, transactions, report, expenseSummary, items, accountLookup, categoryLookup, openAllTransactions };
-  return createPortal(<ActivityDialog panelRef={panelRef} closeRef={closeRef} member={member} onClose={onClose} bodyProps={bodyProps} />, document.body);
+  return <Modal
+    open={enabled}
+    onClose={onClose}
+    title="Aktivitas anggota"
+    description="Transaksi yang dicatat oleh anggota ini."
+    size="lg"
+    className={activityStyles.memberActivityModal}
+    mobileSwipeToClose
+  >
+    <ActivityBody member={member} {...bodyProps} />
+  </Modal>;
 };
 
 export default MemberActivityPanel;

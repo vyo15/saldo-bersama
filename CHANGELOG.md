@@ -1,3 +1,20 @@
+## 2026-09-23 — Batch 1–4 audit hardening
+- Memperbaiki regression Windows pada audit hierarchical navigation dengan traversal filesystem berbasis `fileURLToPath`, sehingga path drive tidak lagi berubah menjadi `C:\\C:\\...` saat frontend regression dijalankan.
+- Mempertahankan clean-archive fail-closed yang sudah canonical dan menambah audit terhadap jalur packaging; `.git`, `.env*` selain template, `.vercel`, `node_modules`, generated output, dan source non-canonical tetap tidak dapat masuk clean ZIP.
+- Menutup gap target sentuh mobile yang ditemukan audit: tombol visibilitas saldo Dashboard, filter Notifikasi, link tindakan Laporan, dan disclosure Kewajiban kini mengikuti control height minimal 44px.
+- Membersihkan jargon implementasi pada surface user-facing (`canonical`, `idempotency key`, `scope`, `partial import`, `ledger`, serta status konfirmasi server generik) menjadi copy outcome-first.
+- Menambahkan Notifikasi ke `Lainnya` tanpa membuat bottom-nav baru. Entry mobile membawa contextual `returnTo` aman; direct/deep-link tetap fallback Beranda dan active domain Notifikasi tetap Beranda.
+- Regression contract, product requirement, design system, test plan, dan QA checklist diselaraskan dengan perubahan ini.
+
+## 2026-09-22 — Overflow menu Kebutuhan mobile
+- Memperbaiki popover `•••` pada row Kebutuhan yang sebelumnya dapat melebar hingga terpotong oleh shell Alokasi di mobile. Menu sekarang memiliki lebar compact yang eksplisit, tetap menempel pada trigger, memakai row aksi datar untuk **Detail kebutuhan / Edit kebutuhan / Lihat jadwal**, dan menjaga target sentuh trigger 44px.
+
+## 2026-09-22 — Form Kebutuhan compact & cara penggunaan eksplisit
+- Merapikan modal **Tambah/Edit kebutuhan** menjadi lebih compact, mengganti ikon lifecycle menjadi ikon trash yang jelas, dan mempertahankan copy honest-action `Hapus dari daftar` sebelum preview server menentukan hapus permanen atau arsip.
+- **Cara penggunaan** kini memakai picker inline canonical yang sama dengan pola pilihan rekening/ATM, wajib dipilih eksplisit pada create, serta memberi ikon kecil untuk **Sekali bayar / Bisa dipakai beberapa kali / Rutin** tanpa highlight berlebihan.
+- Edit Kebutuhan mengizinkan perubahan cara penggunaan hanya selama belum ada pemakaian; backend menolak perubahan setelah `used_amount > 0`. Beralih keluar dari `Rutin` sebelum pemakaian membersihkan/menonaktifkan jadwal terkait, sedangkan beralih ke `Rutin` meminta detail jadwal baru.
+- Picker kategori pada flow create Kebutuhan menyediakan **Tambah kategori baru** secara inline dan otomatis memilih kategori yang baru dibuat untuk owner; flow create Alokasi + Kebutuhan memakai pola yang sama agar entry point tidak berbeda.
+
 ## 2026-09-22 — Status Kebutuhan selesai vs dana habis
 - Membedakan state 100% berdasarkan pola Kebutuhan: **Sekali bayar** yang tepat terpenuhi menjadi `✓ Selesai`, sedangkan Kebutuhan fleksibel/rutin yang mencapai batas menjadi `Dana habis`; overspend tetap `Melebihi rencana`.
 - Membuat row selesai lebih compact dan tenang, menghapus quick-add/progress pada state final, memindahkan `Terpakai`, waktu selesai, dan Jadwal ke **Detail kebutuhan**, serta memberi warning tone pada progress `Dana habis`.
@@ -25,6 +42,13 @@
 - Regression tooling dan dokumentasi diselaraskan. `PATCH_MANIFEST.txt` tetap bukan source canonical dan harus dihapus setelah patch diekstrak ke root project.
 
 # Changelog
+
+## 2026-09-23 — Hierarchical navigation & deterministic Back
+- Menetapkan tiga level navigasi mobile: root tanpa Back universal, detail/sub-route memakai `ContextBack` ke parent deterministic, dan modal canonical memakai `×` pada root serta `←` pada subview. `navigate(-1)` di Notifikasi dipensiunkan.
+- Notifikasi sekarang membawa return context internal yang aman dengan fallback Beranda; **Pastikan Saldo Sesuai** membawa fallback Rekening dan mempertahankan konteks asal Dashboard/Notifikasi/Rekening. Bottom navigation tetap menandai parent domain (`Notifikasi → Beranda`, `Pastikan Saldo Sesuai → Lainnya`).
+- Detail Alokasi menjadi history-aware melalui query `allocation`, sehingga browser/system Back menutup detail sebelum meninggalkan Atur Dana. Scroll restoration memisahkan active parent dari posisi root: seluruh route Atur Dana berbagi posisi tab, sedangkan Notifikasi mulai dari atas.
+- Panel Aktivitas Anggota dan hasil selisih pemeriksaan saldo dimigrasikan ke `Modal` canonical agar focus, Escape, swipe, dan history overlay tidak memiliki implementasi paralel. Pengaturan/detail Alokasi memakai primitive Back yang sama.
+- Audit tambahan menyelaraskan tiga shortcut Dashboard dengan regression current dan menaikkan microtext ringkasan kepemilikan mobile ke token readable. Lint dan regression hierarchy diperbarui.
 
 ## 2026-09-20 — Accessibility runtime gate & shell semantics
 - Menambahkan **skip-to-main** pada authenticated shell, memperbaiki menu akun dan flyout sidebar menjadi disclosure semantic tanpa false ARIA-menu contract, memberi accessible name pada viewport onboarding keyboard, serta memastikan input jam/menit mempunyai focus indicator visible.

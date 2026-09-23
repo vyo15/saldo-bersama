@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiChevronDown } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
+import ContextBack from "../../components/navigation/ContextBack.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
@@ -9,6 +10,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { currentMonthInJakarta, formatDateTimeJakarta } from "../../domain/dates.js";
+import { contextualNavigationParent, navigationLabelForPath, safeInternalNavigationTarget } from "../../config/navigation.js";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import { parseRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
@@ -115,10 +117,20 @@ const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, ref
 };
 
 
-const reconciliationReturnPath = (accountEntry, attentionSource) => {
-  if (accountEntry) return "/rekening";
-  if (attentionSource === "notification-center") return "/notifikasi";
-  return "/";
+const reconciliationReturnTarget = (locationState, attentionSource) => {
+  const accountEntry = locationState?.reconciliationSource === "account";
+  const parent = contextualNavigationParent("/rekonsiliasi") || { to: "/rekening", label: "Rekening" };
+  const fallback = accountEntry
+    ? parent.to
+    : attentionSource === "notification-center"
+      ? "/notifikasi"
+      : attentionSource === "dashboard"
+        ? "/"
+        : parent.to;
+  const to = safeInternalNavigationTarget(locationState?.returnTo, fallback);
+  const fallbackLabel = to === "/notifikasi" ? "Notifikasi" : to === parent.to ? parent.label : "Beranda";
+  const label = String(locationState?.returnLabel || navigationLabelForPath(to, fallbackLabel));
+  return { to, label };
 };
 
 const requestedReconciliationAccountId = (attention, locationState) => String(attention?.accountId || locationState?.accountId || "");
@@ -146,7 +158,7 @@ const useMatchedReconciliationFeedback = ({ resultOverlay, setResultOverlay, not
     const { accountId, accountLabel } = resultOverlay;
     notify({ message: `Saldo ${accountLabel} sudah sesuai.`, tone: "success", dedupeKey: `reconciliation:matched:${accountId}` });
     setResultOverlay(null);
-    navigate(returnPathRef.current, {
+    navigate(returnPathRef.current.to, {
       replace: accountEntry,
       state: accountEntry ? { accountId } : undefined,
     });
@@ -154,7 +166,7 @@ const useMatchedReconciliationFeedback = ({ resultOverlay, setResultOverlay, not
 };
 
 const useReconciliationResultActions = ({ resultOverlay, setResultOverlay, accountEntry, requestedAccountId, returnPathRef, navigate, openTransactionComposer }) => {
-  const finishReconciliation = useCallback(() => navigate(returnPathRef.current, {
+  const finishReconciliation = useCallback(() => navigate(returnPathRef.current.to, {
     replace: accountEntry,
     state: accountEntry && requestedAccountId ? { accountId: requestedAccountId } : undefined,
   }), [accountEntry, navigate, requestedAccountId, returnPathRef]);
@@ -210,7 +222,9 @@ const ReconciliationsPage = () => {
   const { notify } = useFeedback();
   const { openTransactionComposer } = useTransactionComposer();
   const accountEntry = location.state?.reconciliationSource === "account";
-  const attentionReturnPathRef = useRef(reconciliationReturnPath(accountEntry, attention?.attentionSource));
+  const returnTarget = reconciliationReturnTarget(location.state, attention?.attentionSource);
+  const returnTargetRef = useRef(returnTarget);
+  returnTargetRef.current = returnTarget;
   const { refreshAll, invalidate } = useFinance();
   const data = useReconciliationData();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -221,14 +235,9 @@ const ReconciliationsPage = () => {
   const requestedAccountId = requestedReconciliationAccountId(attention, location.state);
   const submission = useReconciliationSubmission({ selectedAccount, form, setForm, data, refreshAll, invalidate });
 
-  useEffect(() => {
-    if (attention?.attentionSource === "notification-center") attentionReturnPathRef.current = "/notifikasi";
-    else if (attention?.attentionSource === "dashboard") attentionReturnPathRef.current = "/";
-  }, [attention?.attentionSource]);
-
   useRequestedAccountPrefill({ requestedAccountId, resourceStatus: data.accountsResource.status, reconcilableAccounts: data.reconcilableAccounts, formAccountId: form.account_id, consumeAttention, shouldConsumeAttention: Boolean(attentionAccountId), setForm });
-  useMatchedReconciliationFeedback({ resultOverlay: submission.resultOverlay, setResultOverlay: submission.setResultOverlay, notify, navigate, returnPathRef: attentionReturnPathRef, accountEntry });
-  const resultActions = useReconciliationResultActions({ resultOverlay: submission.resultOverlay, setResultOverlay: submission.setResultOverlay, accountEntry, requestedAccountId, returnPathRef: attentionReturnPathRef, navigate, openTransactionComposer });
+  useMatchedReconciliationFeedback({ resultOverlay: submission.resultOverlay, setResultOverlay: submission.setResultOverlay, notify, navigate, returnPathRef: returnTargetRef, accountEntry });
+  const resultActions = useReconciliationResultActions({ resultOverlay: submission.resultOverlay, setResultOverlay: submission.setResultOverlay, accountEntry, requestedAccountId, returnPathRef: returnTargetRef, navigate, openTransactionComposer });
 
   if (data.accountsResource.status === "loading" || data.historyResource.status === "loading") return <NativePageSkeleton kind="reconciliations" label="Memuat pemeriksaan saldo…" />;
   if (data.accountsResource.status === "error") return <ErrorState error={data.accountsResource.error} onRetry={data.accountsResource.reload} />;
@@ -239,6 +248,7 @@ const ReconciliationsPage = () => {
   const accountsRefreshing = reconciliationAccountsRefreshing(data.accountsResource, submission.submitState.status);
 
   return <div className={`page-stack ${styles.page}`}>
+    <ContextBack className={styles.contextBack} to={returnTarget.to} label={returnTarget.label} state={accountEntry && requestedAccountId ? { accountId: requestedAccountId } : undefined} />
     <RefreshWarning error={data.accountsResource.refreshError} onRetry={data.accountsResource.reload} />
     <RefreshWarning error={data.historyResource.refreshError} onRetry={data.historyResource.reload} />
     <PageHeader title={pageTitle} help="Bandingkan saldo yang tercatat dengan saldo yang Anda lihat saat ini." />

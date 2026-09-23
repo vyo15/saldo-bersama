@@ -1,0 +1,68 @@
+.budgetModal :global(.modal__header),
+.budgetModal :global(.modal__body),
+.budgetModal :global(.modal__footer) {
+  padding: var(--space-4);
+}
+
+.budgetModal :global(.modal__body) {
+  overflow-x: hidden;
+}
+
+.budgetForm {
+  gap: 0.7rem;
+}
+
+.primaryFields {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(8.5rem, 0.8fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.primaryFields > * {
+  min-width: 0;
+}
+
+.budgetModal :global([data-ui="money-input"] > small:not(.field__error)) {
+  display: none;
+}
+
+.recordingField {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.actions > button {
+  width: 100%;
+}
+
+.deleteAction {
+  border-color: color-mix(in srgb, var(--negative) 34%, var(--border));
+  color: var(--negative);
+  background: color-mix(in srgb, var(--negative-soft) 38%, var(--surface));
+}
+
+@media (max-width: 520px) {
+  .budgetModal :global(.modal__header),
+  .budgetModal :global(.modal__body),
+  .budgetModal :global(.modal__footer) {
+    padding: 0.8rem;
+  }
+
+  .primaryFields {
+    grid-template-columns: minmax(0, 1.3fr) minmax(7.35rem, 0.72fr);
+    gap: 0.45rem;
+  }
+
+  .budgetForm {
+    gap: 0.6rem;
+  }
+}

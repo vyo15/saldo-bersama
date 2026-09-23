@@ -24,15 +24,25 @@ test("model batch menghitung total dan membawa nama serta pola kebutuhan", () =>
   assert.equal(payload.items[1].schedule_due_day, 20);
 });
 
+
+test("row baru meminta cara penggunaan dipilih eksplisit", () => {
+  const row = createBudgetBatchRow({ name: "Belanja", category_id: "food", amount: 50_000 });
+  assert.equal(row.recording_mode, "");
+  assert.throws(
+    () => validateBudgetBatchRows([row]),
+    (error) => error.rowId === row.id && /Pilih cara penggunaan/.test(error.message),
+  );
+});
+
 test("kategori yang sama boleh dipakai beberapa kebutuhan selama nama berbeda", () => {
-  const first = createBudgetBatchRow({ name: "Arisan PT", category_id: "arisan", amount: 100_000 });
-  const second = createBudgetBatchRow({ name: "Arisan Rumah", category_id: "arisan", amount: 200_000 });
+  const first = createBudgetBatchRow({ name: "Arisan PT", category_id: "arisan", amount: 100_000, recording_mode: "flexible" });
+  const second = createBudgetBatchRow({ name: "Arisan Rumah", category_id: "arisan", amount: 200_000, recording_mode: "flexible" });
   assert.doesNotThrow(() => validateBudgetBatchRows([first, second]));
 });
 
 test("model batch menolak nama kebutuhan duplikat dan menunjuk row bermasalah", () => {
-  const first = createBudgetBatchRow({ name: "Arisan PT", category_id: "arisan", amount: 100_000 });
-  const second = createBudgetBatchRow({ name: " arisan pt ", category_id: "other", amount: 200_000 });
+  const first = createBudgetBatchRow({ name: "Arisan PT", category_id: "arisan", amount: 100_000, recording_mode: "flexible" });
+  const second = createBudgetBatchRow({ name: " arisan pt ", category_id: "other", amount: 200_000, recording_mode: "flexible" });
   assert.throws(
     () => validateBudgetBatchRows([first, second]),
     (error) => error.rowId === second.id && /Nama kebutuhan yang sama/.test(error.message),
@@ -40,7 +50,7 @@ test("model batch menolak nama kebutuhan duplikat dan menunjuk row bermasalah", 
 });
 
 test("model batch membawa row-version Kebutuhan legacy bila nama dan kategori yang sama dihubungkan", () => {
-  const row = createBudgetBatchRow({ name: "Belanja rumah", category_id: "food", amount: 300_000 });
+  const row = createBudgetBatchRow({ name: "Belanja rumah", category_id: "food", amount: 300_000, recording_mode: "flexible" });
   const payload = buildBudgetBatchPayload({
     rows: [row],
     form,
@@ -55,6 +65,7 @@ test("model batch menegakkan batas maksimal item", () => {
     name: `Kebutuhan ${index}`,
     category_id: `category-${index}`,
     amount: 1_000,
+    recording_mode: "flexible",
   }));
   assert.throws(
     () => validateBudgetBatchRows(rows),

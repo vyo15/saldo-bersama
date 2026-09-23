@@ -112,10 +112,10 @@ test("canonical account terms stay user-facing near balances", async () => {
   assert.match(mobileAccounts, /\{ACCOUNT_BALANCE_GUIDANCE\}/);
   assert.match(desktopAccounts, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
   assert.doesNotMatch(dashboardMobile, /ACCOUNT_AVAILABLE_BALANCE_HINT|AccountVisual/, "Beranda mobile compact tidak menduplikasi detail saldo rekening.");
-  assert.match(dashboardMobile, /Total saldo rekening/);
-  assert.match(dashboardMobile, /overview\.nonInvestmentBalance \?\? overview\.totalBalance/);
-  assert.match(dashboardMobile, /Dana Tersedia/);
-  assert.match(dashboardMobile, /overview\.safeToSpend/);
+  assert.match(dashboardMobile, /Saldo Keluarga/);
+  assert.match(dashboardMobile, /overview\.familyBalance \?\? overview\.nonInvestmentBalance/);
+  assert.match(dashboardMobile, /Dana yang bisa kamu gunakan/);
+  assert.match(dashboardMobile, /overview\.usableFunds \?\? overview\.safeToSpend/);
   assert.match(dashboardDesktop, /ACCOUNT_AVAILABLE_BALANCE_HINT/);
 });
 
@@ -458,6 +458,9 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   ]);
 
   assert.doesNotMatch(presentation, /QUICK_ACTIONS/);
+  assert.match(presentation, /dashboardUrgentAlerts/);
+  assert.match(presentation, /"recurring_overdue"/);
+  assert.doesNotMatch(presentation, /DASHBOARD_URGENT_ALERT_TYPES[\s\S]{0,220}"budget_threshold"/);
   assert.match(quickActions, /DASHBOARD_QUICK_ACTIONS/);
   assert.match(quickActions, /to: "\/rekening", label: "Rekening"/);
   assert.match(quickActions, /to: "\/target", label: "Target"/);
@@ -476,6 +479,11 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(dashboard, /mobileLayout[\s\S]*\? <MobileFinanceDashboard[\s\S]*: <DesktopFinanceDashboard/);
   assert.match(mobile, /SensitiveMoney/);
   assert.match(mobile, /Sembunyikan seluruh nominal/);
+  assert.match(mobile, /dashboardSyncLabel\(overview\.lastSyncedAt\)/);
+  assert.doesNotMatch(mobile, /formatPeriod\(overview\.periodKey\)/);
+  assert.match(mobile, /mobile-ownership-summary/);
+  assert.match(mobile, /dashboardOwnershipBreakdown\(overview\.familyBalanceBreakdown\)/);
+  for (const label of ["Saya", "Pasangan", "Bersama", "Bisa digunakan", "Hanya dilihat", "Dipakai bersama"]) assert.match(presentation, new RegExp(label));
   assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
   const order = ["<MobileFinanceHero", "<MobileNextAction", "<DashboardQuickActions", "<MobileUpcomingPlan", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile decision-first harus tetap ada.");

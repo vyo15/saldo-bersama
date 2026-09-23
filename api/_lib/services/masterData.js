@@ -31,10 +31,11 @@ export {
 } from "./masterData/requests.js";
 
 export const deleteUnusedAccount = async (db, context) => {
-  assertOwner(context.actor);
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
+  const operable = current.owner_scope === "shared" || (current.owner_scope === "personal" && current.owner_user_id === context.actor.user_id);
+  if (!operable) throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi pasangan hanya dapat dilihat, bukan dihapus.", 403);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan rekening wajib diisi.", 400);

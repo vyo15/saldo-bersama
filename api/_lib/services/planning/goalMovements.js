@@ -141,7 +141,7 @@ export const reverseGoalMovement = async (db, context) => {
   assertOwnedAccess(context.actor, movement);
   if (movement.goal_status === "completed") throw appError("GOAL_COMPLETED_LOCKED", "Target harus dibuka kembali sebelum mutasi terakhir dibatalkan.", 409);
   if (movement.goal_status === "archived") throw appError("GOAL_ARCHIVED_LOCKED", "Target harus dipulihkan sebelum mutasi terakhir dibatalkan.", 409);
-  if (context.actor.role !== "owner" && movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi target yang dibuat sendiri.", 403);
+  if (movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi target yang dibuat sendiri.", 403);
   assertVersion(movement, context.rowVersion ?? p.row_version);
   const reason = sanitizeText(p.reason, 180);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan pembatalan wajib diisi.", 400);

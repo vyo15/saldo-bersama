@@ -38,6 +38,7 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
   assert.match(state, /manual_reminder/);
   assert.match(state, /recurring_funding_shortage/);
   assert.match(state, /recurring_completed/);
+  assert.match(state, /Date\.parse\(left\.item\.occurredAt/);
 });
 
 test("dashboard hanya menampilkan next action utama dan desktop/mobile mengarah ke notification center", async () => {
@@ -79,8 +80,8 @@ test("pemeriksaan saldo selalu meminta saldo aktual dan tidak menyalin saldo sis
 
   assert.match(page, /actual_balance: "", notes: ""/);
   assert.match(page, /contextLocked/);
-  assert.match(page, /attentionReturnPathRef/);
-  assert.match(page, /attention\?\.attentionSource === "notification-center"/);
+  assert.match(page, /returnTargetRef/);
+  assert.match(page, /attentionSource === "notification-center"/);
   assert.match(form, /Saldo tercatat di aplikasi/);
   assert.match(form, /Saldo di bank saat ini/);
   assert.match(form, /Bandingkan saldo/);
@@ -110,17 +111,34 @@ test("presentation notifikasi ringkas memakai aksi entitas dan satu fakta untuk 
   }
 });
 
+test("notification center menempatkan event bertimestamp paling baru di atas tanpa mencampur status baca", async () => {
+  const { mergeNotificationCenterItems } = await import("../src/shared/workflows/financialNotifications.js");
+  const merged = mergeNotificationCenterItems(
+    [{ id: "active-budget", type: "budget_threshold", title: "Belanja 90% terpakai" }],
+    [
+      { id: "event-old", type: "manual_reminder", occurredAt: "2026-09-20T08:00:00.000Z" },
+      { id: "event-new", type: "manual_reminder", occurredAt: "2026-09-22T08:00:00.000Z" },
+    ],
+  );
+  assert.deepEqual(merged.map((item) => item.id), ["event-new", "event-old", "active-budget"]);
+});
+
 
 test("notification center dan rekonsiliasi menjaga target sentuh mobile canonical", async () => {
-  const [notificationsCss, reconciliationCss] = await Promise.all([
+  const [notificationsCss, reconciliationCss, contextBackCss] = await Promise.all([
     source("src/features/notifications/NotificationsPage.module.css"),
     source("src/features/reconciliations/ReconciliationsPage.module.css"),
+    source("src/components/navigation/ContextBack.module.css"),
   ]);
 
-  assert.match(notificationsCss, /\.back, \.readAll \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(notificationsCss, /\.filter \{[^}]*min-height:\s*40px;/s);
+  assert.match(contextBackCss, /\.back \{[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
+  assert.match(notificationsCss, /\.filter \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(notificationsCss, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(notificationsCss, /\.row\[data-read="false"\][^}]*box-shadow:\s*inset 3px 0 0 var\(--primary\)/s);
+  assert.match(notificationsCss, /\.row\[data-read="true"\] \.copy strong/);
+  assert.match(notificationsCss, /\.unreadDot\s*\{/);
   assert.match(notificationsCss, /@media \(max-width: 820px\)[\s\S]*\.header \{[^}]*display:\s*grid;/s);
-  assert.match(notificationsCss, /\.back, \.readAll \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
+  assert.match(notificationsCss, /\.readAll \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
   assert.match(reconciliationCss, /@media \(max-width: 820px\)[\s\S]*\.notesToggle \{ min-height:\s*var\(--mobile-control-height\); \}/s);
 });
 

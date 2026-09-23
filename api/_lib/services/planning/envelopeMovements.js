@@ -107,7 +107,7 @@ export const reverseEnvelopeMovement = async (db, context) => {
   const payload = context.payload || {};
   const movement = await db.one("SELECT * FROM envelope_movements WHERE movement_id=? AND movement_type='reallocation' AND status='active'", [payload.movement_id]);
   if (!movement) throw appError("NOT_FOUND", "Mutasi alokasi aktif tidak ditemukan.", 404);
-  if (context.actor.role !== "owner" && movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi alokasi yang dibuat sendiri.", 403);
+  if (movement.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan mutasi alokasi yang dibuat sendiri.", 403);
   assertVersion(movement, context.rowVersion ?? payload.row_version);
   const [from, to] = await Promise.all([
     db.one(`SELECT p.*,r.scope,r.owner_user_id,r.assignee_user_id,r.source_account_id FROM envelope_periods p JOIN envelope_rules r ON r.envelope_rule_id=p.envelope_rule_id WHERE p.envelope_period_id=? AND p.status='active' AND r.status='active'`, [movement.from_envelope_period_id]),

@@ -2,8 +2,9 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useNavigate } from "react-router";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
-import { FiArrowLeft, FiArrowRight, FiBell, FiMoreHorizontal, FiPlus, FiSliders } from "react-icons/fi";
+import { FiArrowRight, FiBell, FiMoreHorizontal, FiPlus, FiSliders } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import ContextBack from "../../components/navigation/ContextBack.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -252,7 +253,7 @@ const showGlobalExpenseAction = (canRecordExpense, linkedBudgets) => canRecordEx
 
 const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage, canLifecycle, expenseCategories, users, usersStatus, onBack, onBudgetReminder, onAllocationReminder, onOpenAllocationActions, canAdjustAllocation, onAdjustAllocation, canMoveAllocation, onMoveAllocation, state }) => <>
   <div className={allocationClass("allocation-planning-detail")}>
-    <button type="button" className={allocationClass("allocation-detail-back")} onClick={onBack}><FiArrowLeft aria-hidden="true" />Semua Alokasi Dana</button>
+    <ContextBack className={allocationClass("allocation-detail-back")} onClick={onBack} label="Alokasi Dana" />
     <Card className={allocationClass("allocation-detail-shell")}>
       <section className={allocationClass("allocation-detail-hero")} aria-labelledby="allocation-detail-title">
         <div className={allocationClass("allocation-detail-hero__heading")}>

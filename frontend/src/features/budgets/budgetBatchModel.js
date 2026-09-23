@@ -12,7 +12,7 @@ export const createBudgetBatchRow = (overrides = {}) => ({
   name: "",
   category_id: "",
   amount: "",
-  recording_mode: "flexible",
+  recording_mode: "",
   schedule_frequency: "monthly",
   schedule_due_day: 20,
   schedule_start_date: todayInJakarta(),
@@ -43,7 +43,7 @@ export const validateBudgetBatchRow = (row, index = 0) => {
     throw rowError(`Nominal kebutuhan ${index + 1} harus lebih dari Rp0.`, row.id, "amount");
   }
   if (!["flexible", "fixed_once", "recurring"].includes(String(row.recording_mode || ""))) {
-    throw rowError("Pola kebutuhan tidak valid.", row.id, "recording_mode");
+    throw rowError("Pilih cara penggunaan terlebih dahulu.", row.id, "recording_mode");
   }
   validateSchedule(row);
   return true;

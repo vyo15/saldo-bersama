@@ -2,7 +2,7 @@ import { readBatchRows } from "../../db/readBatchRows.js";
 import { ACCOUNT_TYPE_VALUES, BANK_TEMPLATE_VALUES, EWALLET_TEMPLATE_VALUES } from "../../domainConstants.js";
 import { appendAudit } from "../audit.js";
 import { accountBalanceAsOf, firstNegativeBalance, visibleAccounts } from "../readModels.js";
-import { appError, assertOwner, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "../core.js";
+import { appError, assertVersion, dateValue, normalizeOwnedScope, nowIso, publicRow, sanitizeText, strictBoolean, uuid } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { numericCounts } from "./shared.js";
 
@@ -11,6 +11,11 @@ const BANK_TEMPLATES = new Set(BANK_TEMPLATE_VALUES);
 const EWALLET_TEMPLATES = new Set(EWALLET_TEMPLATE_VALUES);
 const ACCOUNT_NUMBER_MIN_LENGTH = 6;
 const ACCOUNT_NUMBER_MAX_LENGTH = 34;
+
+const assertAccountOperator = (actor, account) => {
+  const allowed = account?.owner_scope === "shared" || (account?.owner_scope === "personal" && account?.owner_user_id === actor?.user_id);
+  if (!allowed) throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi pasangan hanya dapat dilihat, bukan dikelola.", 403);
+};
 
 // Account lifecycle checks intentionally include historical dependencies. An account
 // that was ever used is archived/recovered, not silently converted into "unused" data.
@@ -236,16 +241,13 @@ export const createAccountInternal = async (db, context, payload = context.paylo
   return publicRow(record, ["allow_negative"]);
 };
 
-export const createAccount = async (db, context) => {
-  assertOwner(context.actor);
-  return createAccountInternal(db, context);
-};
+export const createAccount = async (db, context) => createAccountInternal(db, context);
 
 export const updateAccount = async (db, context) => {
-  assertOwner(context.actor);
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
+  assertAccountOperator(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   if (payload.account_type !== undefined && String(payload.account_type) !== current.account_type) {
     throw appError("ACCOUNT_TYPE_IMMUTABLE", "Jenis rekening tidak dapat diubah setelah rekening dibuat.", 409);
@@ -275,21 +277,21 @@ export const updateAccount = async (db, context) => {
 };
 
 export const previewAccountLifecycle = async (db, context) => {
-  assertOwner(context.actor);
   const accountId = context.payload?.account_id;
   const cutoffDate = context.today || nowIso().slice(0, 10);
   const [currentRows, dependencyRows, balanceRows] = await readBatchRows(db, accountLifecyclePreviewStatements(accountId, cutoffDate));
   const current = currentRows[0] || null;
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
+  assertAccountOperator(context.actor, current);
   assertVersion(current, context.rowVersion ?? context.payload?.row_version);
   return accountLifecycleResult(current, numericCounts(dependencyRows[0] || {}), Number(balanceRows[0]?.balance || 0));
 };
 
 export const archiveAccount = async (db, context) => {
-  assertOwner(context.actor);
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
   if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
+  assertAccountOperator(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip rekening wajib diisi.", 400);
@@ -308,12 +310,12 @@ export const archiveAccount = async (db, context) => {
 };
 
 export const restoreAccount = async (db, context) => {
-  assertOwner(context.actor);
   const payload = context.payload || {};
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan pemulihan rekening wajib diisi.", 400);
   const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
   if (!current || current.status !== "archived") throw appError("NOT_FOUND", "Rekening arsip tidak ditemukan.", 404);
+  assertAccountOperator(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const duplicate = await db.one("SELECT account_id FROM accounts WHERE account_id<>? AND lower(name)=lower(?) AND status='active' AND owner_scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'')", [current.account_id, current.name, current.owner_scope, current.owner_user_id]);
   if (duplicate) throw appError("DUPLICATE_ACCOUNT", "Rekening aktif dengan nama dan kepemilikan yang sama sudah ada.", 409);

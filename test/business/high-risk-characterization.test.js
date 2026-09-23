@@ -487,7 +487,7 @@ test("goal lifecycle mengunci setoran saat target tercapai, tetap mengizinkan pe
 });
 
 
-test("goal withdrawal capability false ketika tidak ada rekening tujuan yang valid", async () => {
+test("goal withdrawal capability mengikuti rekening tujuan yang dapat dioperasikan pengguna aktif", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
@@ -510,11 +510,11 @@ test("goal withdrawal capability false ketika tidak ada rekening tujuan yang val
 
     const memberView = (await listGoals(db, { actor: member, payload: {} })).items.find((item) => item.goal_id === goal.goal_id);
     assert.equal(memberView?.current_amount, 50_000);
-    assert.equal(memberView?.can_withdraw, false);
-    assert.match(memberView?.withdraw_blocked_reason || "", /rekening tujuan lain/);
+    assert.equal(memberView?.can_withdraw, true, "Member dapat menarik ke rekening personal miliknya sendiri.");
 
     const ownerView = (await listGoals(db, { actor: owner, payload: {} })).items.find((item) => item.goal_id === goal.goal_id);
-    assert.equal(ownerView?.can_withdraw, true, "Administrator masih dapat memakai rekening personal Member sebagai tujuan yang valid sesuai authority owner.");
+    assert.equal(ownerView?.can_withdraw, false, "Administrator tidak mendapat hak memakai rekening personal pasangan hanya karena role.");
+    assert.match(ownerView?.withdraw_blocked_reason || "", /rekening tujuan lain/);
   } finally {
     db.close();
   }

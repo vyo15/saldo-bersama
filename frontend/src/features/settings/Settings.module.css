@@ -278,34 +278,8 @@
 }
 
 .settingsBackLink {
-  width: max-content;
-  min-height: 2.75rem;
-  padding: 0 .65rem;
-  border-radius: var(--radius-pill);
-  display: inline-flex;
-  align-items: center;
-  gap: .45rem;
-  color: var(--text-soft);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  transition:
-    color var(--motion-fast) var(--motion-easing),
-    background-color var(--motion-fast) var(--motion-easing);
+  margin-inline-start: -.4rem;
 }
-
-@media (hover: hover) and (pointer: fine) {
-  .settingsBackLink:hover {
-    color: var(--primary);
-    background: var(--primary-soft);
-  }
-}
-
-.settingsBackLink:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.settingsBackLink svg { width: 1rem; height: 1rem; }
 
 .settingsDetailTitleRow {
   min-width: 0;
@@ -549,9 +523,6 @@
     font-size: clamp(1.35rem, 6.2vw, 1.65rem);
   }
 
-  .settingsBackLink {
-    margin-inline-start: -.45rem;
-  }
 
   .settingsAccountCard {
     padding: .9rem;

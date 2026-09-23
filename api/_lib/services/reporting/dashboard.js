@@ -87,6 +87,21 @@ const dashboardBalanceMetrics = (accounts, openingAccounts, recurring, budgets) 
   };
 };
 
+const familyBalanceBreakdown = (accounts, actor) => {
+  const operational = accounts.filter((account) => account.account_type !== "investment");
+  const groups = [
+    { key: "self", label: "Saya", items: operational.filter((account) => account.owner_scope === "personal" && account.owner_user_id === actor.user_id) },
+    { key: "partner", label: "Pasangan", items: operational.filter((account) => account.owner_scope === "personal" && account.owner_user_id !== actor.user_id) },
+    { key: "shared", label: "Bersama", items: operational.filter((account) => account.owner_scope === "shared") },
+  ];
+  return groups.filter((group) => group.items.length).map((group) => ({
+    key: group.key,
+    label: group.label,
+    amount: group.items.reduce((sum, account) => sum + Number(account.balance || 0), 0),
+    accountCount: group.items.length,
+  }));
+};
+
 const dashboardRecentTransactions = (rows, actor, periodOpen) => rows.map((row) => ({
   ...row,
   ...transactionCapabilities(actor, row, { periodOpen }),
@@ -131,12 +146,15 @@ const dashboardResult = (context, periodContext, readState) => {
     accountBalances: accounts,
     totalBalance: balance.totalBalance,
     nonInvestmentBalance: balance.nonInvestmentBalance,
+    familyBalance: balance.nonInvestmentBalance,
+    familyBalanceBreakdown: familyBalanceBreakdown(accounts, context.actor),
     openingBalance: balance.openingBalance,
     nonInvestmentOpeningBalance: balance.nonInvestmentOpeningBalance,
     balanceChange: balance.totalBalance - balance.openingBalance,
     nonInvestmentBalanceChange: balance.nonInvestmentBalance - balance.nonInvestmentOpeningBalance,
     liquidBalance: balance.liquidBalance,
     safeToSpend,
+    usableFunds: safeToSpend,
     dailySafeToSpend: daysRemaining ? Math.floor(safeToSpend / daysRemaining) : 0,
     daysRemaining,
     emergencyBalance: balance.emergencyBalance,

@@ -3,13 +3,13 @@ import { Link } from "react-router";
 import Card from "../../components/common/Card.jsx";
 import styles from "./FinancialSetupChecklist.module.css";
 
-const accountStep = ({ operableAccounts, owner }) => {
+const accountStep = ({ operableAccounts }) => {
   const ready = operableAccounts.length > 0;
   return {
     key: "accounts",
     label: "Rekening",
     ready,
-    detail: ready ? "Siap mencatat saldo dan transaksi" : owner ? "Tambahkan rekening yang akan dipakai" : "Ajukan rekening untuk dipakai setelah disetujui",
+    detail: ready ? "Siap mencatat saldo dan transaksi" : "Tambahkan rekening yang akan dipakai",
     to: ready ? null : "/rekening",
   };
 };
@@ -31,7 +31,7 @@ const setupState = ({ bootstrap, user }) => {
   const operableAccounts = accounts.filter((item) => item.can_transact !== false && item.account_type !== "investment");
   const categories = (bootstrap?.categories || []).filter((item) => item.status === "active");
   const owner = actor.role === "owner";
-  return [accountStep({ operableAccounts, owner }), categoryStep({ categories, owner })];
+  return [accountStep({ operableAccounts }), categoryStep({ categories, owner })];
 };
 
 const SetupStep = ({ step, index }) => {

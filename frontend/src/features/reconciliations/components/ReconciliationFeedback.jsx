@@ -1,8 +1,6 @@
-import { useId, useRef } from "react";
-import { createPortal } from "react-dom";
-import { FiAlertTriangle, FiLoader, FiX } from "react-icons/fi";
+import { FiAlertTriangle, FiLoader } from "react-icons/fi";
+import Modal from "../../../components/common/Modal.jsx";
 import Money from "../../../components/common/Money.jsx";
-import { useFocusTrap } from "../../../hooks/useFocusTrap.js";
 import styles from "./ReconciliationFeedback.module.css";
 
 const ProgressSteps = ({ phase }) => (
@@ -37,12 +35,6 @@ const ResultSummary = ({ result }) => (
 );
 
 const ReconciliationDifferenceOverlay = ({ result, onClose, onRecordTransaction, onReviewTransactions }) => {
-  const containerRef = useRef(null);
-  const doneRef = useRef(null);
-  const titleId = useId();
-  const descriptionId = useId();
-  const open = Boolean(result);
-  useFocusTrap({ open, containerRef, initialFocusRef: doneRef, onEscape: onClose, bodyClassName: "modal-open" });
   if (!result) return null;
 
   const description = `Ada selisih Rp ${Math.abs(result.difference).toLocaleString("id-ID")}. Kemungkinan ada aktivitas yang belum tercatat atau nominal yang perlu diperiksa.`;
@@ -50,27 +42,32 @@ const ReconciliationDifferenceOverlay = ({ result, onClose, onRecordTransaction,
     ? "Pemeriksaan sudah tersimpan, tetapi sebagian ringkasan belum berhasil dimuat ulang. Muat ulang halaman bila angka belum berubah."
     : "Riwayat pemeriksaan sudah diperbarui.";
 
-  return createPortal(
-    <div className={`${styles.resultBackdrop} ${styles.resultBackdropDifference}`} role="presentation">
-      <section className={styles.resultDialog} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} ref={containerRef} tabIndex={-1}>
-        <button type="button" className={styles.resultClose} onClick={onClose} aria-label="Tutup hasil pemeriksaan"><FiX aria-hidden="true" /></button>
-        <div className={styles.resultContent}>
-          <div className={`${styles.resultIcon} ${styles.resultIconDifference}`} aria-hidden="true"><FiAlertTriangle /></div>
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Ada selisih saldo"
+      description={description}
+      size="sm"
+      className={styles.resultModal}
+      mobileSwipeToClose
+      closeLabel="Tutup hasil pemeriksaan"
+    >
+      <div className={styles.resultContent}>
+        <div className={styles.resultLead}>
+          <div className={styles.resultIcon} aria-hidden="true"><FiAlertTriangle /></div>
           <span className={styles.resultEyebrow}>Perlu diperiksa</span>
-          <h2 id={titleId}>Ada selisih saldo</h2>
           <strong className={styles.resultAmount}><Money value={result.actualBalance} /></strong>
-          <p id={descriptionId} className={styles.resultDescription}>{description}</p>
-          <ResultSummary result={result} />
-          <div className={styles.resultFooter}>
-            <button ref={doneRef} type="button" className={styles.resultDone} onClick={onRecordTransaction}>Catat transaksi yang tertinggal</button>
-            <button type="button" className={styles.resultReview} onClick={onReviewTransactions}>Periksa aktivitas rekening</button>
-            <button type="button" className={styles.resultLater} onClick={onClose}>Selesaikan nanti</button>
-            <small>{refreshNote}</small>
-          </div>
         </div>
-      </section>
-    </div>,
-    document.body,
+        <ResultSummary result={result} />
+        <div className={styles.resultFooter}>
+          <button type="button" className={styles.resultDone} onClick={onRecordTransaction}>Catat transaksi yang tertinggal</button>
+          <button type="button" className={styles.resultReview} onClick={onReviewTransactions}>Periksa aktivitas rekening</button>
+          <button type="button" className={styles.resultLater} onClick={onClose}>Selesaikan nanti</button>
+          <small>{refreshNote}</small>
+        </div>
+      </div>
+    </Modal>
   );
 };
 

@@ -182,7 +182,10 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
   assert.match(styles, /\.memberFacts dd \{[^}]*margin:\s*\.3rem 0 0;/);
   assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberGrid\s*\{[\s\S]*?grid-template-columns:\s*1fr;/);
   assert.match(styles, /@media \(max-width: 26rem\)[\s\S]*\.memberFacts\s*\{[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*@media \(max-width: 26rem\)[\s\S]*\.memberActivityMetrics\s*\{[\s\S]*?grid-template-columns:\s*1fr;/);
-  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberActivityPanel\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?height:\s*100vh;[\s\S]*?height:\s*100dvh;/);
+  assert.match(activity, /import Modal from "\.\.\/\.\.\/\.\.\/components\/common\/Modal\.jsx"/);
+  assert.match(activity, /<Modal[\s\S]*title="Aktivitas anggota"[\s\S]*mobileSwipeToClose/);
+  assert.doesNotMatch(activity, /createPortal|useFocusTrap|popstate/);
+  assert.match(styles, /\.memberActivityModal \{[^}]*max-width:\s*56rem;/s);
 });
 
 test("presentasi Integrasi Google memisahkan kegagalan queue dan readiness provider", async () => {
@@ -295,7 +298,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
 });
 
 test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks penting tidak mikro", async () => {
-  const [reports, budgets, budgetCard, dashboard, transactionForm, accountActivity, accountCard, accountTransfer, accountExperience, settings] = await Promise.all([
+  const [reports, budgets, budgetCard, dashboard, transactionForm, accountActivity, accountCard, accountTransfer, accountExperience, settings, contextBack] = await Promise.all([
     read("src/features/reports/ReportsPage.module.css"),
     read("src/features/allocations/AllocationDetail.module.css"),
     read("src/features/allocations/AllocationOverview.module.css"),
@@ -306,12 +309,13 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
     read("src/features/accounts/components/MobileAccountTransferAction.module.css"),
     read("src/features/accounts/components/MobileAccountsExperience.module.css"),
     read("src/features/settings/Settings.module.css"),
+    read("src/components/navigation/ContextBack.module.css"),
   ]);
 
   assert.match(reports, /\.downloadMenu > summary \{[^}]*min-height:\s*var\(--control-height-md\);/s);
   assert.match(reports, /@media \(max-width: 820px\)[\s\S]*?\.downloadMenu > summary \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.headingLink \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(budgets, /\.allocation-detail-back \{[^}]*min-height:\s*44px;/s);
+  assert.match(contextBack, /\.back \{[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
   assert.match(budgetCard, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
   assert.match(dashboard, /\.mobile-quick-action \{[^}]*min-height:\s*64px;/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);

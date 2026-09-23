@@ -17,7 +17,7 @@ export const investmentOverview = async (db, context) => {
       portfolioState(db, portfolio),
       goalInvestmentAllocationsForPortfolio(db, portfolio.portfolio_id),
     ]);
-    const canOperate = context.actor.role === "owner" || portfolio.owner_scope === "shared" || portfolio.owner_user_id === context.actor.user_id;
+    const canOperate = portfolio.owner_scope === "shared" || portfolio.owner_user_id === context.actor.user_id;
     const allocationsByInstrument = new Map();
     let goalRetainedCash = 0;
     for (const allocation of goalAllocations) {

@@ -1,4 +1,4 @@
-import { FiCalendar, FiCheckCircle, FiEdit3, FiPlus, FiRepeat, FiTrash2 } from "react-icons/fi";
+import { FiPlus, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import Money from "../../components/common/Money.jsx";
@@ -9,13 +9,8 @@ import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import Modal from "../../components/common/Modal.jsx";
 import { budgetBatchScheduleLabel } from "./budgetBatchModel.js";
+import { BUDGET_RECORDING_OPTIONS, budgetRecordingLabel } from "./budgetRecordingOptions.js";
 import styles from "./BudgetBatchEditor.module.css";
-
-const RECORDING_OPTIONS = Object.freeze([
-  { value: "flexible", label: "Bisa dipakai beberapa kali", icon: FiEdit3 },
-  { value: "fixed_once", label: "Sekali bayar", icon: FiCheckCircle },
-  { value: "recurring", label: "Rutin", icon: FiRepeat },
-]);
 
 const SCHEDULE_FREQUENCY_OPTIONS = Object.freeze([
   { value: "weekly", label: "Mingguan" },
@@ -76,18 +71,15 @@ const NeedNameInput = ({ row, update }) => <label className={styles.fieldBlock}>
   />
 </label>;
 
-const RecordingMode = ({ row, update }) => <div className={styles.modeBlock}>
-  <span className={styles.fieldLabel}>Cara penggunaan</span>
-  <div className={styles.recordingMode} role="group" aria-label="Cara penggunaan">
-    {RECORDING_OPTIONS.map(({ value, label, icon: Icon }) => <button
-      key={value}
-      type="button"
-      className={row.recording_mode === value ? styles.recordingActive : ""}
-      aria-pressed={row.recording_mode === value}
-      onClick={() => update({ recording_mode: value })}
-    ><Icon aria-hidden="true" /><span>{label}</span></button>)}
-  </div>
-</div>;
+const RecordingMode = ({ row, update }) => <InlineSelectionPicker
+  label="Cara penggunaan"
+  required
+  value={row.recording_mode}
+  onChange={(recording_mode) => update({ recording_mode })}
+  placeholder="Pilih cara penggunaan"
+  placeholderMeta="Sekali bayar, beberapa kali, atau rutin"
+  options={BUDGET_RECORDING_OPTIONS}
+/>;
 
 const ScheduleFields = ({ row, update }) => row.recording_mode === "recurring" ? <div className={styles.scheduleGrid}>
   <SelectionField compact label="Frekuensi" value={row.schedule_frequency} onChange={(schedule_frequency) => update({ schedule_frequency })} options={SCHEDULE_FREQUENCY_OPTIONS} />
@@ -119,16 +111,16 @@ const BatchEditorRow = ({ row, index, categories, updateRow, removeRow, onCreate
       <CompactAmountInput row={row} onChange={(amount) => update({ amount })} />
     </div>
     <CategoryField row={row} categories={categories} update={update} onCreateCategory={onCreateCategory} categoryCreateLabel={categoryCreateLabel} />
-    <details className={styles.usageDetails}>
-      <summary><span>Cara penggunaan</span><strong>{RECORDING_OPTIONS.find((option) => option.value === row.recording_mode)?.label || "Bisa dipakai beberapa kali"}</strong></summary>
-      <div className={styles.usageDetailsContent}><RecordingMode row={row} update={update} /><ScheduleFields row={row} update={update} /></div>
-    </details>
+    <div className={styles.usageBlock}>
+      <RecordingMode row={row} update={update} />
+      <ScheduleFields row={row} update={update} />
+    </div>
   </div>;
 };
 
 const BatchCompactRow = ({ row, category, onEdit, onRemove }) => <div className={styles.compactRow}>
   <button type="button" className={styles.compactMain} onClick={onEdit}>
-    <span className={styles.compactCopy}><strong>{row.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetBatchScheduleLabel(row)}</small></span>
+    <span className={styles.compactCopy}><strong>{row.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(row.recording_mode) || "Pilih cara penggunaan"}{row.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(row)}` : ""}</small></span>
     <strong className={styles.compactAmount}>{formatRupiah(row.amount || 0)}</strong>
   </button>
   <button type="button" className={styles.compactRemove} onClick={onRemove} aria-label={`Hapus ${row.name || "kebutuhan"}`}><FiTrash2 aria-hidden="true" /></button>

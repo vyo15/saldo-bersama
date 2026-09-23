@@ -97,7 +97,7 @@ test("owner hanya dapat menghapus permanen rekening Rp0 yang belum pernah dipaka
 
 
 
-test("hard delete rekening ditolak untuk member, saldo nonzero, dan referensi historis", async () => {
+test("hard delete rekening pasangan ditolak, saldo nonzero dan referensi historis tetap menjadi blocker", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedOwner(db);
@@ -108,7 +108,16 @@ test("hard delete rekening ditolak untuk member, saldo nonzero, dan referensi hi
       ["member-delete-policy", memberActor.uid, memberActor.email, memberActor.name, "member", "active", 1, now, now],
     );
 
-    const emptyAccount = await createAccount(db, "ATM Owner Only");
+    const emptyAccount = await dispatch(db, "accounts.create", {
+      name: "ATM Owner Only",
+      account_type: "bank",
+      account_number: "123456789012",
+      owner_scope: "personal",
+      owner_user_id: OWNER_ID,
+      initial_balance: 0,
+      initial_balance_date: todayJakarta(),
+      allow_negative: false,
+    });
     const emptyPreview = await dispatch(db, "accounts.previewLifecycle", {
       account_id: emptyAccount.account_id,
       row_version: emptyAccount.row_version,
@@ -117,11 +126,11 @@ test("hard delete rekening ditolak untuk member, saldo nonzero, dan referensi hi
       () => dispatch(db, "accounts.deleteUnused", {
         account_id: emptyAccount.account_id,
         row_version: emptyAccount.row_version,
-        reason: "Member tidak boleh menghapus",
+        reason: "Member tidak boleh menghapus rekening pasangan",
         confirmation: emptyPreview.deleteConfirmation,
         acknowledged: true,
       }, { actor: memberActor, rowVersion: emptyAccount.row_version }),
-      (error) => error?.code === "OWNER_ONLY",
+      (error) => error?.code === "FORBIDDEN_ACCOUNT",
     );
 
     const nonZero = await createAccount(db, "ATM Saldo Awal", 50_000);

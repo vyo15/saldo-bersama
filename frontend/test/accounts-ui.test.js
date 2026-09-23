@@ -105,9 +105,10 @@ test("nomor rekening dinormalisasi dan dikelompokkan empat digit untuk kartu", (
   assert.deepEqual(accountCardNumberGroups("123456789012345678901234"), ["••••", "3456", "7890", "1234"]);
 });
 
-test("label kepemilikan rekening menampilkan Bersama atau nama pengguna, bukan role internal", () => {
+test("label kepemilikan rekening memakai vocabulary Saya, Pasangan, dan Bersama", () => {
   assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
-  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Puput" }), "Puput");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Puput", is_owned_by_actor: true }), "Saya");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Puput", is_owned_by_actor: false }), "Pasangan");
   assert.equal(accountDisplayLabel({ name: "BTN", account_type: "bank", owner_scope: "personal", owner_name: "Puput" }), "BTN · Puput");
   assert.equal(accountDisplayLabel({ name: "DANA · Belanja", account_type: "ewallet", ewallet_template: "dana", owner_scope: "shared" }), "DANA · Belanja");
 });
@@ -233,8 +234,10 @@ ${accountEditors}`;
   assert.match(accountPageSource, /<InlineOwnershipPicker[\s\S]*legend="Pemegang rekening"/);
   assert.match(accountPageSource, /options=\{options\}[\s\S]*required/);
   assert.match(accountPageSource, /user: member/);
-  assert.match(accountPageSource, /member\.is_current \? "Dipegang oleh saya"/);
-  assert.match(accountPageSource, /userRoleLabel\(member\.role\)/);
+  assert.match(accountPageSource, /const users = currentUser \? \[currentUser\] : \[\];/);
+  assert.match(accountPageSource, /label: "Saya"/);
+  assert.match(accountPageSource, /description: "Rekening pribadi yang hanya dapat saya operasikan"/);
+  assert.match(accountPageSource, /badge: userRoleLabel\(member\.role\)/);
   assert.doesNotMatch(accountPageSource, /name="account-ownership"/);
   assert.doesNotMatch(accountPageSource, /<span>Pemilik rekening \*<\/span>/);
   assert.match(accountPageSource, /Promise\.allSettled\(\[accountsResource\.reload\(\), refreshAll\(\)\]\)/);
@@ -542,13 +545,13 @@ test("label rekening memprioritaskan provider dan tetap membedakan pemilik perso
   assert.equal(accountDisplayLabel({ account_type: "cash", name: "Dompet", owner_scope: "personal", owner_name: "Vio" }), "Tunai · Dompet · Vio");
 });
 
-test("label kepemilikan kartu tetap ringkas dan nama pemilik tersedia terpisah", () => {
+test("label kepemilikan kartu tetap ringkas dengan vocabulary ownership", () => {
   assert.equal(accountOwnershipLabel({ owner_scope: "shared" }), "Bersama");
-  assert.equal(accountOwnershipLabel({ owner_scope: "personal", owner_name: "Vio Yusup" }), "Vio Yusup");
-  assert.equal(accountOwnershipLabel({ owner_scope: "personal" }), "Anggota keluarga");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: true }), "Saya");
+  assert.equal(accountOwnershipLabel({ owner_scope: "personal", is_owned_by_actor: false }), "Pasangan");
   assert.equal(accountCardOwnershipLabel({ owner_scope: "shared" }), "Bersama");
-  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal", owner_name: "Fuji Astuti Dwiyanti" }), "Fuji");
-  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal" }), "Anggota");
+  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal", owner_name: "Fuji Astuti Dwiyanti", is_owned_by_actor: true }), "Saya");
+  assert.equal(accountCardOwnershipLabel({ owner_scope: "personal", owner_name: "Fuji Astuti Dwiyanti", is_owned_by_actor: false }), "Pasangan");
 });
 
 test("rekening Investasi memakai nama internal otomatis dan kartu cukup membedakan Pribadi Pasangan atau Bersama", () => {

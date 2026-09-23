@@ -1,7 +1,7 @@
 import { APP_MEDIA } from "../config/layout.js";
+import { mobilePrimaryScrollKey } from "../config/navigation.js";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
-const PRIMARY_TAB_PATHS = new Set(["/", "/perencanaan", "/transaksi"]);
 const primaryTabScrollPositions = new Map();
 const historyEntryScrollPositions = new Map();
 const MAX_HISTORY_POSITIONS = 50;
@@ -33,8 +33,8 @@ const resolveDestinationTop = (location, navigationType) => {
   if (navigationType === "POP" && location.key && historyEntryScrollPositions.has(location.key)) {
     return historyEntryScrollPositions.get(location.key);
   }
-  if (PRIMARY_TAB_PATHS.has(location.pathname)) return primaryTabScrollPositions.get(location.pathname) ?? 0;
-  return 0;
+  const primaryKey = mobilePrimaryScrollKey(location.pathname);
+  return primaryKey ? primaryTabScrollPositions.get(primaryKey) ?? 0 : 0;
 };
 
 const useMobileTabScrollRestoration = (location, navigationType) => {
@@ -54,13 +54,12 @@ const useMobileTabScrollRestoration = (location, navigationType) => {
     }
 
     const previousLocation = previousLocationRef.current;
-    if (previousLocation.key === location.key && previousLocation.pathname === location.pathname) return undefined;
+    if (previousLocation.key === location.key && previousLocation.pathname === location.pathname && previousLocation.search === location.search) return undefined;
 
     const previousTop = window.scrollY;
     rememberHistoryPosition(previousLocation.key, previousTop);
-    if (PRIMARY_TAB_PATHS.has(previousLocation.pathname)) {
-      primaryTabScrollPositions.set(previousLocation.pathname, previousTop);
-    }
+    const previousPrimaryKey = mobilePrimaryScrollKey(previousLocation.pathname);
+    if (previousPrimaryKey) primaryTabScrollPositions.set(previousPrimaryKey, previousTop);
 
     previousLocationRef.current = location;
     return restoreScrollPosition(resolveDestinationTop(location, navigationType));

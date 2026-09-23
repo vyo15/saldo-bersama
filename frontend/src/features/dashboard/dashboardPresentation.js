@@ -21,6 +21,33 @@ export const dashboardSyncLabel = (value) => {
   return `Diperbarui ${time}`;
 };
 
+const DASHBOARD_URGENT_ALERT_TYPES = new Set([
+  "reconciliation_difference",
+  "investment_reconciliation_difference",
+  "recurring_overdue",
+]);
+
+// Beranda hanya menampilkan kondisi yang benar-benar mendesak. Pengingat dan
+// threshold rutin (mis. Periksa kebutuhan / Alokasi Dana) tetap tersedia di
+// Notification Center agar ringkasan utama tidak berubah menjadi daftar alarm.
+export const dashboardUrgentAlerts = (alerts = []) => (Array.isArray(alerts) ? alerts : [])
+  .filter((alert) => DASHBOARD_URGENT_ALERT_TYPES.has(alert?.type));
+
+const OWNERSHIP_PRESENTATION = Object.freeze([
+  { key: "self", label: "Saya", helper: "Bisa digunakan" },
+  { key: "partner", label: "Pasangan", helper: "Hanya dilihat" },
+  { key: "shared", label: "Bersama", helper: "Dipakai bersama" },
+]);
+
+export const dashboardOwnershipBreakdown = (breakdown = []) => {
+  const lookup = new Map((Array.isArray(breakdown) ? breakdown : []).map((item) => [item?.key, item]));
+  return OWNERSHIP_PRESENTATION.map((item) => ({
+    ...item,
+    amount: Number(lookup.get(item.key)?.amount || 0),
+    accountCount: Number(lookup.get(item.key)?.accountCount || 0),
+  }));
+};
+
 const jakartaDate = (value) => {
   const normalized = String(value || "").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;

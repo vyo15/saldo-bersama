@@ -124,12 +124,18 @@ export const mergeNotificationCenterItems = (alerts = [], events = []) => {
   const recentEvents = (Array.isArray(events) ? events : [])
     .filter((item) => item?.id && !(["recurring_due", "budget_threshold", "envelope_threshold", "goal_behind", "unallocated_expense"].includes(item.type) && activeTypes.has(item.type)))
     .map((item) => ({ ...item, source: "event" }));
-  return [...active, ...recentEvents].sort((left, right) => {
-    const leftAction = notificationRequiresAction(left) ? 1 : 0;
-    const rightAction = notificationRequiresAction(right) ? 1 : 0;
-    if (leftAction !== rightAction) return rightAction - leftAction;
-    return String(right.occurredAt || "").localeCompare(String(left.occurredAt || ""));
-  });
+  return [...active, ...recentEvents]
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.item.occurredAt || left.item.updatedAt || left.item.createdAt || "");
+      const rightTime = Date.parse(right.item.occurredAt || right.item.updatedAt || right.item.createdAt || "");
+      const leftDated = Number.isFinite(leftTime);
+      const rightDated = Number.isFinite(rightTime);
+      if (leftDated && rightDated && leftTime !== rightTime) return rightTime - leftTime;
+      if (leftDated !== rightDated) return rightDated ? 1 : -1;
+      return left.index - right.index;
+    })
+    .map(({ item }) => item);
 };
 
 export const notificationReadIdentity = (alert = {}) => {

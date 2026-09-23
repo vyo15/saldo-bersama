@@ -19,7 +19,7 @@ export const accountWithAccess = async (db, actor, accountId, { optional = false
   if (!accountId && optional) return null;
   const row = await db.one("SELECT * FROM accounts WHERE account_id=? AND status='active'", [accountId]);
   if (!row) throw appError("INVALID_ACCOUNT", "Rekening tidak ditemukan atau tidak aktif.", 400);
-  if (actor.role !== "owner" && row.owner_scope === "personal" && row.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi bukan milik pengguna aktif.",403);
+  if (row.owner_scope === "personal" && row.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi bukan milik pengguna aktif.",403);
   return row;
 };
 
@@ -37,11 +37,10 @@ export const ruleScopeFromAccount = (account) => account?.owner_scope === "perso
   : { scope:"shared", owner_user_id:null };
 
 export const assertOwnedAccess = (actor, row) => {
-  if (actor.role !== "owner" && row.scope === "personal" && row.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_PERSONAL_DATA","Data pribadi ini bukan milik pengguna aktif.",403);
+  if (row.scope === "personal" && row.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_PERSONAL_DATA","Data pribadi ini bukan milik pengguna aktif.",403);
 };
 
 export const assertPlanningManageScope = (actor, row, { allowOwnedPersonal = false } = {}) => {
-  if (actor.role === "owner") return;
   if (row?.scope === "shared" && !row?.owner_user_id) return;
   if (allowOwnedPersonal && row?.scope === "personal" && row?.owner_user_id === actor?.user_id) return;
   throw appError(
@@ -62,18 +61,20 @@ export const resolveEnvelopeAssignee = async (db, value) => {
 };
 
 export const assertEnvelopeAssigneeAccess = (actor, envelope) => {
-  if (actor.role === "owner" || !envelope?.assignee_user_id || envelope.assignee_user_id === actor.user_id) return;
+  if (!envelope?.assignee_user_id || envelope.assignee_user_id === actor.user_id) return;
+  if (actor?.role === "owner" && envelope?.scope === "shared" && !envelope?.owner_user_id) return;
   throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat menggunakan atau memindahkan Alokasi Dana Bersama dan alokasi miliknya sendiri.", 403);
 };
 
 
 export const canUseEnvelope = (actor, item) => {
   if (!actor || !item || item.status !== "active") return false;
-  const scopeAllowed = actor.role === "owner"
-    || (item.scope === "shared" && !item.owner_user_id)
+  const scopeAllowed = (item.scope === "shared" && !item.owner_user_id)
     || (item.scope === "personal" && item.owner_user_id === actor.user_id);
   if (!scopeAllowed) return false;
-  return actor.role === "owner" || !item.assignee_user_id || item.assignee_user_id === actor.user_id;
+  return (actor.role === "owner" && item.scope === "shared" && !item.owner_user_id)
+    || !item.assignee_user_id
+    || item.assignee_user_id === actor.user_id;
 };
 
 export const envelopeCapabilities = (actor, item) => {

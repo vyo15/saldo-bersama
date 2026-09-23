@@ -31,7 +31,7 @@ const activeReadableAccount = async (db, accountId) => {
 
 const activeAccount = async (db, actor, accountId) => {
   const account = await activeReadableAccount(db, accountId);
-  if (actor.role !== "owner" && account.owner_scope === "personal" && account.owner_user_id !== actor.user_id) {
+  if (account.owner_scope === "personal" && account.owner_user_id !== actor.user_id) {
     throw appError("FORBIDDEN_ACCOUNT", "Rekening pribadi ini bukan milik pengguna aktif.", 403);
   }
   return account;
@@ -60,7 +60,7 @@ const assertAccountDate = (account, transactionDate) => {
 
 export const assertCanModify = (context, transaction) => {
   if (transaction.transaction_type === "adjustment" && context.actor.role !== "owner") throw appError("ADJUSTMENT_OWNER_ONLY", "Penyesuaian saldo hanya dapat diubah Administrator.", 403);
-  if (context.actor.role !== "owner" && (!actorCanOperateTransaction(context.actor, transaction) || transaction.created_by !== context.actor.user_id)) throw appError("FORBIDDEN", "Member hanya dapat mengubah transaksi miliknya pada rekening yang dapat dioperasikan.", 403);
+  if (!actorCanOperateTransaction(context.actor, transaction) || transaction.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Transaksi hanya dapat diubah oleh pencatatnya pada rekening yang dapat dioperasikan.", 403);
   if (transaction.recurring_occurrence_id) throw appError("LINKED_RECURRING_TRANSACTION", "Koreksi transaksi rutin harus dilakukan melalui menu Tagihan.", 409, { occurrenceId: transaction.recurring_occurrence_id });
   if (transaction.goal_id) throw appError("LINKED_GOAL_TRANSACTION", "Koreksi transaksi Target harus dilakukan dari flow Target atau transaksi sumber agar tidak membuat mutasi ganda.", 409, { goalId: transaction.goal_id });
   if (transaction.commitment_id) throw appError("LINKED_COMMITMENT_TRANSACTION", "Koreksi transaksi Kewajiban harus dilakukan dari transaksi sumber atau Alokasi/Jadwal terkait agar tidak membuat pembayaran ganda.", 409, { commitmentId: transaction.commitment_id });
@@ -72,7 +72,7 @@ const assertEnvelopeCompatibility = (row, context, transaction) => {
   if (row.scope !== transaction.scope || String(row.owner_user_id || "") !== String(transaction.owner_user_id || "")) throw appError("ENVELOPE_SCOPE_MISMATCH", "Alokasi Dana dan rekening transaksi harus memiliki kepemilikan ledger yang sama.", 409);
   if (!row.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_REQUIRED", "Alokasi Dana belum memiliki rekening sumber dan tidak aman dipakai untuk transaksi.", 409);
   if (row.source_account_id !== transaction.source_account_id) throw appError("ENVELOPE_SOURCE_ACCOUNT_MISMATCH", "Alokasi Dana hanya dapat dipakai dari rekening sumber yang sama.", 409, { sourceAccountId: row.source_account_id });
-  if (context.actor.role !== "owner" && row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Member hanya dapat memakai Alokasi Dana Bersama atau alokasi miliknya sendiri.", 403);
+  if (row.assignee_user_id && row.assignee_user_id !== context.actor.user_id) throw appError("ENVELOPE_ASSIGNEE_FORBIDDEN", "Alokasi Dana ini ditujukan untuk pengguna lain.", 403);
 };
 
 const assertEnvelopeCapacity = (row, transaction, remaining) => {
@@ -219,7 +219,7 @@ const assertInvestmentTransactionPolicy = (type, source, destination) => {
   );
 };
 
-const resolveTransactionAccounts = async (db, context, { type, sourceId, destinationId, transactionDate }, { allowSharedToPersonalRequest = false } = {}) => {
+const resolveTransactionAccounts = async (db, context, { type, sourceId, destinationId, transactionDate }) => {
   const source = ["income", "refund"].includes(type) ? null : await activeAccount(db, context.actor, sourceId);
   const destination = ["income", "refund"].includes(type)
     ? await activeAccount(db, context.actor, destinationId)
@@ -230,9 +230,7 @@ const resolveTransactionAccounts = async (db, context, { type, sourceId, destina
   if (type === "transfer") {
     const routeMode = transferRouteMode(context.actor, source, destination);
     if (routeMode === "denied") throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
-    if (routeMode === "approval_required" && !allowSharedToPersonalRequest) {
-      throw appError("TRANSFER_APPROVAL_REQUIRED", "Transfer dari rekening Bersama ke rekening pribadi memerlukan persetujuan Administrator.", 409, { sourceAccountId: source.account_id, destinationAccountId: destination.account_id });
-    }
+
   }
   if (source) assertAccountDate(source, transactionDate);
   if (destination) assertAccountDate(destination, transactionDate);
@@ -327,12 +325,12 @@ const assertNoUnconfirmedDuplicate = async (db, payload, record, excludeTransact
 
 // Canonical transaction normalization composes all server-side references and financial
 // invariants before a row is written. Keep this as the single mutation preparation path.
-export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false, allowSharedToPersonalRequest = false } = {}) => {
+export const normalizeTransaction = async (db, context, payload, { current = null, allowInternalLinks = false } = {}) => {
   assertNoReservedFields(payload, allowInternalLinks);
   const input = resolveTransactionInput(context, payload, current);
   validateTransactionTypePolicy(context, payload, current, input.type);
   await assertTransactionDatesUnlocked(db, input.transactionDate, current);
-  const accounts = await resolveTransactionAccounts(db, context, input, { allowSharedToPersonalRequest });
+  const accounts = await resolveTransactionAccounts(db, context, input);
   const categoryId = await resolveTransactionCategory(db, payload, current, input.type);
   const baseRecord = buildNormalizedTransactionRecord({
     payload,

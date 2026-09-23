@@ -88,7 +88,7 @@ test("Member dapat mengelola planning Bersama dan Kebutuhan personal miliknya se
     }));
     assert.equal(budget.scope, "shared");
 
-    const personalEnvelope = await createEnvelope(db, context(owner, "envelopes.create", {
+    const personalEnvelope = await createEnvelope(db, context(member, "envelopes.create", {
       name: "Belanja Member",
       source_account_id: "member-personal",
       period_type: "monthly",

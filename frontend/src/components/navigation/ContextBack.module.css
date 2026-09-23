@@ -1,0 +1,45 @@
+.back {
+  width: max-content;
+  min-height: var(--mobile-control-height, 44px);
+  padding: 0 6px;
+  border: 0;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing);
+}
+
+.back svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .back:hover {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
+}
+
+.back:active {
+  color: var(--primary);
+  background: var(--primary-soft);
+}

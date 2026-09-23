@@ -18,8 +18,8 @@ const nextAutomaticRdnName = async (db, sourceLabel) => {
 const createAutomaticRdn = async (db, context, sourceLabel, initialBalanceDate = context.today || todayJakarta()) => createAccountInternal(db, context, {
   name: await nextAutomaticRdnName(db, sourceLabel),
   account_type: "investment",
-  owner_scope: context.actor.role === "owner" ? "shared" : "personal",
-  owner_user_id: context.actor.role === "owner" ? "" : context.actor.user_id,
+  owner_scope: "personal",
+  owner_user_id: context.actor.user_id,
   initial_balance: 0,
   initial_balance_date: initialBalanceDate,
   allow_negative: false,
@@ -91,9 +91,7 @@ export const upsertInvestmentInstrument = async (db, context) => {
 };
 
 const defaultPortfolioForActor = async (db, context) => {
-  const access = context.actor.role === "owner"
-    ? { sql: "a.owner_scope='shared'", args: [] }
-    : { sql: "(a.owner_scope='shared' OR (a.owner_scope='personal' AND a.owner_user_id=?))", args: [context.actor.user_id] };
+  const access = operableAccountSql(context.actor, "a");
   return db.one(`SELECT p.*,a.account_id,a.name AS rdn_account_name,a.account_type,a.owner_scope,a.owner_user_id,a.allow_negative,a.initial_balance,a.initial_balance_date,a.status AS rdn_status
     FROM investment_portfolios p JOIN accounts a ON a.account_id=p.rdn_account_id
     WHERE p.status='active' AND a.status='active' AND ${access.sql}

@@ -7,7 +7,7 @@ import { ACCOUNT_AVAILABLE_BALANCE_HINT } from "../../../shared/presentation/acc
 import { scrollIntoViewWithMotionPreference } from "../../../shared/motion.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
-import { formatPeriod, dashboardSyncLabel } from "../dashboardPresentation.js";
+import { dashboardOwnershipBreakdown, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
@@ -16,9 +16,9 @@ export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggl
     <div>
       <div className={dashboardClass("shared-dashboard__title-row")}>
         <h1>Hai, {displayName}</h1>
-        <PageInfoButton title="Tentang Beranda">Dana Tersedia menunjukkan uang yang belum punya tugas. Total saldo rekening tetap ditampilkan sebagai konteks seluruh uang kas yang tercatat.</PageInfoButton>
+        <PageInfoButton title="Tentang Beranda">Saldo Keluarga merangkum rekening operasional Saya, Pasangan, dan Bersama. Hak menggunakan uang tetap mengikuti pemegang rekening.</PageInfoButton>
       </div>
-      <p>Ringkasan keluarga · <strong>{formatPeriod(overview.periodKey)}</strong></p>
+      <p>{dashboardSyncLabel(overview.lastSyncedAt)}</p>
     </div>
     <div className={dashboardClass("shared-dashboard__actions")}>
       <button
@@ -40,6 +40,7 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
     .filter((item) => item.account_type !== "investment")
     .reduce((sum, item) => sum + Number(item.balance || 0), 0);
   const allocation = model.allocationSummary || {};
+  const ownershipItems = dashboardOwnershipBreakdown(overview.familyBalanceBreakdown);
 
   return (
     <section className={dashboardClass("desktop-balance-card shared-panel")} aria-label="Ringkasan keuangan utama">
@@ -53,20 +54,19 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
 
       <div className={dashboardClass("desktop-balance-card__hero")}>
         <div className={dashboardClass("desktop-balance-card__heading")}>
-          <span>Dana Tersedia</span>
-          <SensitiveMoney visible={balanceVisible} value={overview.safeToSpend || 0} />
-          <small>Uang yang belum punya tugas dan masih bebas digunakan.</small>
-          <div className={dashboardClass("desktop-balance-card__allocation-note")}>
-            <span>{allocation.count || 0} Alokasi aktif</span>
-            <strong>{Number(allocation.percentage || 0)}% terpakai / disiapkan</strong>
+          <span>Saldo Keluarga</span>
+          <SensitiveMoney visible={balanceVisible} value={overview.familyBalance ?? nonInvestmentBalance} />
+          <small>Semua saldo operasional terlihat bersama; hak menggunakan uang tetap mengikuti pemilik rekening.</small>
+          <div className={dashboardClass("desktop-family-breakdown")} aria-label="Rincian Saldo Keluarga">
+            {ownershipItems.map((item) => <Link key={item.key} to="/rekening" state={{ ownershipFilter: item.key }}><span>{item.label}</span><strong><SensitiveMoney visible={balanceVisible} value={item.amount} /></strong></Link>)}
           </div>
         </div>
       </div>
 
       <div className={dashboardClass("desktop-balance-card__safe")}>
         <div>
-          <span>Total saldo rekening</span>
-          <SensitiveMoney visible={balanceVisible} value={nonInvestmentBalance} />
+          <span>Dana yang bisa kamu gunakan</span>
+          <SensitiveMoney visible={balanceVisible} value={overview.usableFunds ?? overview.safeToSpend ?? 0} />
         </div>
         <div>
           <span>Aman dipakai / hari</span>
@@ -110,7 +110,7 @@ export const DashboardAttention = ({ alerts }) => {
           <FiShield aria-hidden="true" />
           <p>Tidak ada tindakan mendesak.</p>
         </div>
-        <Link to="/notifikasi">Lihat notifikasi</Link>
+        <Link to="/notifikasi" state={{ returnTo: "/" }}>Lihat notifikasi</Link>
       </section>
     );
   }
@@ -128,7 +128,7 @@ export const DashboardAttention = ({ alerts }) => {
       <div className={dashboardClass("desktop-attention-card__list")}>
         {visibleAlerts.map((alert, index) => <AttentionTask key={alert.id || alert.alert_id || `${alert.type || "alert"}-${index}`} alert={alert} />)}
       </div>
-      <Link to="/notifikasi">{alerts.length > visibleAlerts.length ? `Lihat semua perhatian (+${alerts.length - visibleAlerts.length})` : "Lihat semua perhatian"}</Link>
+      <Link to="/notifikasi" state={{ returnTo: "/" }}>{alerts.length > visibleAlerts.length ? `Lihat semua perhatian (+${alerts.length - visibleAlerts.length})` : "Lihat semua perhatian"}</Link>
     </section>
   );
 };

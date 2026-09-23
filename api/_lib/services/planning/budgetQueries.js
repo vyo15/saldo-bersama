@@ -46,11 +46,12 @@ export const budgetListStatement = (context) => {
 
 const canManageBudget = (actor, row) => {
   if (!actor || !row) return false;
-  const scopeAllowed = actor.role === "owner"
-    || (row.scope === "shared" && !row.owner_user_id)
+  const scopeAllowed = (row.scope === "shared" && !row.owner_user_id)
     || (row.scope === "personal" && row.owner_user_id === actor.user_id);
   if (!scopeAllowed) return false;
-  return actor.role === "owner" || !row.envelope_assignee_user_id || row.envelope_assignee_user_id === actor.user_id;
+  return (actor.role === "owner" && row.scope === "shared" && !row.owner_user_id)
+    || !row.envelope_assignee_user_id
+    || row.envelope_assignee_user_id === actor.user_id;
 };
 
 export const mapBudgetListRows = (rows, context) => ({

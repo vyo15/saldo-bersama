@@ -7,7 +7,7 @@ const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.met
 test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compatibility redirect", async () => {
   const [app, allocationPage, api, reports, dashboard, navigation] = await Promise.all([
     read("src/app/App.jsx"),
-    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js"), read("src/shared/workflows/categoryCreation.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/features/budgets/budgetRecordingOptions.js"), read("src/features/categories/ExpenseCategoryQuickCreate.jsx"), read("src/shared/workflows/planningSchedules.js"), read("src/shared/workflows/categoryCreation.js")]).then((parts) => parts.join("\n")),
     read("src/features/budgets/budgets.api.js"),
     read("src/features/reports/ReportsPage.jsx"),
     Promise.all([read("src/features/dashboard/components/DesktopFinanceDashboard.jsx"), read("src/features/dashboard/components/DesktopDashboardPlanning.jsx")]).then((parts) => parts.join("\n")),
@@ -37,7 +37,7 @@ test("Kebutuhan dikelola dari detail Alokasi Dana dan route Anggaran hanya compa
 });
 test("form Kebutuhan memisahkan nama kebutuhan, kategori, pola pencatatan, dan pembuatan kategori berikon", async () => {
   const [page, moneyInput] = await Promise.all([
-    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/shared/workflows/planningSchedules.js"), read("src/shared/workflows/categoryCreation.js")]).then((parts) => parts.join("\n")),
+    Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationPlanningDetail.jsx"), read("src/features/budgets/useBudgetActions.js"), read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/features/budgets/budgetRecordingOptions.js"), read("src/features/categories/ExpenseCategoryQuickCreate.jsx"), read("src/shared/workflows/planningSchedules.js"), read("src/shared/workflows/categoryCreation.js")]).then((parts) => parts.join("\n")),
     read("src/components/common/MoneyInput.jsx"),
   ]);
   assert.match(page, /assertPositiveRupiah\(form\.amount\)/);
@@ -45,7 +45,8 @@ test("form Kebutuhan memisahkan nama kebutuhan, kategori, pola pencatatan, dan p
   assert.match(page, /Nama kebutuhan \*/);
   assert.match(page, /<InlineSelectionPicker[^>]*label="Kategori"/);
   assert.match(page, /label="Nominal"/);
-  assert.match(page, /legend="Pola kebutuhan"/);
+  assert.match(page, /label="Cara penggunaan"/);
+  assert.match(page, /placeholder="Pilih cara penggunaan"/);
   assert.match(page, /fixed_once/);
   assert.match(page, /recurring/);
   assert.match(page, /CategoryIconPicker/);
@@ -92,6 +93,9 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /allocation-limit-row__header/);
   assert.match(styles, /grid-template-columns: 34px minmax\(0, 1fr\) auto/);
   assert.match(styles, /allocation-limit-row__content[\s\S]*margin-left: 42px/);
+  assert.match(styles, /allocation-limit-row__menu-items[\s\S]*width: 11\.5rem/);
+  assert.match(styles, /allocation-limit-row__menu-items[\s\S]*max-width: calc\(100vw - 40px\)/);
+  assert.doesNotMatch(styles, /allocation-limit-row__menu-items[\s\S]{0,220}width: max-content/);
   assert.match(detail, /allocation-needs-filter/);
   assert.match(detail, /Perhatian <span>\{attentionCount\}<\/span>/);
   assert.match(detail, /Belum dipakai <span>\{unusedCount\}<\/span>/);
@@ -109,9 +113,12 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
 test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia", async () => {
   const [page, dialogs, detail, batchEditor, presentation, runner, backend] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
-    read("src/features/allocations/AllocationDialogLayer.jsx"),
+    Promise.all([read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/budgets/budgetRecordingOptions.js"), read("src/features/categories/ExpenseCategoryQuickCreate.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
-    read("src/features/budgets/BudgetBatchEditor.jsx"),
+    Promise.all([
+      read("src/features/budgets/BudgetBatchEditor.jsx"),
+      read("src/features/budgets/budgetRecordingOptions.js"),
+    ]).then((parts) => parts.join("\n")),
     read("src/features/allocations/allocationPresentation.js"),
     read("src/features/allocations/allocationActionRunners.js"),
     Promise.all(["envelopes.js", "budgetFunding.js", "budgetMutations.js", "budgetQueries.js", "budgetShared.js"].map((name) => readFile(new URL(`../../api/_lib/services/planning/${name}`, import.meta.url), "utf8"))).then((parts) => parts.join("\n")),
@@ -180,7 +187,7 @@ test("penutupan Alokasi Dana menjaga continuity periode dan Kebutuhan tetap opt-
   const [page, actions, dialogs, detail] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/allocationActionRunners.js"),
-    read("src/features/allocations/AllocationDialogLayer.jsx"),
+    Promise.all([read("src/features/allocations/AllocationDialogLayer.jsx"), read("src/features/budgets/budgetRecordingOptions.js"), read("src/features/categories/ExpenseCategoryQuickCreate.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/allocations/AllocationPlanningDetail.jsx"),
   ]);
   assert.match(actions, /reuse_needs: closeReuseNeeds/);
@@ -197,7 +204,10 @@ test("Tambah Kebutuhan pada detail Alokasi memakai batch compact tanpa mengganda
     read("src/features/budgets/useBudgetActions.js"),
     read("src/features/budgets/useBudgetBatchDraft.js"),
     read("src/features/budgets/BudgetDialogLayer.jsx"),
-    read("src/features/budgets/BudgetBatchEditor.jsx"),
+    Promise.all([
+      read("src/features/budgets/BudgetBatchEditor.jsx"),
+      read("src/features/budgets/budgetRecordingOptions.js"),
+    ]).then((parts) => parts.join("\n")),
     read("src/features/budgets/BudgetBatchEditor.module.css"),
     read("src/features/budgets/budgetBatchModel.js"),
     read("src/features/budgets/budgets.api.js"),

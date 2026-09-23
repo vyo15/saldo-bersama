@@ -164,11 +164,16 @@ const defaultAlertGuidance = ({ to, baseState }) => guidance({
 
 export const financialAlertGuidance = (alert = {}, { source = "dashboard" } = {}) => {
   const config = ALERT_TARGETS[alert.type];
+  const returnContext = source === "notification-center"
+    ? { returnTo: "/notifikasi", returnLabel: "Notifikasi" }
+    : source === "dashboard"
+      ? { returnTo: "/", returnLabel: "Beranda" }
+      : {};
   const context = {
     alert,
     entityId: alertEntityId(alert),
     to: safeTargetPath(alert, config?.fallbackPath || "/"),
-    baseState: { attentionSource: source, attentionType: alert.type || "unknown" },
+    baseState: { attentionSource: source, attentionType: alert.type || "unknown", ...returnContext },
   };
   return (ALERT_GUIDANCE_BUILDERS[alert.type] || defaultAlertGuidance)(context);
 };

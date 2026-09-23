@@ -1,7 +1,7 @@
 import { appendAudit } from "../audit.js";
 import { appError, assertVersion, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
-import { createRecurringRule } from "./recurring.js";
+import { createRecurringRule, retireRecurringRulesForBudget } from "./recurring.js";
 import { adjustEnvelopeForBudgetDelta } from "./budgetFunding.js";
 import { assertEnvelopeAssigneeAccess, assertPlanningManageScope } from "./shared.js";
 import { BUDGET_IDENTITY_SQL, budgetIdentityArgs, budgetUsageAmount } from "./budgetShared.js";
@@ -101,9 +101,30 @@ const normalizeBudgetRecordingMode = (value, { allowEmpty = false } = {}) => {
   const requested = String(value || (allowEmpty ? "" : "flexible"));
   const normalized = requested === "scheduled" ? "recurring" : requested;
   if (normalized && !["flexible", "fixed_once", "recurring"].includes(normalized)) {
-    throw appError("INVALID_BUDGET_RECORDING_MODE", "Pola kebutuhan tidak valid.", 400);
+    throw appError("INVALID_BUDGET_RECORDING_MODE", "Cara penggunaan tidak valid.", 400);
   }
   return normalized;
+};
+
+const assertBudgetRecordingModeMutable = async (db, current, normalizedMode) => {
+  if (!current || !normalizedMode || normalizedMode === (current.recording_mode || "flexible")) return;
+  const usedAmount = await budgetUsageAmount(db, current);
+  if (usedAmount > 0) {
+    throw appError(
+      "BUDGET_RECORDING_MODE_LOCKED",
+      "Cara penggunaan tidak dapat diubah karena kebutuhan ini sudah memiliki pemakaian.",
+      409,
+      { budgetId: current.budget_id, used_amount: usedAmount },
+    );
+  }
+};
+
+const reconcileBudgetRecordingMode = async (db, context, current, normalizedMode) => {
+  if (!current || !normalizedMode || normalizedMode === (current.recording_mode || "flexible")) return;
+  await assertBudgetRecordingModeMutable(db, current, normalizedMode);
+  if ((current.recording_mode || "flexible") === "recurring" && normalizedMode !== "recurring") {
+    await retireRecurringRulesForBudget(db, context, current.budget_id, "Cara penggunaan kebutuhan diubah sebelum pemakaian");
+  }
 };
 
 const normalizeBudgetBatchItem = (rawItem, index, seenNames) => {
@@ -329,6 +350,7 @@ export const upsertBudget = async (db, context) => {
   const name = sanitizeText(p.name || category.name, 100);
   const normalizedMode = normalizeBudgetRecordingMode(p.recording_mode, { allowEmpty: true });
   const current = await findBudgetForUpsert(db, { p, period, owned, envelopeRuleId, category, name });
+  await reconcileBudgetRecordingMode(db, context, current, normalizedMode);
   const amount = positiveInteger(p.amount, "Anggaran kebutuhan");
   const threshold = Math.min(100, Math.max(1, Number(p.warning_threshold || 80)));
   await syncBudgetFundingForUpsert(db, context, {

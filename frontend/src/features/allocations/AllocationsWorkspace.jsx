@@ -287,7 +287,6 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const [adjustForm, setAdjustForm] = useState({ direction: "fund", amount: "", reason: "" });
   const [message, setMessage] = useState(null);
   const [allocationFilter, setAllocationFilter] = useState("all");
-  const [detailRuleId, setDetailRuleId] = useState("");
   const [detailAction, setDetailAction] = useState("");
   const [legacyBudgetAttention, setLegacyBudgetAttention] = useState(false);
   const [actionTarget, setActionTarget] = useState(null);
@@ -302,6 +301,14 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const [releasedFunds, setReleasedFunds] = useState(null);
   const [fundingIntent, setFundingIntent] = useState(null);
   const [fundingError, setFundingError] = useState(null);
+  const detailRuleId = String(new URLSearchParams(location.search).get("allocation") || "");
+  const setDetailRuleId = useCallback((ruleId, { replace = false } = {}) => {
+    const params = new URLSearchParams(location.search);
+    if (ruleId) params.set("allocation", String(ruleId));
+    else params.delete("allocation");
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : "", hash: location.hash }, { replace, state: null });
+  }, [location.hash, location.pathname, location.search, navigate]);
   const allocationActor = allocationActorFor(bootstrap, user);
   const view = useAllocationViewData({ resource, budgetResource, recurringResource, bootstrap, overview, usersResource, allocationFilter, move, administratorMode, allocationActor });
   const canCreate = view.accounts.length > 0;
@@ -327,7 +334,7 @@ const AllocationsWorkspace = ({ embedded = false }) => {
 
   const openFunding = useCallback(({ sourceAccountId = "", envelopePeriodId = "", suggestedAmount = 0, lockSelection = false } = {}) => { setFundingError(null); setFundingIntent({ sourceAccountId, envelopePeriodId, suggestedAmount: Number(suggestedAmount || 0), lockSelection: lockSelection === true }); }, []);
   useAllocationAttentionNavigation({ resourceStatus: resource.status, budgetStatus: budgetResource.status, attentionAction, attentionEnvelopeId, attentionBudgetId, attentionSuggestedAmount, activeItems: view.activeItems, budgets: view.budgets, consumeAttention, setDetailRuleId, setLegacyBudgetAttention, openFunding });
-  useEffect(() => { if (detailRuleId && resource.status === "ready" && !detailItem) setDetailRuleId(""); }, [detailItem, detailRuleId, resource.status]);
+  useEffect(() => { if (detailRuleId && resource.status === "ready" && !detailItem) setDetailRuleId("", { replace: true }); }, [detailItem, detailRuleId, resource.status, setDetailRuleId]);
   useAllocationDashboardCreateWorkflow({ canCreate, location, navigate, notify, resourceStatus: resource.status, activeItems: view.activeItems, setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId });
   useAllocationCommitmentPlanNavigation({ resourceStatus: resource.status, budgetStatus: budgetResource.status, location, navigate, notify, activeItems: view.activeItems, budgets: view.budgets, setLegacyBudgetAttention, setDetailAction, setDetailRuleId });
   useAllocationFundingNavigation({ resourceStatus: resource.status, location, navigate, openFunding });
@@ -348,7 +355,7 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const openReminder = (item) => setReminderTarget({ entityType: "envelope_period", entityId: item.envelope_period_id, name: item.name, suggestedDate: item.period_end });
   const openBudgetReminder = (budget) => setReminderTarget({ entityType: "budget", entityId: budget.budget_id, name: budget.name || "Kebutuhan" });
   const openDetail = (item, action = "") => { setLegacyBudgetAttention(false); setDetailAction(action); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
-  const closeDetail = () => { setDetailRuleId(""); setDetailAction(""); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
+  const closeDetail = () => { setDetailRuleId("", { replace: true }); setDetailAction(""); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 
   return <AllocationResourceState resource={resource}><div className={allocationClass("page-stack allocations-page")}>

@@ -1,7 +1,6 @@
 import { APP_MEDIA } from "../../config/layout.js";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FiPlus } from "react-icons/fi";
-import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
 import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -18,7 +17,6 @@ import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import {
   archiveAccount,
   createAccount as requestCreateAccount,
-  requestAccountCreation,
   deleteUnusedAccount,
   previewAccountLifecycle,
   updateAccount as requestUpdateAccount,
@@ -75,7 +73,7 @@ const accountUpdatePayload = (account) => ({
   row_version: account.row_version,
 });
 
-const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts, reloadRequests, ownerMode, initialCreateOpen = false, onCreateComplete, onCreateClose }) => {
+const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts, initialCreateOpen = false, onCreateComplete, onCreateClose }) => {
   const [createDialogOpen, setCreateDialogOpen] = useState(initialCreateOpen);
   const openCreateDialog = () => { setDialogState({ status: "idle", error: null }); setCreateDialogOpen(true); };
   const closeCreateDialog = () => {
@@ -89,14 +87,13 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
     setDialogState({ status: "submitting", error: null });
     try {
       const payload = accountCreatePayload(accountForm);
-      const saved = ownerMode ? await requestCreateAccount(payload, {}) : await requestAccountCreation(payload, {});
+      const saved = await requestCreateAccount(payload, {});
       setAccountForm(emptyAccountForm());
       setCreateDialogOpen(false);
       setDialogState({ status: "idle", error: null });
-      notify({ message: ownerMode ? "Rekening berhasil dibuat." : "Pengajuan rekening dikirim ke Administrator.", tone: "success", dedupeKey: ownerMode ? "accounts:create" : "accounts:request-create" });
-      if (ownerMode) await reloadAccounts();
-      else await reloadRequests?.();
-      onCreateComplete?.({ ownerMode, saved, payload });
+      notify({ message: "Rekening berhasil dibuat.", tone: "success", dedupeKey: "accounts:create" });
+      await reloadAccounts();
+      onCreateComplete?.({ createdImmediately: true, saved, payload });
     } catch (error) { setDialogState({ status: "error", error }); }
   };
   const openEditAccount = (account) => {
@@ -181,12 +178,12 @@ const AccountListSection = ({ mobileLayout, accounts, allAccounts, selectedAccou
             openCreateDialog={openCreateDialog} setMobileAccountSheet={setMobileAccountSheet} setSelectedAccountId={setSelectedAccountId} bootstrap={bootstrap} onTransferSaved={onTransferSaved} reconciliationLookup={reconciliationLookup} /></Suspense>
         : <Suspense fallback={<NativePageSkeleton kind="accounts" variant="panel" label="Menyiapkan rekening…" />}><DesktopAccountsWorkspace accounts={accounts} allAccounts={allAccounts} selectedAccount={selectedAccount} ownershipFilter={ownershipFilter} onOwnershipFilterChange={setOwnershipFilter} ownerMode={ownerMode} bootstrap={bootstrap}
             onSelectAccount={setSelectedAccountId} onViewTransactions={(item) => navigate("/transaksi", { state: { accountId: item.account_id } })}
-            onEnsureBalance={(item) => navigate("/rekonsiliasi", { state: { accountId: item.account_id, reconciliationSource: "account" } })}
+            onEnsureBalance={(item) => navigate("/rekonsiliasi", { state: { accountId: item.account_id, reconciliationSource: "account", returnTo: "/rekening", returnLabel: "Rekening" } })}
             onEditAccount={openEditAccount} onArchiveAccount={openAccountLifecycle} reconciliationLookup={reconciliationLookup} /></Suspense>)
         : <EmptyState className={`${styles.emptyPanel}${initialEmpty ? ` ${styles.emptyPanelInitial}` : ""}`}
             title={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? "Tidak ada rekening di filter ini" : "Belum ada rekening"}
-            description={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? "Pilih filter lain untuk menampilkan rekening yang tersedia." : ownerMode ? "Tambahkan rekening pertama untuk mulai mencatat saldo dan transaksi." : "Ajukan rekening baru kepada Administrator untuk mulai menggunakannya setelah disetujui."}
-            action={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? <Button onClick={() => setOwnershipFilter("all")}>Tampilkan semua</Button> : <Button variant="primary" icon={FiPlus} data-preload-action="accountEditor" onClick={openCreateDialog}>{ownerMode ? "Tambah rekening" : "Ajukan rekening"}</Button>} />}
+            description={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? "Pilih filter lain untuk menampilkan rekening yang tersedia." : "Tambahkan rekening pertama untuk mulai mencatat saldo dan transaksi."}
+            action={emptyState === EMPTY_COLLECTION_STATE.FILTERED ? <Button onClick={() => setOwnershipFilter("all")}>Tampilkan semua</Button> : <Button variant="primary" icon={FiPlus} data-preload-action="accountEditor" onClick={openCreateDialog}>Tambah rekening</Button>} />}
     </section>
   );
 };
@@ -199,11 +196,11 @@ const AccountSheets = ({ mobileAccountSheet, setMobileAccountSheet, selectedAcco
     onEditAccount={(item) => { setMobileAccountSheet(null); openEditAccount(item); }} onArchiveAccount={(item) => { setMobileAccountSheet(null); openAccountLifecycle(item); }} /></Suspense>;
 };
 
-const AccountEditors = ({ createDialogOpen, editAccount, closeCreateDialog, accountForm, setAccountForm, createAccount, setEditAccount, saveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, existingAccounts, requestMode }) => (
+const AccountEditors = ({ createDialogOpen, editAccount, closeCreateDialog, accountForm, setAccountForm, createAccount, setEditAccount, saveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, existingAccounts }) => (
   (createDialogOpen || editAccount) ? (
     <Suspense fallback={<LazyActionFallback surface="modal" title="Rekening" label="Menyiapkan form rekening..." />}><AccountEditorDialogs createDialogOpen={createDialogOpen} onCloseCreate={closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
       onCreateAccount={createAccount} editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={saveAccount} dialogState={dialogState}
-      activeUsers={activeUsers} currentDatabaseUser={currentDatabaseUser} currentOwnerLabel={currentOwnerLabel} existingAccounts={existingAccounts} requestMode={requestMode} /></Suspense>
+      activeUsers={activeUsers} currentDatabaseUser={currentDatabaseUser} currentOwnerLabel={currentOwnerLabel} existingAccounts={existingAccounts} /></Suspense>
   ) : null
 );
 
@@ -244,11 +241,11 @@ const AccountsPageFeedback = ({ accountsResource, usersResource, ownerMode, relo
   </>
 );
 
-const AccountsPageHeading = ({ accounts, ownerMode, openCreateDialog }) => (
+const AccountsPageHeading = ({ accounts, openCreateDialog }) => (
   <div className={styles.desktopPageHeader}><PageHeader title="Rekening"
     description={null}
     help={ACCOUNT_BALANCE_GUIDANCE}
-    actions={accounts.length ? <Button variant="primary" icon={FiPlus} data-preload-action="accountEditor" onClick={openCreateDialog} aria-label={ownerMode ? "Tambah rekening desktop" : "Ajukan rekening desktop"}>{ownerMode ? "Tambah rekening" : "Ajukan rekening"}</Button> : null} />
+    actions={accounts.length ? <Button variant="primary" icon={FiPlus} data-preload-action="accountEditor" onClick={openCreateDialog} aria-label="Tambah rekening desktop">Tambah rekening</Button> : null} />
   </div>
 );
 
@@ -256,7 +253,7 @@ const resolvedAccountUsers = ({ ownerMode, ownerUserContext, bootstrapUser, auth
   const currentDatabaseUser = ownerMode ? ownerUserContext.currentDatabaseUser : bootstrapUser || null;
   return {
     currentDatabaseUser,
-    activeUsers: ownerMode ? ownerUserContext.activeUsers : currentDatabaseUser ? [currentDatabaseUser] : [],
+    activeUsers: currentDatabaseUser ? [currentDatabaseUser] : [],
     currentOwnerLabel: currentDatabaseUser?.name || authUser?.name || ownerUserContext.currentOwnerLabel,
   };
 };
@@ -268,7 +265,7 @@ const accountUserIdentity = (bootstrapUser, databaseUser, authUser) => ({
 
 const AccountsPageContent = ({ page }) => {
   const {
-    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts, requestsResource,
+    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts,
     mobileLayout, visibleAccounts, selectedAccount, selectedAccountId, ownershipFilter, setOwnershipFilter, crud, lifecycle, setMobileAccountSheet,
     mobileAccountSheet, bootstrap, editAccount, setEditAccount, accountForm, setAccountForm, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel,
     archiveTarget, setArchiveTarget, reconciliationLookup,
@@ -276,15 +273,14 @@ const AccountsPageContent = ({ page }) => {
   return <div className={`page-stack ${styles.accountsPage}`}>
     <AccountsPageFeedback accountsResource={accountsResource} usersResource={usersResource} ownerMode={ownerMode} reloadAccounts={reloadAccounts} message={message} />
     {setupCreated ? <div><CompactNotice tone="success" title="Rekening siap." role="status">Lanjutkan penyiapan agar transaksi harian langsung siap digunakan.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/kategori", { state: { setupFlow: true } })}>Lanjut siapkan kategori</Button></div></div> : null}
-    <AccountsPageHeading accounts={accounts} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} />
-    {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : !ownerMode ? <MasterDataRequestsPanel items={requestsResource.data?.items || []} title="Pengajuan rekening saya" /> : null}
+    <AccountsPageHeading accounts={accounts} openCreateDialog={crud.openCreateDialog} />
     <AccountListSection mobileLayout={mobileLayout} accounts={visibleAccounts} allAccounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} setOwnershipFilter={setOwnershipFilter} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
       navigate={navigate} bootstrap={bootstrap} setSelectedAccountId={page.setSelectedAccountId} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} onTransferSaved={reloadAccounts} reconciliationLookup={reconciliationLookup} />
     {mobileLayout ? <AccountSheets mobileAccountSheet={mobileAccountSheet} setMobileAccountSheet={setMobileAccountSheet} selectedAccount={selectedAccount} ownerMode={ownerMode}
       navigate={navigate} openEditAccount={crud.openEditAccount} openAccountLifecycle={lifecycle.openAccountLifecycle} /> : null}
     <AccountEditors createDialogOpen={crud.createDialogOpen} editAccount={editAccount} closeCreateDialog={crud.closeCreateDialog} accountForm={accountForm} setAccountForm={setAccountForm}
       createAccount={crud.createAccount} setEditAccount={setEditAccount} saveAccount={crud.saveAccount} dialogState={dialogState} activeUsers={activeUsers}
-      currentDatabaseUser={currentDatabaseUser} currentOwnerLabel={currentOwnerLabel} existingAccounts={accounts} requestMode={!ownerMode} />
+      currentDatabaseUser={currentDatabaseUser} currentOwnerLabel={currentOwnerLabel} existingAccounts={accounts} />
     <AccountArchiveConfirmation archiveTarget={archiveTarget} dialogState={dialogState} setArchiveTarget={setArchiveTarget} archiveSelectedAccount={lifecycle.archiveSelectedAccount} />
   </div>;
 };
@@ -301,7 +297,6 @@ const AccountsPage = () => {
   const ownerMode = user?.role === "owner";
   const mobileLayout = useMobileAccountsLayout();
   const usersResource = useApiResource("users.list", {}, { enabled: ownerMode });
-  const requestsResource = useApiResource("masterDataRequests.list", { request_type: "account" }, { enabled: !ownerMode });
   const [accountForm, setAccountForm] = useState(() => investmentRdnFlow ? investmentRdnInitialForm() : emptyAccountForm());
   const [message, setMessage] = useState(null);
   const [editAccount, setEditAccount] = useState(null);
@@ -309,7 +304,10 @@ const AccountsPage = () => {
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [selectedAccountId, setSelectedAccountId] = useState(() => String(location.state?.accountId || ""));
   const [mobileAccountSheet, setMobileAccountSheet] = useState(null);
-  const [ownershipFilter, setOwnershipFilter] = useState("all");
+  const [ownershipFilter, setOwnershipFilter] = useState(() => {
+    const requested = String(location.state?.ownershipFilter || "all");
+    return ["all", "self", "partner", "shared"].includes(requested) ? requested : "all";
+  });
   const [setupCreated, setSetupCreated] = useState(false);
   const accounts = accountsResource.data?.items ?? EMPTY_ACCOUNTS;
   const reconciliationLookup = useMemo(() => (
@@ -323,7 +321,7 @@ const AccountsPage = () => {
     return { accountsResult, financeResult };
   };
   const clearInvestmentWorkflow = () => investmentRdnFlow && navigate(location.pathname, { replace: true, state: null });
-  const handleCreateComplete = ({ ownerMode: createdImmediately, saved, payload }) => {
+  const handleCreateComplete = ({ createdImmediately, saved, payload }) => {
     if (location.state?.setupFlow) setSetupCreated(true);
     if (!investmentRdnFlow) return;
     const continuation = readInvestmentContinuation(location.state);
@@ -338,7 +336,7 @@ const AccountsPage = () => {
     clearInvestmentWorkflow();
   };
   const crud = useAccountCrudActions({
-    accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts, reloadRequests: requestsResource.reload, ownerMode,
+    accountForm, setAccountForm, editAccount, setEditAccount, dialogState, setDialogState, notify, reloadAccounts, ownerMode,
     initialCreateOpen: investmentRdnFlow, onCreateComplete: handleCreateComplete, onCreateClose: clearInvestmentWorkflow,
   });
   const lifecycle = useAccountLifecycleActions({ archiveTarget, setArchiveTarget, setDialogState, setMessage, notify, reloadAccounts });
@@ -354,7 +352,7 @@ const AccountsPage = () => {
   if (accountsResource.status === "error") return <ErrorState error={accountsResource.error} onRetry={accountsResource.reload} />;
   const selectedAccount = selectedAccountFrom(visibleAccounts, selectedAccountId);
   return <AccountsPageContent page={{
-    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts, requestsResource,
+    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts,
     mobileLayout, visibleAccounts, selectedAccount, selectedAccountId, ownershipFilter, setOwnershipFilter, crud, lifecycle, setMobileAccountSheet,
     mobileAccountSheet, bootstrap, setSelectedAccountId, editAccount, setEditAccount, accountForm, setAccountForm, dialogState, activeUsers, currentDatabaseUser,
     currentOwnerLabel, archiveTarget, setArchiveTarget, reconciliationLookup,

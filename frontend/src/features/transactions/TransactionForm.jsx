@@ -26,7 +26,6 @@ import {
   initialTransactionForm,
   isMobileTransferPresentation,
   parseTransactionAmount,
-  requiresTransferApproval,
   resetForAnotherTransaction,
   transactionDerivedData,
   transactionImpact,
@@ -142,7 +141,6 @@ const useTransactionDerived = ({ bootstrap, overview, form, transaction, present
   const { isIncome, isTransfer } = transactionMode(form);
   const mobileTransferMode = isMobileTransferPresentation({ presentation, isTransfer, transaction, mobileLayout });
   const derived = transactionDerivedData({ data, form, isTransfer });
-  const approvalRequired = requiresTransferApproval({ transaction, isTransfer, transferRoutes: data.transferRoutes, form });
   const allocationCandidates = useMemo(() => mergeContextualAllocationCandidate({
     candidates: smartAllocationCandidates({ budgets: data.budgets, envelopes: derived.compatibleEnvelopes, form }),
     context: initialAllocationContext,
@@ -169,7 +167,7 @@ const useTransactionDerived = ({ bootstrap, overview, form, transaction, present
     ? earlyFundsWarning({ transactionType: form.transaction_type, amount: parseTransactionAmount(form.amount) || 0, source: selectedSource, envelope: selectedEnvelope })
     : null;
 
-  return { data, isIncome, isTransfer, mobileTransferMode, approvalRequired, allocationCandidates, impact, fundsWarning, outcomeUnknown: submitState.status === "unknown", ...derived };
+  return { data, isIncome, isTransfer, mobileTransferMode, allocationCandidates, impact, fundsWarning, outcomeUnknown: submitState.status === "unknown", ...derived };
 };
 
 const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, transaction, allocationCandidates, planningIntent, markDirty }) => {
@@ -283,7 +281,6 @@ const transactionFields = ({ state, derived, actions, lockType, lockPlanningSele
   onSourceAccountChange: actions.onSourceAccountChange,
   submitting,
   outcomeUnknown: derived.outcomeUnknown,
-  approvalRequired: derived.approvalRequired,
 });
 
 const TransactionEditorModal = ({
@@ -349,7 +346,7 @@ const TransactionForm = ({
   const draftLifecycle = useTransactionDraftLifecycle({ open, postSave: state.postSave, onClose, onDirtyChange });
   const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, outcomeUnknown: derived.outcomeUnknown, transaction, allocationCandidates: derived.allocationCandidates, planningIntent: planning.intent, markDirty: draftLifecycle.markDirty });
   const setters = { setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote };
-  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, approvalRequired: derived.approvalRequired, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, planningIntent: planning.intent, forceOverspendNote: state.forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
+  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, planningIntent: planning.intent, forceOverspendNote: state.forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
   const submitting = state.submitState.status === "submitting";
   const outcomeUnknown = derived.outcomeUnknown;
 

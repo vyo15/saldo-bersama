@@ -166,9 +166,7 @@ export const updateRecurringRule = async (db, context) => {
 export const recurringListStatement = (context) => {
   const period = periodKey(context.payload?.period);
   const access = visibleScopeSql(context.actor, "r");
-  const reverseAccess = context.actor.role === "owner"
-    ? { sql: "1=1", args: [] }
-    : { sql: "t.created_by=?", args: [context.actor.user_id] };
+  const reverseAccess = { sql: "t.created_by=?", args: [context.actor.user_id] };
   return {
     sql: `SELECT o.*,r.name,r.kind,r.category_id,r.budget_id,r.commitment_id,r.expected_amount AS rule_expected_amount,r.frequency,r.due_day AS rule_due_day,r.default_account_id,r.payment_method,r.auto_debit,r.start_date,r.end_date,r.priority,r.status AS rule_status,r.row_version AS rule_row_version,r.scope,r.owner_user_id,a.account_type AS default_account_type,
       c.commitment_type,c.current_balance AS commitment_current_balance,c.original_amount AS commitment_original_amount,c.installment_amount AS commitment_installment_amount,c.total_installments AS commitment_total_installments,c.installments_paid AS commitment_installments_paid,c.auto_debit AS commitment_auto_debit,
@@ -194,8 +192,7 @@ const recurringDisplayStatus = (row, today) => {
 };
 
 const canManageRecurringRule = (actor, row) => Boolean(
-  actor?.role === "owner"
-  || (row?.scope === "shared" && !row?.owner_user_id)
+  (row?.scope === "shared" && !row?.owner_user_id)
   || (row?.scope === "personal" && row?.owner_user_id === actor?.user_id)
 );
 

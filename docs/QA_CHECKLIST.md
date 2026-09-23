@@ -40,7 +40,7 @@
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
 - [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: kebutuhan aktif memuat ikon + nama + pola/status dan Sisa/total/persentase + progress; `fixed_once` tepat 100% berubah menjadi row ringkas `✓ Selesai` tanpa progress/quick-add; `flexible`/`recurring` tepat 100% menjadi `Dana habis` dengan warning tone dan tanpa aksi pencatatan baru; overspend tetap danger. `Terpakai`, waktu selesai, dan Jadwal tersedia di **Detail kebutuhan**; Edit/Lihat jadwal berada di overflow; target sentuh minimal 44px; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
 - [ ] Detail Alokasi tidak memiliki section permanen `Kelola dana`; aksi administratif **Pindahkan dana / Pengingat / Hapus dari daftar** berada di menu overflow `•••`, sedangkan aksi transaksi/kebutuhan tetap berada dekat konteksnya.
-- [ ] Beranda mobile compact: **Dana Tersedia tetap nominal pertama**, sementara **Total saldo rekening**, **Sisa di Alokasi**, Aman/hari, dan Masuk/Keluar/Selisih tetap terlihat tanpa standalone card `Bulan ini`.
+- [ ] Beranda mobile compact: **Saldo Keluarga** menjadi nominal utama, **Dana yang bisa kamu gunakan** tampil tepat di hero, panel **Saya / Pasangan / Bersama** tetap satu baris tiga kolom tanpa overflow, sementara Aman/hari dan Sisa di Alokasi tetap terlihat tanpa menambah card berlebihan.
 - [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
 - [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, tidak menghapus draft/form, dan node gesture hanya dirender pada viewport mobile (`<=820px`), bukan disembunyikan belakangan di desktop.
@@ -50,7 +50,7 @@
 
 - [ ] Loading, empty, filtered-empty, error, offline, unauthorized, maintenance, dan conflict state relevan tersedia.
 - [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak.
-- [ ] Mobile control penting ≥44×44px; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
+- [ ] Mobile control penting ≥44×44px; termasuk toggle visibilitas saldo, filter Notifikasi, disclosure detail, dan link tindakan compact; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
 - [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
 - [ ] **Pastikan Saldo Sesuai** desktop tidak menyembunyikan kolom **Selisih/Status**; breakpoint dua-panel hanya aktif bila riwayat memiliki lebar yang cukup dan tidak ada overflow kritis tanpa affordance.
 - [ ] Collection kecil tidak mempertahankan kontrol yang tidak berguna: ringkasan satu-item, search/filter dataset kecil, atau tab jenis bernilai nol disembunyikan secara progresif.
@@ -112,6 +112,13 @@
 - [ ] Status handoff eksplisit `FINAL / VERIFIED` setelah full gate PASS atau `CANDIDATE / UNVERIFIED` bila full gate benar-benar terblokir environment eksternal.
 - [ ] `git status --short` ditinjau sebelum commit/push.
 - [ ] Delivery Git tidak memakai `--no-verify`/force push dan GitHub **Quality** dipantau setelah push.
+
+### Form Kebutuhan (canonical)
+- [ ] Tambah/Edit kebutuhan tetap compact; **Cara penggunaan** memakai inline picker canonical seperti rekening/ATM dengan ikon kecil, bukan card/choice besar yang mendominasi form.
+- [ ] Create tidak memilih cara penggunaan otomatis; submit tanpa pilihan gagal dengan pesan yang jelas.
+- [ ] Edit hanya dapat mengubah cara penggunaan selama belum ada pemakaian; setelah terpakai field read-only dan backend menolak payload perubahan.
+- [ ] Picker kategori create memiliki **Tambah kategori baru** inline dan setelah kategori owner dibuat, pilihan kembali ke form/row aktif tanpa kehilangan draft.
+- [ ] Aksi lifecycle memakai ikon trash yang jelas tetapi copy tetap honest-action (`Hapus dari daftar`) sampai preview menentukan hapus permanen vs arsip.
 
 ### Kebutuhan → transaksi (canonical)
 - Nominal utama pada row Kebutuhan adalah **sisa aktual = nominal rencana - terpakai**, bukan nominal rencana statis.

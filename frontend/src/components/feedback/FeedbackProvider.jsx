@@ -134,12 +134,12 @@ const processPresentation = (state) => {
     return {
       module: state.activeCount > 1 ? "Saldo Bersama" : module,
       label: state.activeCount > 1 ? `Memproses ${state.activeCount} perubahan...` : labels?.[0] || `Menyimpan perubahan ${module.toLowerCase()}...`,
-      detail: "Data sedang dikirim dan menunggu konfirmasi server.",
+      detail: "Perubahan sedang diproses. Tunggu sampai hasilnya dipastikan.",
       icon: FiLoader,
     };
   }
-  if (state.status === "success") return { module, label: labels?.[1] || `${module} berhasil diperbarui`, detail: "Server sudah mengonfirmasi perubahan.", icon: FiCheckCircle };
-  if (state.status === "unknown") return { module, label: `${module} belum terkonfirmasi`, detail: ACTION_UNKNOWN_DETAILS[state.action] || "Coba lagi dengan data yang sama agar idempotency key yang sama dapat memverifikasi hasil. Jangan ubah data sampai server memberi hasil definitif.", icon: FiAlertCircle };
+  if (state.status === "success") return { module, label: labels?.[1] || `${module} berhasil diperbarui`, detail: "Perubahan sudah tersimpan.", icon: FiCheckCircle };
+  if (state.status === "unknown") return { module, label: `${module} belum terkonfirmasi`, detail: ACTION_UNKNOWN_DETAILS[state.action] || "Coba lagi dengan data yang sama agar aplikasi dapat memastikan hasil. Jangan ubah data sampai hasilnya jelas.", icon: FiAlertCircle };
   if (state.status === "error") return { module, label: `${module} gagal diproses`, detail: "Perubahan belum tersimpan. Periksa pesan pada formulir lalu coba lagi.", icon: FiAlertCircle };
   return null;
 };

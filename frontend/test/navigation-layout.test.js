@@ -70,13 +70,13 @@ test("tab utama mobile memulihkan scroll per tab, route sekunder mulai dari atas
 
   assert.match(shell, /useNavigationType\(\)/);
   assert.match(shell, /useMobileTabScrollRestoration\(location, navigationType\);/);
-  assert.match(restorationHook, /PRIMARY_TAB_PATHS = new Set\(\["\/", "\/perencanaan", "\/transaksi"\]\)/);
+  assert.match(restorationHook, /import \{ mobilePrimaryScrollKey \} from "\.\.\/config\/navigation\.js"/);
   assert.match(restorationHook, /window\.history\.scrollRestoration = "manual"/);
   assert.match(restorationHook, /rememberHistoryPosition\(previousLocation\.key, previousTop\)/);
-  assert.match(restorationHook, /primaryTabScrollPositions\.set\(previousLocation\.pathname, previousTop\)/);
+  assert.match(restorationHook, /primaryTabScrollPositions\.set\(previousPrimaryKey, previousTop\)/);
   assert.match(restorationHook, /navigationType === "POP" && location\.key && historyEntryScrollPositions\.has\(location\.key\)/);
-  assert.match(restorationHook, /PRIMARY_TAB_PATHS\.has\(location\.pathname\)/);
-  assert.match(restorationHook, /return 0;/);
+  assert.match(restorationHook, /const primaryKey = mobilePrimaryScrollKey\(location\.pathname\)/);
+  assert.match(restorationHook, /return primaryKey \? primaryTabScrollPositions\.get\(primaryKey\) \?\? 0 : 0;/);
   assert.match(restorationHook, /window\.scrollTo\(\{ top, left: 0, behavior: "auto" \}\)/);
 });
 
@@ -245,7 +245,7 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
   assert.doesNotMatch(dashboardCss, /mobile-finance-hero :global\(\.theme-toggle\)/);
   assert.doesNotMatch(dashboardCss, /\.mobile-hero-button[^\{]*\{[^}]*width:\s*38px;/);
   assert.match(dashboardCss, /\.mobile-quick-action > span \{ width:\s*44px; height:\s*44px;/);
-  assert.match(dashboardCss, /\.mobile-quick-grid \{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.match(dashboardCss, /\.mobile-quick-grid \{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/);
   assert.doesNotMatch(dashboardCss, /\.mobile-account-scroller|\.mobile-account-preview/);
   assert.doesNotMatch(responsiveCss, /\.app-shell--dashboard \.topbar/);
 });
@@ -264,9 +264,10 @@ test("logout tetap tersedia sampai navigasi mobile mengambil alih pada breakpoin
   assert.match(mobileBlock, /\.desktop-app-header \{ display:\s*none; \}/);
   assert.match(mobileBlock, /\.mobile-navigation \{[^}]*display:\s*grid;/);
   assert.match(navigationConfig, /isMobileSecondaryNavigationPath/);
-  assert.match(mobileNavigation, /secondaryRouteActive/);
-  assert.match(mobileNavigation, /aria-current=\{secondaryRouteActive \? "page"/);
-  assert.match(mobileNavigation, /mobile-navigation__more\$\{moreActive \? " active"/);
+  assert.match(mobileNavigation, /const activeArea = mobileNavigationArea\(location\.pathname\)/);
+  assert.match(mobileNavigation, /aria-current=\{activeArea === area \? "page"/);
+  assert.match(mobileNavigation, /const moreActive = moreOpen \|\| activeArea === "more"/);
+  assert.match(mobileNavigation, /aria-current=\{activeArea === "more" \? "page"/);
 });
 
 test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan duplikasi Anggaran", async () => {
@@ -289,9 +290,8 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
   assert.doesNotMatch(source, /label: "Kontrol saldo"|items: pickNavigation\("\/rekonsiliasi"\)/);
   assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
-  assert.match(source, /label: "Aplikasi"[\s\S]*items: pickNavigation\("\/pengaturan"\)/);
-  const secondary = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
-  assert.doesNotMatch(secondary, /to: "\/notifikasi"/);
+  assert.match(source, /label: "Aplikasi"[\s\S]*items: pickNavigation\("\/notifikasi", "\/pengaturan"\)/);
+  assert.match(source, /id: "application", label: "Aplikasi", items: pickNavigation\("\/notifikasi", "\/pengaturan"\)/);
   const mobileSecondaryBlock = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   assert.doesNotMatch(mobileSecondaryBlock, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);

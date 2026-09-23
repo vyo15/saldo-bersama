@@ -344,25 +344,25 @@ test("preview lifecycle owner menggabungkan read independen menjadi satu batch s
   assert.deepEqual(categoryDb.metrics, { network: 1, statements: [2] });
 
   const envelopeDb = makeDb((sql) => sql.includes("SELECT * FROM envelope_rules WHERE envelope_rule_id=?"), {
-    envelope_rule_id: "e1", name: "Makan", status: "active", row_version: 1,
+    envelope_rule_id: "e1", name: "Makan", status: "active", row_version: 1, scope: "shared", owner_user_id: null,
   });
   await envelopes.previewEnvelopeRuleLifecycle(envelopeDb, { actor, payload: { envelope_rule_id: "e1", row_version: 1 } });
   assert.deepEqual(envelopeDb.metrics, { network: 1, statements: [2] });
 
   const recurringDb = makeDb((sql) => sql === "SELECT * FROM recurring_rules WHERE recurring_rule_id=?", {
-    recurring_rule_id: "r1", name: "Tagihan", status: "active", row_version: 1,
+    recurring_rule_id: "r1", name: "Tagihan", status: "active", row_version: 1, scope: "shared", owner_user_id: null,
   });
   await recurring.previewRecurringRuleLifecycle(recurringDb, { actor, payload: { recurring_rule_id: "r1", row_version: 1 } });
   assert.deepEqual(recurringDb.metrics, { network: 1, statements: [2] });
 
   const budgetDb = makeDb((sql) => sql === "SELECT * FROM budgets WHERE budget_id=?", {
-    budget_id: "b1", period_key: "2026-08", status: "active", row_version: 1,
+    budget_id: "b1", period_key: "2026-08", status: "active", row_version: 1, scope: "shared", owner_user_id: null,
   });
   await budgets.previewBudgetLifecycle(budgetDb, { actor, payload: { budget_id: "b1", row_version: 1 } });
   assert.deepEqual(budgetDb.metrics, { network: 1, statements: [2] });
 
   const goalDb = makeDb((sql) => sql.includes("SELECT * FROM savings_goals WHERE goal_id=?"), {
-    goal_id: "g1", name: "Dana", status: "active", row_version: 1,
+    goal_id: "g1", name: "Dana", status: "active", row_version: 1, scope: "shared", owner_user_id: null,
   });
   await goals.previewGoalLifecycle(goalDb, { actor, payload: { goal_id: "g1", row_version: 1 } });
   assert.deepEqual(goalDb.metrics, { network: 1, statements: [3] });

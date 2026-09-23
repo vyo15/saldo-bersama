@@ -1,7 +1,8 @@
-import { FiArrowLeft, FiChevronRight } from "react-icons/fi";
-import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { FiChevronRight } from "react-icons/fi";
+import { NavLink, Outlet, useLocation } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import PageInfoButton from "../../components/common/PageInfoButton.jsx";
+import ContextBack from "../../components/navigation/ContextBack.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import {
   desktopSettingsCategoriesForRole,
@@ -77,7 +78,7 @@ const SETTINGS_ROUTE_META = Object.freeze({
     backLabel: "Data & cadangan",
     help: {
       title: "Tentang Import transaksi",
-      content: "Import menambahkan transaksi dari JSON atau CSV setelah seluruh file lolos preview. Jika ada data invalid atau konflik, aplikasi tidak melakukan partial import.",
+      content: "Import menambahkan transaksi dari JSON atau CSV setelah seluruh file lolos pemeriksaan. Jika ada data tidak valid atau konflik, tidak ada data yang diimpor sebagian.",
     },
   },
   "/pengaturan/backup": {
@@ -136,10 +137,7 @@ const settingsMetaForPath = (pathname) => SETTINGS_ROUTE_META[normalizeSettingsP
 
 const SettingsDetailHeader = ({ meta }) => (
   <header className={styles.settingsDetailHeader}>
-    <Link className={styles.settingsBackLink} to={meta.backTo || "/pengaturan"} aria-label={`Kembali ke ${meta.backLabel || "Pengaturan"}`}>
-      <FiArrowLeft aria-hidden="true" />
-      <span>{meta.backLabel || "Pengaturan"}</span>
-    </Link>
+    <ContextBack className={styles.settingsBackLink} to={meta.backTo || "/pengaturan"} label={meta.backLabel || "Pengaturan"} />
     <div className={styles.settingsDetailTitleRow}>
       <h1>{meta.title}</h1>
       <PageInfoButton title={meta.help.title}>{meta.help.content}</PageInfoButton>

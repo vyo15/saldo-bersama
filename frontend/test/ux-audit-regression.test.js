@@ -259,7 +259,7 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
     read("src/features/goals/components/GoalCards.jsx"),
     read("src/features/accounts/AccountsPage.jsx"),
     read("src/features/categories/CategoriesPage.jsx"),
-    read("src/features/budgets/BudgetDialogLayer.jsx"),
+    Promise.all([read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/features/budgets/budgetRecordingOptions.js")]).then((parts) => parts.join("\n")),
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
@@ -292,7 +292,7 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(goals, /const headerActions = canCreate && items\.length \? <Button/);
   assert.match(goalCards, /title=\{canCreate \? "Belum ada target keuangan"/);
   assert.match(goalCards, /action=\{canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
-  assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>\{ownerMode \? "Tambah rekening" : "Ajukan rekening"\}<\/Button> : null\}/);
+  assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>Tambah rekening<\/Button> : null\}/);
   assert.match(accounts, /action=\{emptyState === EMPTY_COLLECTION_STATE\.FILTERED \?[\s\S]*?Tampilkan semua<\/Button> : <Button variant="primary"/);
   assert.match(categories, /actions=\{items\.length \? <Button[^>]*aria-label=\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}>\{ownerMode \? "Tambah" : "Ajukan"\}<\/Button> : null\}/);
   assert.match(categories, /emptyState === EMPTY_COLLECTION_STATE\.FILTERED && filtersActive \? <Button onClick=\{clearFilters\}>Reset pencarian<\/Button> : initialEmpty \? <Button variant="primary"/);

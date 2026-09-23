@@ -17,11 +17,11 @@ export const runCreateAllocation = async ({ createForm, createNeeds, resetForm, 
   const needs = (createNeeds || []).map((need, index) => {
     const needName = String(need.name || "").trim();
     const amount = Number(String(need.amount || "").replace(/\D/g, ""));
-    const recordingMode = String(need.recording_mode || "flexible");
+    const recordingMode = String(need.recording_mode || "");
     if (!needName) throw new Error(`Isi nama kebutuhan ${index + 1}.`);
     if (!need.category_id) throw new Error(`Pilih kategori untuk kebutuhan ${index + 1}.`);
     if (!Number.isInteger(amount) || amount <= 0) throw new Error(`Nominal kebutuhan ${index + 1} harus lebih dari Rp0.`);
-    if (!["flexible", "fixed_once", "recurring"].includes(recordingMode)) throw new Error(`Cara penggunaan kebutuhan ${index + 1} tidak valid.`);
+    if (!["flexible", "fixed_once", "recurring"].includes(recordingMode)) throw new Error(`Pilih cara penggunaan untuk kebutuhan ${index + 1}.`);
     return {
       name: needName,
       category_id: need.category_id,

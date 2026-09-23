@@ -425,9 +425,9 @@ test("recurring skip/restore dan feedback global memakai guard canonical tanpa h
   assert.match(feedback, /ACTION_MODULES/);
   assert.match(feedback, /transactions\.create/);
   assert.match(feedback, /Menyimpan transaksi/);
-  assert.match(feedback, /Server sudah mengonfirmasi perubahan/);
-  assert.match(feedback, /Coba lagi dengan data yang sama agar idempotency key yang sama dapat memverifikasi hasil/);
-  assert.match(feedback, /Jangan ubah data sampai server memberi hasil definitif/);
+  assert.match(feedback, /Perubahan sudah tersimpan/);
+  assert.match(feedback, /Coba lagi dengan data yang sama agar aplikasi dapat memastikan hasil/);
+  assert.match(feedback, /Jangan ubah data sampai hasilnya jelas/);
   assert.match(feedback, /"reset\.apply": "Jangan kirim ulang\. Buka Reset data testing lalu gunakan Periksa status operasi/);
   assert.match(await read("src/services/api/client.js"), /MUTATION_INTENT_LOCKED/);
   assert.match(feedback, /\["success", "info", "warning", "danger"\]/, "feedback error wajib mempertahankan tone danger");
@@ -574,7 +574,7 @@ test("import transaksi memblokir partial apply dan restore memakai konfirmasi de
 
   assert.match(importPage, /preview\?\.acceptable/);
   assert.match(importPage, /if \(!preview\?\.acceptable\) return/);
-  assert.match(importPage, /Tidak ada partial import/);
+  assert.match(importPage, /Tidak ada data yang diimpor sebagian/);
   assert.match(importPage, /Dampak kumulatif import/);
   assert.match(importPage, /Total refund/);
   assert.match(importPage, /Penyesuaian saldo/);

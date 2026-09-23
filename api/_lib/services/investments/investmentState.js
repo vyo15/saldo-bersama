@@ -45,10 +45,9 @@ export const assertPortfolioReadable = (portfolio) => {
 
 export const assertPortfolioOperable = (context, portfolio) => {
   assertPortfolioReadable(portfolio);
-  if (context.actor.role === "owner") return;
   if (portfolio.owner_scope === "shared") return;
   if (portfolio.owner_scope === "personal" && portfolio.owner_user_id === context.actor.user_id) return;
-  throw appError("PORTFOLIO_FORBIDDEN", "Portfolio ini tidak dapat diubah oleh akun Anda.", 403);
+  throw appError("PORTFOLIO_FORBIDDEN", "Portfolio pribadi pasangan hanya dapat dilihat, bukan diubah.", 403);
 };
 
 export const instrumentRow = async (db, instrumentId, { active = false } = {}) => {

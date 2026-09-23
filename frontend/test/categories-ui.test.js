@@ -118,7 +118,7 @@ test("pusat Persetujuan owner mereuse contract review rekening kategori dan tran
   assert.doesNotMatch(accounts, /useMasterDataRequestReview/);
   assert.doesNotMatch(categories, /useMasterDataRequestReview/);
   assert.doesNotMatch(transactions, /useTransferRequestReview/);
-  assert.match(accounts, /enabled: !ownerMode/);
+  assert.doesNotMatch(accounts, /masterDataRequests\.list|accounts\.requestCreate/);
   assert.match(categories, /enabled: !ownerMode/);
   assert.match(transactions, /memberTransferRequestsEnabled\(bootstrap\?\.user\?\.role\)/);
 });

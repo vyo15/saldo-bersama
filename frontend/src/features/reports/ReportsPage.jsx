@@ -69,7 +69,7 @@ const ReportHeader = ({ period, setPeriod, trendMonths, allocationRuleId, setAll
     <div className={styles.reportContextBar} aria-label="Konteks laporan">
       <div className={styles.filters}>
         <div className={styles.periodControl}><span className="sr-only">Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} compact aria-label="Pilih periode laporan" /></div>
-        <SelectionField className={styles.scopeControl} label="Alokasi" hideLabel compact value={allocationRuleId} onChange={setAllocationRuleId} options={scopeOptions} ariaLabel="Pilih scope Alokasi" searchable={scopeOptions.length > 7} />
+        <SelectionField className={styles.scopeControl} label="Alokasi" hideLabel compact value={allocationRuleId} onChange={setAllocationRuleId} options={scopeOptions} ariaLabel="Pilih Alokasi" searchable={scopeOptions.length > 7} />
       </div>
       <ReportDownloadMenu period={period} trendMonths={trendMonths} allocationRuleId={allocationRuleId} />
     </div>
@@ -131,7 +131,7 @@ const CategoryRows = ({ items = [] }) => {
 };
 
 const BudgetRows = ({ budgets }) => {
-  if (!budgets.length) return <EmptyState variant="inline" title="Belum ada Kebutuhan" description="Kebutuhan pada scope ini akan tampil setelah dibuat dari Alokasi." />;
+  if (!budgets.length) return <EmptyState variant="inline" title="Belum ada Kebutuhan" description="Kebutuhan pada pilihan Alokasi ini akan tampil setelah dibuat." />;
   return <div className={styles.budgetRows}>{budgets.map((budget) => {
     const status = usageStatus(budget);
     return <div className={styles.budgetRow} key={budget.budget_id}><span><strong>{budget.name}</strong>{budget.envelope_name ? <small>{budget.envelope_name}</small> : null}</span><span><small>Rencana</small><strong>{formatCompactRupiah(budget.amount)}</strong></span><span><small>Terpakai</small><strong>{formatCompactRupiah(budget.used_amount)}</strong></span><em data-tone={status.tone}>{status.label}</em></div>;
@@ -140,7 +140,7 @@ const BudgetRows = ({ budgets }) => {
 
 const TransactionRows = ({ items, expanded, onToggle }) => {
   const visible = expanded ? items : items.slice(0, 6);
-  if (!items.length) return <EmptyState variant="inline" title="Belum ada transaksi" description="Aktivitas pada scope dan periode ini belum tersedia." />;
+  if (!items.length) return <EmptyState variant="inline" title="Belum ada transaksi" description="Aktivitas pada pilihan dan periode ini belum tersedia." />;
   return <><div className={styles.transactionRows}>{visible.map((item) => <div className={styles.transactionRow} key={item.transaction_id}>
     <span><strong>{item.description}</strong><small>{[item.allocation_name, item.account_name, item.transaction_date].filter(Boolean).join(" · ")}</small></span>
     <span className={styles.transactionAmount}><strong data-tone={item.debit ? "negative" : item.credit ? "positive" : "default"}>{item.debit ? `- ${formatRupiah(item.debit)}` : item.credit ? `+ ${formatRupiah(item.credit)}` : "Transfer"}</strong><small>Saldo {formatCompactRupiah(item.running_balance)}</small></span>
@@ -189,7 +189,7 @@ const HeroOverview = ({ summary = {}, scope, trend, period, trendMonths, setTren
       <div className={styles.heroFacts}>{model.facts.map(([label, value]) => <span key={label}>{label} <strong>{typeof value === "number" ? formatCompactRupiah(value) : value}</strong></span>)}</div>
     </section>
     <section className={`${styles.reportPanel} ${styles.categoryPanel}`}>
-      <div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada scope aktif.</p></div></div>
+      <div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada pilihan saat ini.</p></div></div>
       <CategoryRows items={categories} />
     </section>
   </div>;

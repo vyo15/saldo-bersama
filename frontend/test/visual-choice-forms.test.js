@@ -52,7 +52,8 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
     readCategoryFeatureSource(),
     read("features/settings/MembersSettingsPage.jsx"),
   ]);
-  for (const source of sources) assert.match(source, /VisualChoiceGroup/);
+  sources.forEach((source, index) => { if (index !== 2) assert.match(source, /VisualChoiceGroup/); });
+  assert.match(sources[2], /<InlineSelectionPicker[\s\S]*label="Cara penggunaan"/);
 
   assert.match(sources[0], /legend="Jenis transaksi"/);
   assert.match(sources[0], /SelectionControl/);
@@ -73,11 +74,13 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
 
 test("descriptive fixed choices keep explanatory decisions calm and consistent", async () => {
   const [budgets, recurring, allocations] = await Promise.all([
-    read("features/budgets/BudgetDialogLayer.jsx"),
+    Promise.all([read("features/budgets/BudgetDialogLayer.jsx"), read("features/budgets/budgetRecordingOptions.js")]).then((parts) => parts.join("\n")),
     read("features/recurring/RecurringDialogs.jsx"),
     read("features/allocations/AllocationDialogLayer.jsx"),
   ]);
-  assert.match(budgets, /legend="Pola kebutuhan"[\s\S]*columns=\{3\}[\s\S]*mobileColumns=\{3\}/);
+  assert.match(budgets, /label="Cara penggunaan"/);
+  assert.match(budgets, /placeholder="Pilih cara penggunaan"/);
+  assert.match(budgets, /locked=\{hasUsage\}/);
   assert.match(budgets, /Bisa dipakai beberapa kali/);
   assert.match(budgets, /Sekali bayar/);
   assert.match(budgets, /Rutin/);
@@ -165,7 +168,7 @@ test("inline account picker stays compact, searchable, and expands in the same f
   assert.doesNotMatch(allocations, /placeholderMeta="Pilih rekening sumber dana"/);
   assert.match(funding, /<InlineSelectionPicker[\s\S]*label="Dari rekening mana\?"/);
   assert.match(accounts, /<InlineOwnershipPicker[\s\S]*legend="Pemegang rekening"/);
-  assert.match(accounts, /badge: `\$\{userRoleLabel\(member\.role\)\}/);
+  assert.match(accounts, /badge: userRoleLabel\(member\.role\)/);
   assert.doesNotMatch(accounts, /name="account-ownership"/);
   assert.match(goals, /<InlineSelectionPicker[\s\S]*label="Rekening tabungan"/);
   assert.doesNotMatch(goals, /GoalMovementModal|label="Rekening sumber"/);

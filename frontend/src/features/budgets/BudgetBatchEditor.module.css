@@ -15,16 +15,7 @@
 .categoryBlock { display: grid; gap: .15rem; }
 .categoryCreate { min-height: 2rem; width: fit-content; padding: 0 .15rem; border: 0; display: inline-flex; align-items: center; gap: .35rem; background: transparent; color: var(--primary-strong); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .categoryCreate svg { width: .9rem; height: .9rem; }
-.usageDetails { border: 1px solid var(--border); border-radius: .75rem; background: color-mix(in srgb,var(--surface) 92%,var(--primary-soft)); overflow: hidden; }
-.usageDetails > summary { min-height: 2.65rem; padding: .5rem .7rem; display: flex; align-items: center; justify-content: space-between; gap: .65rem; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; list-style: none; }
-.usageDetails > summary::-webkit-details-marker { display: none; }
-.usageDetails > summary strong { color: var(--text); font-size: var(--font-size-xs); text-align: right; }
-.usageDetailsContent { padding: .15rem .7rem .7rem; display: grid; gap: .55rem; }
-.modeBlock { display: grid; gap: .35rem; }
-.recordingMode { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .35rem; }
-.recordingMode button { min-height: 2.5rem; padding: .4rem .55rem; border: 1px solid var(--border); border-radius: .75rem; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; background: var(--surface); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
-.recordingMode button.recordingActive { border-color: color-mix(in srgb,var(--primary) 58%,var(--border)); background: var(--primary-soft); color: var(--primary-strong); }
-.modeHelper { min-height: 1.1rem; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
+.usageBlock { display: grid; gap: .55rem; }
 .scheduleGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .55rem; padding-top: .1rem; }
 .compactRow { min-width: 0; min-height: 3.5rem; display: grid; grid-template-columns: minmax(0,1fr) 2.6rem; align-items: stretch; border-bottom: 1px solid var(--border); }
 .compactMain { min-width: 0; padding: .6rem .1rem; border: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .7rem; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
@@ -34,7 +25,7 @@
 .compactAmount { font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .addButton { min-height: 2.5rem; width: fit-content; padding: 0 .1rem; border: 0; display: inline-flex; align-items: center; gap: .45rem; background: transparent; color: var(--primary-strong); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .addButton:disabled { color: var(--text-muted); cursor: not-allowed; opacity: .65; }
-.trashButton:focus-visible,.compactRemove:focus-visible,.compactMain:focus-visible,.addButton:focus-visible,.recordingMode button:focus-visible,.categoryCreate:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.trashButton:focus-visible,.compactRemove:focus-visible,.compactMain:focus-visible,.addButton:focus-visible,.categoryCreate:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .footer { width: 100%; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
 .summary { min-width: 0; display: grid; gap: .1rem; }
 .summary strong { font-size: var(--font-size-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -46,4 +37,4 @@
 .fundingReady { grid-template-columns: minmax(0,1fr) auto; align-items: center; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); border-radius: 0; color: var(--text-soft); font-size: var(--font-size-xs); }
 .fundingReady strong { color: var(--primary-strong); font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; }
 @media (hover:hover) and (pointer:fine) { .compactMain:hover,.compactRemove:hover,.trashButton:hover,.addButton:hover,.categoryCreate:hover { color: var(--primary-strong); } .compactMain:hover { background: color-mix(in srgb,var(--primary-soft) 32%,transparent); } }
-@media (max-width:520px) { .primaryFields { grid-template-columns: minmax(0,1.35fr) minmax(7.25rem,.75fr); gap: .4rem; } .recordingMode button { padding-inline: .35rem; } .scheduleGrid { grid-template-columns: 1fr; } .footer { gap: .55rem; } .footerActions { flex: 1; justify-content: flex-end; } .footerActions > button { padding-inline: .75rem; } }
+@media (max-width:520px) { .primaryFields { grid-template-columns: minmax(0,1.35fr) minmax(7.25rem,.75fr); gap: .4rem; } .scheduleGrid { grid-template-columns: 1fr; } .footer { gap: .55rem; } .footerActions { flex: 1; justify-content: flex-end; } .footerActions > button { padding-inline: .75rem; } }

@@ -100,7 +100,7 @@ const DesktopTransactionWorkspace = ({ report, period, total, items, categoryLoo
     <section className={styles.historyPanel} aria-labelledby="desktop-transaction-history-title">
       <RepeatStrip items={items} categoryLookup={categoryLookup} accountLabel={accountLabel} onRepeat={onRepeat} />
       {attentionNotice}
-      <div className={styles.historyHeading}><div><h2 id="desktop-transaction-history-title">Semua pergerakan uang</h2></div><span>Gunakan pencarian dan filter untuk mempersempit ledger.</span></div>
+      <div className={styles.historyHeading}><div><h2 id="desktop-transaction-history-title">Semua pergerakan uang</h2></div><span>Gunakan pencarian dan filter untuk mempersempit daftar.</span></div>
       {filters}
       {resourceStates}
       {results}

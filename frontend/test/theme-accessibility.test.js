@@ -161,7 +161,7 @@ test("focus indicator canonical dan hero memenuhi kontras non-text 3:1 tanpa alp
     }
   }
   assert.match(await readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"), /:focus-visible \{ outline:\s*3px solid var\(--focus-ring\);/);
-  assert.match(dashboard, /\.mobile-hero-button:focus-visible, \.mobile-balance-visibility:focus-visible \{ outline:\s*3px solid var\(--on-hero\)/);
+  assert.match(dashboard, /\.mobile-hero-button:focus-visible, \.mobile-balance-visibility:focus-visible, \.mobile-ownership-summary a:focus-visible \{ outline:\s*3px solid var\(--on-hero\)/);
   assert.match(themeToggle, /\.hero:focus-visible \{ outline-color:\s*var\(--on-hero\);/);
   const cssFiles = await collectCssSources(new URL("../src/", import.meta.url));
   for (const file of cssFiles) {
@@ -282,7 +282,7 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
 });
 
 test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak turun di bawah 12px", async () => {
-  const [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts, loginStyles] = await Promise.all([
+  const [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts, loginStyles, contextBack, notifications, reports, commitments] = await Promise.all([
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
     Promise.all([
@@ -306,6 +306,10 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
       readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/auth/components/LoginDesktopFloating.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
+    readFile(new URL("../src/components/navigation/ContextBack.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/notifications/NotificationsPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/reports/ReportsPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/commitments/CommitmentsPage.module.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(app, /\.desktop-app-header__actions \.icon-button \{ width:\s*44px; height:\s*44px;/);
@@ -316,10 +320,14 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
   assert.match(pages, /\.allocation-filters button\s*\{[^}]*min-height:\s*44px;/);
   assert.match(pages, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
-  assert.match(pages, /\.allocation-detail-back\s*\{[^}]*width:\s*max-content;[^}]*min-height:\s*44px;/);
+  assert.match(contextBack, /\.back \{[^}]*width:\s*max-content;[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
+  assert.match(dashboard, /\.mobile-balance-visibility \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*min-width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(notifications, /\.filter \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(reports, /@media \(max-width: 820px\)[\s\S]*\.allocationHealthStrip > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(commitments, /\.cardDetails > summary \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*22px;[^}]*height:\s*7px;[^}]*transform:\s*scaleX\(\.318\)/);
-  assert.match(budgets, /\.allocation-detail-back \{[^}]*min-height:\s*44px;/s);
+  assert.match(contextBack, /\.back:focus-visible \{[^}]*outline:\s*3px solid var\(--focus-ring\);/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(transactionForm, /\.detailRow \{[^}]*min-height:\s*58px;/s);
   assert.match(transactionForm, /\.paymentChoices button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
@@ -334,7 +342,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(loginStyles, /\.brandCopy small \{[^}]*font-size:\s*12px;/s);
   assert.match(loginStyles, /\.contact \{[^}]*min-height:\s*44px;/s);
 
-  const operationalCss = [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts].join("\n");
+  const operationalCss = [app, components, pages, dashboard, budgets, transactionForm, transactions, feedback, desktopAccounts, notifications, reports, commitments].join("\n");
   const tooSmall = [...operationalCss.matchAll(/font-size:\s*([0-9.]+)px/g)]
     .map((match) => Number(match[1]))
     .filter((value) => value < 12);
@@ -509,6 +517,7 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
     budgets,
     budgetCard,
     pages,
+    contextBack,
   ] = await Promise.all([
     readFile(new URL("../src/components/common/VisualChoiceGroup.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/categories/CategoriesPage.module.css", import.meta.url), "utf8"),
@@ -517,6 +526,7 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
     readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/allocations/AllocationOverview.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/navigation/ContextBack.module.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(visualChoice, /\.label \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
@@ -527,9 +537,9 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.match(transactionForm, /@media \(max-width: 820px\)[\s\S]*?\.categoryQuickChoices > small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.match(transactionForm, /\.form \.notesField textarea \{[\s\S]*?min-height:\s*3\.25rem;/);
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
-  assert.match(budgets, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(contextBack, /\.back \{[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
   assert.match(budgetCard, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
-  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-back,[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-needs-filter__button,[\s\S]*?\.allocation-limit-row__quick-action,[\s\S]*?\.allocation-limit-row__menu > summary \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-needs-filter__button,[\s\S]*?\.allocation-limit-row__quick-action,[\s\S]*?\.allocation-limit-row__menu > summary \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-limit-row__balance,[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.doesNotMatch(pages, /allocation-limit-row__more|allocation-related-row/);
 });

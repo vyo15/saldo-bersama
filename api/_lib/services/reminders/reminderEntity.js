@@ -56,8 +56,7 @@ export const manualReminderInstant = (value, now = new Date()) => {
 };
 
 const assertScopedAccess = (actor, row) => {
-  if (actor.role === "owner") return;
-  if (row.scope === "personal" && row.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_REMINDER_ENTITY", "Objek ini bukan milik pengguna aktif.", 403);
+  if (row.scope === "personal" && row.owner_user_id !== actor.user_id) throw appError("FORBIDDEN_REMINDER_ENTITY", "Objek pribadi pasangan hanya dapat dilihat.", 403);
   if (row.assignee_user_id && row.assignee_user_id !== actor.user_id) throw appError("FORBIDDEN_REMINDER_ENTITY", "Alokasi Dana ini digunakan oleh pengguna lain.", 403);
 };
 

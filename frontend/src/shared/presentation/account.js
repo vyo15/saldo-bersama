@@ -99,13 +99,12 @@ export const defaultAccountName = ({ account_type: type, ewallet_template: ewall
 
 export const accountOwnerName = (account = {}) => String(account.owner_name || "").trim();
 
-export const accountOwnershipLabel = (account = {}) => account.owner_scope === "personal" ? accountOwnerName(account) || "Anggota keluarga" : "Bersama";
-
-export const accountCardOwnershipLabel = (account = {}) => {
+export const accountOwnershipLabel = (account = {}) => {
   if (account.owner_scope !== "personal") return "Bersama";
-  const [firstName = ""] = accountOwnerName(account).split(/\s+/).filter(Boolean);
-  return firstName || "Anggota";
+  return account.is_owned_by_actor === false ? "Pasangan" : "Saya";
 };
+
+export const accountCardOwnershipLabel = (account = {}) => accountOwnershipLabel(account);
 
 export const investmentAccountOwnershipLabel = (account = {}) => {
   if (account.owner_scope !== "personal") return "Bersama";

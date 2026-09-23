@@ -241,6 +241,78 @@ test("edit Kebutuhan menolak rename ke nama saudara yang sudah dipakai", async (
   }
 });
 
+test("cara penggunaan kebutuhan hanya dapat diubah sebelum ada pemakaian dan jadwal rutin lama dibersihkan", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    const now = await seed(db);
+    await insertEnvelope(db, { ruleId: "recording-mode-rule", sourceAccountId: "batch-shared-account" });
+    const base = {
+      period_key: period,
+      envelope_rule_id: "recording-mode-rule",
+      envelope_period_id: "period-recording-mode-rule",
+      category_id: "batch-food",
+      name: "Arisan kantor",
+      amount: 300_000,
+      warning_threshold: 80,
+      scope: "shared",
+      owner_user_id: null,
+    };
+
+    const created = await dispatchNamed(db, "budgets.upsert", { ...base, recording_mode: "flexible" });
+    const recurringBudget = await dispatchNamed(db, "budgets.upsert", {
+      ...base,
+      budget_id: created.budget_id,
+      recording_mode: "recurring",
+      row_version: created.row_version,
+    });
+    assert.equal(recurringBudget.recording_mode, "recurring");
+
+    await dispatchNamed(db, "recurring.createRule", {
+      name: "Arisan kantor",
+      kind: "expense",
+      category_id: "batch-food",
+      budget_id: created.budget_id,
+      expected_amount: 300_000,
+      frequency: "monthly",
+      due_day: 20,
+      default_account_id: "batch-shared-account",
+      payment_method: "transfer",
+      start_date: todayJakarta(),
+    });
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM recurring_rules WHERE budget_id=? AND status='active'", [created.budget_id])).count), 1);
+
+    const fixedBudget = await dispatchNamed(db, "budgets.upsert", {
+      ...base,
+      budget_id: created.budget_id,
+      recording_mode: "fixed_once",
+      row_version: recurringBudget.row_version,
+    });
+    assert.equal(fixedBudget.recording_mode, "fixed_once");
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM recurring_rules WHERE budget_id=?", [created.budget_id])).count), 0);
+
+    await db.execute(`INSERT INTO transactions(transaction_id,transaction_date,transaction_type,source_account_id,destination_account_id,category_id,envelope_period_id,recurring_occurrence_id,goal_id,budget_id,amount,description,overspend_reason,merchant,payment_method,scope,owner_user_id,status,row_version,idempotency_key,created_by,created_at,updated_by,updated_at,cancelled_by,cancelled_at,cancellation_reason)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+      "tx-recording-mode-lock", todayJakarta(), "expense", "batch-shared-account", null, "batch-food", "period-recording-mode-rule", null, null, created.budget_id, 25_000,
+      "Pemakaian pertama", "", "", "transfer", "shared", null, "active", 1, "tx-recording-mode-lock-key", owner.user_id, now, owner.user_id, now, null, null, "",
+    ]);
+
+    await assert.rejects(
+      dispatchNamed(db, "budgets.upsert", {
+        ...base,
+        budget_id: created.budget_id,
+        recording_mode: "flexible",
+        row_version: fixedBudget.row_version,
+      }),
+      (error) => error?.code === "BUDGET_RECORDING_MODE_LOCKED" && error?.status === 409,
+    );
+    const unchanged = await db.one("SELECT recording_mode,row_version FROM budgets WHERE budget_id=?", [created.budget_id]);
+    assert.equal(unchanged.recording_mode, "fixed_once");
+    assert.equal(Number(unchanged.row_version), Number(fixedBudget.row_version));
+  } finally {
+    db.close();
+  }
+});
+
 test("batch Kebutuhan rollback seluruh write bila jadwal tidak konsisten dengan ownership Alokasi", async () => {
   const db = await createSqliteTestDatabase();
   try {

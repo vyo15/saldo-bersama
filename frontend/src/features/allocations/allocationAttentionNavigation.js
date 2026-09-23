@@ -48,7 +48,7 @@ export const runAllocationAttentionNavigation = ({
   const targetEnvelope = findAttentionEnvelope(activeItems, attentionEnvelopeId);
   if (openAttentionFunding({ attentionAction, targetEnvelope, attentionSuggestedAmount, openFunding, consumeAttention })) return undefined;
   const targetBudget = findAttentionBudget(budgets, attentionBudgetId, targetEnvelope);
-  applyAttentionDetail({ targetEnvelope, targetBudget, setDetailRuleId, setLegacyBudgetAttention });
   consumeAttention();
+  applyAttentionDetail({ targetEnvelope, targetBudget, setDetailRuleId, setLegacyBudgetAttention });
   return scheduleAttentionBudgetScroll(targetBudget);
 };

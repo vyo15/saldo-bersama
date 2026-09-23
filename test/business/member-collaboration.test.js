@@ -30,7 +30,7 @@ const dispatch = (db, actor, action, payload = {}, options = {}) => dispatchActi
   database: db,
 });
 
-const createAccount = (db, payload) => dispatch(db, owner, "accounts.create", {
+const createAccount = (db, payload, actor = owner) => dispatch(db, actor, "accounts.create", {
   account_type: "bank",
   account_number: `123456${String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0")}`,
   initial_balance: 0,
@@ -39,54 +39,37 @@ const createAccount = (db, payload) => dispatch(db, owner, "accounts.create", {
   ...payload,
 });
 
-test("Member mengajukan rekening/kategori dan Administrator mereview tanpa membuka create langsung", async () => {
+test("Member membuat rekening pribadi sendiri secara langsung, sedangkan kategori tetap melalui pengajuan", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
     await seedUser(db, member);
 
-    await assert.rejects(
-      dispatch(db, member, "accounts.create", {
-        name: "Tidak Boleh Langsung",
-        account_type: "bank",
-        account_number: "1234567890",
-        owner_scope: "personal",
-        initial_balance: 0,
-        initial_balance_date: todayJakarta(),
-      }),
-      (error) => error?.code === "OWNER_ONLY",
-    );
-
-    const accountRequestPayload = {
+    const created = await dispatch(db, member, "accounts.create", {
       name: "Rekening Member Baru",
       account_type: "bank",
-      account_number: "1234 5678 9012",
+      account_number: "123456789012",
       owner_scope: "personal",
       initial_balance: 0,
       initial_balance_date: todayJakarta(),
       allow_negative: false,
-    };
-    const requested = await dispatch(db, member, "accounts.requestCreate", accountRequestPayload, { idempotencyKey: "member-account-request" });
-    assert.equal(requested.status, "pending");
-    assert.equal(requested.request_type, "account");
-    assert.equal(requested.payload.owner_user_id, member.user_id);
+    }, { idempotencyKey: "member-account-direct" });
+    assert.equal(created.owner_scope, "personal");
+    assert.equal(created.owner_user_id, member.user_id);
 
-    const duplicate = await dispatch(db, member, "accounts.requestCreate", accountRequestPayload, { idempotencyKey: "member-account-request-retry" });
-    assert.equal(duplicate.request_id, requested.request_id);
-    assert.equal(duplicate.duplicate_pending, true);
-
-    const ownerList = await dispatch(db, owner, "masterDataRequests.list", { status: "pending" }, { read: true });
-    assert.equal(ownerList.items.length, 1);
-    const approved = await dispatch(db, owner, "masterDataRequests.review", {
-      request_id: requested.request_id,
-      row_version: requested.row_version,
-      decision: "approve",
-      reason: "Data valid",
-    }, { rowVersion: requested.row_version, idempotencyKey: "approve-member-account" });
-    assert.equal(approved.request.status, "approved");
-    assert.equal(approved.request.row_version, 2);
-    assert.equal(approved.entity.owner_scope, "personal");
-    assert.equal(approved.entity.owner_user_id, member.user_id);
+    await assert.rejects(
+      dispatch(db, member, "accounts.create", {
+        name: "Rekening Atas Nama Pasangan",
+        account_type: "bank",
+        account_number: "998877665544",
+        owner_scope: "personal",
+        owner_user_id: owner.user_id,
+        initial_balance: 0,
+        initial_balance_date: todayJakarta(),
+        allow_negative: false,
+      }),
+      (error) => error?.code === "FORBIDDEN_PERSONAL_OWNER",
+    );
 
     const categoryRequest = await dispatch(db, member, "categories.requestCreate", {
       name: "Kebutuhan Member Baru",
@@ -107,7 +90,7 @@ test("Member mengajukan rekening/kategori dan Administrator mereview tanpa membu
   }
 });
 
-test("Transfer shared ke personal Member wajib approval dan approval menghasilkan tepat satu ledger canonical", async () => {
+test("Transfer dari rekening Bersama ke rekening personal berjalan langsung berdasarkan hak rekening sumber", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
@@ -115,49 +98,33 @@ test("Transfer shared ke personal Member wajib approval dan approval menghasilka
     await seedUser(db, other);
 
     const shared = await createAccount(db, { name: "Dana Bersama", owner_scope: "shared", initial_balance: 500_000 });
-    const memberPersonal = await createAccount(db, { name: "Pribadi Member", owner_scope: "personal", owner_user_id: member.user_id });
-    const otherPersonal = await createAccount(db, { name: "Pribadi Lain", owner_scope: "personal", owner_user_id: other.user_id });
+    const memberPersonal = await createAccount(db, { name: "Pribadi Member", owner_scope: "personal", owner_user_id: member.user_id }, member);
+    const otherPersonal = await createAccount(db, { name: "Pribadi Lain", owner_scope: "personal", owner_user_id: other.user_id }, other);
 
-    const transferPayload = {
+    const direct = await dispatch(db, member, "transactions.create", {
       transaction_type: "transfer",
       transaction_date: todayJakarta(),
       source_account_id: shared.account_id,
       destination_account_id: memberPersonal.account_id,
       amount: 50_000,
       description: "Jatah pribadi Member",
-    };
+    }, { idempotencyKey: "direct-shared-personal" });
+    assert.equal(direct.scope, "shared");
+    assert.equal(direct.owner_user_id, "");
+    assert.equal(direct.amount, 50_000);
 
-    await assert.rejects(
-      dispatch(db, member, "transactions.create", transferPayload, { idempotencyKey: "direct-shared-personal" }),
-      (error) => error?.code === "TRANSFER_APPROVAL_REQUIRED",
-    );
+    const toPartner = await dispatch(db, member, "transactions.create", {
+      transaction_type: "transfer",
+      transaction_date: todayJakarta(),
+      source_account_id: shared.account_id,
+      destination_account_id: otherPersonal.account_id,
+      amount: 25_000,
+      description: "Transfer ke pasangan",
+    }, { idempotencyKey: "direct-shared-other-personal" });
+    assert.equal(toPartner.scope, "shared");
 
-    const request = await dispatch(db, member, "transferRequests.request", transferPayload, { idempotencyKey: "transfer-request" });
-    assert.equal(request.status, "pending");
-    assert.equal(request.payload.destination_account_id, memberPersonal.account_id);
-
-    const partnerRequest = await dispatch(db, member, "transferRequests.request", { ...transferPayload, destination_account_id: otherPersonal.account_id }, { idempotencyKey: "transfer-request-other" });
-    assert.equal(partnerRequest.status, "pending");
-    assert.equal(partnerRequest.payload.destination_account_id, otherPersonal.account_id);
-
-    const approved = await dispatch(db, owner, "transferRequests.review", {
-      request_id: request.request_id,
-      row_version: request.row_version,
-      decision: "approve",
-      reason: "Disetujui",
-    }, { rowVersion: request.row_version, idempotencyKey: "approve-transfer-request" });
-    assert.equal(approved.request.status, "approved");
-    assert.ok(approved.transaction?.transaction_id);
-    assert.equal(approved.transaction.scope, "shared");
-    assert.equal(approved.transaction.owner_user_id, "");
-    assert.equal(approved.transaction.amount, 50_000);
-
-    const count = await db.one("SELECT COUNT(*) AS count FROM transactions WHERE transaction_id=?", [approved.transaction.transaction_id]);
-    assert.equal(Number(count.count), 1);
-    const requestRow = await db.one("SELECT status,row_version,approved_transaction_id FROM transfer_requests WHERE request_id=?", [request.request_id]);
-    assert.equal(requestRow.status, "approved");
-    assert.equal(requestRow.row_version, 2);
-    assert.equal(requestRow.approved_transaction_id, approved.transaction.transaction_id);
+    const requestCount = await db.one("SELECT COUNT(*) AS count FROM transfer_requests");
+    assert.equal(Number(requestCount.count), 0, "flow transaksi langsung tidak membuat approval request tersembunyi");
 
     const crossPersonal = await dispatch(db, member, "transactions.create", {
       transaction_type: "transfer",
@@ -197,7 +164,7 @@ test("approval transfer idempotent dan second approval tidak menggandakan ledger
   try {
     await seedUser(db, owner); await seedUser(db, member);
     const shared = await createAccount(db, { name: "Dana Approval", owner_scope: "shared", initial_balance: 500_000 });
-    const personal = await createAccount(db, { name: "Tujuan Approval", owner_scope: "personal", owner_user_id: member.user_id });
+    const personal = await createAccount(db, { name: "Tujuan Approval", owner_scope: "personal", owner_user_id: member.user_id }, member);
     const payload = { transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id, destination_account_id: personal.account_id, amount: 50_000, description: "Approval aman" };
     const request = await dispatch(db, member, "transferRequests.request", payload, { idempotencyKey: "approval-safe-request" });
     const reviewPayload = { request_id: request.request_id, row_version: request.row_version, decision: "approve", reason: "Setuju" };
@@ -223,7 +190,7 @@ test("approval transfer mengulang validasi saldo, status rekening, dan period cl
     try {
       await seedUser(db, owner); await seedUser(db, member);
       const shared = await createAccount(db, { name: `Dana ${scenario}`, owner_scope: "shared", initial_balance: 500_000 });
-      const personal = await createAccount(db, { name: `Tujuan ${scenario}`, owner_scope: "personal", owner_user_id: member.user_id });
+      const personal = await createAccount(db, { name: `Tujuan ${scenario}`, owner_scope: "personal", owner_user_id: member.user_id }, member);
       const amount = scenario === "balance" ? 450_000 : 50_000;
       const payload = { transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id, destination_account_id: personal.account_id, amount, description: `Stale ${scenario}` };
       const request = await dispatch(db, member, "transferRequests.request", payload, { idempotencyKey: `stale-${scenario}-request` });

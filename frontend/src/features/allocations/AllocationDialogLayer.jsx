@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiArrowLeft, FiArrowRight, FiCheckCircle, FiEdit3, FiGrid, FiPlus, FiRepeat, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiArrowRight, FiGrid, FiPlus, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
@@ -20,6 +20,9 @@ import { allocationClass } from "./allocationStyles.js";
 import { ALLOCATION_DECORATIONS, allocationDecoration } from "./allocationDecorations.js";
 import { ALLOCATION_CREATE_NEED_LIMIT, createAllocationNeedDraft } from "./allocationNeedDraft.js";
 import { budgetBatchScheduleLabel } from "../budgets/budgetBatchModel.js";
+import { BUDGET_RECORDING_OPTIONS, budgetRecordingLabel } from "../budgets/budgetRecordingOptions.js";
+import { ExpenseCategoryCreateModal } from "../categories/ExpenseCategoryQuickCreate.jsx";
+import { useExpenseCategoryCreator } from "../categories/useExpenseCategoryCreator.js";
 import needStyles from "../budgets/BudgetBatchEditor.module.css";
 
 const envelopeAssigneeOptions = (form, accounts, users) => {
@@ -87,11 +90,7 @@ const CreateEnvelopeFooter = ({ close, createMutation, label = "Buat & alokasika
   <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>{label}</Button>
 </>;
 
-const NEED_RECORDING_OPTIONS = Object.freeze([
-  { value: "flexible", label: "Bisa dipakai beberapa kali", icon: FiEdit3 },
-  { value: "fixed_once", label: "Sekali bayar", icon: FiCheckCircle },
-  { value: "recurring", label: "Rutin", icon: FiRepeat },
-]);
+
 
 const NEED_FREQUENCY_OPTIONS = Object.freeze([
   { value: "weekly", label: "Mingguan" },
@@ -109,11 +108,6 @@ const NEED_PAYMENT_METHOD_OPTIONS = Object.freeze([
   { value: "ewallet", label: "E-wallet" },
 ]);
 
-const allocationNeedScheduleLabel = (need) => {
-  if (need?.recording_mode === "fixed_once") return "Sekali bayar";
-  if (need?.recording_mode === "recurring") return "Rutin";
-  return "Bisa dipakai beberapa kali";
-};
 
 const AllocationNeedAmountInput = ({ need, update }) => {
   const numeric = need.amount === "" ? "" : Number(need.amount || 0);
@@ -138,33 +132,25 @@ const AllocationNeedAmountInput = ({ need, update }) => {
   </label>;
 };
 
-const AllocationNeedUsageFields = ({ need, update }) => <>
-  <details className={needStyles.usageDetails}>
-    <summary><span>Cara penggunaan</span><strong>{allocationNeedScheduleLabel(need)}</strong></summary>
-    <div className={needStyles.usageDetailsContent}>
-      <div className={needStyles.modeBlock}>
-        <span className={needStyles.fieldLabel}>Cara penggunaan</span>
-        <div className={needStyles.recordingMode} role="group" aria-label="Cara penggunaan">
-          {NEED_RECORDING_OPTIONS.map(({ value, label, icon: Icon }) => <button
-            key={value}
-            type="button"
-            className={need.recording_mode === value ? needStyles.recordingActive : ""}
-            aria-pressed={need.recording_mode === value}
-            onClick={() => update({ recording_mode: value })}
-          ><Icon aria-hidden="true" /><span>{label}</span></button>)}
-        </div>
-      </div>
-      {need.recording_mode === "recurring" ? <div className={needStyles.scheduleGrid}>
-        <SelectionField compact label="Frekuensi" value={need.schedule_frequency} onChange={(schedule_frequency) => update({ schedule_frequency })} options={NEED_FREQUENCY_OPTIONS} />
-        <label className="field"><span>Jatuh tempo *</span><input type="number" min="1" max="31" value={need.schedule_due_day ?? ""} onChange={(event) => update({ schedule_due_day: event.target.value })} /></label>
-        <label className="field"><span>Mulai *</span><TemporalInput type="date" value={need.schedule_start_date || ""} onChange={(event) => update({ schedule_start_date: event.target.value })} /></label>
-        <SelectionField compact label="Metode" value={need.schedule_payment_method} onChange={(schedule_payment_method) => update({ schedule_payment_method })} options={NEED_PAYMENT_METHOD_OPTIONS} />
-      </div> : null}
-    </div>
-  </details>
-</>;
+const AllocationNeedUsageFields = ({ need, update }) => <div className={needStyles.usageBlock}>
+  <InlineSelectionPicker
+    label="Cara penggunaan"
+    required
+    value={need.recording_mode}
+    onChange={(recording_mode) => update({ recording_mode })}
+    placeholder="Pilih cara penggunaan"
+    placeholderMeta="Sekali bayar, beberapa kali, atau rutin"
+    options={BUDGET_RECORDING_OPTIONS}
+  />
+  {need.recording_mode === "recurring" ? <div className={needStyles.scheduleGrid}>
+    <SelectionField compact label="Frekuensi" value={need.schedule_frequency} onChange={(schedule_frequency) => update({ schedule_frequency })} options={NEED_FREQUENCY_OPTIONS} />
+    <label className="field"><span>Jatuh tempo *</span><input type="number" min="1" max="31" value={need.schedule_due_day ?? ""} onChange={(event) => update({ schedule_due_day: event.target.value })} /></label>
+    <label className="field"><span>Mulai *</span><TemporalInput type="date" value={need.schedule_start_date || ""} onChange={(event) => update({ schedule_start_date: event.target.value })} /></label>
+    <SelectionField compact label="Metode" value={need.schedule_payment_method} onChange={(schedule_payment_method) => update({ schedule_payment_method })} options={NEED_PAYMENT_METHOD_OPTIONS} />
+  </div> : null}
+</div>;
 
-const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNeed }) => {
+const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNeed, onCreateCategory, categoryCreateLabel }) => {
   const update = (updates) => updateNeed(need.id, updates);
   return <div className={needStyles.editor} data-allocation-create-need={need.id}>
     <div className={needStyles.editorTopline}><span>Kebutuhan {index + 1}</span><button type="button" className={needStyles.trashButton} onClick={() => removeNeed(need.id)} aria-label={`Hapus kebutuhan ${index + 1}`}><FiTrash2 aria-hidden="true" /></button></div>
@@ -184,7 +170,8 @@ const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNe
         placeholder="Pilih kategori"
         searchable={categories.length > 8}
         searchPlaceholder="Cari kategori…"
-        options={categories.map((category) => ({ value: category.category_id, label: category.name, ...categoryOptionVisual(category) }))}
+        options={categories.map((category) => ({ value: category.category_id, label: category.name, meta: "Kategori pengeluaran", ...categoryOptionVisual(category) }))}
+        footer={onCreateCategory ? <button type="button" className={needStyles.categoryCreate} onClick={onCreateCategory}><FiPlus aria-hidden="true" /><span>{categoryCreateLabel}</span></button> : null}
       />
     </div>
     <AllocationNeedUsageFields need={need} update={update} />
@@ -193,7 +180,7 @@ const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNe
 
 const AllocationNeedCompactRow = ({ need, category, onEdit, onRemove }) => <div className={needStyles.compactRow}>
   <button type="button" className={needStyles.compactMain} onClick={onEdit}>
-    <span className={needStyles.compactCopy}><strong>{need.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetBatchScheduleLabel(need)}</small></span>
+    <span className={needStyles.compactCopy}><strong>{need.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(need.recording_mode) || "Pilih cara penggunaan"}{need.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(need)}` : ""}</small></span>
     <strong className={needStyles.compactAmount}>{formatRupiah(need.amount || 0)}</strong>
   </button>
   <button type="button" className={needStyles.compactRemove} onClick={onRemove} aria-label={`Hapus ${need.name || "kebutuhan"}`}><FiTrash2 aria-hidden="true" /></button>
@@ -201,11 +188,13 @@ const AllocationNeedCompactRow = ({ need, category, onEdit, onRemove }) => <div 
 
 const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) => {
   const [activeNeedId, setActiveNeedId] = useState(() => needs[0]?.id || "");
+  const updateNeed = (id, updates) => setNeeds((current) => current.map((need) => need.id === id ? { ...need, ...updates } : need));
+  const categoryCreator = useExpenseCategoryCreator({ onCreated: (categoryId) => { if (categoryId && activeNeedId) updateNeed(activeNeedId, { category_id: categoryId }); } });
+  const categoryCreateLabel = categoryCreator.requestMode ? "Ajukan kategori baru" : "Tambah kategori baru";
   const total = createNeedsTotal(needs);
   const available = Math.max(0, Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0));
   const shortage = Math.max(0, total - available);
   const fundedNow = Math.min(total, available);
-  const updateNeed = (id, updates) => setNeeds((current) => current.map((need) => need.id === id ? { ...need, ...updates } : need));
   const removeNeed = (id) => {
     if (needs.length <= 1) {
       const replacement = createAllocationNeedDraft();
@@ -227,10 +216,11 @@ const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) =
   return <section className={allocationClass("allocation-create-needs form-grid__full")} aria-label="Kebutuhan">
     <div className={needStyles.rows}>
       {needs.map((need, index) => need.id === activeNeedId
-        ? <AllocationNeedEditorRow key={need.id} need={need} index={index} categories={categories} updateNeed={updateNeed} removeNeed={removeNeed} />
+        ? <AllocationNeedEditorRow key={need.id} need={need} index={index} categories={categories} updateNeed={updateNeed} removeNeed={removeNeed} onCreateCategory={categoryCreator.openModal} categoryCreateLabel={categoryCreateLabel} />
         : <AllocationNeedCompactRow key={need.id} need={need} category={categoryLookup.get(need.category_id)} onEdit={() => setActiveNeedId(need.id)} onRemove={() => removeNeed(need.id)} />)}
     </div>
     <button type="button" className={needStyles.addButton} onClick={addNeed} disabled={needs.length >= ALLOCATION_CREATE_NEED_LIMIT}><FiPlus aria-hidden="true" /><span>Tambah kebutuhan lain</span></button>
+    <ExpenseCategoryCreateModal state={categoryCreator} />
     <div className={allocationClass("allocation-create-funding")}>
       <div><span>Perlu disiapkan</span><strong>{formatRupiah(total)}</strong></div>
       {sourceAccount ? <>

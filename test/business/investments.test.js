@@ -87,7 +87,7 @@ test("posisi aset langsung membuat compatibility portfolio tersembunyi tanpa men
     assert.equal(Number(bridge.initial_balance), 0);
     assert.equal(bridge.initial_balance_date, TODAY);
     assert.equal(Number(bridge.is_system_hidden), 1);
-    assert.equal(bridge.owner_scope, "shared");
+    assert.equal(bridge.owner_scope, "personal");
     assert.equal(Number(bridge.cash_effect_enabled), 0);
     assert.equal((await visibleAccounts(db, owner)).some((item) => item.account_id === bridge.account_id), false);
 

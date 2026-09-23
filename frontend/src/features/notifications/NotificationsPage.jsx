@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
-import { FiBell, FiCalendar, FiCheckCircle, FiChevronLeft, FiChevronRight, FiInfo, FiPieChart, FiRefreshCw, FiTarget } from "react-icons/fi";
-import { useNavigate } from "react-router";
+import { FiBell, FiCalendar, FiCheckCircle, FiChevronRight, FiInfo, FiPieChart, FiRefreshCw, FiTarget } from "react-icons/fi";
+import { useLocation, useNavigate } from "react-router";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import Button from "../../components/common/Button.jsx";
+import ContextBack from "../../components/navigation/ContextBack.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { financialAlertGuidance } from "../../shared/workflows/financialAlerts.js";
+import { contextualNavigationParent, navigationLabelForPath, safeInternalNavigationTarget } from "../../config/navigation.js";
 import {
   financialNotificationEntity,
   financialNotificationFact,
@@ -48,7 +50,7 @@ const NotificationRow = ({ alert, read, onOpen }) => {
   const guidanceAlert = alert.guidanceId ? { ...alert, id: alert.guidanceId } : alert;
   const actionLabel = notificationRequiresAction(alert) ? financialAlertGuidance(guidanceAlert, { source: "notification-center" }).actionLabel : "";
   return (
-    <button type="button" data-native-enter className={styles.row} data-read={read ? "true" : "false"} data-tone={tone} onClick={() => onOpen(alert)}>
+    <button type="button" data-native-enter className={styles.row} data-read={read ? "true" : "false"} data-tone={tone} onClick={() => onOpen(alert)} aria-label={`${read ? "Sudah dibaca" : "Belum dibaca"}. ${financialNotificationTitle(alert)}${fact ? `. ${fact}` : ""}`}>
       <span className={styles.icon}><Icon aria-hidden="true" /></span>
       <span className={styles.copy}>
         <strong>{financialNotificationTitle(alert)}</strong>
@@ -56,7 +58,7 @@ const NotificationRow = ({ alert, read, onOpen }) => {
         {fact ? <small>{fact}</small> : null}
         {actionLabel ? <span className={styles.actionLabel}>{actionLabel}</span> : null}
       </span>
-      <span className={styles.trailing}><FiChevronRight aria-hidden="true" /></span>
+      <span className={styles.trailing}>{read ? null : <i className={styles.unreadDot} aria-hidden="true" />}<FiChevronRight aria-hidden="true" /></span>
     </button>
   );
 };
@@ -94,6 +96,10 @@ const NotificationContent = ({ alerts, filter, isRead, onOpen }) => {
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const notificationParent = contextualNavigationParent(location.pathname) || { to: "/", label: "Beranda" };
+  const returnTo = safeInternalNavigationTarget(location.state?.returnTo, notificationParent.to);
+  const returnLabel = String(location.state?.returnLabel || navigationLabelForPath(returnTo, notificationParent.label));
   const { overview, status, error, refreshError, refreshOverview } = useFinance();
   const eventFeed = useApiResource("notifications.center", { limit: 80 });
   const [filter, setFilter] = useState("action");
@@ -109,11 +115,11 @@ const NotificationsPage = () => {
     notifications.markRead(alert).catch(() => {});
     const guidanceAlert = alert.guidanceId ? { ...alert, id: alert.guidanceId } : alert;
     if (alert.source === "event" && !alert.guidanceId) {
-      navigate(alert.targetPath || "/");
+      navigate(alert.targetPath || "/", { state: { returnTo: "/notifikasi", returnLabel: "Notifikasi" } });
       return;
     }
     const guidance = financialAlertGuidance(guidanceAlert, { source: "notification-center" });
-    navigate(guidance.to, { state: guidance.state });
+    navigate(guidance.to, { state: { ...guidance.state, returnTo: "/notifikasi", returnLabel: "Notifikasi" } });
   };
 
   const actionCount = notifications.alerts.filter(notificationRequiresAction).length;
@@ -135,7 +141,7 @@ const NotificationsPage = () => {
       </div>
 
       <header className={styles.header}>
-        <button type="button" className={styles.back} onClick={() => navigate(-1)} aria-label="Kembali"><FiChevronLeft aria-hidden="true" /></button>
+        <ContextBack className={styles.contextBack} to={returnTo} label={returnLabel} />
         <div className={styles.heading}><h1>Notifikasi</h1><p>{notifications.unreadCount ? `${notifications.unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
         <button type="button" className={styles.readAll} onClick={() => notifications.markAllRead().catch(() => {})} disabled={!notifications.unreadCount} aria-label="Tandai semua dibaca" title="Tandai semua dibaca"><FiCheckCircle aria-hidden="true" /></button>
       </header>

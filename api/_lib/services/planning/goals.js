@@ -12,12 +12,8 @@ import { goalProjection } from "./goalMovements.js";
 // and ledger-linked movements are isolated behind compatible exports.
 export const goalListStatements = (context) => {
   const access = visibleScopeSql(context.actor, "g");
-  const sourceAccess = context.actor.role === "owner"
-    ? { sql: "1=1", args: [] }
-    : { sql: "(src.owner_scope='shared' OR (src.owner_scope='personal' AND src.owner_user_id=?))", args: [context.actor.user_id] };
-  const withdrawalDestinationAccess = context.actor.role === "owner"
-    ? { sql: "1=1", args: [] }
-    : { sql: "dest.owner_scope='shared'", args: [] };
+  const sourceAccess = { sql: "(src.owner_scope='shared' OR (src.owner_scope='personal' AND src.owner_user_id=?))", args: [context.actor.user_id] };
+  const withdrawalDestinationAccess = { sql: "(dest.owner_scope='shared' OR (dest.owner_scope='personal' AND dest.owner_user_id=?))", args: [context.actor.user_id] };
   const today = todayJakarta();
   return [
     {

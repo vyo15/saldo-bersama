@@ -66,7 +66,7 @@ export const requestSharedToPersonalTransfer = async (db, context) => {
   assertMemberRequester(context.actor);
   const raw = context.payload || {};
   if (String(raw.transaction_type || "transfer") !== "transfer") throw appError("INVALID_TRANSACTION_TYPE", "Pengajuan ini hanya untuk transfer.", 400);
-  const normalized = await normalizeTransaction(db, context, { ...raw, transaction_type: "transfer" }, { allowSharedToPersonalRequest: true });
+  const normalized = await normalizeTransaction(db, context, { ...raw, transaction_type: "transfer" });
   await assertSharedToPersonalDirection(db, normalized.source_account_id, normalized.destination_account_id);
   const payload = transferRequestPayload(normalized, raw);
   const key = transferRequestKey(payload);
@@ -112,7 +112,7 @@ export const reviewTransferRequest = async (db, context) => {
       role: current.requester_role,
       status: current.requester_status,
     };
-    await normalizeTransaction(db, { ...context, actor: requester, action: "transferRequests.request", payload: requestedPayload }, requestedPayload, { allowSharedToPersonalRequest: true });
+    await normalizeTransaction(db, { ...context, actor: requester, action: "transferRequests.request", payload: requestedPayload }, requestedPayload);
     transaction = await createTransactionInternal(db, {
       ...context,
       action: "transactions.create",

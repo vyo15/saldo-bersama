@@ -62,7 +62,7 @@ const MobileQuickActions = ({ account, bootstrap, onTransferSaved, onViewTransac
   </div>
 );
 
-const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, ownerMode, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved, reconciliationLookup = null }) => {
+const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved, reconciliationLookup = null }) => {
   const navigate = useNavigate();
   const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
   const {
@@ -71,7 +71,7 @@ const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAc
     handleMobileStackKeyDown, selectMobileStackAccount, selectMobileStackIndex,
   } = stack;
   const onViewTransactions = useCallback((item, period) => navigate("/transaksi", { state: { accountId: item.account_id, period } }), [navigate]);
-  const onEnsureBalance = useCallback((item) => navigate("/rekonsiliasi", { state: { accountId: item.account_id, reconciliationSource: "account" } }), [navigate]);
+  const onEnsureBalance = useCallback((item) => navigate("/rekonsiliasi", { state: { accountId: item.account_id, reconciliationSource: "account", returnTo: "/rekening", returnLabel: "Rekening" } }), [navigate]);
   const ambientTone = accountAmbientTone(selectedAccount);
   const totalAccountBalance = allAccounts.filter((item) => item.account_type !== "investment").reduce((sum, item) => sum + Number(item.balance || 0), 0);
 
@@ -83,7 +83,7 @@ const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAc
           <PageInfoButton title="Tentang Rekening" label="Tentang Rekening" className={styles.mobileStackHeaderInfoButton}>Kelola seluruh rekening keluarga—yang dipegang Anda, pasangan, maupun bersama. {ACCOUNT_BALANCE_GUIDANCE}</PageInfoButton>
         </div>
         <div className={styles.mobileStackHeaderActions}>
-          {ownerMode ? <button type="button" className={`${styles.mobileStackHeaderButton} ${styles.mobileStackHeaderButtonPrimary}`} data-preload-action="accountEditor" onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /><span>Tambah</span></button> : null}
+          <button type="button" className={`${styles.mobileStackHeaderButton} ${styles.mobileStackHeaderButtonPrimary}`} data-preload-action="accountEditor" onClick={openCreateDialog} aria-label="Tambah rekening" title="Tambah rekening"><FiPlus aria-hidden="true" /><span>Tambah</span></button>
         </div>
       </header>
 

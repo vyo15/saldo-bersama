@@ -1,11 +1,10 @@
-export const actorCanOperateTransaction = (actor, transaction) => actor?.role === "owner"
-  || transaction?.scope === "shared"
+export const actorCanOperateTransaction = (actor, transaction) => transaction?.scope === "shared"
   || (transaction?.scope === "personal" && transaction?.owner_user_id === actor?.user_id);
 
 const transactionIsLinked = (transaction) => Boolean(transaction?.recurring_occurrence_id || transaction?.goal_id);
 
-const actorOwnsTransactionAction = (actor, transaction) => actor?.role === "owner"
-  || (transaction?.created_by === actor?.user_id && actorCanOperateTransaction(actor, transaction));
+const actorOwnsTransactionAction = (actor, transaction) => transaction?.created_by === actor?.user_id
+  && actorCanOperateTransaction(actor, transaction);
 
 const adjustmentActionAllowed = (actor, transaction) => transaction?.transaction_type !== "adjustment" || actor?.role === "owner";
 
@@ -18,7 +17,8 @@ const canModifyTransaction = (actor, transaction, periodOpen) => transaction?.st
 const canRestoreTransaction = (actor, transaction, periodOpen) => transaction?.status === "cancelled"
   && periodOpen
   && !transactionIsLinked(transaction)
-  && actor?.role === "owner";
+  && actor?.role === "owner"
+  && actorCanOperateTransaction(actor, transaction);
 
 const managedTransactionSource = (transaction) => {
   if (transaction?.recurring_occurrence_id) return "recurring";
@@ -39,13 +39,9 @@ export const transactionCapabilities = (actor, transaction, { periodOpen }) => {
 
 export const transferRouteMode = (actor, source, destination) => {
   if (!actor || !source || !destination || source.account_id === destination.account_id) return "denied";
-  const sourceOperable = actor.role === "owner"
-    || source.owner_scope === "shared"
+  const sourceOperable = source.owner_scope === "shared"
     || (source.owner_scope === "personal" && source.owner_user_id === actor.user_id);
   if (!sourceOperable) return "denied";
-  if (actor.role !== "owner" && source.owner_scope === "shared" && destination.owner_scope === "personal") {
-    return "approval_required";
-  }
   return "direct";
 };
 

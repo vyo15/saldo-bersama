@@ -216,7 +216,7 @@ test("rekening personal mengunci jatah ke pemilik rekening dan Administrator tet
     await seed(db);
     await assert.rejects(
       createAssignedEnvelope(db, "Personal salah", administrator.user_id, "account-member"),
-      (error) => error.code === "ENVELOPE_ASSIGNEE_SCOPE_MISMATCH" && error.status === 409,
+      (error) => error.code === "FORBIDDEN_ACCOUNT" && error.status === 403,
     );
 
     const memberEnvelope = await createAssignedEnvelope(db, "Bensin Member", member.user_id);

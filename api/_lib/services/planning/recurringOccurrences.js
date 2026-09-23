@@ -200,7 +200,7 @@ export const reverseOccurrencePayment = async (db, context) => {
   assertVersion(occurrence, context.rowVersion ?? p.row_version);
   const transaction = await db.one("SELECT * FROM transactions WHERE transaction_id=? AND recurring_occurrence_id=? AND status='active'", [p.transaction_id, occurrence.occurrence_id]);
   if (!transaction) throw appError("NOT_FOUND", "Transaksi rutin aktif tidak ditemukan.", 404);
-  if (context.actor.role !== "owner" && transaction.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan pembayaran rutin yang dibuat sendiri.", 403);
+  if (transaction.created_by !== context.actor.user_id) throw appError("FORBIDDEN", "Member hanya dapat membatalkan pembayaran rutin yang dibuat sendiri.", 403);
   const cancelledTransaction = await cancelTransactionInternal(db, context, transaction, p.reason, {
     allowLinked: true,
     audit: false

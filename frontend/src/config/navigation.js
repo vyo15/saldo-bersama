@@ -67,20 +67,74 @@ export const MOBILE_SECONDARY_GROUPS = Object.freeze([
   freezeGroup({ id: "financial-data", label: "Data keuangan", items: pickNavigation("/rekening", "/kategori") }),
   freezeGroup({ id: "investment", label: "Investasi", items: pickNavigation("/investasi") }),
   freezeGroup({ id: "people", label: "Akses", items: pickNavigation("/anggota", "/persetujuan") }),
-  freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/pengaturan") }),
+  freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/notifikasi", "/pengaturan") }),
 ]);
 
 export const MOBILE_SECONDARY_NAVIGATION = Object.freeze(MOBILE_SECONDARY_GROUPS.flatMap((group) => group.items));
 
-const normalizePathname = (pathname) => {
+export const normalizeNavigationPath = (pathname) => {
   const normalized = `/${String(pathname || "").replace(/^\/+|\/+$/g, "")}`;
   return normalized === "/" ? normalized : normalized.replace(/\/+$/, "");
 };
 
 export const matchesNavigationPath = (pathname, item) => {
-  const current = normalizePathname(pathname);
-  const target = normalizePathname(item?.to);
+  const current = normalizeNavigationPath(pathname);
+  const target = normalizeNavigationPath(item?.to);
   return item?.end ? current === target : current === target || current.startsWith(`${target}/`);
 };
 
 export const isMobileSecondaryNavigationPath = (pathname) => MOBILE_SECONDARY_NAVIGATION.some((item) => matchesNavigationPath(pathname, item));
+
+export const CONTEXTUAL_NAVIGATION_PARENTS = Object.freeze({
+  "/notifikasi": Object.freeze({ to: "/", label: "Beranda", area: "home" }),
+  "/rekonsiliasi": Object.freeze({ to: "/rekening", label: "Rekening", area: "more" }),
+});
+
+const MOBILE_CONTEXTUAL_SECONDARY_PATHS = Object.freeze(
+  Object.keys(CONTEXTUAL_NAVIGATION_PARENTS).filter((path) => CONTEXTUAL_NAVIGATION_PARENTS[path].area === "more"),
+);
+
+export const contextualNavigationParent = (pathname) => {
+  const current = normalizeNavigationPath(pathname);
+  const match = Object.entries(CONTEXTUAL_NAVIGATION_PARENTS).find(([path]) => current === path || current.startsWith(`${path}/`));
+  return match?.[1] || null;
+};
+
+export const isSafeInternalNavigationTarget = (value) => {
+  const target = String(value || "").trim();
+  const hasControlCharacters = [...target].some((character) => character.charCodeAt(0) < 32);
+  if (!target.startsWith("/") || target.startsWith("//") || target.includes("\\") || hasControlCharacters) return false;
+  return true;
+};
+
+export const safeInternalNavigationTarget = (value, fallback = "/") => (
+  isSafeInternalNavigationTarget(value) ? String(value).trim() : fallback
+);
+
+export const navigationLabelForPath = (pathname, fallback = "Beranda") => {
+  const normalized = normalizeNavigationPath(String(pathname || "").split(/[?#]/, 1)[0]);
+  if (normalized === "/") return "Beranda";
+  if (normalized === "/rekonsiliasi") return "Rekening";
+  const primary = PRIMARY_NAVIGATION.find((item) => matchesNavigationPath(normalized, item));
+  if (primary) return primary.label;
+  if (normalized.startsWith("/pengaturan/")) return "Pengaturan";
+  return fallback;
+};
+
+export const mobileNavigationArea = (pathname) => {
+  const current = normalizeNavigationPath(pathname);
+  if (current === "/" || current === "/notifikasi") return "home";
+  if (current === "/perencanaan" || current.startsWith("/perencanaan/")) return "planning";
+  if (current === "/transaksi" || current.startsWith("/transaksi/")) return "transactions";
+  if (MOBILE_CONTEXTUAL_SECONDARY_PATHS.some((path) => current === path || current.startsWith(`${path}/`))) return "more";
+  if (isMobileSecondaryNavigationPath(current)) return "more";
+  return "";
+};
+
+export const mobilePrimaryScrollKey = (pathname) => {
+  const current = normalizeNavigationPath(pathname);
+  if (current === "/") return "/";
+  if (current === "/perencanaan" || current.startsWith("/perencanaan/")) return "/perencanaan";
+  if (current === "/transaksi" || current.startsWith("/transaksi/")) return "/transaksi";
+  return "";
+};

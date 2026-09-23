@@ -59,7 +59,7 @@ const desktopActivityQuickAddAllowed = (pathname, role) => {
   return true;
 };
 
-const MobileMoreMenu = ({ open, user, initialFocusRef, onClose, onLogout }) => (
+const MobileMoreMenu = ({ open, user, initialFocusRef, notificationReturnTo, onClose, onLogout }) => (
   <Modal open={open} onClose={onClose} title="Menu lainnya" size="sm" initialFocusRef={initialFocusRef} mobileSwipeToClose>
     <div className="mobile-menu-list">
       {MOBILE_SECONDARY_GROUPS
@@ -73,6 +73,7 @@ const MobileMoreMenu = ({ open, user, initialFocusRef, onClose, onLogout }) => (
                 key={to}
                 ref={groupIndex === 0 && itemIndex === 0 ? initialFocusRef : undefined}
                 to={to}
+                state={to === "/notifikasi" ? { returnTo: notificationReturnTo } : undefined}
                 className={({ isActive }) => `mobile-menu-link${isActive ? " active" : ""}`}
                 onClick={onClose}
               >
@@ -129,14 +130,14 @@ const DesktopAccountMenu = ({ user, onLogout }) => {
   );
 };
 
-const DesktopAppHeader = ({ isRefreshing, notificationState, user, onLogout }) => (
+const DesktopAppHeader = ({ isRefreshing, notificationState, user, onLogout, notificationReturnTo }) => (
   <header className="desktop-app-header">
     <Brand />
     <div className="desktop-app-header__actions">
       <div className={`sync-indicator${isRefreshing ? " is-active" : ""}`} role="status" aria-live="polite">
         {isRefreshing ? <><FiRefreshCw aria-hidden="true" /><span>Memperbarui</span></> : <span className="sr-only">Data siap</span>}
       </div>
-      <NavLink className="desktop-header-action desktop-notification-button" to="/notifikasi" aria-label={notificationState.unreadCount ? `Buka notifikasi, ${notificationState.unreadCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
+      <NavLink className="desktop-header-action desktop-notification-button" to="/notifikasi" state={{ returnTo: notificationReturnTo }} aria-label={notificationState.unreadCount ? `Buka notifikasi, ${notificationState.unreadCount} belum dibaca` : "Buka notifikasi"} title="Notifikasi">
         <FiBell aria-hidden="true" />
         {notificationState.unreadCount ? <span className="desktop-notification-badge" aria-hidden="true">{Math.min(notificationState.unreadCount, 99)}</span> : null}
       </NavLink>
@@ -230,6 +231,7 @@ const AppShell = () => {
   const notificationsRoute = location.pathname === "/notifikasi";
   const mobileLayout = useMediaQuery(APP_MEDIA.mobile);
   const desktopActivityQuickAddVisible = desktopActivityQuickAddAllowed(location.pathname, user?.role);
+  const notificationReturnTo = location.pathname === "/notifikasi" ? "/" : `${location.pathname}${location.search}${location.hash}`;
   const { installPrompt, network, notificationState, serviceWorkerUpdate, pullRefreshBlocked } = useAppShellRuntime({ overview, user, composerOpen, syncNow });
   const { offline, degraded, recovering } = network;
   useMobileTabScrollRestoration(location, navigationType);
@@ -253,7 +255,7 @@ const AppShell = () => {
       <SideNavigation />
 
       <div className={`app-shell${dashboardRoute ? " app-shell--dashboard" : ""}${accountsRoute ? " app-shell--accounts" : ""}${notificationsRoute ? " app-shell--notifications" : ""}`}>
-        <DesktopAppHeader isRefreshing={isRefreshing} notificationState={notificationState} user={user} onLogout={handleLogout} />
+        <DesktopAppHeader isRefreshing={isRefreshing} notificationState={notificationState} user={user} onLogout={handleLogout} notificationReturnTo={notificationReturnTo} />
 
         <div className="app-shell__main">
           <main className="app-content">
@@ -275,6 +277,7 @@ const AppShell = () => {
         open={mobileMenuOpen}
         user={user}
         initialFocusRef={mobileMenuInitialFocusRef}
+        notificationReturnTo={notificationReturnTo}
         onClose={() => setMobileMenuRoute("")}
         onLogout={handleMobileLogout}
       />

@@ -19,13 +19,21 @@ export const emptyBudgetForm = (overrides = {}) => ({
   warning_threshold: 80,
   scope: "shared",
   owner_user_id: "",
-  recording_mode: "flexible",
+  recording_mode: "",
   schedule_frequency: "monthly",
   schedule_due_day: 20,
   schedule_start_date: todayInJakarta(),
   schedule_payment_method: "transfer",
   ...overrides,
 });
+
+const requireBudgetRecordingMode = (value) => {
+  const normalized = String(value || "");
+  if (!["flexible", "fixed_once", "recurring"].includes(normalized)) {
+    throw new Error("Pilih cara penggunaan terlebih dahulu.");
+  }
+  return normalized;
+};
 
 const budgetOwnershipUpdates = (value) => value === "shared"
   ? { scope: "shared", owner_user_id: "" }
@@ -69,7 +77,7 @@ const formFromBudget = (item, envelopeRuleId = valueOr(item?.envelope_rule_id, "
 const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule }) => {
   const completingSchedule = Boolean(pendingSchedule);
   const amount = pendingSchedule?.amount ?? assertPositiveRupiah(form.amount);
-  const recordingMode = pendingSchedule ? "recurring" : form.recording_mode;
+  const recordingMode = pendingSchedule ? "recurring" : requireBudgetRecordingMode(form.recording_mode);
   let savedBudget = existingBudget || (pendingSchedule?.budget_id ? { budget_id: pendingSchedule.budget_id } : null);
   if (!pendingSchedule) {
     savedBudget = await upsertBudget({
@@ -104,7 +112,9 @@ const budgetScheduleFromForm = (form, amount) => {
   };
 };
 
-const shouldCreateBudgetSchedule = ({ pendingSchedule, existingBudget, recordingMode }) => Boolean(pendingSchedule || !existingBudget) && recordingMode === "recurring";
+const shouldCreateBudgetSchedule = ({ pendingSchedule, existingBudget, recordingMode }) => recordingMode === "recurring" && Boolean(
+  pendingSchedule || !existingBudget || existingBudget.recording_mode !== "recurring",
+);
 
 const createBudgetSchedule = async ({ schedule, categories, scheduleAccountId, budgetId }) => {
   if (!scheduleAccountId) throw new Error("Rekening sumber Alokasi Dana belum tersedia untuk membuat jadwal.");

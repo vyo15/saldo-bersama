@@ -50,7 +50,7 @@ const ImportPreview = ({ preview }) => (
     {preview.acceptable ? (
       <div className="notice notice--success" role="status"><FiCheckCircle aria-hidden="true" /><span>Seluruh baris lolos simulasi kumulatif. Apply tetap akan memvalidasi ulang di transaction sebelum commit.</span></div>
     ) : (
-      <div className="notice notice--warning" role="status"><FiAlertTriangle aria-hidden="true" /><span>Import diblokir. Seluruh baris harus valid dan bebas duplikat. Tidak ada partial import.</span></div>
+      <div className="notice notice--warning" role="status"><FiAlertTriangle aria-hidden="true" /><span>Import diblokir. Seluruh baris harus valid dan bebas duplikat. Tidak ada data yang diimpor sebagian.</span></div>
     )}
     {preview.impact ? <ImportImpact impact={preview.impact} /> : null}
   </div>
@@ -111,7 +111,7 @@ const ImportTransactionsPage = () => {
       <section className={styles.pageContent} aria-labelledby="import-settings-title">
         <div className={styles.pageHeading}>
           <h2 id="import-settings-title">Import transaksi</h2>
-          <p>JSON atau CSV, maksimal 50 transaksi. File harus lolos seluruh preview. Aplikasi tidak melakukan partial import.</p>
+          <p>JSON atau CSV, maksimal 50 transaksi. File harus lolos seluruh pemeriksaan agar tidak ada data yang diimpor sebagian.</p>
         </div>
         <SettingsNotice result={result} />
         <Card className="panel">

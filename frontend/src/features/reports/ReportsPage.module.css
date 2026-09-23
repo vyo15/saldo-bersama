@@ -723,5 +723,5 @@
     background: transparent;
   }
   .allocationHealthStrip > div small { display: none; }
-  .allocationHealthStrip > a { grid-column: 1 / -1; min-height: 32px; padding: 0; justify-content: flex-start; }
+  .allocationHealthStrip > a { grid-column: 1 / -1; min-height: var(--mobile-control-height); padding: 0; justify-content: flex-start; }
 }

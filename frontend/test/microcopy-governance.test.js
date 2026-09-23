@@ -55,7 +55,7 @@ test("design system dan QA mempertahankan aturan anti-duplikasi microcopy", asyn
 test("surface finansial normal tetap outcome-first dan bebas jargon implementasi", async () => {
   const [allocations, budgets, recurring, transactions, reconciliation, valuation, designSystem, qa, testPlan] = await Promise.all([
     read("src/features/allocations/AllocationDialogLayer.jsx"),
-    read("src/features/budgets/BudgetDialogLayer.jsx"),
+    Promise.all([read("src/features/budgets/BudgetDialogLayer.jsx"), read("src/features/budgets/budgetRecordingOptions.js")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/recurring/RecurringPage.jsx"), read("src/features/recurring/RecurringDialogs.jsx"), read("src/features/recurring/RecurringSchedule.jsx")]).then((parts) => parts.join("\n")),
     Promise.all([read("src/features/transactions/MobileTransferFields.jsx"), read("src/features/transactions/components/TransactionPostSaveModal.jsx")]).then((parts) => parts.join("\n")),
     read("src/features/reconciliations/components/ReconciliationFeedback.jsx"),
@@ -80,4 +80,27 @@ test("surface finansial normal tetap outcome-first dan bebas jargon implementasi
   assert.match(designSystem, /Bahasa user-facing menjelaskan keputusan dan hasil, bukan arsitektur/i);
   assert.match(qa, /UI finansial normal tidak membocorkan jargon implementasi/i);
   assert.match(testPlan, /Success state finansial memvalidasi hasil yang dipahami user/i);
+});
+
+
+test("surface user-facing umum tidak membocorkan jargon implementasi yang ditemukan audit", async () => {
+  const [accounts, approvals, reports, importPage, settingsLayout, memberActivity, desktopTransactions, feedback] = await Promise.all([
+    read("src/features/accounts/components/AccountEditorDialogs.jsx"),
+    read("src/features/transactions/TransferRequestsPanel.jsx"),
+    read("src/features/reports/ReportsPage.jsx"),
+    read("src/features/settings/ImportTransactionsPage.jsx"),
+    read("src/features/settings/SettingsLayout.jsx"),
+    read("src/features/settings/components/MemberActivityPanel.jsx"),
+    read("src/features/transactions/components/DesktopTransactionWorkspace.jsx"),
+    read("src/components/feedback/FeedbackProvider.jsx"),
+  ]);
+
+  assert.doesNotMatch(accounts, /Nama canonical/i);
+  assert.doesNotMatch(approvals, /idempotency key/i);
+  assert.doesNotMatch(reports, /Pilih scope|pada scope|scope aktif/i);
+  assert.doesNotMatch(importPage, /partial import/i);
+  assert.doesNotMatch(settingsLayout, /partial import/i);
+  assert.doesNotMatch(memberActivity, />Ledger</i);
+  assert.doesNotMatch(desktopTransactions, /mempersempit ledger/i);
+  assert.doesNotMatch(feedback, /menunggu konfirmasi server|Server sudah mengonfirmasi|idempotency key|server memberi hasil/i);
 });
