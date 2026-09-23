@@ -10,13 +10,14 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
   ]);
   assert.match(planning, /title="Atur Dana"/);
-  assert.match(planning, /Alokasi Dana/);
-  assert.match(planning, /Jadwal Rutin/);
-  assert.match(planning, /Kewajiban/);
+  assert.match(planning, /satu daftar Aktif/);
+  assert.match(planning, /Pemasukan yang sudah tercatat otomatis menambah dana rekening/);
+  assert.doesNotMatch(planning, /role="tablist"|planning-tab-/);
+  assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
   assert.match(overview, /Dana yang bisa dialokasikan/);
   assert.match(overview, /Total dana bebas lintas rekening/);
   assert.match(overview, /Setiap Alokasi tetap terikat ke satu rekening sumber/);
-  assert.match(overview, /Lihat \$\{sources\.length\} rekening sumber/);
+  assert.match(overview, /Lihat \{sources\.length\} rekening sumber/);
   assert.doesNotMatch(overview, /wallet\.webp/);
 });
 
@@ -42,6 +43,10 @@ test("aksi funding generik memilih rekening dulu dan contextual tetap mengunci s
 test("create Alokasi mengikuti ownership rekening dan menyimpan opsi lanjutan secara progresif", async () => {
   const dialog = await read("src/features/allocations/AllocationDialogLayer.jsx");
   assert.match(dialog, /title="Alokasi baru"/);
+  assert.match(dialog, /Langkah 1 dari 2/);
+  assert.match(dialog, /Langkah 2 dari 2/);
+  assert.match(dialog, /create-envelope-basics-form/);
+  assert.match(dialog, /headerBackAction=/);
   assert.match(dialog, /Mengikuti pemilik rekening sumber pribadi/);
   assert.match(dialog, /Rekening Bersama dapat dialokasikan untuk Bersama atau anggota tertentu/);
   assert.match(dialog, /<details className=\{allocationClass\("allocation-create-options form-grid__full"\)\}>/);
@@ -53,11 +58,15 @@ test("create Alokasi mengikuti ownership rekening dan menyimpan opsi lanjutan se
   assert.match(dialog, /Buat dengan \$\{formatRupiah\(fundedNow\)\}/);
 });
 
-test("overview hanya menampilkan filter ownership ketika dataset memang membutuhkannya", async () => {
+test("overview menyatukan objek aktif dan hanya menampilkan filter ownership ketika dataset membutuhkannya", async () => {
   const overview = await read("src/features/allocations/AllocationOverviewLayer.jsx");
-  assert.match(overview, /shouldShowOwnershipFilters/);
-  assert.match(overview, /const visibleItems = showFilters \? filteredActiveItems : activeItems/);
-  assert.match(overview, /showFilters \? <div className=\{allocationClass\("allocation-filters"\)\}/);
+  assert.match(overview, /buildPlanningActiveItems/);
+  assert.match(overview, /planningActiveOwnership/);
+  assert.match(overview, /filterPlanningActiveItems/);
+  assert.match(overview, /ownership\.showFilter \? <div className=\{allocationClass\("allocation-filters"\)\}/);
+  assert.match(overview, />Aktif<\/h2>/);
+  assert.match(overview, /Alokasikan dana/);
+  assert.match(overview, /Alokasi baru/);
 });
 
 test("attention kekurangan dana mengunci Alokasi yang sudah diketahui", async () => {

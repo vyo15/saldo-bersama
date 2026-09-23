@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { readDashboardStyleSource } from "./sourceBundles.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -138,7 +139,9 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(settingsStyles, /\.settingsAccountAvatar\s*\{[\s\S]*border-color:[\s\S]*box-shadow:/);
   assert.match(settingsStyles, /\.settingsAccountStatus\s*\{[\s\S]*border-top:[\s\S]*grid-template-columns:/);
   assert.match(notifications, /type="checkbox" role="switch"/);
-  assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]\s*\{[\s\S]*appearance:\s*none;[\s\S]*border-radius:\s*var\(--radius-pill\);/);
+  const preferenceSwitchBlock = settingsStyles.match(/\.preferenceItem input\[role="switch"\]\s*\{([^}]*)\}/)?.[1] || "";
+  assert.match(preferenceSwitchBlock, /appearance:\s*none;/);
+  assert.match(preferenceSwitchBlock, /border-radius:\s*var\(--radius-pill\);/);
   assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]:checked\s*\{[\s\S]*background:\s*var\(--primary\);/);
   assert.match(settingsStyles, /\.preferenceItem input\[role="switch"\]::before/);
   assert.equal((notifications.match(/<h2 id="notification-settings-title">Notifikasi perangkat<\/h2>/g) || []).length, 1);
@@ -160,6 +163,21 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(members, /Tambah anggota/);
   assert.match(members, /Lihat aktivitas transaksi/);
   assert.match(members, /MemberActivityPanel/);
+});
+
+test("panel reset Pengaturan memiliki stylesheet ownership sendiri tanpa selector mati", async () => {
+  const [fullReset, trialReset, settingsStyles, resetPanelStyles] = await Promise.all([
+    read("src/features/settings/components/FullResetPanels.jsx"),
+    read("src/features/settings/components/TrialResetPanels.jsx"),
+    read("src/features/settings/Settings.module.css"),
+    read("src/features/settings/components/SettingsResetPanels.module.css"),
+  ]);
+  assert.match(fullReset, /import styles from "\.\/SettingsResetPanels\.module\.css"/);
+  assert.match(trialReset, /import styles from "\.\/SettingsResetPanels\.module\.css"/);
+  assert.match(resetPanelStyles, /\.resetStepCard\s*\{/);
+  assert.match(resetPanelStyles, /\.resetScopeSelector\s*\{/);
+  assert.match(resetPanelStyles, /@media \(max-width: 36rem\)/);
+  assert.doesNotMatch(settingsStyles, /\.resetStepCard\s*\{|\.resetScopeSelector\s*\{|resetRecoveryCard_(?:danger|success)/);
 });
 
 test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pada breakpoint mobile", async () => {
@@ -261,8 +279,8 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(allocations, /PageHeader title="Alokasi Dana"/);
   assert.match(allocations, /allocation-funding-summary/);
   assert.match(allocations, /allocation-filters/);
-  assert.match(allocations, /role="button"/);
-  assert.match(allocations, /Buka detail Alokasi/);
+  assert.match(allocations, /planning-active-row/);
+  assert.match(allocations, /aria-label=\{`Buka detail \$\{item\.name\}`\}/);
   assert.doesNotMatch(allocations, /allocation-card__expand|allocation-card__fund/);
   assert.match(allocations, /mobileSwipeToClose/);
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
@@ -302,7 +320,7 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
     read("src/features/reports/ReportsPage.module.css"),
     read("src/features/allocations/AllocationDetail.module.css"),
     read("src/features/allocations/AllocationOverview.module.css"),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
     read("src/features/transactions/TransactionForm.module.css"),
     read("src/features/accounts/components/MobileAccountActivity.module.css"),
     read("src/features/accounts/components/AccountFinancialCard.module.css"),
@@ -316,7 +334,7 @@ test("kontrol finansial mobile mempertahankan target sentuh 44px dan teks pentin
   assert.match(reports, /@media \(max-width: 820px\)[\s\S]*?\.downloadMenu > summary \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(reports, /\.headingLink \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(contextBack, /\.back \{[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
-  assert.match(budgetCard, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
+  assert.match(budgetCard, /\.planning-active-row\s*\{[^}]*min-height:\s*76px;/);
   assert.match(dashboard, /\.mobile-quick-action \{[^}]*min-height:\s*64px;/s);
   assert.match(transactionForm, /\.quickAmounts button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(accountActivity, /\.mobileRecentHeading > button \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);

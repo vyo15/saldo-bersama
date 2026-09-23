@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
+import { readDashboardStyleSource } from "./sourceBundles.js";
 
 const tokenSource = await readFile(new URL("../src/styles/tokens.css", import.meta.url), "utf8");
 const componentSource = await readFile(new URL("../src/styles/components.css", import.meta.url), "utf8");
@@ -149,7 +150,7 @@ test("danger hover canonical dan compatibility tetap memenuhi AA", async () => {
 });
 
 test("focus indicator canonical dan hero memenuhi kontras non-text 3:1 tanpa alpha ring", async () => {
-  const dashboard = await readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8");
+  const dashboard = await readDashboardStyleSource();
   const themeToggle = await readFile(new URL("../src/components/common/ThemeToggle.module.css", import.meta.url), "utf8");
   for (const [name, values] of [["light", themeTokens(":root,")], ["dark", themeTokens(':root[data-theme="dark"]')]]) {
     assert.equal(resolveColor(values, "--focus-ring")[3], 1, `focus-ring ${name} harus opaque`);
@@ -197,7 +198,7 @@ test("theme-color runtime dan fallback PWA mengikuti page token canonical", asyn
 
 test("contextual foreground yang sebelumnya rawan tetap memakai semantic pair aman", async () => {
   const [dashboard, recurring, app] = await Promise.all([
-    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
+    readDashboardStyleSource(),
     readFile(new URL("../src/features/recurring/RecurringSchedule.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/app.css", import.meta.url), "utf8"),
   ]);
@@ -237,7 +238,7 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
       readFile(new URL("../src/features/allocations/AllocationOverview.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
-    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
+    readDashboardStyleSource(),
     Promise.all([
       readFile(new URL("../src/features/auth/LoginPage.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8"),
@@ -290,7 +291,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
       readFile(new URL("../src/features/allocations/AllocationOverview.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
     ]).then((parts) => parts.join("\n")),
-    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
+    readDashboardStyleSource(),
     readFile(new URL("../src/features/allocations/AllocationDetail.module.css", import.meta.url), "utf8"),
     Promise.all([
       readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
@@ -319,7 +320,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(components, /\.quick-amounts button \{ min-height:\s*44px;/);
   assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
   assert.match(pages, /\.allocation-filters button\s*\{[^}]*min-height:\s*44px;/);
-  assert.match(pages, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
+  assert.match(pages, /\.planning-active-row\s*\{[^}]*min-height:\s*76px;/);
   assert.match(contextBack, /\.back \{[^}]*width:\s*max-content;[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
   assert.match(dashboard, /\.mobile-balance-visibility \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*min-width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);[^}]*min-height:\s*var\(--mobile-control-height\);/s);
@@ -473,7 +474,7 @@ test("mobile form tidak memicu auto-zoom dan gesture rekening tidak memblokir sc
     readFile(new URL("../src/styles/components.css", import.meta.url), "utf8"),
     readFile(new URL("../src/components/common/Modal.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/styles/reset.css", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/dashboard/DashboardPage.module.css", import.meta.url), "utf8"),
+    readDashboardStyleSource(),
     readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/transactions/components/MobileTransactionHistory.module.css", import.meta.url), "utf8"),
     readFile(new URL("../src/features/reconciliations/ReconciliationsPage.module.css", import.meta.url), "utf8"),
@@ -533,12 +534,12 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.match(visualChoice, /\.helper \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.match(categories, /\.categoryStatus \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.match(categories, /\.iconOption span \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
-  assert.match(planning, /\.tab span \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
+  assert.match(planning, /\.detailBack \{[\s\S]*?display:\s*flex;/);
   assert.match(transactionForm, /@media \(max-width: 820px\)[\s\S]*?\.categoryQuickChoices > small \{[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.match(transactionForm, /\.form \.notesField textarea \{[\s\S]*?min-height:\s*3\.25rem;/);
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
   assert.match(contextBack, /\.back \{[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
-  assert.match(budgetCard, /\.allocation-card\[role="button"\]\s*\{[^}]*min-height:\s*44px;/);
+  assert.match(budgetCard, /\.planning-active-row\s*\{[^}]*min-height:\s*76px;/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-needs-filter__button,[\s\S]*?\.allocation-limit-row__quick-action,[\s\S]*?\.allocation-limit-row__menu > summary \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-limit-row__balance,[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.doesNotMatch(pages, /allocation-limit-row__more|allocation-related-row/);

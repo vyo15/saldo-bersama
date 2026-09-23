@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FiArrowLeft, FiArrowRight, FiGrid, FiPlus, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -84,12 +84,6 @@ const createNeedsTotal = (needs) => (needs || []).reduce((total, need) => {
   const amount = Number(String(need.amount || "").replace(/\D/g, ""));
   return total + (Number.isFinite(amount) ? amount : 0);
 }, 0);
-
-const CreateEnvelopeFooter = ({ close, createMutation, label = "Buat & alokasikan" }) => <>
-  <Button type="button" disabled={createMutation.busy} onClick={close}>Batal</Button>
-  <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>{label}</Button>
-</>;
-
 
 
 const NEED_FREQUENCY_OPTIONS = Object.freeze([
@@ -235,25 +229,22 @@ const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) =
   </section>;
 };
 
-const CreateEnvelopeForm = ({
-  createForm,
-  setCreateForm,
-  createNeeds,
-  setCreateNeeds,
-  categories,
-  accounts,
-  usersStatus,
-  assigneeState,
-  assigneeOptions,
-  onChangeSource,
-  message,
-  createEnvelope,
-}) => {
+const CreateEnvelopeBasics = ({ createForm, setCreateForm, accounts, usersStatus, assigneeState, assigneeOptions, onChangeSource, onNext }) => {
+  const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
+  return <form id="create-envelope-basics-form" className={allocationClass("form-grid")} onSubmit={(event) => { event.preventDefault(); onNext(); }}>
+    <label className="field form-grid__full"><span>Untuk apa alokasi ini? *</span><input autoFocus required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
+    <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
+    {assigneeState.locked ? <div className={allocationClass("allocation-owner-lock form-grid__full")}><span>Digunakan oleh</span><strong>{assigneeOptions[0]?.label || sourceAccount?.owner_name || "Pemilik rekening"}</strong><small>Mengikuti pemilik rekening sumber pribadi.</small></div> : <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : "Rekening Bersama dapat dialokasikan untuk Bersama atau anggota tertentu."} />}
+  </form>;
+};
+
+const CreateEnvelopePlan = ({ createForm, setCreateForm, createNeeds, setCreateNeeds, categories, accounts, message, createEnvelope }) => {
   const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
   return <form id="create-envelope-form" className={allocationClass("form-grid")} onSubmit={createEnvelope}>
-    <label className="field form-grid__full"><span>Untuk apa uang ini? *</span><input required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
-    <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
-{assigneeState.locked ? <div className={allocationClass("allocation-owner-lock form-grid__full")}><span>Digunakan oleh</span><strong>{assigneeOptions[0]?.label || sourceAccount?.owner_name || "Pemilik rekening"}</strong><small>Mengikuti pemilik rekening sumber pribadi.</small></div> : <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : "Rekening Bersama dapat dialokasikan untuk Bersama atau anggota tertentu."} />}
+    <div className={allocationClass("allocation-create-summary form-grid__full")} role="status">
+      <span><strong>{createForm.name || "Alokasi baru"}</strong><small>{sourceAccount ? accountDisplayLabel(sourceAccount) : "Rekening belum dipilih"}</small></span>
+      <small>Langkah terakhir: susun kebutuhan awal.</small>
+    </div>
     <AllocationCreateNeeds needs={createNeeds} setNeeds={setCreateNeeds} categories={categories} sourceAccount={sourceAccount} />
     <details className={allocationClass("allocation-create-options form-grid__full")}>
       <summary><span>Tampilan & periode</span><small>Pemanis kartu dan aturan sisa</small></summary>
@@ -267,6 +258,8 @@ const CreateEnvelopeForm = ({
 };
 
 const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNeeds, setCreateNeeds, categories, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
+  const [step, setStep] = useState(1);
+  useEffect(() => { if (!open) setStep(1); }, [open]);
   const assigneeState = envelopeAssigneeOptions(createForm, accounts, users);
   const assigneeOptions = buildAssigneeOptions(assigneeState);
   const guard = useUnsavedChangesGuard({ open, value: { createForm, createNeeds }, onClose: close, blocked: createMutation.busy });
@@ -283,8 +276,29 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
     : total > available
       ? fundedNow > 0 ? `Buat dengan ${formatRupiah(fundedNow)}` : "Buat Alokasi"
       : "Buat & alokasikan";
-  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="Alokasi Dana" dismissible={!createMutation.busy} title="Alokasi baru" description="Pilih rekening sumber, tentukan siapa yang memakai, lalu susun Kebutuhan utama." footer={<CreateEnvelopeFooter close={guard.discardAndClose} createMutation={createMutation} label={submitLabel} />}>
-    <CreateEnvelopeForm createForm={createForm} setCreateForm={setCreateForm} createNeeds={createNeeds} setCreateNeeds={setCreateNeeds} categories={categories} accounts={accounts} usersStatus={usersStatus} assigneeState={assigneeState} assigneeOptions={assigneeOptions} onChangeSource={changeSource} message={message} createEnvelope={createEnvelope} />
+  const canContinue = Boolean(String(createForm.name || "").trim() && createForm.source_account_id && usersStatus !== "loading");
+  const goToPlan = () => { if (canContinue) setStep(2); };
+  const footer = step === 1 ? <>
+    <Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button>
+    <Button variant="primary" icon={FiArrowRight} type="submit" form="create-envelope-basics-form" disabled={!canContinue || createMutation.busy}>Lanjut</Button>
+  </> : <>
+    <Button type="button" disabled={createMutation.busy} onClick={() => setStep(1)}>Kembali</Button>
+    <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>{submitLabel}</Button>
+  </>;
+  return <Modal
+    open={open}
+    onClose={guard.requestClose}
+    discardGuard={guard}
+    discardSubject="Alokasi Dana"
+    dismissible={!createMutation.busy}
+    title="Alokasi baru"
+    description={step === 1 ? "Langkah 1 dari 2 · Tentukan tujuan dan rekening sumber." : "Langkah 2 dari 2 · Atur kebutuhan awal. Detail tambahan tetap opsional."}
+    headerBackAction={step === 2 ? { label: "Kembali ke informasi Alokasi", onClick: () => setStep(1), disabled: createMutation.busy } : null}
+    footer={footer}
+  >
+    {step === 1
+      ? <CreateEnvelopeBasics createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} usersStatus={usersStatus} assigneeState={assigneeState} assigneeOptions={assigneeOptions} onChangeSource={changeSource} onNext={goToPlan} />
+      : <CreateEnvelopePlan createForm={createForm} setCreateForm={setCreateForm} createNeeds={createNeeds} setCreateNeeds={setCreateNeeds} categories={categories} accounts={accounts} message={message} createEnvelope={createEnvelope} />}
   </Modal>;
 };
 

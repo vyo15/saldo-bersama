@@ -59,8 +59,9 @@ const eligiblePaymentEnvelopes = (items, payment, account) => {
   return filterByOwnership(active.filter((item) => item.can_record_expense === true), account);
 };
 
-const recurringViewData = ({ resource, filter, bootstrap, overview, rules, payments, envelopeResource, budgetResource }) => {
-  const allItems = resource.data?.items || [];
+const recurringViewData = ({ resource, filter, bootstrap, overview, rules, payments, envelopeResource, budgetResource, expenseOnly = false }) => {
+  const sourceItems = resource.data?.items || [];
+  const allItems = expenseOnly ? sourceItems.filter((item) => item.kind === "expense") : sourceItems;
   const accounts = activeAccounts(bootstrap, overview);
   const paymentAccounts = filterByOwnership(accounts, payments.payment.item);
   const selectedPaymentAccount = paymentAccounts.find((item) => item.account_id === payments.payment.account_id) || null;
@@ -68,8 +69,8 @@ const recurringViewData = ({ resource, filter, bootstrap, overview, rules, payme
     allItems,
     filteredItems: allItems.filter((item) => scheduleMatchesFilter(item, filter)),
     accounts,
-    categories: activeCategories(bootstrap, rules.form.kind),
-    editCategories: activeCategories(bootstrap, rules.editRule?.kind),
+    categories: activeCategories(bootstrap, expenseOnly ? "expense" : rules.form.kind),
+    editCategories: activeCategories(bootstrap, expenseOnly ? "expense" : rules.editRule?.kind),
     paymentAccounts,
     paymentEnvelopes: eligiblePaymentEnvelopes(envelopeResource.data?.items || [], payments.payment, selectedPaymentAccount),
     budgets: budgetResource.data?.items || [],
@@ -150,12 +151,12 @@ const applyCreateRecurringWorkflow = ({ workflow, bootstrap, overview, rules, se
   setKind("expense");
 };
 
-const applyOccurrenceWorkflow = ({ workflow, items, setKind, setFilter, setExpandedId, openPayment, notify }) => {
+const applyOccurrenceWorkflow = ({ workflow, items, setKind, setFilter, setExpandedId, openPayment, notify, expenseOnly = false }) => {
   if (!["pay-recurring", "view-recurring"].includes(workflow.workflowAction)) return;
   const occurrenceId = String(workflow.occurrenceId || "");
   const item = (items || []).find((entry) => entry.occurrence_id === occurrenceId) || null;
-  if (!item) {
-    if (occurrenceId) notify({ message: "Jadwal yang dipilih tidak tersedia pada periode ini.", tone: "warning", dedupeKey: "recurring:workflow-not-found" });
+  if (!item || (expenseOnly && item.kind !== "expense")) {
+    if (occurrenceId) notify({ message: expenseOnly ? "Atur Dana hanya menampilkan pembayaran rutin pengeluaran." : "Jadwal yang dipilih tidak tersedia pada periode ini.", tone: "warning", dedupeKey: "recurring:workflow-not-found" });
     return;
   }
   const paying = workflow.workflowAction === "pay-recurring";
@@ -165,7 +166,7 @@ const applyOccurrenceWorkflow = ({ workflow, items, setKind, setFilter, setExpan
   if (paying && item.can_pay !== false) openPayment(item);
 };
 
-const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod, resource, bootstrap, overview, rules, setKind, setFilter, setExpandedId, openPayment, notify }) => {
+const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod, resource, bootstrap, overview, rules, setKind, setFilter, setExpandedId, openPayment, notify, expenseOnly = false }) => {
   const workflowHandled = useRef("");
   const workflowPeriodSwitch = useRef("");
 
@@ -189,13 +190,13 @@ const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod,
     if (workflow.workflowAction === "create-recurring") {
       applyCreateRecurringWorkflow({ workflow, bootstrap, overview, rules, setKind });
     } else {
-      applyOccurrenceWorkflow({ workflow, items: resource.data?.items, setKind, setFilter, setExpandedId, openPayment, notify });
+      applyOccurrenceWorkflow({ workflow, items: resource.data?.items, setKind, setFilter, setExpandedId, openPayment, notify, expenseOnly });
     }
     navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-  }, [bootstrap, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, period, resource.data?.items, resource.status, rules, setExpandedId, setFilter, setKind, setPeriod]);
+  }, [bootstrap, expenseOnly, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, period, resource.data?.items, resource.status, rules, setExpandedId, setFilter, setKind, setPeriod]);
 };
 
-const RecurringPage = ({ embedded = false }) => {
+const RecurringPage = ({ embedded = false, expenseOnly = false }) => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const location = useLocation();
   const navigate = useNavigate();
@@ -215,8 +216,8 @@ const RecurringPage = ({ embedded = false }) => {
   const recovery = useRecurringOccurrenceRecovery(shared);
   const envelopeResource = useApiResource("envelopes.list", { period }, { enabled: payments.payment.item?.kind === "expense" });
   const budgetResource = useApiResource("budgets.list", { period });
-  const view = recurringViewData({ resource, filter, bootstrap, overview, rules, payments, envelopeResource, budgetResource });
-  const attentionOccurrenceId = useRecurringAttention({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment });
+  const view = recurringViewData({ resource, filter, bootstrap, overview, rules, payments, envelopeResource, budgetResource, expenseOnly });
+  const attentionOccurrenceId = useRecurringAttention({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment, expenseOnly });
   useRecurringEnvelopeSuggestion({
     payment,
     setPayment,
@@ -240,6 +241,7 @@ const RecurringPage = ({ embedded = false }) => {
     setExpandedId,
     openPayment,
     notify,
+    expenseOnly,
   });
 
   if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat jadwal rutin…" />;
@@ -257,15 +259,15 @@ const RecurringPage = ({ embedded = false }) => {
       <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       {memberMode ? <CompactNotice tone="info" role="status">Anda dapat membuat dan mengubah jadwal rutin Bersama atau jadwal dari rekening yang Anda pegang. Jadwal dari rekening yang dipegang anggota lain dan tindakan arsip tetap dikelola Administrator.</CompactNotice> : null}
       {!canManagePlanning ? <CompactNotice tone="warning" title="Belum ada rekening yang dapat digunakan." role="status">Siapkan atau aktifkan rekening terlebih dahulu sebelum membuat Jadwal Rutin. <Link to="/rekening">Lihat Rekening</Link>.</CompactNotice> : null}
-      {payments.incomeSuccess ? <div className={styles.incomeSuccess}><CompactNotice tone="success" title="Penerimaan rutin berhasil dicatat." role="status">Dana sudah masuk ke rekening. Anda dapat mengalokasikannya sekarang atau nanti.</CompactNotice><div className={styles.incomeSuccessActions}><Button type="button" onClick={() => payments.setIncomeSuccess(null)}>Nanti</Button><Button type="button" variant="primary" onClick={() => { const success = payments.incomeSuccess; payments.setIncomeSuccess(null); navigate("/perencanaan/kantong", { state: { workflowSource: "recurring-income", workflowAction: "fund", sourceAccountId: success.sourceAccountId, suggestedAmount: success.suggestedAmount } }); }}>Alokasikan dana</Button></div></div> : null}
-      {embedded ? <div className={styles.embeddedHeader}><div><h2>Jadwal Rutin</h2></div>{headerActions}</div> : <PageHeader title="Jadwal Rutin" help="Atur transaksi berulang dan catat nominal sebenarnya saat jadwal terjadi." actions={headerActions} />}{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal dan rekening untuk periode ini.</CompactNotice> : null}
+      {!expenseOnly && payments.incomeSuccess ? <div className={styles.incomeSuccess}><CompactNotice tone="success" title="Penerimaan rutin berhasil dicatat." role="status">Dana sudah masuk ke rekening. Anda dapat mengalokasikannya sekarang atau nanti.</CompactNotice><div className={styles.incomeSuccessActions}><Button type="button" onClick={() => payments.setIncomeSuccess(null)}>Nanti</Button><Button type="button" variant="primary" onClick={() => { const success = payments.incomeSuccess; payments.setIncomeSuccess(null); navigate("/perencanaan/kantong", { state: { workflowSource: "recurring-income", workflowAction: "fund", sourceAccountId: success.sourceAccountId, suggestedAmount: success.suggestedAmount } }); }}>Alokasikan dana</Button></div></div> : null}
+      {embedded ? <div className={styles.embeddedHeader}><div><h2>Pembayaran rutin</h2><p>Kelola pengeluaran yang berulang. Pemasukan yang sudah tercatat langsung masuk ke rekening.</p></div>{headerActions}</div> : <PageHeader title="Pembayaran rutin" help="Atur pengeluaran berulang dan catat nominal sebenarnya saat jadwal terjadi." actions={headerActions} />}{attentionOccurrenceId ? <CompactNotice tone="info" title="Selesaikan jadwal yang dipilih." role="status">Catat nominal dan rekening untuk periode ini.</CompactNotice> : null}
       <Suspense fallback={<LazyActionFallback label="Menyiapkan aksi jadwal rutin..." />}>
-        <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} budgets={budgets} canCreate={canManagePlanning} />
+        <RecurringScheduleView allItems={allItems} filteredItems={filteredItems} kind={kind} setKind={setKind} filter={filter} setFilter={setFilter} actions={actions} expandedId={expandedId} setExpandedId={setExpandedId} accounts={bootstrap?.accounts || []} categories={bootstrap?.categories || []} budgets={budgets} canCreate={canManagePlanning} expenseOnly={expenseOnly} />
       </Suspense>
       <ManualReminderModal target={reminderTarget} onClose={() => setReminderTarget(null)} />
       {recurringDialogOpen({ rules, payments, recovery }) ? (
         <Suspense fallback={<LazyActionFallback surface="modal" title="Jadwal rutin" label="Menyiapkan aksi jadwal rutin..." />}>
-          <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgets={ruleBudgets} />
+          <RecurringDialogLayer rules={rules} payments={payments} recovery={recovery} categories={categories} editCategories={editCategories} accounts={ruleAccounts} paymentAccounts={paymentAccounts} paymentEnvelopes={paymentEnvelopes} envelopeStatus={envelopeResource.status} budgets={ruleBudgets} expenseOnly={expenseOnly} />
         </Suspense>
       ) : null}
     </div>

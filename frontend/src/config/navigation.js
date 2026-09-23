@@ -15,7 +15,7 @@ import { AccountIcon, InvestmentIcon } from "../components/common/FinanceChoiceI
 export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/", label: "Beranda", icon: FiHome, end: true },
   { to: "/transaksi", label: "Transaksi", icon: FiList },
-  { to: "/perencanaan", label: "Atur Dana", description: "Kelola Alokasi Dana, Jadwal Rutin, dan Kewajiban dalam satu tempat.", icon: FiPieChart },
+  { to: "/perencanaan", label: "Atur Dana", description: "Atur penggunaan dana untuk pengeluaran aktif dalam satu tempat.", icon: FiPieChart },
   { to: "/target", label: "Target", description: "Pantau tujuan, progres, sisa, dan kebutuhan dana sampai target tercapai.", icon: FiTarget },
   { to: "/laporan", label: "Laporan", icon: FiBarChart2 },
   { to: "/rekening", label: "Rekening", description: "Kelola seluruh rekening keluarga berdasarkan pemegang.", icon: AccountIcon },
@@ -37,7 +37,7 @@ export const DESKTOP_NAVIGATION = Object.freeze([
   freezeGroup({
     id: "planning",
     label: "Atur Dana",
-    description: "Alokasi Dana, Jadwal Rutin, Kewajiban, dan target keuangan.",
+    description: "Atur dana pengeluaran dan target keuangan.",
     icon: FiPieChart,
     items: pickNavigation("/perencanaan", "/target"),
   }),

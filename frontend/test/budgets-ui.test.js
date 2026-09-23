@@ -73,9 +73,10 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
     read("src/features/planning/PlanningPage.jsx"),
     read("src/features/allocations/AllocationDetail.module.css"),
   ]);
-  assert.match(planning, /Alokasi Dana/);
-  assert.match(planning, /Jadwal Rutin/);
-  assert.doesNotMatch(planning, /Halaman Anggaran hanya merangkum/);
+  assert.match(planning, /satu daftar Aktif/);
+  assert.match(planning, /<AllocationsPage embedded \/>/);
+  assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
+  assert.doesNotMatch(planning, /role="tablist"|planning-tab-/);
   assert.match(allocations, /linkedBudgetsForEnvelope/);
   assert.match(allocations, /relatedRecurringForEnvelope/);
   assert.match(detail, /<h3 id="allocation-needs-title">Kebutuhan<\/h3>/);
@@ -83,13 +84,12 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /Catat pembayaran|Lihat jadwal/);
   assert.match(detail, /status\.attention \? status\.label : patternLabel/);
   assert.match(detail, /"Fleksibel"/);
-  assert.match(detail, /Belum digunakan/);
   assert.match(detail, /Detail kebutuhan<\/Button>/);
   assert.match(detail, /aria-label={`Pilihan kebutuhan \${budget\.name}`}/);
   assert.match(detail, />Edit kebutuhan<\/Button>/);
   assert.match(detail, /status\.key === "completed"/);
   assert.match(detail, /\["completed", "empty", "danger"\]\.includes\(status\.key\)/);
-  assert.match(detail, /Dana untuk kebutuhan ini sudah habis/);
+  assert.doesNotMatch(detail, /Belum digunakan|Dana untuk kebutuhan ini sudah habis/, "Row compact tidak boleh mengulang status yang sudah terlihat dari badge, nominal, dan progress.");
   assert.match(detail, /allocation-limit-row__header/);
   assert.match(styles, /grid-template-columns: 34px minmax\(0, 1fr\) auto/);
   assert.match(styles, /allocation-limit-row__content[\s\S]*margin-left: 42px/);
@@ -100,6 +100,9 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /Perhatian <span>\{attentionCount\}<\/span>/);
   assert.match(detail, /Belum dipakai <span>\{unusedCount\}<\/span>/);
   assert.match(detail, /allocation-limit-row__quick-action/);
+  assert.match(detail, /visibleLabel = isScheduleAction \? \(schedule\.canPay \? "Bayar" : "Jadwal"\) : "Catat"/);
+  assert.match(styles, /allocation-limit-row__actions\.has-primary::before/);
+  assert.match(styles, /allocation-limit-row__quick-action-icon/);
   assert.doesNotMatch(detail, /Jadwal Terkait/);
   assert.doesNotMatch(detail, /AllocationScheduleContinuation/);
   assert.match(detail, /allocation-detail-menu/);
@@ -144,9 +147,10 @@ test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia"
   assert.match(runner, /default_amount: 0/);
   assert.match(runner, /allocated_amount: 0/);
   assert.doesNotMatch(page, /setDetailAction\("add-need"\).*createdRuleId/s);
-  assert.match(detail, /Masih tersedia/);
+  assert.match(detail, /Total alokasi/);
   assert.match(detail, /Sudah dipakai/);
-  assert.match(detail, /Untuk jadwal/);
+  assert.match(detail, /Masih tersedia/);
+  assert.doesNotMatch(detail, /Untuk jadwal/);
   assert.doesNotMatch(detail, /Jumlah kebutuhan/);
   assert.match(batchEditor, /Kebutuhan tetap dapat disimpan/);
   assert.doesNotMatch(batchEditor, />Tambah saldo</);

@@ -35,18 +35,18 @@ const BudgetNeedPrimaryAction = ({ budget, schedule, onRecord, onOpenSchedule })
   if (!schedule && !onRecord) return null;
   const isScheduleAction = Boolean(schedule);
   const primaryLabel = isScheduleAction ? (schedule.canPay ? "Bayar" : "Lihat jadwal") : "Catat pengeluaran";
+  const visibleLabel = isScheduleAction ? (schedule.canPay ? "Bayar" : "Jadwal") : "Catat";
   const PrimaryIcon = isScheduleAction ? FiArrowRight : FiPlus;
   const handleClick = isScheduleAction
     ? () => onOpenSchedule(schedule.item, schedule.canPay)
     : () => onRecord?.(budget);
-  return <Button
+  return <button
+    type="button"
     className={allocationClass("allocation-limit-row__quick-action")}
-    variant={schedule?.canPay || onRecord ? "primary" : "secondary"}
-    icon={PrimaryIcon}
     aria-label={`${primaryLabel} ${budget.name}`}
     title={primaryLabel}
     onClick={handleClick}
-  >{primaryLabel}</Button>;
+  ><span className={allocationClass("allocation-limit-row__quick-action-icon")}><PrimaryIcon aria-hidden="true" /></span><span>{visibleLabel}</span></button>;
 };
 
 const BudgetNeedOverflowMenu = ({ budget, schedule, blockedByLimit, canManage, onOpenSchedule, onEdit, onOpenDetail }) => {
@@ -70,7 +70,7 @@ const BudgetLimitActions = ({ budget, schedule, status, canManage, onRecord, onO
   const hasPrimaryAction = Boolean(primarySchedule || primaryRecord);
   const hasOverflowAction = Boolean(onOpenDetail || canManage || (blockedByLimit && schedule));
   if (!hasPrimaryAction && !hasOverflowAction) return null;
-  return <div className={allocationClass("allocation-limit-row__actions")}>
+  return <div className={allocationClass(`allocation-limit-row__actions ${hasPrimaryAction ? "has-primary" : ""}`)}>
     <BudgetNeedPrimaryAction budget={budget} schedule={primarySchedule} onRecord={primaryRecord} onOpenSchedule={onOpenSchedule} />
     <BudgetNeedOverflowMenu budget={budget} schedule={schedule} blockedByLimit={blockedByLimit} canManage={canManage} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} />
   </div>;
@@ -82,16 +82,12 @@ const BudgetCompletedMeta = ({ amount }) => <span className={allocationClass("al
 
 const BudgetLimitUsage = ({ budget, status, schedule, amount, used, remaining }) => {
   const depleted = status.key === "empty";
-  const tone = budgetStatusTone(status);
   const usedPercent = Math.max(0, Math.round(status.usedPercent));
-  let usageLabel = "Belum digunakan";
-  if (depleted) usageLabel = "Dana untuk kebutuhan ini sudah habis.";
-  else if (used > 0) usageLabel = <>Terpakai <Money value={used} /></>;
   return <div className={allocationClass("allocation-limit-row__content")}>
-    <p className={allocationClass("allocation-limit-row__balance")}><strong><Money value={remaining} /> <span>{depleted ? "tersedia" : "sisa"}</span></strong><span>dari <Money value={amount} /></span><b>{usedPercent}%</b></p>
+    <p className={allocationClass("allocation-limit-row__balance")}><strong><Money value={remaining} /> <span>{depleted ? "tersedia" : "sisa"}</span></strong><span>dari <Money value={amount} /></span></p>
     <div className={allocationClass("allocation-limit-row__progress")}>
       <ProgressBar value={used} max={amount} tone={budgetProgressTone(status)} label={`Pemakaian ${budget.name} ${usedPercent}%`} />
-      <span className={allocationClass(`allocation-limit-row__usage ${status.attention ? tone : ""}`)}>{usageLabel}{!depleted && schedule?.label ? <> · {schedule.label}</> : null}</span>
+      {!depleted && schedule?.label ? <span className={allocationClass("allocation-limit-row__usage")}>{schedule.label}</span> : null}
     </div>
   </div>;
 };

@@ -55,6 +55,14 @@ const DesktopFinanceDashboard = ({
       </div>
 
       {setupContent}
+
+      <AccountSelector
+        accountBalances={model.accountBalances}
+        selectedAccount={model.selectedAccount}
+        onSelectAccount={onSelectAccount}
+        balanceVisible={balanceVisible}
+      />
+
       <DashboardQuickActions variant="desktop" />
 
       <section className={dashboardClass("desktop-analysis-section")} aria-labelledby="desktop-analysis-title">
@@ -68,13 +76,6 @@ const DesktopFinanceDashboard = ({
           <InvestmentWidget summary={investmentSummary} balanceVisible={balanceVisible} />
         </div>
       </section>
-
-      <AccountSelector
-        accountBalances={model.accountBalances}
-        selectedAccount={model.selectedAccount}
-        onSelectAccount={onSelectAccount}
-        balanceVisible={balanceVisible}
-      />
 
       <AccountTransactions
         model={model}

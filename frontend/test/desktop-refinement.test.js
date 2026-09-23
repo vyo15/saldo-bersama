@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { readDesktopDashboardSource } from "./sourceBundles.js";
+import { readDesktopDashboardSource, readDashboardStyleSource } from "./sourceBundles.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -29,19 +29,20 @@ test("shell desktop memberi notification entry point dan account menu aksesibel"
   assert.match(shell, /accountMenuTriggerRef\.current\?\.focus\(\)/);
 });
 
-test("dashboard desktop memprioritaskan saldo, attention, aktivitas, lalu perencanaan tanpa menyentuh curved sidebar", async () => {
+test("dashboard desktop memprioritaskan saldo, rekening, shortcut, analisis, aktivitas, lalu perencanaan tanpa menyentuh curved sidebar", async () => {
   const [dashboard, styles] = await Promise.all([
     readDesktopDashboardSource(),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
   ]);
   const header = dashboard.indexOf("<DashboardHeader");
   const metrics = dashboard.indexOf("<PrimaryMetrics");
   const attention = dashboard.indexOf("<DashboardAttention");
-  const analysis = dashboard.indexOf('desktop-analysis-section');
   const accounts = dashboard.indexOf("<AccountSelector");
+  const quickActions = dashboard.indexOf("<DashboardQuickActions");
+  const analysis = dashboard.indexOf('desktop-analysis-section');
   const transactions = dashboard.indexOf("<AccountTransactions");
   const planning = dashboard.indexOf("<DashboardPlanning");
-  assert.ok(header >= 0 && metrics > header && attention > metrics && analysis > attention && accounts > analysis && transactions > accounts && planning > transactions);
+  assert.ok(header >= 0 && metrics > header && attention > metrics && accounts > attention && quickActions > accounts && analysis > quickActions && transactions > analysis && planning > transactions);
   for (const label of ["Saldo Keluarga", "Dana yang bisa kamu gunakan", "Aman dipakai / hari", "Atur Dana", "Rekening", "Target", "Investasi", "Transaksi terbaru", "Alokasi, rutin & target"]) assert.match(dashboard, new RegExp(label));
   assert.doesNotMatch(dashboard, /Masuk bulan ini|Keluar bulan ini|Arus uang bulan ini/);
   assert.match(dashboard, /shared-investment-widget/);
@@ -49,10 +50,32 @@ test("dashboard desktop memprioritaskan saldo, attention, aktivitas, lalu perenc
   assert.match(dashboard, /<em>Tinjau<\/em>/);
   assert.doesNotMatch(dashboard, /const InsightWidget/);
   assert.match(styles, /\.desktop-overview-grid \{/);
+  assert.match(styles, /\.desktop-quick-actions \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.shared-dashboard-widgets \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(styles, /repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(styles, /desktop-balance-card__sync|shared-dashboard__layout|shared-dashboard__side|desktop-balance-card__secondary|desktop-balance-card__allocation-note/);
+  assert.equal((dashboard.match(/dashboardSyncLabel\(overview\.lastSyncedAt\)/g) || []).length, 1);
   assert.doesNotMatch(styles, /\.desktop-cashflow-visual/);
   assert.match(styles, /\.desktop-analysis-grid \{/);
   assert.doesNotMatch(styles, /desktop-module-dock/, "Dashboard module tidak boleh mengubah sidebar/dock shell canonical.");
+});
+
+
+
+test("style Dashboard terpisah per ownership tanpa memutus class semantic", async () => {
+  const [resolver, baseStyles, desktopStyles] = await Promise.all([
+    read("src/features/dashboard/dashboardStyles.js"),
+    read("src/features/dashboard/DashboardPage.module.css"),
+    read("src/features/dashboard/DashboardDesktop.module.css"),
+  ]);
+  assert.match(resolver, /import baseStyles from "\.\/DashboardPage\.module\.css"/);
+  assert.match(resolver, /import desktopStyles from "\.\/DashboardDesktop\.module\.css"/);
+  assert.match(resolver, /const styleModules = \[baseStyles, desktopStyles\]/);
+  assert.match(resolver, /\.flatMap\(scopedClasses\)/);
+  assert.match(baseStyles, /\.mobile-finance-hero/);
+  assert.doesNotMatch(baseStyles, /Desktop analytical workspace v2/);
+  assert.match(desktopStyles, /Desktop analytical workspace v2/);
+  assert.ok(baseStyles.split(/\r?\n/).length < 550, "Base/mobile Dashboard tidak boleh kembali menyerap seluruh refinement desktop.");
 });
 
 test("notification center dan settings mempunyai presentation desktop khusus", async () => {

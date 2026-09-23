@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { readDashboardStyleSource } from "./sourceBundles.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -226,7 +227,7 @@ test("asset rail light dan dark mempertahankan path organik Saldo Bersama", asyn
 test("layout mobile compact mempertahankan safe area dan target sentuh", async () => {
   const [responsiveCss, dashboardCss] = await Promise.all([
     read("src/styles/responsive.css"),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
   ]);
 
   assert.match(responsiveCss, /--mobile-navigation-height:\s*72px;/);

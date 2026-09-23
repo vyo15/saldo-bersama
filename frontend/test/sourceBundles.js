@@ -16,6 +16,12 @@ export const readDesktopDashboardSource = () => readCombined([
   "features/dashboard/components/DashboardQuickActions.jsx",
 ]);
 
+
+export const readDashboardStyleSource = () => readCombined([
+  "features/dashboard/DashboardPage.module.css",
+  "features/dashboard/DashboardDesktop.module.css",
+]);
+
 export const readCategoryFeatureSource = () => readCombined([
   "features/categories/CategoriesPage.jsx",
   "features/categories/CategoryDialogs.jsx",

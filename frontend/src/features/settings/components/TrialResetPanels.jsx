@@ -8,7 +8,7 @@ import { formatRupiah } from "../../../domain/money.js";
 import { MaintenanceSummaryGrid as SummaryGrid, SafetyBackupPreflight } from "../MaintenanceRecoveryPanel.jsx";
 import { RESET_DOMAIN_LABELS, RESET_TRIAL_OPERATIONAL_LABELS, RESET_TRIAL_PRESERVED_LABELS } from "../resetSummaryLabels.js";
 import { formatMaintenanceCount as formatCount } from "../settingsPresentation.js";
-import styles from "../Settings.module.css";
+import styles from "./SettingsResetPanels.module.css";
 
 const RESET_INTENT_STATE_LABELS = Object.freeze({
   processing: "Sedang diproses",

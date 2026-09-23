@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { readDesktopDashboardSource } from "./sourceBundles.js";
+import { readDesktopDashboardSource, readDashboardStyleSource } from "./sourceBundles.js";
 import { fileURLToPath } from "node:url";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
@@ -74,7 +74,7 @@ test("compact notice owns lightweight guidance without dashboard stylesheet coup
   const [component, css, dashboardCss, transactions, budgets, allocations, recurring, goals, reconciliations] = await Promise.all([
     read("src/components/common/CompactNotice.jsx"),
     read("src/components/common/CompactNotice.module.css"),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/budgets/BudgetDialogLayer.jsx"),
     Promise.all([read("src/features/allocations/AllocationsWorkspace.jsx"), read("src/features/allocations/AllocationNoticesLayer.jsx")]).then((parts) => parts.join("\n")),
@@ -124,7 +124,7 @@ test("contextual page help remains accessible and keeps educational copy out of 
     read("src/components/common/PageInfoButton.jsx"),
     read("src/components/common/PageHeader.jsx"),
     read("src/styles/responsive.css"),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
     read("src/features/transactions/TransactionForm.module.css"),
   ]);
 

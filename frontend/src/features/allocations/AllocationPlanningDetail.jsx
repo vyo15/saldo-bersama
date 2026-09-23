@@ -269,9 +269,9 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         </div>
         {showGlobalExpenseAction(state.canRecordExpense, linkedBudgets) ? <div className={allocationClass("allocation-detail-hero__action")}><Button variant="primary" icon={FiPlus} onClick={state.recordAllocationExpense}>Catat pengeluaran</Button></div> : null}
         <div className={allocationClass("allocation-detail-hero__metrics allocation-detail-hero__metrics--compact")}>
+          <div><span>Total alokasi</span><strong><Money value={state.usage.allocated} /></strong></div>
+          <div><span>Sudah dipakai</span><strong><Money value={state.usage.used} /></strong></div>
           <div><span>Masih tersedia</span><strong><Money value={item.remaining_amount} tone={Number(item.remaining_amount || 0) < 0 ? "negative" : "default"} /></strong></div>
-          <div><span>Sudah dipakai</span><strong><Money value={state.usage.used} /></strong><small>dari <Money value={state.usage.allocated} /></small></div>
-          <div><span>Untuk jadwal</span><strong><Money value={state.usage.reserved} /></strong></div>
         </div>
       </section>
       <AllocationNeedsPanel

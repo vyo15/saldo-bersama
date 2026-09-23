@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { readDesktopDashboardSource } from "./sourceBundles.js";
+import { readDesktopDashboardSource, readDashboardStyleSource } from "./sourceBundles.js";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -246,15 +246,13 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(allocations, /Perlu disiapkan/);
   assert.match(allocations, /Dana tersedia setelah dibuat/);
   assert.match(allocations, /Buat & alokasikan/);
-  assert.match(allocations, /filteredActiveItems = useMemo/);
-  assert.match(allocations, /allocationFilter === "shared"/);
-  assert.match(allocations, /allocationFilter === "mine"/);
+  assert.match(allocations, /buildPlanningActiveItems/);
+  assert.match(allocations, /filterPlanningActiveItems/);
   assert.match(allocations, /Dana terlampaui/);
   assert.match(allocations, /Kebutuhan/);
   assert.match(allocations, /recurringScheduleForBudget/);
   assert.doesNotMatch(allocations, /Jadwal Terkait/);
   assert.match(allocations, /AllocationFundingSummary/);
-  assert.match(allocations, /visibleItems = showFilters \? filteredActiveItems : activeItems/);
   assert.match(recurring, /envelope_period_id/);
   assert.match(recurring, /Alokasi Dana/);
   assert.match(recurring, /paymentEnvelopes\.map/);
@@ -262,7 +260,7 @@ test("alur planning membedakan alokasi aktif, histori, dan pembayaran rutin yang
   assert.match(recurring, /"envelopes\.list"/);
   assert.doesNotMatch(recurring, /filterByAssigneeAccess|canUseAssignedItem/);
   assert.match(recurring, /item\.can_record_expense === true/);
-  assert.match(navigation, /Kelola Alokasi Dana, Jadwal Rutin, dan Kewajiban dalam satu tempat/);
+  assert.match(navigation, /Atur penggunaan dana untuk pengeluaran aktif dalam satu tempat/);
   assert.match(navigation, /Pantau tujuan, progres, sisa, dan kebutuhan dana/);
 });
 
@@ -405,7 +403,7 @@ test("dashboard empty state menjaga satu aksi canonical dan mobile memakai quick
     Promise.all([source("src/features/allocations/AllocationsWorkspace.jsx"), source("src/features/allocations/allocationWorkflowNavigation.js"), source("src/features/allocations/allocationDashboardWorkflow.js")]).then((parts) => parts.join("\n")),
     source("src/features/recurring/RecurringPage.jsx"),
     source("src/features/goals/GoalsPage.jsx"),
-    source("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
   ]);
   const presentation = await import("../src/features/dashboard/dashboardPresentation.js");
 

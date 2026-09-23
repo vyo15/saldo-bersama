@@ -194,7 +194,7 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories,
   );
 };
 
-const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate, hasAnyItems, onReset }) => (
+const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate, hasAnyItems, onReset, expenseOnly = false }) => (
   <div className={styles.scheduleList}>
     {items.length ? items.map((item) => (
       <ScheduleItem
@@ -208,7 +208,7 @@ const ScheduleList = ({ items, emptyText, actions, expandedId, setExpandedId, ac
         budgets={budgets}
       />
     )) : (
-      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title={hasAnyItems ? "Tidak ada jadwal yang sesuai" : "Punya pembayaran yang berulang?"} description={hasAnyItems ? emptyText : "Simpan jadwal supaya pembayaran atau pemasukan rutin tidak terlewat."} headingLevel={3} action={hasAnyItems ? <Button onClick={onReset}>Tampilkan jadwal tersedia</Button> : canCreate ? <Button variant="primary" icon={FiCalendar} onClick={actions.openCreate}>Tambah pembayaran rutin</Button> : null} />
+      <EmptyState className={styles.emptyState} variant="inline" icon={FiCalendar} title={hasAnyItems ? "Tidak ada jadwal yang sesuai" : "Punya pembayaran yang berulang?"} description={hasAnyItems ? emptyText : expenseOnly ? "Simpan jadwal supaya pembayaran rutin tidak terlewat." : "Simpan jadwal supaya pembayaran atau pemasukan rutin tidak terlewat."} headingLevel={3} action={hasAnyItems ? <Button onClick={onReset}>Tampilkan jadwal tersedia</Button> : canCreate ? <Button variant="primary" icon={FiCalendar} onClick={actions.openCreate}>Tambah pembayaran rutin</Button> : null} />
     )}
   </div>
 );
@@ -229,7 +229,7 @@ const ScheduleKindTabs = ({ kind, setKind, items }) => {
   );
 };
 
-export const ScheduleSummary = ({ items, onAttention }) => {
+export const ScheduleSummary = ({ items, onAttention, expenseOnly = false }) => {
   const summary = recurringSummary(items);
   const resolved = summary.completed + summary.cancelled;
   const total = items.length;
@@ -260,7 +260,7 @@ export const ScheduleSummary = ({ items, onAttention }) => {
           <span style={{ "--recurring-progress-scale": progress / 100 }} />
         </div>
         <div className={styles.heroMetrics}>
-          <div className={styles.heroMetric}><span>Pemasukan</span><strong><Money value={summary.income} /></strong></div>
+          {!expenseOnly ? <div className={styles.heroMetric}><span>Pemasukan</span><strong><Money value={summary.income} /></strong></div> : null}
           <div className={styles.heroMetric}><span>Tuntas</span><strong>{resolved} dari {total}</strong></div>
           <div className={`${styles.heroMetric} ${summary.attention ? styles.heroMetricAttention : ""}`}><span>Perhatian</span><strong>{summary.attention} jadwal</strong></div>
         </div>
@@ -284,7 +284,7 @@ const ScheduleFilters = ({ filter, setFilter, items }) => {
   );
 };
 
-export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, setFilter, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate }) => {
+export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, setFilter, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate, expenseOnly = false }) => {
   const visibleItems = items.filter((item) => item.kind === kind);
   const typeLabel = kind === "expense" ? "pengeluaran" : "pemasukan";
   const selectFilter = (next) => {
@@ -319,6 +319,7 @@ export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, 
         canCreate={canCreate}
         hasAnyItems={Boolean(allItems.length)}
         onReset={() => selectFilter("all")}
+        expenseOnly={expenseOnly}
       />
     </section>
   );

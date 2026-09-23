@@ -46,10 +46,6 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
     <section className={dashboardClass("desktop-balance-card shared-panel")} aria-label="Ringkasan keuangan utama">
       <div className={dashboardClass("desktop-balance-card__topline")}>
         <span>Posisi keuangan</span>
-        <div className={dashboardClass("desktop-balance-card__sync")}>
-          <FiShield aria-hidden="true" />
-          <span aria-live="polite">{dashboardSyncLabel(overview.lastSyncedAt)}</span>
-        </div>
       </div>
 
       <div className={dashboardClass("desktop-balance-card__hero")}>

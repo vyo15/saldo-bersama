@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile, stat } from "node:fs/promises";
 import test from "node:test";
-import { readDesktopDashboardSource, readMobileAccountStackSource } from "./sourceBundles.js";
+import { readDesktopDashboardSource, readMobileAccountStackSource, readDashboardStyleSource } from "./sourceBundles.js";
 import * as featherIcons from "react-icons/fi";
 import {
   accountCardOwnershipLabel,
@@ -609,7 +609,7 @@ test("dashboard rekening desktop mempertahankan AccountVisual, sementara mobile 
     readDesktopDashboardSource(),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     read("src/features/dashboard/components/DashboardQuickActions.jsx"),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
   ]);
   assert.match(dashboardStyles, /\.shared-account-carousel \{[^}]*display:\s*grid;[^}]*grid-auto-flow:\s*column;[^}]*grid-auto-columns:\s*calc\(\(100% - 24px\) \/ 3\);[^}]*overflow-x:\s*auto;/s);
   assert.match(dashboardStyles, /\.shared-account-card \{[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*background:\s*transparent;/s);

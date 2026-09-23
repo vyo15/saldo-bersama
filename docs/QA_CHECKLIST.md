@@ -61,6 +61,7 @@
 - [ ] Mobile global `Catat` tetap menjadi launcher aktivitas uang dan tidak diduplikasi oleh CTA transaksi lokal pada true-empty Dashboard/Transaksi. Launcher menampilkan Pengeluaran/Pemasukan/Transfer/Bayar kewajiban + grup Untuk masa depan (Target/Investasi); setelah jenis transaksi dipilih, form tidak menanyakan jenis untuk kedua kalinya.
 - [ ] Form quick Catat mobile memakai judul + rekening + CTA kontekstual, satu primary footer full-width, tanggal terlihat, detail metode/catatan opsional, dan tombol kembali ke launcher. Refund bukan quick action global.
 - [ ] Dashboard mobile tidak menggandakan `Atur Dana` pada Akses cepat karena sudah permanen di bottom navigation; shortcut canonical adalah Rekening/Target/Investasi; pemeriksaan saldo tidak menjadi shortcut permanen dan diakses dari Rekening.
+- [ ] Dashboard desktop menampilkan freshness hanya di header, menempatkan Rekening sebelum shortcut/analitik, dan grid shortcut/planning mengikuti tiga item canonical tanpa kolom kosong pada 821/940/941px.
 - [ ] Detail object dengan sub-item erat memakai section/list hierarchy, bukan tumpukan card setara tanpa kebutuhan.
 - [ ] Satu fakta edukatif tidak diulang pada description, helper, card, dan notice di surface yang sama.
 - [ ] Normal state tidak memakai helper/notice hanya untuk mengulang label, placeholder, value, atau state yang sudah jelas.

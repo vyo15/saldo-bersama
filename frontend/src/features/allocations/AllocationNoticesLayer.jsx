@@ -2,12 +2,6 @@ import { Link } from "react-router";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 
-const AllocationAttentionNotice = ({ envelopeId }) => envelopeId ? (
-  <CompactNotice tone="info" title="Periksa Alokasi Dana yang disorot." role="status">
-    Tinjau dana tersisa dan transaksi terkait sebelum menambah pengeluaran atau memindahkan dana.
-  </CompactNotice>
-) : null;
-
 const AllocationGoalSuggestion = ({ releasedFunds, hasActiveGoal, onDismiss }) => Number(releasedFunds?.amount || 0) > 0 && hasActiveGoal ? (
   <CompactNotice tone="success" title="Dana kembali tersedia." role="status">
     <span>
@@ -21,9 +15,9 @@ const AllocationNoticesLayer = ({
   resource,
   budgetResource,
   recurringResource,
+  commitmentResource,
   administratorMode,
   usersResource,
-  attentionEnvelopeId,
   legacyBudgetAttention,
   unlinkedBudgets,
   hasUnboundAllocation,
@@ -34,8 +28,8 @@ const AllocationNoticesLayer = ({
   <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
   <RefreshWarning error={budgetResource.refreshError || budgetResource.error} onRetry={budgetResource.reload} />
   <RefreshWarning error={recurringResource.refreshError || recurringResource.error} onRetry={recurringResource.reload} />
+  <RefreshWarning error={commitmentResource.refreshError || commitmentResource.error} onRetry={commitmentResource.reload} />
   {administratorMode ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}
-  <AllocationAttentionNotice envelopeId={attentionEnvelopeId} />
   <AllocationGoalSuggestion releasedFunds={releasedFunds} hasActiveGoal={hasActiveGoal} onDismiss={onDismissReleasedFunds} />
   {legacyBudgetAttention ? (
     <CompactNotice tone="warning" title="Kebutuhan lama belum terhubung ke Alokasi Dana." role="status">

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
+import { readDashboardStyleSource } from "./sourceBundles.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -147,19 +148,21 @@ test("Investasi mengunci intent ketika outcome write belum pasti dan hanya mengi
   assert.match(feedback, /\["idle", "submitting", "unknown"\]\.includes\(activity\.status\)/);
 });
 
-test("tab Planning dan Persetujuan memakai roving focus dan keyboard navigation lengkap", async () => {
+test("Atur Dana tidak memaksa tab domain, sementara Persetujuan tetap menjaga roving focus", async () => {
   const [planning, approval] = await Promise.all([
     read("src/features/planning/PlanningPage.jsx"),
     read("src/features/approvals/ApprovalCenterPage.jsx"),
   ]);
-  for (const source of [planning, approval]) {
-    for (const key of ["ArrowLeft", "ArrowRight", "Home", "End"]) assert.match(source, new RegExp(key));
-    assert.match(source, /role="tab"/);
-    assert.match(source, /aria-controls=/);
-    assert.match(source, /tabIndex=\{/);
-    assert.match(source, /role="tabpanel"/);
-    assert.match(source, /aria-labelledby=/);
-  }
+  assert.match(planning, /<AllocationsPage embedded \/>/);
+  assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
+  assert.match(planning, /ContextBack/);
+  assert.doesNotMatch(planning, /role="tab"|role="tabpanel"|planning-tab-/);
+  for (const key of ["ArrowLeft", "ArrowRight", "Home", "End"]) assert.match(approval, new RegExp(key));
+  assert.match(approval, /role="tab"/);
+  assert.match(approval, /aria-controls=/);
+  assert.match(approval, /tabIndex=\{/);
+  assert.match(approval, /role="tabpanel"/);
+  assert.match(approval, /aria-labelledby=/);
 });
 
 
@@ -188,7 +191,7 @@ test("permukaan swipe mobile tidak menampilkan scrollbar browser", async () => {
   const [reports, approvals, dashboard] = await Promise.all([
     read("src/features/reports/ReportsPage.module.css"),
     read("src/features/approvals/ApprovalCenterPage.module.css"),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
   ]);
   assert.match(reports, /\.trendChart \{[^}]*overflow-x:\s*auto;[^}]*scrollbar-width:\s*none;/s);
   assert.match(reports, /\.trendChart::-webkit-scrollbar \{ display:\s*none; \}/);
@@ -235,7 +238,7 @@ test("PWA install prompt mobile dapat ditunda dan tidak menjadi banner permanen 
 test("mobile task surfaces memakai pressed state dan hover capability-aware", async () => {
   const [button, dashboard, inlineSelection, settings] = await Promise.all([
     read("src/components/common/Button.module.css"),
-    read("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
     read("src/components/common/InlineSelectionPicker.module.css"),
     read("src/features/settings/Settings.module.css"),
   ]);
@@ -268,8 +271,8 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
 
   assert.match(allocation, /if \(!accounts\.length\) return null;/);
   assert.match(allocation, /<AllocationFundingSummary accounts=\{accounts\}/);
-  assert.match(allocation, /hasActiveItems=\{Boolean\(activeItems\.length\)\}/);
-  assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Tampilkan semua Alokasi<\/Button> : canCreate \? null/);
+  assert.match(allocation, /hasActiveItems=\{Boolean\(rows\.length\)\}/);
+  assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Tampilkan semua<\/Button> : canCreate \? null/);
   assert.doesNotMatch(allocation, /canMove|openMove|allocation-move-action/);
 
   assert.match(allocationDetail, /linkedBudgets\.length \? <>[\s\S]*\{canManage \? <Button className=\{allocationClass\("allocation-needs-add"\)\} variant="secondary" icon=\{FiPlus\} onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button> : null\}[\s\S]*<\/> : <EmptyState/);
@@ -325,9 +328,9 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
   assert.match(overview, /allocation-funding-summary__actions/);
   assert.doesNotMatch(overview, /allocation-card__fund|allocation-card__expand|>Lihat detail|>Tambah kebutuhan<\/Button>/);
   assert.doesNotMatch(overview, /allocation-header-actions--with-move|allocation-move-action/);
-  assert.match(overview, /Belum ada kebutuhan/);
-  assert.match(overview, /role="button"/);
-  assert.match(overview, /Buka detail Alokasi/);
+  assert.match(overview, /planning-active-list/);
+  assert.match(overview, /type="button"/);
+  assert.match(overview, /Buka detail \$\{item\.name\}/);
   assert.doesNotMatch(overview, /FiSliders|allocation-card__planning-actions|allocationCardActionState/);
   assert.match(detail, /FiSliders[\s\S]*>Pulihkan dana<\/Button>/);
   assert.doesNotMatch(detail, /showStandardAdjustAction|>Atur dana<\/Button>/);
@@ -335,8 +338,8 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
   assert.match(detail, /initialAction !== "add-need"/);
   assert.match(detail, /if \(canManage\) openBudgetForm\(\)/);
   assert.doesNotMatch(styles, /allocation-card__planning-actions/);
-  assert.match(styles, /\.allocation-card\[role="button"\]:focus-visible/);
-  assert.match(styles, /\.allocation-card__signal/);
+  assert.match(styles, /\.planning-active-row:focus-visible/);
+  assert.match(styles, /\.planning-active-list/);
 });
 
 test("Planning mobile menghindari judul embedded ganda dan rekonsiliasi memprioritaskan workflow", async () => {
@@ -436,5 +439,6 @@ test("audit density menjaga desktop stabil, kontrol progresif, dan kolom finansi
   assert.match(settingsCss, /\.settingsWorkspace \{[\s\S]*grid-template-columns:\s*minmax\(14rem, 16rem\) minmax\(0, 1fr\)/);
   assert.doesNotMatch(settingsCss, /settingsDesktopCategories/);
   assert.match(categoriesCss, /repeat\(auto-fit, minmax\(11\.5rem, 1fr\)\)/);
-  assert.match(planningCss, /\.tabs \{[\s\S]*width:\s*max-content;[\s\S]*grid-template-columns:\s*repeat\(3, max-content\)/);
+  assert.doesNotMatch(planningCss, /\.tabs|planning-tab/);
+  assert.match(planningCss, /\.detailBack/);
 });

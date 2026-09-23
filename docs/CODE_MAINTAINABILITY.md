@@ -105,6 +105,7 @@ Exception bukan izin untuk terus menambah kode. Melewati growth ceiling harus me
 - Dead selector hanya dihapus setelah usage terbukti tidak ada.
 - Shared token dibuat jika benar-benar dipakai lintas area; jangan membuat token/primitive spekulatif.
 - Maintainability refactor tidak boleh berubah menjadi redesign visual tersembunyi.
+- CSS Module boleh dipecah berdasarkan ownership surface bila class semantic tetap satu kontrak. Dashboard menggunakan base/mobile + desktop refinement melalui resolver `dashboardClass`; reset Pengaturan menempatkan style panel destructive di module komponen agar `Settings.module.css` tidak kembali menjadi dumping ground.
 
 ## Source hygiene dan lazy interaction
 

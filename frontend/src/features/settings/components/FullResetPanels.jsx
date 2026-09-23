@@ -6,7 +6,7 @@ import ConfirmationModal from "../../../components/common/ConfirmationModal.jsx"
 import MaintenanceRecoveryPanel, { MaintenanceSummaryGrid as SummaryGrid, SafetyBackupPreflight } from "../MaintenanceRecoveryPanel.jsx";
 import { RESET_DOMAIN_LABELS, RESET_MASTER_LABELS, RESET_OPERATIONAL_LABELS } from "../resetSummaryLabels.js";
 import { formatMaintenanceCount as formatCount } from "../settingsPresentation.js";
-import styles from "../Settings.module.css";
+import styles from "./SettingsResetPanels.module.css";
 
 const FullResetPreview = ({ preview }) => (
   <div className={styles.resetPreview}>

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { readDesktopDashboardSource } from "./sourceBundles.js";
+import { readDesktopDashboardSource, readDashboardStyleSource } from "./sourceBundles.js";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,7 +45,7 @@ test("dashboard hanya menampilkan next action utama dan desktop/mobile mengarah 
   const [mobile, desktop, css] = await Promise.all([
     source("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
     readDesktopDashboardSource(),
-    source("src/features/dashboard/DashboardPage.module.css"),
+    readDashboardStyleSource(),
   ]);
 
   assert.match(mobile, /const alert = alerts\[0\]/);

@@ -1,11 +1,17 @@
-import styles from "./DashboardPage.module.css";
+import baseStyles from "./DashboardPage.module.css";
+import desktopStyles from "./DashboardDesktop.module.css";
 
 const tokens = (value) => String(value || "").trim().split(/\s+/).filter(Boolean);
+const styleModules = [baseStyles, desktopStyles];
 
-// Dashboard-specific selectors are module-scoped. Shared primitives are deliberately
-// passed through when this stylesheet does not own them.
+// A semantic Dashboard token may have base and desktop declarations. Emit both scoped
+// class names so extracting CSS by ownership preserves the original cascade/order.
+const scopedClasses = (name) => {
+  const matches = styleModules.map((styles) => styles[name]).filter(Boolean);
+  return matches.length ? matches : [name];
+};
+
 export const dashboardClass = (...values) => values
   .flatMap(tokens)
-  .map((name) => styles[name] || name)
+  .flatMap(scopedClasses)
   .join(" ");
-

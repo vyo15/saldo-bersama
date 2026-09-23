@@ -98,20 +98,21 @@ export const useRecurringOccurrenceRecovery = (shared) => {
   return { skipMutation, restoreOccurrenceMutation, skipTarget, setSkipTarget, skipError, restoreOccurrenceTarget, setRestoreOccurrenceTarget, restoreOccurrenceError, skipOccurrence, restoreSkippedOccurrence, openSkip, openRestore };
 };
 
-export const useRecurringAttention = ({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment }) => {
+export const useRecurringAttention = ({ attention, consumeAttention, resource, setFilter, setKind, setExpandedId, openPayment, expenseOnly = false }) => {
   const attentionHandled = useRef(false);
   const attentionOccurrenceId = String(attention?.attentionOccurrenceId || "");
   useEffect(() => {
     if (attentionHandled.current || !attentionOccurrenceId || resource.status !== "ready") return;
     attentionHandled.current = true;
     const item = (resource.data?.items || []).find((candidate) => candidate.occurrence_id === attentionOccurrenceId);
-    if (item) {
+    if (item && (!expenseOnly || item.kind === "expense")) {
       setFilter(attention?.attentionType === "recurring_due" ? "open" : "attention");
       setKind(item.kind === "income" ? "income" : "expense");
       setExpandedId(item.occurrence_id);
       if (attention?.attentionAction === "payment" && item.can_pay) openPayment(item);
     }
     consumeAttention();
-  }, [attention?.attentionAction, attention?.attentionType, attentionOccurrenceId, consumeAttention, openPayment, resource.data?.items, resource.status, setExpandedId, setFilter, setKind]);
-  return attentionOccurrenceId;
+  }, [attention?.attentionAction, attention?.attentionType, attentionOccurrenceId, consumeAttention, expenseOnly, openPayment, resource.data?.items, resource.status, setExpandedId, setFilter, setKind]);
+  const attentionItem = (resource.data?.items || []).find((candidate) => candidate.occurrence_id === attentionOccurrenceId);
+  return expenseOnly && attentionItem?.kind !== "expense" ? "" : attentionOccurrenceId;
 };

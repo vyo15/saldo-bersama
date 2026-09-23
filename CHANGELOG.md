@@ -1,3 +1,8 @@
+## 2026-09-23 — Kebutuhan compact & split-action
+- Merapikan detail Alokasi menjadi tiga metrik user-facing **Total alokasi / Sudah dipakai / Masih tersedia**; `reserved_amount` Jadwal tetap dipertahankan pada model internal tetapi tidak lagi diduplikasi sebagai metrik `Untuk jadwal` di hero Alokasi.
+- Mengubah quick action row Kebutuhan menjadi split-action visual compact **Catat/Bayar | ⋯** dengan target sentuh tetap 44px. Context Kebutuhan tetap terkunci pada aksi utama, sedangkan Detail/Edit/Lihat jadwal tetap berada di overflow.
+- Menghapus copy/persentase row yang mengulang informasi badge + nominal + progress. Detail kebutuhan tetap menjadi tempat angka lengkap, sehingga list lebih clean tanpa kehilangan informasi.
+
 ## 2026-09-23 — Batch 1–4 audit hardening
 - Memperbaiki regression Windows pada audit hierarchical navigation dengan traversal filesystem berbasis `fileURLToPath`, sehingga path drive tidak lagi berubah menjadi `C:\\C:\\...` saat frontend regression dijalankan.
 - Mempertahankan clean-archive fail-closed yang sudah canonical dan menambah audit terhadap jalur packaging; `.git`, `.env*` selain template, `.vercel`, `node_modules`, generated output, dan source non-canonical tetap tidak dapat masuk clean ZIP.

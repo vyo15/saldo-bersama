@@ -26,7 +26,7 @@ const AccountField = ({ label = "Rekening default", value, accounts, onChange })
 };
 const CategoryField = ({ value, categories, onChange }) => <SelectionField label="Kategori" required value={value} onChange={onChange} placeholder="Pilih kategori" searchable={categories.length > 8} searchPlaceholder="Cari kategori…" options={categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))} />;
 
-export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgets = [] }) => {
+export const CreateRuleModal = ({ open, close, form, setForm, categories, accounts, createRule, createMutation, message, budgets = [], expenseOnly = false }) => {
   const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: createMutation.busy });
   const patchPlanning = (current, next = {}) => {
     const categoryId = next.category_id ?? current.category_id;
@@ -40,7 +40,7 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
   <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="pembayaran rutin baru" dismissible={!createMutation.busy} title="Tambah pembayaran rutin" footer={<><Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>Simpan jadwal</Button></>}>
     <form id="create-recurring-form" className="form-grid" onSubmit={createRule}>
       <label className="field form-grid__full"><span>Nama *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Internet rumah" /></label>
-      <VisualChoiceGroup className="form-grid__full" legend="Jenis" name="recurring-kind" value={form.kind} onChange={(kind) => setForm((current) => ({ ...current, kind, category_id: "", budget_id: "" }))} options={[{ value: "expense", label: "Pembayaran", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar rutin" }, { value: "income", label: "Pemasukan", icon: MoneyInIcon, tone: "income", description: "Uang masuk rutin" }]} columns={2} descriptive wrapLabels />
+      {expenseOnly ? <CompactNotice className="form-grid__full" tone="info" title="Pengeluaran rutin">Atur Dana hanya mengelola uang keluar. Pemasukan yang dicatat langsung menambah saldo rekening.</CompactNotice> : <VisualChoiceGroup className="form-grid__full" legend="Jenis" name="recurring-kind" value={form.kind} onChange={(kind) => setForm((current) => ({ ...current, kind, category_id: "", budget_id: "" }))} options={[{ value: "expense", label: "Pembayaran", icon: MoneyOutIcon, tone: "expense", description: "Uang keluar rutin" }, { value: "income", label: "Pemasukan", icon: MoneyInIcon, tone: "income", description: "Uang masuk rutin" }]} columns={2} descriptive wrapLabels />}
       <MoneyInput id="recurring-amount" label="Biasanya berapa?" value={form.expected_amount} onChange={(value) => setForm((current) => ({ ...current, expected_amount: value }))} required />
       <FrequencyField value={form.frequency} onChange={(frequency) => setForm((current) => ({ ...current, frequency }))} />
       <label className="field"><span>Tanggal tiap periode *</span><input required type="number" min="1" max="31" value={form.due_day ?? ""} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>
