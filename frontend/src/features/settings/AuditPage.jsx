@@ -31,7 +31,7 @@ const AuditPage = () => {
   return (
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="audit-settings-title">
-        <RefreshWarning error={healthResource.refreshError || auditResource.refreshError} onRetry={() => Promise.all([healthResource.reload(), auditResource.reload()])} />
+        <RefreshWarning error={healthResource.error || healthResource.refreshError || auditResource.refreshError} onRetry={() => Promise.allSettled([healthResource.reload(), auditResource.reload()])} />
         <div className={styles.pageHeading}>
           <h2 id="audit-settings-title">Audit aktivitas</h2>
         </div>

@@ -287,14 +287,14 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(recurringSchedule, /<div className=\{styles\.sectionHeader\}>[\s\S]*\{allItems\.length \? <ScheduleKindTabs/);
   assert.match(recurringSchedule, /if \(!expenseCount \|\| !incomeCount\) return null;/);
 
-  assert.match(commitments, /\{items\.length \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
+  assert.match(commitments, /\{collectionState !== "empty" \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
   assert.match(commitments, /action=\{<Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button>\}/);
-  assert.equal((commitments.match(/>Tambah kewajiban<\/Button>/g) || []).length, 2, "label boleh ada di dua branch source, tetapi branch header wajib kondisional terhadap items.length");
+  assert.equal((commitments.match(/>Tambah kewajiban<\/Button>/g) || []).length, 2, "label boleh ada di dua branch source, tetapi branch header wajib kondisional terhadap state koleksi non-empty");
 
-  assert.match(goals, /\{items\.length \? <GoalSummary items=\{items\} \/> : null\}/);
+  assert.match(goals, /\{summary\.activeCount \? <GoalSummary items=\{items\} \/> : null\}/);
   assert.match(goals, /const headerActions = canCreate && items\.length \? <Button/);
-  assert.match(goalCards, /title=\{canCreate \? "Belum ada target keuangan"/);
-  assert.match(goalCards, /action=\{canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
+  assert.match(goalCards, /title=\{sourceLoadFailed \? "Sumber dana Target belum dapat diperiksa" : canCreate \? "Belum ada target keuangan"/);
+  assert.match(goalCards, /action=\{sourceLoadFailed \? null : canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
   assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>Tambah rekening<\/Button> : null\}/);
   assert.match(accounts, /action=\{emptyState === EMPTY_COLLECTION_STATE\.FILTERED \?[\s\S]*?Tampilkan semua<\/Button> : <Button variant="primary"/);
   assert.match(categories, /actions=\{items\.length \? <Button[^>]*aria-label=\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}>\{ownerMode \? "Tambah" : "Ajukan"\}<\/Button> : null\}/);

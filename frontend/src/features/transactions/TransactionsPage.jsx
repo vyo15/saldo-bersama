@@ -190,7 +190,12 @@ const memberTransferRequestsEnabled = (role) => Boolean(role) && role !== "owner
 
 const MemberTransferRequests = ({ role, resource, accounts }) => {
   if (!memberTransferRequestsEnabled(role)) return null;
-  return <Suspense fallback={<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan pengajuan transfer…" />}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>;
+  if (resource.status === "loading") return <NativePageSkeleton kind="transactions" variant="panel" label="Memuat pengajuan transfer…" />;
+  if (resource.status === "error") return <RefreshWarning error={resource.error} onRetry={resource.reload} />;
+  return <>
+    <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+    <Suspense fallback={<NativePageSkeleton kind="transactions" variant="panel" label="Menyiapkan pengajuan transfer…" />}><TransferRequestsPanel items={resource.data?.items || []} accounts={accounts || []} /></Suspense>
+  </>;
 };
 
 const TransactionResourceStates = ({ resource, items, filtersActive, openTransactionComposer, resetFilters, mobileLayout }) => {

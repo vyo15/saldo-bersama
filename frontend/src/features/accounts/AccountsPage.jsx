@@ -233,10 +233,11 @@ const accountUserContext = (usersResource, user) => {
 
 const selectedAccountFrom = (accounts, selectedAccountId) => accounts.find((account) => account.account_id === selectedAccountId) || accounts[0] || null;
 
-const AccountsPageFeedback = ({ accountsResource, usersResource, ownerMode, reloadAccounts, message }) => (
+const AccountsPageFeedback = ({ accountsResource, usersResource, reconciliationsResource, ownerMode, reloadAccounts, message }) => (
   <>
     <RefreshWarning error={accountsResource.refreshError} onRetry={reloadAccounts} />
     {ownerMode && (usersResource.refreshError || usersResource.status === "error") ? <RefreshWarning error={usersResource.refreshError || usersResource.error} onRetry={usersResource.reload} /> : null}
+    {reconciliationsResource.refreshError || reconciliationsResource.status === "error" ? <RefreshWarning error={reconciliationsResource.refreshError || reconciliationsResource.error} onRetry={reconciliationsResource.reload} /> : null}
     {message ? <div className={`notice notice--${message.type}`} role="status">{message.text}</div> : null}
   </>
 );
@@ -265,13 +266,13 @@ const accountUserIdentity = (bootstrapUser, databaseUser, authUser) => ({
 
 const AccountsPageContent = ({ page }) => {
   const {
-    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts,
+    accountsResource, usersResource, reconciliationsResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts,
     mobileLayout, visibleAccounts, selectedAccount, selectedAccountId, ownershipFilter, setOwnershipFilter, crud, lifecycle, setMobileAccountSheet,
     mobileAccountSheet, bootstrap, editAccount, setEditAccount, accountForm, setAccountForm, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel,
     archiveTarget, setArchiveTarget, reconciliationLookup,
   } = page;
   return <div className={`page-stack ${styles.accountsPage}`}>
-    <AccountsPageFeedback accountsResource={accountsResource} usersResource={usersResource} ownerMode={ownerMode} reloadAccounts={reloadAccounts} message={message} />
+    <AccountsPageFeedback accountsResource={accountsResource} usersResource={usersResource} reconciliationsResource={reconciliationsResource} ownerMode={ownerMode} reloadAccounts={reloadAccounts} message={message} />
     {setupCreated ? <div><CompactNotice tone="success" title="Rekening siap." role="status">Lanjutkan penyiapan agar transaksi harian langsung siap digunakan.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => setSetupCreated(false)}>Selesai</Button><Button type="button" variant="primary" onClick={() => navigate("/kategori", { state: { setupFlow: true } })}>Lanjut siapkan kategori</Button></div></div> : null}
     <AccountsPageHeading accounts={accounts} openCreateDialog={crud.openCreateDialog} />
     <AccountListSection mobileLayout={mobileLayout} accounts={visibleAccounts} allAccounts={accounts} selectedAccount={selectedAccount} selectedAccountId={selectedAccountId} ownershipFilter={ownershipFilter} setOwnershipFilter={setOwnershipFilter} ownerMode={ownerMode} openCreateDialog={crud.openCreateDialog} setMobileAccountSheet={setMobileAccountSheet}
@@ -352,7 +353,7 @@ const AccountsPage = () => {
   if (accountsResource.status === "error") return <ErrorState error={accountsResource.error} onRetry={accountsResource.reload} />;
   const selectedAccount = selectedAccountFrom(visibleAccounts, selectedAccountId);
   return <AccountsPageContent page={{
-    accountsResource, usersResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts,
+    accountsResource, usersResource, reconciliationsResource, ownerMode, reloadAccounts, message, setupCreated, setSetupCreated, navigate, accounts,
     mobileLayout, visibleAccounts, selectedAccount, selectedAccountId, ownershipFilter, setOwnershipFilter, crud, lifecycle, setMobileAccountSheet,
     mobileAccountSheet, bootstrap, setSelectedAccountId, editAccount, setEditAccount, accountForm, setAccountForm, dialogState, activeUsers, currentDatabaseUser,
     currentOwnerLabel, archiveTarget, setArchiveTarget, reconciliationLookup,

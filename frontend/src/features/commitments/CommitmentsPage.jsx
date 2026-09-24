@@ -26,7 +26,7 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 import { archiveCommitment, createCommitment, updateCommitment } from "./commitments.api.js";
-import { applyFlatEstimate, flatLoanEstimate, inferFlatAnnualRate, isDebtCommitment } from "./commitmentModel.js";
+import { applyFlatEstimate, commitmentCollectionState, flatLoanEstimate, inferFlatAnnualRate, isDebtCommitment } from "./commitmentModel.js";
 import styles from "./CommitmentsPage.module.css";
 
 const TYPES = [
@@ -250,6 +250,8 @@ const commitmentResourceGate = (resource) => {
   return null;
 };
 
+const highlightedCommitmentIdFromState = (state) => String(state?.planningCommitmentId || "");
+
 const CommitmentsPage = () => {
   const location = useLocation();
   const resource = useApiResource("commitments.list", {});
@@ -262,7 +264,7 @@ const CommitmentsPage = () => {
   const [edit, setEdit] = useState(null);
   const [stopTarget, setStopTarget] = useState(null);
   const [stopError, setStopError] = useState(null);
-  const highlightedCommitmentId = String(location.state?.planningCommitmentId || "");
+  const highlightedCommitmentId = highlightedCommitmentIdFromState(location.state);
   useEffect(() => {
     if (resource.status !== "ready" || !highlightedCommitmentId) return undefined;
     const frame = window.requestAnimationFrame(() => {
@@ -331,6 +333,7 @@ const CommitmentsPage = () => {
   const items = resource.data?.items || [];
   const activeItems = items.filter((item) => item.status === "active");
   const completedItems = items.filter((item) => item.status === "completed");
+  const collectionState = commitmentCollectionState(items);
   const openCreate = () => {
     mutation.reset();
     const next = emptyForm();
@@ -341,11 +344,13 @@ const CommitmentsPage = () => {
   const cardProps = { onEdit: openEdit, onStop: (target) => { setStopError(null); setStopTarget(target); } };
 
   return <div className={styles.page}>
-    <RefreshWarning error={resource.refreshError || budgetResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), budgetResource.reload()])} />
-    <div className={styles.header}><div><h2>Kewajiban</h2></div>{items.length ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button> : null}</div>
-    {items.length ? <>
+    <RefreshWarning error={resource.refreshError || budgetResource.error || budgetResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), budgetResource.reload()])} />
+    <div className={styles.header}><div><h2>Kewajiban</h2></div>{collectionState !== "empty" ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button> : null}</div>
+    {collectionState !== "empty" ? <>
       {activeItems.length > 1 ? <CommitmentSummary items={items} /> : null}
-      {activeItems.length ? <section className={styles.grid}>{activeItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} highlighted={String(item.commitment_id) === highlightedCommitmentId} {...cardProps} />)}</section> : <EmptyState icon={FiCheckCircle} title="Semua kewajiban selesai" description="Belum ada cicilan atau kewajiban aktif yang perlu dipantau." />}
+      {activeItems.length ? <section className={styles.grid}>{activeItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} highlighted={String(item.commitment_id) === highlightedCommitmentId} {...cardProps} />)}</section> : collectionState === "completed"
+        ? <EmptyState icon={FiCheckCircle} title="Semua kewajiban selesai" description="Belum ada cicilan atau kewajiban aktif yang perlu dipantau." />
+        : <EmptyState icon={FiArchive} title="Tidak ada kewajiban aktif" description="Kewajiban yang dihentikan tetap tersimpan sebagai histori. Tambahkan kewajiban jika ada cicilan atau pembayaran rutin baru." />}
       {completedItems.length ? <section className={styles.completed}><div className={styles.sectionHeading}><div><h3>Selesai</h3><p>Kewajiban yang sudah lunas tetap ringan dan tersimpan sebagai histori.</p></div><span>{completedItems.length}</span></div><div className={styles.grid}>{completedItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} compact highlighted={String(item.commitment_id) === highlightedCommitmentId} {...cardProps} />)}</div></section> : null}
     </> : <EmptyState icon={FiHome} title="Punya cicilan, KPR, pinjaman, atau Arisan?" description="Mulai dari sisa dan cicilan sekarang. Pembayaran lama tidak perlu dibuat ulang; jadwal berikutnya disiapkan otomatis." action={<Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button>} />}
 

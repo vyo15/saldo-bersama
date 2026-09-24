@@ -27,7 +27,12 @@ const PeriodPanels = ({ resource, form, setForm, previewPeriodClose, runIntegrit
     <Card className="panel"><div className="panel__header"><div><h2>Periksa integritas</h2></div><FiCheckCircle aria-hidden="true" /></div><Button variant="primary" onClick={runIntegrity} loading={integrityBusy} disabled={integrityBusy}>Periksa integritas</Button></Card>
     <Card className="panel"><div className="panel__header"><div><h2>Tutup periode</h2></div><FiLock aria-hidden="true" /></div><form className="form-grid" onSubmit={previewPeriodClose}><label className="field"><span>Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={form.period_key} onChange={(event) => setForm((current) => ({ ...current, period_key: event.target.value }))} /></label><label className="field form-grid__full"><span>Catatan penutupan</span><input required maxLength="200" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} /></label><div className="form-grid__full form-actions"><Button variant="primary" type="submit" loading={closeState.status === "submitting"} disabled={closeState.status === "submitting"}>Validasi dan tutup periode</Button></div></form></Card>
   </div>
-  <Card className="panel"><div className="panel__header"><div><h2>Riwayat periode</h2></div><FiUnlock aria-hidden="true" /></div><div className="compact-list compact-list--stacked">{(resource.data?.items || []).map((period) => <div key={period.closure_id}><span><strong>{period.period_key}</strong><small>{period.status === "closed" ? "Tertutup" : period.status} · {period.reason || "Tanpa catatan"}</small></span>{period.status === "closed" ? <button type="button" className="icon-button" onClick={() => { setReopenTarget(period); setReopenState({ status: "idle", error: null }); }} aria-label={`Buka kembali periode ${period.period_key}`}><FiUnlock aria-hidden="true" /></button> : null}</div>)}</div></Card>
+  <Card className="panel"><div className="panel__header"><div><h2>Riwayat periode</h2></div><FiUnlock aria-hidden="true" /></div>
+    {resource.status === "loading" ? <p className="empty-inline-message" role="status">Memuat riwayat periode...</p> : null}
+    {resource.status === "error" ? <div className="notice notice--warning" role="status"><span>Riwayat periode belum dapat dimuat. Pemeriksaan integritas dan validasi penutupan tetap tersedia.</span><Button type="button" onClick={resource.reload}>Coba lagi</Button></div> : null}
+    {resource.status === "ready" && !(resource.data?.items || []).length ? <p className="empty-inline-message">Belum ada periode yang pernah ditutup.</p> : null}
+    {(resource.data?.items || []).length ? <div className="compact-list compact-list--stacked">{resource.data.items.map((period) => <div key={period.closure_id}><span><strong>{period.period_key}</strong><small>{period.status === "closed" ? "Tertutup" : period.status} · {period.reason || "Tanpa catatan"}</small></span>{period.status === "closed" ? <button type="button" className="icon-button" onClick={() => { setReopenTarget(period); setReopenState({ status: "idle", error: null }); }} aria-label={`Buka kembali periode ${period.period_key}`}><FiUnlock aria-hidden="true" /></button> : null}</div>)}</div> : null}
+  </Card>
 </>;
 
 const PeriodModals = ({ closePreview, closeState, setClosePreview, closePeriod, reopenTarget, reopenState, setReopenTarget, reopenPeriod }) => <>
@@ -121,7 +126,7 @@ const PeriodControlPage = () => {
   };
 
   return <OwnerSettingsGuard><section className={styles.pageContent} aria-labelledby="period-settings-title">
-    <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+    <RefreshWarning error={resource.status === "error" ? resource.error : resource.refreshError} onRetry={resource.reload} />
     <div className={styles.pageHeading}><h2 id="period-settings-title">Periode dan integritas</h2></div>
     <SettingsNotice result={result} />
     <PeriodPanels resource={resource} form={form} setForm={setForm} previewPeriodClose={previewPeriodClose} runIntegrity={runIntegrity} integrityBusy={integrityBusy} closeState={closeState} blockedPreview={blockedPreview} onFixTransactions={() => navigate("/transaksi", { state: { period: form.period_key, allocation: "unallocated" } })} setReopenTarget={setReopenTarget} setReopenState={setReopenState} />

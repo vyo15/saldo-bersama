@@ -166,6 +166,12 @@ const applyOccurrenceWorkflow = ({ workflow, items, setKind, setFilter, setExpan
   if (paying && item.can_pay !== false) openPayment(item);
 };
 
+const recurringResourceGate = (resource) => {
+  if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat jadwal rutin…" />;
+  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  return null;
+};
+
 const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod, resource, bootstrap, overview, rules, setKind, setFilter, setExpandedId, openPayment, notify, expenseOnly = false }) => {
   const workflowHandled = useRef("");
   const workflowPeriodSwitch = useRef("");
@@ -244,8 +250,8 @@ const RecurringPage = ({ embedded = false, expenseOnly = false }) => {
     expenseOnly,
   });
 
-  if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat jadwal rutin…" />;
-  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  const resourceGate = recurringResourceGate(resource);
+  if (resourceGate) return resourceGate;
 
   const { allItems, filteredItems, accounts, categories, editCategories, paymentAccounts, paymentEnvelopes, budgets } = view;
   const { memberMode, canManagePlanning, ruleAccounts, ruleBudgets } = recurringRulePlanningData({ accounts, budgets, user });
@@ -256,7 +262,7 @@ const RecurringPage = ({ embedded = false, expenseOnly = false }) => {
 
   return (
     <div className="page-stack">
-      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
+      <RefreshWarning error={resource.refreshError || budgetResource.error || budgetResource.refreshError || envelopeResource.error || envelopeResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), budgetResource.reload(), envelopeResource.reload()])} />
       {memberMode ? <CompactNotice tone="info" role="status">Anda dapat membuat dan mengubah jadwal rutin Bersama atau jadwal dari rekening yang Anda pegang. Jadwal dari rekening yang dipegang anggota lain dan tindakan arsip tetap dikelola Administrator.</CompactNotice> : null}
       {!canManagePlanning ? <CompactNotice tone="warning" title="Belum ada rekening yang dapat digunakan." role="status">Siapkan atau aktifkan rekening terlebih dahulu sebelum membuat Jadwal Rutin. <Link to="/rekening">Lihat Rekening</Link>.</CompactNotice> : null}
       {!expenseOnly && payments.incomeSuccess ? <div className={styles.incomeSuccess}><CompactNotice tone="success" title="Penerimaan rutin berhasil dicatat." role="status">Dana sudah masuk ke rekening. Anda dapat mengalokasikannya sekarang atau nanti.</CompactNotice><div className={styles.incomeSuccessActions}><Button type="button" onClick={() => payments.setIncomeSuccess(null)}>Nanti</Button><Button type="button" variant="primary" onClick={() => { const success = payments.incomeSuccess; payments.setIncomeSuccess(null); navigate("/perencanaan/kantong", { state: { workflowSource: "recurring-income", workflowAction: "fund", sourceAccountId: success.sourceAccountId, suggestedAmount: success.suggestedAmount } }); }}>Alokasikan dana</Button></div></div> : null}

@@ -213,9 +213,11 @@ const AllocationMainContent = ({ detailItem, detailProps, overviewProps }) => {
   return <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat Alokasi Dana…" />}><AllocationOverviewLayer {...overviewProps} /></Suspense>;
 };
 
-const AllocationResourceState = ({ resource, children }) => {
-  if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat Alokasi Dana…" />;
-  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+const AllocationResourceState = ({ resources, children }) => {
+  const pending = resources.some((resource) => resource.status === "loading");
+  const failed = resources.find((resource) => resource.status === "error") || null;
+  if (pending) return <NativePageSkeleton kind="planning" label="Memuat Atur Dana…" />;
+  if (failed) return <ErrorState error={failed.error} onRetry={() => Promise.allSettled(resources.map((resource) => resource.reload()))} />;
   return children;
 };
 
@@ -358,7 +360,7 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const closeDetail = () => { setDetailRuleId("", { replace: true }); setDetailAction(""); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 
-  return <AllocationResourceState resource={resource}><div className={allocationClass("page-stack allocations-page")}>
+  return <AllocationResourceState resources={[resource, budgetResource, recurringResource, commitmentResource]}><div className={allocationClass("page-stack allocations-page")}>
     <AllocationNoticesLayer resource={resource} budgetResource={budgetResource} recurringResource={recurringResource} commitmentResource={commitmentResource} administratorMode={administratorMode} usersResource={usersResource} legacyBudgetAttention={legacyBudgetAttention} unlinkedBudgets={view.unlinkedBudgets} hasUnboundAllocation={view.hasUnboundAllocation} releasedFunds={releasedFunds} hasActiveGoal={hasActiveGoal} onDismissReleasedFunds={() => setReleasedFunds(null)} />
     <AllocationHeading embedded={embedded} />
     <AllocationMainContent detailItem={detailItem} detailProps={{ ...detail, budgets: view.budgets, canLifecycle: administratorMode, period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, accounts: view.accounts, users: view.activeUsers, usersStatus, initialAction: detailAction, onInitialActionConsumed: () => setDetailAction(""), onBack: closeDetail, onBudgetReminder: openBudgetReminder, onAllocationReminder: openReminder, onOpenAllocationActions: setActionTarget, canAdjustAllocation: allocationDetailCanAdjust(detailItem), onAdjustAllocation: (item, amount) => openAdjust(item, "fund", amount), canMoveAllocation: detailCanMove, onMoveAllocation: openMoveForItem }} overviewProps={{ activeItems: view.activeItems, allocationFilter, setAllocationFilter, attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, commitments: view.commitments, onOpenDetail: openDetail, onOpenRecurringDetail: openRecurringDetail, onOpenCommitmentDetail: openCommitmentDetail, canCreate, canFund, accounts: view.accounts, actor: allocationActor, onOpenFunding: openFunding, openCreate: () => { setMessage(null); setCreateOpen(true); } }} />

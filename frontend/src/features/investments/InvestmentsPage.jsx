@@ -173,7 +173,7 @@ const InvestmentsPage = () => {
 
   const page = { data, goals, user, setupOpen, setupGoalId, setSetupOpen, clearSetupGoal, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction };
   return <div className={`page-stack ${styles.page}`}>
-    <RefreshWarning error={overview.refreshError} onRetry={() => overview.reload().catch(() => {})} />
+    <RefreshWarning error={overview.refreshError || goalResource.error || goalResource.refreshError} onRetry={() => Promise.allSettled([overview.reload(), goalResource.reload()])} />
     <PageHeader
       title="Investasi"
       actions={assetCount > 0 ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup()} aria-label="Tambah investasi">Tambah investasi</Button> : null}

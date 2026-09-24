@@ -5,6 +5,7 @@ import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
 import ProgressBar from "../../../components/common/ProgressBar.jsx";
 import EmptyState from "../../../components/feedback/EmptyState.jsx";
+import { summarizeGoals } from "../goalPresentation.js";
 import styles from "./GoalCards.module.css";
 
 const goalClass = (...values) => values.filter(Boolean).flatMap((value) => String(value).split(/\s+/)).map((name) => styles[name] || name).join(" ");
@@ -12,18 +13,6 @@ const goalClass = (...values) => values.filter(Boolean).flatMap((value) => Strin
 const GOAL_PACE_LABELS = Object.freeze({ completed: "Nominal tercapai", on_track: "Sesuai rencana", behind: "Tertinggal", overdue: "Melewati target", no_target_date: "Tanpa tanggal target" });
 const goalTypeLabel = (type) => ({ emergency_fund: "Dana darurat", sinking_fund: "Dana berkala" }[type] || "Tujuan tabungan");
 const GOAL_HERO_ART = "/login/assets/mobile/piggy-bank.webp";
-
-const summarizeGoals = (items) => {
-  const active = items.filter((item) => item.status === "active");
-  const totals = active.reduce((sum, item) => ({
-    current: sum.current + Math.max(0, Number(item.current_amount || 0)),
-    target: sum.target + Math.max(0, Number(item.target_amount || 0)),
-    remaining: sum.remaining + Math.max(0, Number(item.remaining_amount || 0)),
-    monthly: sum.monthly + Math.max(0, Number(item.required_monthly_amount || 0)),
-    attention: sum.attention + (["behind", "overdue"].includes(item.pace_status) ? 1 : 0),
-  }), { current: 0, target: 0, remaining: 0, monthly: 0, attention: 0 });
-  return { ...totals, activeCount: active.length };
-};
 
 const GoalSummary = ({ items }) => {
   const summary = summarizeGoals(items);
@@ -94,8 +83,14 @@ const GoalCard = ({ goal, actions }) => {
   </Card>;
 };
 
-const GoalGrid = ({ items, actions, canCreate, openCreate }) => <section className={goalClass("goal-grid")}>
-  {items.length ? items.map((goal) => <GoalCard key={goal.goal_id} goal={goal} actions={actions} />) : <EmptyState className={goalClass("goal-grid__empty")} icon={FiTarget} title={canCreate ? "Belum ada target keuangan" : "Belum ada sumber dana Target"} description={canCreate ? "Buat satu tujuan lalu pilih menabung lewat rekening, investasi, atau campuran." : "Siapkan rekening Bersama aktif atau portfolio investasi Bersama terlebih dahulu."} action={canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : <ButtonLink variant="primary" to="/rekening">Lihat sumber dana</ButtonLink>} />}
+const GoalGrid = ({ items, actions, canCreate, sourceLoadFailed = false, openCreate }) => <section className={goalClass("goal-grid")}>
+  {items.length ? items.map((goal) => <GoalCard key={goal.goal_id} goal={goal} actions={actions} />) : <EmptyState
+    className={goalClass("goal-grid__empty")}
+    icon={FiTarget}
+    title={sourceLoadFailed ? "Sumber dana Target belum dapat diperiksa" : canCreate ? "Belum ada target keuangan" : "Belum ada sumber dana Target"}
+    description={sourceLoadFailed ? "Data investasi belum berhasil dimuat. Coba lagi dari peringatan di atas sebelum menyimpulkan belum ada sumber dana." : canCreate ? "Buat satu tujuan lalu pilih menabung lewat rekening, investasi, atau campuran." : "Siapkan rekening Bersama aktif atau portfolio investasi Bersama terlebih dahulu."}
+    action={sourceLoadFailed ? null : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : <ButtonLink variant="primary" to="/rekening">Lihat sumber dana</ButtonLink>}
+  />}
 </section>;
 
 export { GoalGrid, GoalSummary };

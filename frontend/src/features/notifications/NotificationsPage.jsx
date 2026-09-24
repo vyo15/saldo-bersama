@@ -94,6 +94,19 @@ const NotificationContent = ({ alerts, filter, isRead, onOpen }) => {
   </>;
 };
 
+const notificationResourceGate = ({ financeStatus, overview, error, refreshOverview, eventFeed }) => {
+  if (["idle", "loading"].includes(financeStatus) && !overview) return <NativePageSkeleton kind="notifications" label="Memuat notifikasi…" />;
+  if (financeStatus === "error" && !overview) return <ErrorState error={error} onRetry={refreshOverview} />;
+  if (eventFeed.status === "loading" && !overview?.alerts?.length) return <NativePageSkeleton kind="notifications" label="Memuat notifikasi terbaru…" />;
+  if (eventFeed.status === "error" && !overview?.alerts?.length) return <ErrorState error={eventFeed.error} onRetry={eventFeed.reload} />;
+  return null;
+};
+
+const notificationUnreadCopy = (unreadCount) => ({
+  desktop: unreadCount ? `${unreadCount} item belum dibaca.` : "Semua kondisi aktif sudah ditinjau.",
+  mobile: unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca",
+});
+
 const NotificationsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -106,9 +119,8 @@ const NotificationsPage = () => {
   const centerItems = useMemo(() => mergeNotificationCenterItems(overview?.alerts || [], eventFeed.data?.items || []), [eventFeed.data?.items, overview?.alerts]);
   const notifications = useFinancialNotificationReadState({ alerts: centerItems, readStates: eventFeed.data?.readStates || [] });
 
-  if (["idle", "loading"].includes(status) && !overview) return <NativePageSkeleton kind="notifications" label="Memuat notifikasi…" />;
-  if (status === "error" && !overview) return <ErrorState error={error} onRetry={refreshOverview} />;
-  if (eventFeed.status === "error" && !overview?.alerts?.length) return <ErrorState error={eventFeed.error} onRetry={eventFeed.reload} />;
+  const resourceGate = notificationResourceGate({ financeStatus: status, overview, error, refreshOverview, eventFeed });
+  if (resourceGate) return resourceGate;
 
   const refreshCenter = async () => Promise.allSettled([refreshOverview(), eventFeed.reload()]);
   const openNotification = (alert) => {
@@ -125,7 +137,8 @@ const NotificationsPage = () => {
   const actionCount = notifications.alerts.filter(notificationRequiresAction).length;
   const reminderCount = notifications.alerts.length - actionCount;
   const filterCounts = { action: actionCount, reminder: reminderCount };
-  const centerRefreshError = refreshError || eventFeed.refreshError;
+  const centerRefreshError = refreshError || eventFeed.error || eventFeed.refreshError;
+  const unreadCopy = notificationUnreadCopy(notifications.unreadCount);
 
   return (
     <div className={styles.page}>
@@ -134,7 +147,7 @@ const NotificationsPage = () => {
         <PageHeader
           eyebrow="Pusat perhatian"
           title="Notifikasi"
-          description={notifications.unreadCount ? `${notifications.unreadCount} item belum dibaca.` : "Semua kondisi aktif sudah ditinjau."}
+          description={unreadCopy.desktop}
           help="Pusat notifikasi menggabungkan kondisi keuangan aktif dan kejadian terbaru. Status dibaca tersinkron antarperangkat; kondisi aktif baru hilang setelah sumber masalahnya selesai."
           actions={<Button variant="secondary" onClick={() => notifications.markAllRead().catch(() => {})} disabled={!notifications.unreadCount}>Tandai semua dibaca</Button>}
         />
@@ -142,7 +155,7 @@ const NotificationsPage = () => {
 
       <header className={styles.header}>
         <ContextBack className={styles.contextBack} to={returnTo} label={returnLabel} />
-        <div className={styles.heading}><h1>Notifikasi</h1><p>{notifications.unreadCount ? `${notifications.unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
+        <div className={styles.heading}><h1>Notifikasi</h1><p>{unreadCopy.mobile}</p></div>
         <button type="button" className={styles.readAll} onClick={() => notifications.markAllRead().catch(() => {})} disabled={!notifications.unreadCount} aria-label="Tandai semua dibaca" title="Tandai semua dibaca"><FiCheckCircle aria-hidden="true" /></button>
       </header>
 

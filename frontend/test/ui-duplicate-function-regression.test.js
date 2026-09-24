@@ -37,7 +37,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
 
   assert.match(reconciliation, /account\.account_type !== "investment"/);
 
-  assert.match(commitments, /\{items\.length \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
+  assert.match(commitments, /\{collectionState !== "empty" \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
   assert.match(commitments, /action=\{<Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button>\}/);
 
   assert.match(investmentOverview, /aria-label=\{`Buka rincian \$\{holding\.ticker \|\| "aset"\}`\}/);

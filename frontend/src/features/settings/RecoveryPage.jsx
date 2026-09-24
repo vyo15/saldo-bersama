@@ -251,7 +251,7 @@ const RecoveryPage = () => {
   return (
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="recovery-settings-title">
-        <RefreshWarning error={archiveResource.refreshError || healthResource.refreshError} onRetry={() => Promise.all([archiveResource.reload(), healthResource.reload()])} />
+        <RefreshWarning error={archiveResource.refreshError || healthResource.error || healthResource.refreshError} onRetry={() => Promise.allSettled([archiveResource.reload(), healthResource.reload()])} />
         <div className={styles.pageHeading}><h2 id="recovery-settings-title">Pemulihan data</h2><p>Pulihkan item arsip secara terbatas atau lakukan full restore hanya setelah preview backup terverifikasi.</p></div>
         <SettingsNotice result={result} />
         <MaintenanceRecoveryPanel maintenanceMode={maintenanceMode} busy={maintenance.maintenanceBusy} onRecover={maintenance.recoverMaintenance} description="Restore atau maintenance sebelumnya belum selesai dengan kondisi yang dapat dipastikan. Integrity check wajib lulus sebelum operasi baru." />

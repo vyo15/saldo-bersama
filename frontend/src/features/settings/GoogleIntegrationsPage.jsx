@@ -2,7 +2,8 @@ import { useState } from "react";
 import { FiAlertTriangle, FiCalendar, FiFileText, FiHardDrive, FiRefreshCw } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
-import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
+import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
+import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { formatDateTimeJakarta } from "../../domain/dates.js";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -79,6 +80,9 @@ const GoogleIntegrationsPage = () => {
   const bridgeWideFailure = integrations.bridge?.checked === true && integrations.bridge?.reachable === false;
   const bridgeFailure = bridgeWideFailure ? driveReadiness : null;
 
+  if (resource.status === "loading") return <NativePageSkeleton kind="settings" variant="panel" label="Memeriksa integrasi Google…" />;
+  if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+
   const run = async (action) => {
     setBusyAction(action);
     setResult({ status: "loading", text: "Mengirim permintaan sinkronisasi..." });
@@ -96,7 +100,7 @@ const GoogleIntegrationsPage = () => {
 
   return (
     <section className={styles.pageContent} aria-labelledby="google-integrations-title">
-      <RefreshWarning error={resource.refreshError} />
+      <RefreshWarning error={resource.refreshError} onRetry={resource.reload} />
       <div className={styles.pageHeading}><h2 id="google-integrations-title">Integrasi Google</h2></div>
       <SettingsNotice result={result} />
       {bridgeFailure ? (

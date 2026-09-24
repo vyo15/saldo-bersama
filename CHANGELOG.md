@@ -1,3 +1,9 @@
+## 2026-09-23 — Patch C flow & state completeness
+- Menutup audit Batch 8–10 pada state halaman utama tanpa mengubah mutation finansial: resource pendukung yang gagal tidak lagi diam-diam terlihat sebagai false-empty pada Rekening, Target, Investasi, Jadwal Rutin, Notifikasi, pengajuan transfer Member, dan Pengaturan.
+- Menjadikan daftar **Aktif** Atur Dana konsisten saat initial load dengan menunggu read model Alokasi + Kebutuhan + Jadwal + Kewajiban sebelum dedup/merge, sehingga data parsial tidak dapat sementara tampil sebagai row standalone palsu.
+- Membedakan Kewajiban selesai dari Kewajiban yang dihentikan/diarsipkan, serta menyembunyikan hero progress Target ketika tidak ada Target aktif agar completed-only tidak menampilkan ringkasan nol yang menyesatkan.
+- Menambahkan regression khusus state empty/active/completed/inactive, ringkasan Target aktif, merged-resource gate Atur Dana, dan recovery resource pendukung; TEST_PLAN dan QA checklist diselaraskan.
+
 ## 2026-09-23 — Kebutuhan compact & split-action
 - Merapikan detail Alokasi menjadi tiga metrik user-facing **Total alokasi / Sudah dipakai / Masih tersedia**; `reserved_amount` Jadwal tetap dipertahankan pada model internal tetapi tidak lagi diduplikasi sebagai metrik `Untuk jadwal` di hero Alokasi.
 - Mengubah quick action row Kebutuhan menjadi split-action visual compact **Catat/Bayar | ⋯** dengan target sentuh tetap 44px. Context Kebutuhan tetap terkunci pada aksi utama, sedangkan Detail/Edit/Lihat jadwal tetap berada di overflow.

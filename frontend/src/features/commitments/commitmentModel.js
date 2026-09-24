@@ -5,6 +5,14 @@ const finiteNumber = (value) => {
 
 export const isDebtCommitment = (type) => type !== "arisan";
 
+export const commitmentCollectionState = (items = []) => {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return "empty";
+  if (list.some((item) => item?.status === "active")) return "active";
+  if (list.every((item) => item?.status === "completed")) return "completed";
+  return "inactive";
+};
+
 export const flatLoanEstimate = ({ originalAmount, totalInstallments, annualRatePercent }) => {
   const original = finiteNumber(originalAmount);
   const periods = Math.max(0, Math.trunc(finiteNumber(totalInstallments)));

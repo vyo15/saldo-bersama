@@ -111,7 +111,7 @@ const SettingsPage = () => {
 
   return (
     <section className={styles.settingsHome} aria-label="Ringkasan pengaturan">
-      <RefreshWarning error={healthResource.refreshError} onRetry={healthResource.reload} />
+      <RefreshWarning error={healthResource.error || healthResource.refreshError} onRetry={healthResource.reload} />
       <DesktopSettingsOverview user={user} backend={backend} timezone={timezone} maintenanceMode={maintenanceMode} />
       <MobileSettingsOverview user={user} backend={backend} timezone={timezone} maintenanceMode={maintenanceMode} />
     </section>

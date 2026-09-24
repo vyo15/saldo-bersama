@@ -21,6 +21,7 @@ import {
   updateGoal as requestUpdateGoal,
 } from "./goals.api.js";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
+import { summarizeGoals } from "./goalPresentation.js";
 
 const GoalDialogLayer = lazy(() => import("./components/GoalDialogLayer.jsx"));
 const GoalFundingModal = lazy(() => import("./components/GoalFundingModal.jsx"));
@@ -135,17 +136,18 @@ const goalPageAccounts = (bootstrap, overview) => {
 };
 
 
-const useGoalRouteWorkflow = ({ location, resourceStatus, canCreate, openCreate, clearWorkflowState, items, openFunding, setFundingPrompt, notify }) => {
+const useGoalRouteWorkflow = ({ location, resourceStatus, sourceStatus, canCreate, openCreate, clearWorkflowState, items, openFunding, setFundingPrompt, notify }) => {
   const workflowHandled = useRef("");
   useEffect(() => {
     const workflowAction = String(location.state?.workflowAction || "");
     const workflowKey = workflowAction ? `${location.key}|${workflowAction}` : "";
     if (resourceStatus !== "ready" || workflowAction !== "create-goal" || workflowHandled.current === workflowKey) return;
+    if (!canCreate && sourceStatus !== "ready") return;
     workflowHandled.current = workflowKey;
     clearWorkflowState();
     if (canCreate) openCreate();
     else notify({ message: "Siapkan rekening Bersama atau portfolio investasi Bersama sebelum membuat Target.", tone: "warning", dedupeKey: "goal:create-unavailable" });
-  }, [canCreate, clearWorkflowState, location.key, location.state, notify, openCreate, resourceStatus]);
+  }, [canCreate, clearWorkflowState, location.key, location.state, notify, openCreate, resourceStatus, sourceStatus]);
 
   useEffect(() => {
     const workflowAction = String(location.state?.workflowAction || "");
@@ -188,6 +190,7 @@ const GoalsPage = () => {
   const investmentPortfolios = useMemo(() => (investmentResource.data?.portfolios || []).filter((item) => item.can_operate !== false && item.owner_scope === "shared"), [investmentResource.data?.portfolios]);
   const canCreate = creationAccounts.length > 0 || investmentPortfolios.length > 0;
   const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
+  const summary = useMemo(() => summarizeGoals(items), [items]);
   const shared = { resource, investmentResource, refreshOverview, invalidate, notify };
   const creation = useGoalCreation({ ...shared, onCreated: (goal) => { if (location.state?.setupFlow) setCreatedGoal(goal || { name: "Target" }); } });
   const lifecycle = useGoalLifecycle(shared);
@@ -199,7 +202,7 @@ const GoalsPage = () => {
     setFundingTarget({ goal, sourceAccountId: String(intent.sourceAccountId || ""), suggestedAmount: Number(intent.suggestedAmount || 0), manualAmount: intent.manualAmount === true });
   }, []);
 
-  useGoalRouteWorkflow({ location, resourceStatus: resource.status, canCreate, openCreate: creation.openCreate, clearWorkflowState, items, openFunding, setFundingPrompt, notify });
+  useGoalRouteWorkflow({ location, resourceStatus: resource.status, sourceStatus: investmentResource.status, canCreate, openCreate: creation.openCreate, clearWorkflowState, items, openFunding, setFundingPrompt, notify });
 
   useEffect(() => {
     const goalId = String(attention?.attentionGoalId || "");
@@ -216,7 +219,9 @@ const GoalsPage = () => {
 
   if (resource.status === "loading") return <NativePageSkeleton kind="goals" label="Memuat target keuangan…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
+  if (investmentResource.status === "loading") return <NativePageSkeleton kind="goals" label="Memeriksa sumber dana Target…" />;
 
+  const sourceLoadFailed = investmentResource.status === "error" && creationAccounts.length === 0;
   const openReminder = (goal) => setReminderTarget({ entityType: "goal", entityId: goal.goal_id, name: goal.name, suggestedDate: goal.target_date });
   const actions = { openEdit: lifecycle.openEdit, openArchive: lifecycle.openArchive, openStatusChange: lifecycle.openStatusChange, openReminder, openFunding };
   const headerActions = canCreate && items.length ? <Button variant="primary" icon={FiPlus} data-preload-action="goalDialog" onClick={creation.openCreate}>Buat target</Button> : null;
@@ -235,13 +240,13 @@ const GoalsPage = () => {
   };
 
   return <div className="page-stack">
-    <RefreshWarning error={resource.refreshError || investmentResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), investmentResource.reload()])} />
+    <RefreshWarning error={resource.refreshError || investmentResource.error || investmentResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), investmentResource.reload()])} />
     <PageHeader title="Target" help="Satu tujuan dapat berisi dana tunai, investasi, atau keduanya. Nilai investasi mengikuti catatan harga terakhir dan setiap kejadian uang dihitung satu kali." actions={headerActions} />
     {createdGoal ? <CompactNotice tone="success" title="Target sudah siap." role="status">Gunakan Tambah dana untuk menyimpan lewat rekening atau investasi sesuai cara menabung Target.</CompactNotice> : null}
     {createdGoal ? <div className="form-actions"><Button type="button" onClick={() => setCreatedGoal(null)}>Selesai</Button>{createdGoal?.goal_id ? <Button type="button" variant="primary" onClick={() => { openFunding(createdGoal); setCreatedGoal(null); }}>Tambah dana</Button> : null}</div> : null}
     {fundingPrompt ? <CompactNotice tone="info" title="Pilih Target yang ingin ditambah." role="status">Gunakan tombol Tambah dana pada Target yang dituju. Dana dapat disimpan sebagai tunai atau investasi sesuai pengaturannya.</CompactNotice> : null}
-    {items.length ? <GoalSummary items={items} /> : null}
-    <GoalGrid items={items} actions={actions} canCreate={canCreate} openCreate={creation.openCreate} />
+    {summary.activeCount ? <GoalSummary items={items} /> : null}
+    <GoalGrid items={items} actions={actions} canCreate={canCreate} sourceLoadFailed={sourceLoadFailed} openCreate={creation.openCreate} />
     {(reminderTarget || creation.open || lifecycle.editGoal || lifecycle.archiveTarget || lifecycle.statusTarget) ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan aksi target..." />}><GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} investmentPortfolios={investmentPortfolios} lifecycle={lifecycle} /></Suspense> : null}
     {fundingTarget ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan dana Target..." />}><GoalFundingModal goal={fundingTarget.goal} accounts={accounts} transferRoutes={bootstrap?.transferRoutes || []} investmentOverview={investmentResource.data || { portfolios: [] }} initialSourceAccountId={fundingTarget.sourceAccountId} suggestedAmount={fundingTarget.suggestedAmount} manualAmount={fundingTarget.manualAmount} onClose={() => setFundingTarget(null)} onChanged={onFundingChanged} onBuyInvestment={openGoalInvestmentBuy} /></Suspense> : null}
     {achievement ? <Suspense fallback={null}><GoalAchievementPostcard {...achievement} onClose={() => setAchievement(null)} /></Suspense> : null}
