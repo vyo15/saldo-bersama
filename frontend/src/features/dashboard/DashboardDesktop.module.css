@@ -995,6 +995,13 @@
     min-width: 0;
   }
 
+  .desktop-reference-header__actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
   .desktop-reference-header h1 {
     margin: 0;
     font-size: clamp(28px, 2.25vw, 34px);
@@ -1011,7 +1018,7 @@
   .desktop-reference-header__sync {
     margin-left: 8px;
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .desktop-reference-summary {
@@ -1056,8 +1063,8 @@
   }
 
   .desktop-family-hero__visibility {
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border: 0;
     border-radius: 10px;
@@ -1227,7 +1234,7 @@
 
   .desktop-owner-card__copy small {
     color: var(--text-soft);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: var(--font-weight-semibold);
   }
 
@@ -1317,7 +1324,7 @@
 
   .desktop-reference-metric small {
     color: var(--text-soft);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: var(--font-weight-semibold);
   }
 
@@ -1351,7 +1358,7 @@
   .desktop-quick-actions {
     padding: 0;
     border: 0;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     background: transparent;
     box-shadow: none;
@@ -1395,7 +1402,7 @@
   }
 
   .desktop-quick-action small {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .desktop-quick-action--record {
@@ -1471,7 +1478,7 @@
   .desktop-reference-panel__heading small {
     overflow: hidden;
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: 12px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1482,7 +1489,7 @@
     align-items: center;
     gap: 3px;
     color: var(--primary);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: var(--font-weight-bold);
     text-decoration: none;
     white-space: nowrap;
@@ -1539,11 +1546,11 @@
   }
 
   .desktop-attention-row__copy strong { font-size: 12px; }
-  .desktop-attention-row__copy small { color: var(--text-muted); font-size: 10px; }
+  .desktop-attention-row__copy small { color: var(--text-muted); font-size: 12px; }
 
   .desktop-attention-row__action {
     color: var(--warning);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: var(--font-weight-bold);
   }
 
@@ -1583,7 +1590,7 @@
   }
 
   .desktop-attention-clear strong { color: var(--text); font-size: 12px; }
-  .desktop-attention-clear small { color: var(--text-muted); font-size: 10px; }
+  .desktop-attention-clear small { color: var(--text-muted); font-size: 12px; }
 
   .desktop-activity-panel {
     min-height: 238px;
@@ -1618,10 +1625,10 @@
   }
 
   .desktop-activity-row__copy strong { font-size: 12px; }
-  .desktop-activity-row__copy small { font-size: 10px; }
+  .desktop-activity-row__copy small { font-size: 12px; }
 
   .desktop-activity-row__amount {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .desktop-activity-row__chevron {

@@ -317,7 +317,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(mobile, /Aktivitas terbaru/);
   assert.doesNotMatch(mobile, /Total investasi tercatat/);
   assert.match(desktop, /SensitiveMoney/);
-  assert.match(desktop, /Aktivitas rekening/);
+  assert.match(desktop, /Aktivitas Terbaru/);
   assert.match(desktop, /data-dashboard-account/);
   assert.doesNotMatch(desktop, /dashboard-statistics-title|Total pengeluaran bulan ini|StatisticsPanel/);
   assert.match(desktop, /Kebutuhan/);

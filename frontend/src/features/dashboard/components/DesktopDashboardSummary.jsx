@@ -5,11 +5,13 @@ import {
   FiEyeOff,
   FiHeart,
   FiPieChart,
+  FiPlus,
   FiShield,
   FiUser,
   FiUsers,
 } from "react-icons/fi";
 import { Link } from "react-router";
+import Button from "../../../components/common/Button.jsx";
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { ACCOUNT_AVAILABLE_BALANCE_HINT } from "../../../shared/presentation/account.js";
 import { scrollIntoViewWithMotionPreference } from "../../../shared/motion.js";
@@ -22,7 +24,7 @@ import { dashboardOwnershipBreakdown, dashboardSyncLabel } from "../dashboardPre
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
-export const DashboardHeader = ({ overview, displayName }) => (
+export const DashboardHeader = ({ overview, displayName, onOpenQuickRecord }) => (
   <header className={dashboardClass("shared-dashboard__header desktop-reference-header")}>
     <div>
       <h1>Halo, {displayName}!</h1>
@@ -30,6 +32,9 @@ export const DashboardHeader = ({ overview, displayName }) => (
         Yuk, kelola keuangan keluarga dengan lebih baik <span aria-hidden="true">✨</span>
         <span className={dashboardClass("desktop-reference-header__sync")}>{dashboardSyncLabel(overview.lastSyncedAt)}</span>
       </p>
+    </div>
+    <div className={dashboardClass("desktop-reference-header__actions")}>
+      <Button variant="primary" icon={FiPlus} onClick={onOpenQuickRecord}>Catat</Button>
     </div>
   </header>
 );
@@ -133,8 +138,11 @@ export const DashboardAttention = ({ alerts }) => {
   return (
     <section className={dashboardClass("shared-panel desktop-reference-panel desktop-attention-panel")} aria-labelledby="dashboard-attention-title">
       <div className={dashboardClass("desktop-reference-panel__heading")}>
-        <h2 id="dashboard-attention-title">Perlu Dilakukan</h2>
-        <Link to="/notifikasi" state={{ returnTo: "/" }}>Lihat semua <FiChevronRight aria-hidden="true" /></Link>
+        <div>
+          <h2 id="dashboard-attention-title">Perlu dilakukan</h2>
+          <small>{alerts.length === 1 ? "1 tugas prioritas" : `${alerts.length} tugas prioritas`}</small>
+        </div>
+        <Link to="/notifikasi" state={{ returnTo: "/" }}>Lihat semua perhatian <FiChevronRight aria-hidden="true" /></Link>
       </div>
       <div className={dashboardClass("desktop-attention-list")}>
         {visibleAlerts.map((alert, index) => <AttentionTask key={alert.id || alert.alert_id || `${alert.type || "alert"}-${index}`} alert={alert} />)}

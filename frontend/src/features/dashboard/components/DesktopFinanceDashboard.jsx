@@ -17,7 +17,6 @@ const DesktopFinanceDashboard = ({
   balanceVisible,
   onToggleBalance,
   onOpenQuickRecord,
-  onOpenTransfer,
   setupContent,
 }) => {
   const model = buildDesktopModel({
@@ -29,11 +28,11 @@ const DesktopFinanceDashboard = ({
     searchTerm: "",
     selectedTransactionId: "",
   });
-  const urgentAlerts = dashboardUrgentAlerts(model.alerts);
+  const urgentAlerts = dashboardUrgentAlerts(overview.alerts);
 
   return (
     <div className={dashboardClass("dashboard-desktop shared-dashboard desktop-reference-dashboard")}>
-      <DashboardHeader overview={overview} displayName={displayName} />
+      <DashboardHeader overview={overview} displayName={displayName} onOpenQuickRecord={onOpenQuickRecord} />
 
       <PrimaryMetrics
         overview={overview}
@@ -44,7 +43,7 @@ const DesktopFinanceDashboard = ({
 
       <section className={dashboardClass("desktop-reference-actions-section")} aria-labelledby="dashboard-quick-actions-title">
         <h2 id="dashboard-quick-actions-title">Aksi Cepat</h2>
-        <DashboardQuickActions variant="desktop" onOpenQuickRecord={onOpenQuickRecord} onOpenTransfer={onOpenTransfer} />
+        <DashboardQuickActions variant="desktop" />
       </section>
 
       <div className={dashboardClass(`desktop-reference-primary-grid${urgentAlerts.length ? "" : " desktop-reference-primary-grid--single"}`)}>

@@ -19,6 +19,7 @@ export const readDesktopDashboardSource = () => readCombined([
 
 export const readDashboardStyleSource = () => readCombined([
   "features/dashboard/DashboardPage.module.css",
+  "features/dashboard/DashboardMobile.module.css",
   "features/dashboard/DashboardDesktop.module.css",
 ]);
 
