@@ -17,6 +17,7 @@ const DesktopFinanceDashboard = ({
   balanceVisible,
   onToggleBalance,
   onOpenQuickRecord,
+  onOpenTransfer,
   setupContent,
 }) => {
   const model = buildDesktopModel({
@@ -31,38 +32,40 @@ const DesktopFinanceDashboard = ({
   const urgentAlerts = dashboardUrgentAlerts(model.alerts);
 
   return (
-    <div className={dashboardClass("dashboard-desktop shared-dashboard")}>
-      <DashboardHeader
+    <div className={dashboardClass("dashboard-desktop shared-dashboard desktop-reference-dashboard")}>
+      <DashboardHeader overview={overview} displayName={displayName} />
+
+      <PrimaryMetrics
         overview={overview}
-        displayName={displayName}
+        model={model}
         balanceVisible={balanceVisible}
         onToggleBalance={onToggleBalance}
-        onOpenQuickRecord={onOpenQuickRecord}
       />
 
-      <div className={dashboardClass(`desktop-overview-grid${urgentAlerts.length ? "" : " desktop-overview-grid--single"}`)}>
-        <PrimaryMetrics overview={overview} model={model} balanceVisible={balanceVisible} />
-        {urgentAlerts.length ? <DashboardAttention alerts={urgentAlerts} /> : null}
+      <section className={dashboardClass("desktop-reference-actions-section")} aria-labelledby="dashboard-quick-actions-title">
+        <h2 id="dashboard-quick-actions-title">Aksi Cepat</h2>
+        <DashboardQuickActions variant="desktop" onOpenQuickRecord={onOpenQuickRecord} onOpenTransfer={onOpenTransfer} />
+      </section>
+
+      <div className={dashboardClass(`desktop-reference-primary-grid${urgentAlerts.length ? "" : " desktop-reference-primary-grid--single"}`)}>
+        <DashboardAttention alerts={urgentAlerts} />
+        <AccountTransactions model={model} balanceVisible={balanceVisible} />
       </div>
 
       {setupContent}
 
-      <AccountSelector
-        accountBalances={model.accountBalances}
-        selectedAccount={model.selectedAccount}
-        onSelectAccount={onSelectAccount}
-        balanceVisible={balanceVisible}
-      />
-
-      <DashboardQuickActions variant="desktop" />
-
-      <div className={dashboardClass("desktop-lower-grid")}>
-        <AccountTransactions model={model} balanceVisible={balanceVisible} />
+      <section className={dashboardClass("desktop-reference-secondary")} aria-label="Ringkasan lanjutan">
+        <AccountSelector
+          accountBalances={model.accountBalances}
+          selectedAccount={model.selectedAccount}
+          onSelectAccount={onSelectAccount}
+          balanceVisible={balanceVisible}
+        />
         <aside className={dashboardClass("desktop-side-widgets")} aria-label="Ringkasan tambahan">
           <DashboardPlanning model={model} />
           <InvestmentWidget summary={investmentSummary} balanceVisible={balanceVisible} />
         </aside>
-      </div>
+      </section>
     </div>
   );
 };

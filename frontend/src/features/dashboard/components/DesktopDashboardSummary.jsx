@@ -1,41 +1,46 @@
-import { FiAlertCircle, FiEye, FiEyeOff, FiPlus } from "react-icons/fi";
+import {
+  FiAlertCircle,
+  FiChevronRight,
+  FiEye,
+  FiEyeOff,
+  FiHeart,
+  FiPieChart,
+  FiShield,
+  FiUser,
+  FiUsers,
+} from "react-icons/fi";
 import { Link } from "react-router";
-import Button from "../../../components/common/Button.jsx";
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
-import PageInfoButton from "../../../components/common/PageInfoButton.jsx";
 import { ACCOUNT_AVAILABLE_BALANCE_HINT } from "../../../shared/presentation/account.js";
 import { scrollIntoViewWithMotionPreference } from "../../../shared/motion.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
+import familyHero from "../../../assets/dashboard/family-hero.webp";
+import foliageLeft from "../../../assets/dashboard/foliage-left.webp";
+import foliageRight from "../../../assets/dashboard/foliage-right.webp";
 import { dashboardOwnershipBreakdown, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 
-export const DashboardHeader = ({ overview, displayName, balanceVisible, onToggleBalance, onOpenQuickRecord }) => (
-  <header className={dashboardClass("shared-dashboard__header")}>
+export const DashboardHeader = ({ overview, displayName }) => (
+  <header className={dashboardClass("shared-dashboard__header desktop-reference-header")}>
     <div>
-      <div className={dashboardClass("shared-dashboard__title-row")}>
-        <h1>Hai, {displayName}</h1>
-        <PageInfoButton title="Tentang Beranda">Saldo Keluarga merangkum rekening operasional Saya, Pasangan, dan Bersama. Hak menggunakan uang tetap mengikuti pemegang rekening.</PageInfoButton>
-      </div>
-      <p>{dashboardSyncLabel(overview.lastSyncedAt)}</p>
-    </div>
-    <div className={dashboardClass("shared-dashboard__actions")}>
-      <button
-        type="button"
-        className={dashboardClass("shared-icon-action")}
-        onClick={onToggleBalance}
-        aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}
-        aria-pressed={!balanceVisible}
-      >
-        {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
-      </button>
-      <Button variant="primary" icon={FiPlus} onClick={onOpenQuickRecord}>Catat</Button>
+      <h1>Halo, {displayName}!</h1>
+      <p>
+        Yuk, kelola keuangan keluarga dengan lebih baik <span aria-hidden="true">✨</span>
+        <span className={dashboardClass("desktop-reference-header__sync")}>{dashboardSyncLabel(overview.lastSyncedAt)}</span>
+      </p>
     </div>
   </header>
 );
 
-export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
+const ownershipIcon = (key) => {
+  if (key === "self") return FiUser;
+  if (key === "partner") return FiHeart;
+  return FiUsers;
+};
+
+export const PrimaryMetrics = ({ overview, model, balanceVisible, onToggleBalance }) => {
   const nonInvestmentBalance = overview.nonInvestmentBalance ?? model.accountBalances
     .filter((item) => item.account_type !== "investment")
     .reduce((sum, item) => sum + Number(item.balance || 0), 0);
@@ -43,69 +48,97 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible }) => {
   const ownershipItems = dashboardOwnershipBreakdown(overview.familyBalanceBreakdown);
 
   return (
-    <section className={dashboardClass("desktop-balance-card shared-panel")} aria-label="Ringkasan keuangan utama">
-      <div className={dashboardClass("desktop-balance-card__topline")}>
-        <span>Posisi keuangan</span>
-      </div>
-
-      <div className={dashboardClass("desktop-balance-card__hero")}>
-        <div className={dashboardClass("desktop-balance-card__heading")}>
-          <span>Saldo Keluarga</span>
-          <SensitiveMoney visible={balanceVisible} value={overview.familyBalance ?? nonInvestmentBalance} />
-          <small>Semua saldo operasional terlihat bersama; hak menggunakan uang tetap mengikuti pemilik rekening.</small>
-          <div className={dashboardClass("desktop-family-breakdown")} aria-label="Rincian Saldo Keluarga">
-            {ownershipItems.map((item) => <Link key={item.key} to="/rekening" state={{ ownershipFilter: item.key }}><span>{item.label}</span><strong><SensitiveMoney visible={balanceVisible} value={item.amount} /></strong></Link>)}
+    <div className={dashboardClass("desktop-reference-summary")}>
+      <section className={dashboardClass("desktop-family-hero")} aria-label="Saldo Keluarga">
+        <div className={dashboardClass("desktop-family-hero__copy")}>
+          <div className={dashboardClass("desktop-family-hero__label")}>
+            <span>Saldo Keluarga</span>
+            <button
+              type="button"
+              className={dashboardClass("desktop-family-hero__visibility")}
+              onClick={onToggleBalance}
+              aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}
+              aria-pressed={!balanceVisible}
+            >
+              {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
+            </button>
           </div>
+          <SensitiveMoney visible={balanceVisible} value={overview.familyBalance ?? nonInvestmentBalance} />
+          <span className={dashboardClass("desktop-family-hero__usable")}><small>Dana bisa digunakan</small><strong><SensitiveMoney visible={balanceVisible} value={overview.usableFunds ?? overview.safeToSpend ?? 0} /></strong></span>
         </div>
-      </div>
 
-      <div className={dashboardClass("desktop-balance-card__safe")}>
-        <div>
-          <span>Dana yang bisa kamu gunakan</span>
-          <SensitiveMoney visible={balanceVisible} value={overview.usableFunds ?? overview.safeToSpend ?? 0} />
+        <div className={dashboardClass("desktop-family-hero__art")} aria-hidden="true">
+          <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--left")} src={foliageLeft} width="900" height="675" decoding="async" alt="" />
+          <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--right")} src={foliageRight} width="900" height="675" decoding="async" alt="" />
+          <img className={dashboardClass("desktop-family-hero__people")} src={familyHero} width="980" height="735" decoding="async" alt="" />
         </div>
-        <div>
-          <span>Aman dipakai / hari</span>
-          <SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} />
-        </div>
-        <div>
-          <span>Sisa di Alokasi</span>
-          <SensitiveMoney visible={balanceVisible} value={allocation.remaining || 0} />
-        </div>
-      </div>
-    </section>
+      </section>
+
+      <section className={dashboardClass("desktop-family-breakdown")} aria-label="Rincian Saldo Keluarga">
+        {ownershipItems.map((item) => {
+          const Icon = ownershipIcon(item.key);
+          return (
+            <Link key={item.key} className={dashboardClass(`desktop-owner-card desktop-owner-card--${item.key}`)} to="/rekening" state={{ ownershipFilter: item.key }}>
+              <span className={dashboardClass("desktop-owner-card__icon")}><Icon aria-hidden="true" /></span>
+              <span className={dashboardClass("desktop-owner-card__copy")}>
+                <small>{item.label}</small>
+                <strong><SensitiveMoney visible={balanceVisible} value={item.amount} /></strong>
+              </span>
+              <FiChevronRight className={dashboardClass("desktop-owner-card__chevron")} aria-hidden="true" />
+            </Link>
+          );
+        })}
+      </section>
+
+      <section className={dashboardClass("desktop-reference-metrics")} aria-label="Ringkasan penggunaan dana">
+        <Link className={dashboardClass("desktop-reference-metric desktop-reference-metric--safe")} to="/laporan">
+          <span className={dashboardClass("desktop-reference-metric__icon")}><FiShield aria-hidden="true" /></span>
+          <span>
+            <small>Aman untuk hari ini</small>
+            <strong><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></strong>
+          </span>
+          <FiChevronRight aria-hidden="true" />
+        </Link>
+        <Link className={dashboardClass("desktop-reference-metric desktop-reference-metric--allocation")} to="/perencanaan/kantong">
+          <span className={dashboardClass("desktop-reference-metric__icon")}><FiPieChart aria-hidden="true" /></span>
+          <span>
+            <small>Sisa alokasi bulan ini</small>
+            <strong><SensitiveMoney visible={balanceVisible} value={allocation.remaining || 0} /></strong>
+          </span>
+          <FiChevronRight aria-hidden="true" />
+        </Link>
+      </section>
+    </div>
   );
 };
 
 const AttentionTask = ({ alert }) => {
   const guidance = financialAlertGuidance(alert);
   return (
-    <Link className={dashboardClass("desktop-attention-card__task")} to={guidance.to} state={guidance.state}>
-      <span className={dashboardClass("desktop-attention-card__icon")}><FiAlertCircle aria-hidden="true" /></span>
-      <span>
+    <Link className={dashboardClass("desktop-attention-row")} to={guidance.to} state={guidance.state}>
+      <span className={dashboardClass("desktop-attention-row__icon")}><FiAlertCircle aria-hidden="true" /></span>
+      <span className={dashboardClass("desktop-attention-row__copy")}>
         <strong>{alert.title || alert.message}</strong>
         <small>{alert.message || "Tinjau kondisi ini agar data keuangan tetap sesuai."}</small>
       </span>
-      <em>Tinjau</em>
+      <span className={dashboardClass("desktop-attention-row__action")}>Tinjau</span>
+      <FiChevronRight aria-hidden="true" />
     </Link>
   );
 };
 
 export const DashboardAttention = ({ alerts }) => {
   const visibleAlerts = alerts.slice(0, 3);
+  if (!visibleAlerts.length) return null;
   return (
-    <section className={dashboardClass("desktop-attention-card shared-panel")} aria-label="Perlu perhatian">
-      <div className={dashboardClass("desktop-attention-card__heading")}>
-        <div>
-          <span>Perlu dilakukan</span>
-          <strong>{alerts.length === 1 ? "1 tugas prioritas" : `${alerts.length} tugas prioritas`}</strong>
-        </div>
-        <span className={dashboardClass("desktop-attention-card__badge")}>{alerts.length} tugas</span>
+    <section className={dashboardClass("shared-panel desktop-reference-panel desktop-attention-panel")} aria-labelledby="dashboard-attention-title">
+      <div className={dashboardClass("desktop-reference-panel__heading")}>
+        <h2 id="dashboard-attention-title">Perlu Dilakukan</h2>
+        <Link to="/notifikasi" state={{ returnTo: "/" }}>Lihat semua <FiChevronRight aria-hidden="true" /></Link>
       </div>
-      <div className={dashboardClass("desktop-attention-card__list")}>
+      <div className={dashboardClass("desktop-attention-list")}>
         {visibleAlerts.map((alert, index) => <AttentionTask key={alert.id || alert.alert_id || `${alert.type || "alert"}-${index}`} alert={alert} />)}
       </div>
-      <Link to="/notifikasi" state={{ returnTo: "/" }}>{alerts.length > visibleAlerts.length ? `Lihat semua perhatian (+${alerts.length - visibleAlerts.length})` : "Lihat semua perhatian"}</Link>
     </section>
   );
 };
