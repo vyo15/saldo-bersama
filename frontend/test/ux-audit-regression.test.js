@@ -442,3 +442,17 @@ test("audit density menjaga desktop stabil, kontrol progresif, dan kolom finansi
   assert.doesNotMatch(planningCss, /\.tabs|planning-tab/);
   assert.match(planningCss, /\.detailBack/);
 });
+
+
+test("planning compact surfaces tidak menggandakan persentase progress dan memakai primitive shared", async () => {
+  const [overview, commitments, progress] = await Promise.all([
+    read("src/features/allocations/AllocationOverviewLayer.jsx"),
+    read("src/features/commitments/CommitmentsPage.jsx"),
+    read("src/components/common/ProgressBar.jsx"),
+  ]);
+  assert.doesNotMatch(overview, /<ProgressBar[^>]+\/>\s*<small>\{progress\}%<\/small>/);
+  assert.match(commitments, /components\/common\/ProgressBar\.jsx/);
+  assert.doesNotMatch(commitments, /const ProgressBar =/);
+  assert.match(progress, /showValue = true/);
+  assert.match(progress, /compact = false/);
+});

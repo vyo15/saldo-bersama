@@ -76,23 +76,6 @@ const ReportHeader = ({ period, setPeriod, trendMonths, allocationRuleId, setAll
   </>;
 };
 
-const SummaryStrip = ({ summary }) => {
-  const allocation = summary?.mode === "allocation";
-  const items = allocation ? [
-    ["Dialokasikan", summary.allocated, "", "Dana yang disiapkan"],
-    ["Terpakai", summary.used, "negative", "Pengeluaran periode ini"],
-    ["Sisa", summary.remaining, summary.remaining < 0 ? "negative" : "", "Masih tersedia"],
-    ["Penggunaan", `${Number(summary.usagePercent || 0)}%`, "text", "Dari dana Alokasi"],
-  ] : [
-    ["Saldo awal", summary?.openingBalance, "", "Awal periode"],
-    ["Pemasukan", summary?.credit, "positive", "Kredit periode ini"],
-    ["Pengeluaran", summary?.debit, "negative", "Debit periode ini"],
-    ["Saldo akhir", summary?.closingBalance, "", "Setelah aktivitas periode"],
-  ];
-  return <section className={styles.summaryStrip} aria-label="Ringkasan laporan">
-    {items.map(([label, value, tone, note]) => <div className={`${styles.summaryItem}${["Saldo akhir", "Sisa"].includes(label) ? ` ${styles.summaryPrimary}` : ""}`} key={label}><span>{label}</span>{tone === "text" ? <strong>{value}</strong> : <Money value={value || 0} tone={tone || "default"} />}<small>{note}</small></div>)}
-  </section>;
-};
 
 const AllocationRows = ({ items, onSelect }) => {
   if (!items.length) return <EmptyState variant="inline" title="Belum ada Alokasi" description="Alokasi periode ini akan tampil di sini setelah memiliki dana atau Kebutuhan." />;
@@ -155,9 +138,9 @@ const allocationHeroModel = (summary, scope) => {
     eyebrow: `Alokasi · ${scope.label}`,
     value: remaining,
     tone: remaining < 0 ? "negative" : "default",
-    description: `${reportNumber(summary.usagePercent)}% dana sudah digunakan pada periode ini.`,
-    descriptionTone: "default",
-    facts: [["Dialokasikan", summary.allocated], ["Terpakai", summary.used], ["Sisa", summary.remaining]],
+    description: remaining < 0 ? "Pemakaian melewati dana yang dialokasikan." : "Dana yang belum terpakai pada periode ini.",
+    descriptionTone: remaining < 0 ? "negative" : "default",
+    facts: [["Dialokasikan", summary.allocated], ["Terpakai", summary.used], ["Penggunaan", `${reportNumber(summary.usagePercent)}%`]],
   };
 };
 
@@ -239,6 +222,15 @@ const AllocationHealthSummary = ({ items = [] }) => {
   </section>;
 };
 
+
+const PeriodBalanceContext = ({ summary = {} }) => {
+  if (summary.mode === "allocation") return null;
+  return <div className={styles.periodBalanceContext}>
+    <span>Saldo awal periode</span>
+    <strong><Money value={summary.openingBalance || 0} /></strong>
+  </div>;
+};
+
 const PlanningReport = ({ data, scope, setAllocationRuleId }) => <div className={`${styles.planningGrid}${scope.mode === "allocation" ? ` ${styles.singlePlanning}` : ""}`}>
   {scope.mode === "all" ? <section className={`${styles.reportPanel} ${styles.planningPanel}`}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Buka Alokasi</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : null}
   <section className={`${styles.reportPanel} ${styles.planningPanel}`}><div className={styles.sectionHeading}><div><h2>{scope.mode === "all" ? "Kebutuhan vs Pengeluaran" : `Kebutuhan di ${scope.label}`}</h2><p>Rencana dibanding realisasi pengeluaran pada periode ini.</p></div></div><BudgetRows budgets={data.budgets || []} /></section>
@@ -251,12 +243,12 @@ const ReportsContent = ({ data, period, setPeriod, trendMonths, setTrendMonths, 
     <RefreshWarning error={refreshError} onRetry={reload} />
     <ReportHeader period={period} setPeriod={setPeriod} trendMonths={trendMonths} allocationRuleId={allocationRuleId} setAllocationRuleId={setAllocationRuleId} allocationOptions={data.allocationOptions || []} />
     <HeroOverview summary={data.reportSummary} scope={scope} trend={data.trend} period={period} trendMonths={trendMonths} setTrendMonths={setTrendMonths} categories={data.categoryExpenses || []} />
-    <SummaryStrip summary={data.reportSummary} />
     {scope.mode === "all" ? <AllocationHealthSummary items={data.allocationOptions || []} /> : null}
     <section className={`${styles.reportPanel} ${styles.transactionPanel}`}><div className={styles.sectionHeading}><div><h2>Transaksi terbaru</h2></div><Link className={styles.headingLink} to="/transaksi">Lihat semua</Link></div><TransactionRows items={data.reportTransactions || []} expanded={transactionsExpanded} onToggle={() => setTransactionsExpanded((value) => !value)} /></section>
     <details className={styles.analysisDetails}>
       <summary><span><strong>Analisis lengkap</strong><small>Alokasi, Kebutuhan, Kewajiban, rekening & pencatat</small></span><FiChevronRight aria-hidden="true" /></summary>
       <div className={styles.analysisContent}>
+        <PeriodBalanceContext summary={data.reportSummary} />
         <PlanningReport data={data} scope={scope} setAllocationRuleId={setAllocationRuleId} />
         <CommitmentActivity activity={data.commitmentActivity || {}} />
         <BreakdownDetails accountExpenses={data.accountExpenses || []} creatorExpenses={data.creatorExpenses || []} />

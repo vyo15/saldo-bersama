@@ -1,3 +1,8 @@
+## 2026-09-24 — UI/UX Batch A–C: Laporan, Lainnya, Target
+- Menghapus summary KPI kedua di Laporan yang mengulang hero. Global sekarang memakai **Selisih bulan ini + Masuk/Keluar/Saldo akhir**, sedangkan scope Alokasi memakai **Sisa + Dialokasikan/Terpakai/Sisa**; planning/Kewajiban/rekening/pencatat tetap tersedia melalui **Analisis lengkap**.
+- Menyederhanakan `Lainnya` dari enam grouping kecil menjadi empat kelompok canonical **Rencana & Insight / Keuangan / Keluarga & Akses / Aplikasi** tanpa mengubah route atau capability owner-only. Row Pengaturan mobile kini memakai description metadata canonical satu baris agar menu lebih mudah dipahami tanpa memperbesar list secara berlebihan.
+- Memadatkan Target menjadi hierarchy **jenis + nama → nilai/progress → sisa + pace → primary action | ⋯**. Tanggal target, estimasi per bulan, breakdown Tunai/Investasi/Hasil jual, serta penjelasan completion dipindahkan ke progressive detail dari overflow. Persentase tidak lagi ditulis dua kali di amount line karena `ProgressBar` sudah menjadi indikator persentase canonical. CSS legacy/override Goal dibersihkan sehingga hanya selector aktif yang tersisa.
+
 ## 2026-09-23 — Patch C flow & state completeness
 - Menutup audit Batch 8–10 pada state halaman utama tanpa mengubah mutation finansial: resource pendukung yang gagal tidak lagi diam-diam terlihat sebagai false-empty pada Rekening, Target, Investasi, Jadwal Rutin, Notifikasi, pengajuan transfer Member, dan Pengaturan.
 - Menjadikan daftar **Aktif** Atur Dana konsisten saat initial load dengan menunggu read model Alokasi + Kebutuhan + Jadwal + Kewajiban sebelum dedup/merge, sehingga data parsial tidak dapat sementara tampil sebagai row standalone palsu.
@@ -1074,6 +1079,8 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 - UI design-system contract, ADR-0009, dan CSS Modules untuk Button, Card, Modal, ThemeToggle, StatusBadge, ProgressBar, serta MoneyInput.
 
 ### Changed
+
+- Menyelesaikan UI/UX batch D–H: Kategori berubah menjadi compact list satu kolom pada ponsel kecil, Kewajiban memakai `ProgressBar` shared, persentase progress ganda pada root Atur Dana dihapus, stale `eslint-disable complexity` Target dibersihkan, serta regression/docs diperbarui untuk density, touch target, reduced-motion, dan duplicate-info guard.
 
 - Menambahkan `--font-size-body: 16px`, menghapus enam custom property CSS yang tidak terdefinisi, dan memperluas perlindungan auto-zoom ke filter Pembayaran keluar serta dashboard tablet.
 - Memperbaiki kontras avatar dan shield login pada light/dark theme, mengonsolidasikan media query/selector yang terfragmentasi, dan menghapus `!important` yang tidak diperlukan.

@@ -1151,8 +1151,14 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   .settingsAccountStatus { padding-top: 8px; }
   .settingsListRow { min-height: 56px; padding: 8px 11px; gap: 10px; }
   .settingsListIcon { width: 34px; height: 34px; border-radius: 10px; }
-  .settingsListCopy { gap: 0; }
+  .settingsListCopy { gap: 2px; }
   .settingsListCopy strong { font-size: 13px; }
+  .settingsListCopy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .settingsGroup { gap: 6px; }
   .settingsGroup > h2 { padding-inline: 3px; }
 }

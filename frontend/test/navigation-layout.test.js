@@ -287,17 +287,17 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   assert.doesNotMatch(source, /to: "\/anggaran", label: "Anggaran"/);
   assert.doesNotMatch(source, /to: "\/(?:alokasi|tagihan)"/);
   assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target"\)/);
-  assert.match(source, /label: "Data keuangan"/);
-  assert.match(source, /items: pickNavigation\("\/rekening", "\/kategori"\)/);
+  assert.match(source, /label: "Keuangan"/);
+  assert.match(source, /items: pickNavigation\("\/rekening", "\/investasi", "\/kategori"\)/);
   assert.doesNotMatch(source, /label: "Kontrol saldo"|items: pickNavigation\("\/rekonsiliasi"\)/);
-  assert.match(source, /label: "Akses"[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
+  assert.match(source, /label: "Keluarga & Akses"[\s\S]*items: pickNavigation\("\/anggota", "\/persetujuan"\)/);
   assert.match(source, /label: "Aplikasi"[\s\S]*items: pickNavigation\("\/notifikasi", "\/pengaturan"\)/);
   assert.match(source, /id: "application", label: "Aplikasi", items: pickNavigation\("\/notifikasi", "\/pengaturan"\)/);
   const mobileSecondaryBlock = source.match(/export const MOBILE_SECONDARY_GROUPS = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
   assert.doesNotMatch(mobileSecondaryBlock, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
   assert.match(source, /pickNavigation\("\/", "\/perencanaan", "\/transaksi"\)/);
-  assert.match(source, /id: "insight", label: "Insight", items: pickNavigation\("\/laporan"\)/);
+  assert.match(source, /id: "planning-insight", label: "Rencana & Insight", items: pickNavigation\("\/target", "\/laporan"\)/);
   assert.doesNotMatch(source, /PRIMARY_NAVIGATION\[\d+\]/);
 });
 

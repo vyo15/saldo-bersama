@@ -89,7 +89,6 @@ const AllocationActiveRow = ({ row, attention, onOpen }) => {
   const usage = allocationUsage(item);
   const decoration = allocationDecoration({ decorationKey: item.decoration_key, name: item.name, id: item.envelope_rule_id });
   const linked = allocationLinkedSignal(row);
-  const progress = usage.allocated > 0 ? Math.max(0, Math.round((usage.committed / usage.allocated) * 100)) : 0;
   return <button type="button" className={allocationClass(`planning-active-row${attention ? " planning-active-row--attention" : ""}`)} onClick={() => onOpen(item)} aria-label={`Buka detail ${item.name}`}>
     <span className={allocationClass("planning-active-row__icon")}><img src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /></span>
     <span className={allocationClass("planning-active-row__content")}>
@@ -99,7 +98,7 @@ const AllocationActiveRow = ({ row, attention, onOpen }) => {
         <span className={allocationClass(`planning-active-row__sub${linked.warning ? " planning-active-row__sub--warning" : ""}`)}>{linked.secondary}</span>
       </> : <>
         <span className={allocationClass("planning-active-row__meta")}>Sisa <Money value={item.remaining_amount} /> dari <Money value={usage.allocated} /></span>
-        <span className={allocationClass("planning-active-row__progress")}><ProgressBar value={usage.committed} max={usage.allocated} label={`Pemakaian ${item.name}`} /><small>{progress}%</small></span>
+        <span className={allocationClass("planning-active-row__progress")}><ProgressBar value={usage.committed} max={usage.allocated} label={`Pemakaian ${item.name}`} /></span>
       </>}
     </span>
     <FiArrowRight className={allocationClass("planning-active-row__arrow")} aria-hidden="true" />

@@ -2,27 +2,18 @@ import { dashboardClass } from "../dashboardStyles.js";
 import { buildDesktopModel } from "./desktopDashboardModel.js";
 import { DashboardAttention, DashboardHeader, AccountSelector, PrimaryMetrics } from "./DesktopDashboardSummary.jsx";
 import { AccountTransactions } from "./DesktopDashboardTransactions.jsx";
-import { InvestmentWidget, StatisticsPanel } from "./DesktopDashboardInsights.jsx";
+import { InvestmentWidget } from "./DesktopDashboardInsights.jsx";
 import { DashboardPlanning } from "./DesktopDashboardPlanning.jsx";
 import DashboardQuickActions from "./DashboardQuickActions.jsx";
 import { dashboardUrgentAlerts } from "../dashboardPresentation.js";
 
 const DesktopFinanceDashboard = ({
   overview,
-  bootstrap,
   viewModel,
   investmentSummary,
   displayName,
   selectedAccountId,
   onSelectAccount,
-  categoryFilter,
-  setCategoryFilter,
-  typeFilter,
-  setTypeFilter,
-  searchTerm,
-  setSearchTerm,
-  selectedTransactionId,
-  setSelectedTransactionId,
   balanceVisible,
   onToggleBalance,
   onOpenQuickRecord,
@@ -32,10 +23,10 @@ const DesktopFinanceDashboard = ({
     overview,
     viewModel,
     selectedAccountId,
-    categoryFilter,
-    typeFilter,
-    searchTerm,
-    selectedTransactionId,
+    categoryFilter: "all",
+    typeFilter: "all",
+    searchTerm: "",
+    selectedTransactionId: "",
   });
   const urgentAlerts = dashboardUrgentAlerts(model.alerts);
 
@@ -65,32 +56,13 @@ const DesktopFinanceDashboard = ({
 
       <DashboardQuickActions variant="desktop" />
 
-      <section className={dashboardClass("desktop-analysis-section")} aria-labelledby="desktop-analysis-title">
-        <div className={dashboardClass("desktop-analysis-section__heading")}>
-          <div>
-            <h2 id="desktop-analysis-title">Apa yang paling memengaruhi kondisi keuangan?</h2>
-          </div>
-        </div>
-        <div className={dashboardClass(`desktop-analysis-grid${investmentSummary ? "" : " desktop-analysis-grid--single"}`)}>
-          <StatisticsPanel overview={overview} model={model} balanceVisible={balanceVisible} />
+      <div className={dashboardClass("desktop-lower-grid")}>
+        <AccountTransactions model={model} balanceVisible={balanceVisible} />
+        <aside className={dashboardClass("desktop-side-widgets")} aria-label="Ringkasan tambahan">
+          <DashboardPlanning model={model} />
           <InvestmentWidget summary={investmentSummary} balanceVisible={balanceVisible} />
-        </div>
-      </section>
-
-      <AccountTransactions
-        model={model}
-        bootstrap={bootstrap}
-        categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
-        typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        setSelectedTransactionId={setSelectedTransactionId}
-        balanceVisible={balanceVisible}
-      />
-
-      <DashboardPlanning model={model} balanceVisible={balanceVisible} />
+        </aside>
+      </div>
     </div>
   );
 };

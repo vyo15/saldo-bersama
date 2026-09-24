@@ -128,6 +128,8 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(overview, /DesktopSettingsOverview/);
   assert.match(overview, /MobileSettingsOverview/);
   assert.match(overview, /MOBILE_SETTINGS_GROUPS/);
+  assert.match(overview, /item\.description \? <small>\{item\.description\}<\/small>/);
+  assert.match(settingsStyles, /\.settingsListCopy small \{[\s\S]*white-space:\s*nowrap;/);
   assert.match(overview, /import UserAvatar from "\.\.\/\.\.\/components\/common\/UserAvatar\.jsx"/);
   assert.match(overview, /<UserAvatar user=\{user\} className=\{styles\.settingsAccountAvatar\} \/>/);
   assert.match(overview, /settingsAccountStatus/);
@@ -286,6 +288,9 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
   assert.match(goals, /goalClass\("goal-action-menu"\)/);
   assert.match(goals, /FiMoreHorizontal/);
+  assert.match(goals, /Lihat rincian/);
+  assert.match(goals, /goal-card__details/);
+  assert.doesNotMatch(goals, /goal-card__monthly/);
   assert.match(reports, /const ReportsContent/);
   assert.match(reports, /allocation_rule_id/);
   assert.match(reports, /ReportDownloadMenu/);

@@ -62,11 +62,9 @@ export const DESKTOP_NAVIGATION = Object.freeze([
 export const MOBILE_PRIMARY_NAVIGATION = Object.freeze(pickNavigation("/", "/perencanaan", "/transaksi"));
 
 export const MOBILE_SECONDARY_GROUPS = Object.freeze([
-  freezeGroup({ id: "planning", label: "Rencana", items: pickNavigation("/target") }),
-  freezeGroup({ id: "insight", label: "Insight", items: pickNavigation("/laporan") }),
-  freezeGroup({ id: "financial-data", label: "Data keuangan", items: pickNavigation("/rekening", "/kategori") }),
-  freezeGroup({ id: "investment", label: "Investasi", items: pickNavigation("/investasi") }),
-  freezeGroup({ id: "people", label: "Akses", items: pickNavigation("/anggota", "/persetujuan") }),
+  freezeGroup({ id: "planning-insight", label: "Rencana & Insight", items: pickNavigation("/target", "/laporan") }),
+  freezeGroup({ id: "finance", label: "Keuangan", items: pickNavigation("/rekening", "/investasi", "/kategori") }),
+  freezeGroup({ id: "family-access", label: "Keluarga & Akses", items: pickNavigation("/anggota", "/persetujuan") }),
   freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/notifikasi", "/pengaturan") }),
 ]);
 

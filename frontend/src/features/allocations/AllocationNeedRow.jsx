@@ -65,13 +65,15 @@ const BudgetNeedOverflowMenu = ({ budget, schedule, blockedByLimit, canManage, o
 
 const BudgetLimitActions = ({ budget, schedule, status, canManage, onRecord, onOpenSchedule, onEdit, onOpenDetail }) => {
   const blockedByLimit = ["completed", "empty", "danger"].includes(status.key);
+  const depleted = status.key === "empty";
   const primarySchedule = blockedByLimit ? null : schedule;
   const primaryRecord = blockedByLimit ? null : onRecord;
   const hasPrimaryAction = Boolean(primarySchedule || primaryRecord);
   const hasOverflowAction = Boolean(onOpenDetail || canManage || (blockedByLimit && schedule));
-  if (!hasPrimaryAction && !hasOverflowAction) return null;
+  if (!hasPrimaryAction && !hasOverflowAction && !depleted) return null;
   return <div className={allocationClass(`allocation-limit-row__actions ${hasPrimaryAction ? "has-primary" : ""}`)}>
     <BudgetNeedPrimaryAction budget={budget} schedule={primarySchedule} onRecord={primaryRecord} onOpenSchedule={onOpenSchedule} />
+    {depleted ? <span className={allocationClass("allocation-limit-row__depleted-stamp")} aria-label="Dana habis">Habis</span> : null}
     <BudgetNeedOverflowMenu budget={budget} schedule={schedule} blockedByLimit={blockedByLimit} canManage={canManage} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} />
   </div>;
 };
@@ -82,12 +84,15 @@ const BudgetCompletedMeta = ({ amount }) => <span className={allocationClass("al
 
 const BudgetLimitUsage = ({ budget, status, schedule, amount, used, remaining }) => {
   const depleted = status.key === "empty";
+  if (depleted) return <div className={allocationClass("allocation-limit-row__content")}>
+    <p className={allocationClass("allocation-limit-row__depleted-meta")}><strong><Money value={used} /> sudah terpakai</strong><span>Tidak ada dana tersedia</span></p>
+  </div>;
   const usedPercent = Math.max(0, Math.round(status.usedPercent));
   return <div className={allocationClass("allocation-limit-row__content")}>
-    <p className={allocationClass("allocation-limit-row__balance")}><strong><Money value={remaining} /> <span>{depleted ? "tersedia" : "sisa"}</span></strong><span>dari <Money value={amount} /></span></p>
+    <p className={allocationClass("allocation-limit-row__balance")}><strong><Money value={remaining} /> <span>sisa</span></strong><span>dari <Money value={amount} /></span></p>
     <div className={allocationClass("allocation-limit-row__progress")}>
       <ProgressBar value={used} max={amount} tone={budgetProgressTone(status)} label={`Pemakaian ${budget.name} ${usedPercent}%`} />
-      {!depleted && schedule?.label ? <span className={allocationClass("allocation-limit-row__usage")}>{schedule.label}</span> : null}
+      {schedule?.label ? <span className={allocationClass("allocation-limit-row__usage")}>{schedule.label}</span> : null}
     </div>
   </div>;
 };
@@ -108,7 +113,7 @@ export const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canMana
       <span className={allocationClass("allocation-limit-row__icon")}><CategoryIcon aria-hidden="true" />{completed ? <i className={allocationClass("allocation-limit-row__icon-check")}><FiCheck aria-hidden="true" /></i> : null}</span>
       <div className={allocationClass(`allocation-limit-row__title ${completed ? "is-completed" : ""}`)}>
         <strong>{budget.name}</strong>
-        {completed ? <BudgetCompletedMeta amount={amount} /> : <span className={allocationClass(`allocation-limit-row__pattern ${status.attention ? tone : ""}`)}>{status.attention ? status.label : patternLabel}</span>}
+        {completed ? <BudgetCompletedMeta amount={amount} /> : <span className={allocationClass(`allocation-limit-row__pattern ${status.attention && !depleted ? tone : ""}`)}>{depleted ? patternLabel : status.attention ? status.label : patternLabel}</span>}
       </div>
       <BudgetLimitActions budget={budget} schedule={schedule} status={status} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} />
     </div>

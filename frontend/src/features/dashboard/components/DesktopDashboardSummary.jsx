@@ -1,4 +1,4 @@
-import { FiAlertCircle, FiEye, FiEyeOff, FiPlus, FiShield } from "react-icons/fi";
+import { FiAlertCircle, FiEye, FiEyeOff, FiPlus } from "react-icons/fi";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import { AccountIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
@@ -92,25 +92,6 @@ const AttentionTask = ({ alert }) => {
 };
 
 export const DashboardAttention = ({ alerts }) => {
-  if (!alerts.length) {
-    return (
-      <section className={dashboardClass("desktop-attention-card desktop-attention-card--clear shared-panel")} aria-label="Kondisi keuangan">
-        <div className={dashboardClass("desktop-attention-card__heading")}>
-          <div>
-            <span>Perlu dilakukan</span>
-            <strong>Kondisi keuangan terkendali</strong>
-          </div>
-          <span className={dashboardClass("desktop-attention-card__badge")}>0 tugas</span>
-        </div>
-        <div className={dashboardClass("desktop-attention-card__clear")}>
-          <FiShield aria-hidden="true" />
-          <p>Tidak ada tindakan mendesak.</p>
-        </div>
-        <Link to="/notifikasi" state={{ returnTo: "/" }}>Lihat notifikasi</Link>
-      </section>
-    );
-  }
-
   const visibleAlerts = alerts.slice(0, 3);
   return (
     <section className={dashboardClass("desktop-attention-card shared-panel")} aria-label="Perlu perhatian">
@@ -142,7 +123,7 @@ export const AccountSelector = ({ accountBalances, selectedAccount, onSelectAcco
     <div className={dashboardClass("shared-section-heading")}>
       <div>
         <p>Konteks transaksi</p>
-        <h2 id="dashboard-accounts-title">Rekening</h2>
+        <h2 id="dashboard-accounts-title">Rekening keluarga</h2>
       </div>
       <Link to="/rekening">Kelola</Link>
     </div>

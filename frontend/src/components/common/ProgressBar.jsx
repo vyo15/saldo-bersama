@@ -1,9 +1,15 @@
 import styles from "./ProgressBar.module.css";
 
-const ProgressBar = ({ value, max, label, tone = "default" }) => {
+const ProgressBar = ({ value, max = 100, label = "Progress", tone = "default", showValue = true, compact = false }) => {
   const percentage = max > 0 ? Math.min(100, Math.max(0, Math.round((value / max) * 100))) : 0;
   return (
-    <div className={`${styles.root} progress`} data-ui="progress" data-tone={tone}>
+    <div
+      className={`${styles.root} progress`}
+      data-ui="progress"
+      data-tone={tone}
+      data-compact={compact ? "true" : "false"}
+      data-show-value={showValue ? "true" : "false"}
+    >
       <progress
         className={styles.progress}
         max="100"
@@ -12,7 +18,7 @@ const ProgressBar = ({ value, max, label, tone = "default" }) => {
       >
         {percentage}%
       </progress>
-      <span className={styles.value} aria-hidden="true">{percentage}%</span>
+      {showValue ? <span className={styles.value} aria-hidden="true">{percentage}%</span> : null}
     </div>
   );
 };

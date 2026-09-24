@@ -681,8 +681,8 @@
 
 @media (max-width: 36.25rem) {
   .categoryGroupTitle h2 { font-size: var(--font-size-body-sm); }
-  .categoryList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .categoryItem { min-height: 56px; padding: 6px 3px 6px 7px; gap: 6px; }
+  .categoryList { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .categoryItem { min-height: 52px; padding: 4px 2px 4px 7px; gap: 7px; }
   .categoryName { font-size: var(--font-size-xs); }
   .categoryStatus { font-size: var(--font-size-xs); }
   .iconGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -692,7 +692,7 @@
 
 @media (max-width: 20rem) {
   .categoryPage { gap: 8px; }
-  .categoryList { gap: 6px; }
+  .categoryList { grid-template-columns: minmax(0, 1fr); gap: 5px; }
   .categoryItem { grid-template-columns: 30px minmax(0, 1fr) 44px; padding-inline-start: 6px; }
   .categoryIcon { width: 30px; height: 30px; }
 }

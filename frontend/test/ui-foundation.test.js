@@ -51,6 +51,9 @@ test("semantic primitives keep accessibility and avoid dynamic inline layout sty
   assert.match(moneyInput, /aria-describedby=\{describedBy\}/);
   assert.match(moneyInput, /inputMode="numeric"/);
   assert.match(progress, /<progress/);
+  assert.match(progress, /showValue = true/);
+  assert.match(progress, /compact = false/);
+  assert.match(progress, /data-show-value=\{showValue \? "true" : "false"\}/);
   assert.doesNotMatch(progress, /style=\{\{/);
 });
 
@@ -485,9 +488,10 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /dashboardOwnershipBreakdown\(overview\.familyBalanceBreakdown\)/);
   for (const label of ["Saya", "Pasangan", "Bersama", "Bisa digunakan", "Hanya dilihat", "Dipakai bersama"]) assert.match(presentation, new RegExp(label));
   assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
-  const order = ["<MobileFinanceHero", "<MobileNextAction", "<DashboardQuickActions", "<MobileUpcomingPlan", "<MobileTransactions", "<MobileInvestment"].map((marker) => mobile.indexOf(marker));
+  const order = ["<MobileFinanceHero", "<MobileNextAction", "<DashboardQuickActions", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile decision-first harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan hero saldo → perhatian → akses cepat → rencana terdekat → aktivitas → investasi.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan hero saldo → perhatian → akses cepat → aktivitas.");
+  assert.doesNotMatch(mobile, /MobileUpcomingPlan|Rencana terdekat|MobileInvestment|Total investasi tercatat/, "Beranda mobile tidak boleh menduplikasi domain Atur Dana atau Investasi yang sudah punya route khusus.");
   assert.doesNotMatch(mobile, /const MobileFinancialInsight\b|const MobileBudgetPlan\b|const MobileUpcomingSchedule\b/);
   assert.match(mobile, /Aman dipakai[\s\S]{0,180}\/ hari/);
   assert.doesNotMatch(mobile, /Masuk <strong>/);
@@ -581,12 +585,13 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.match(page, /const MobileTransactionDetail = lazy\(\(\) => import\("\.\/components\/MobileTransactionDetail\.jsx"\)\)/);
   assert.match(page, /mobileTransactionDetailOpen \? \(/);
   assert.match(desktop, /aria-label=\{balanceVisible \? "Sembunyikan seluruh nominal"/);
-  assert.match(desktop, /<h2 id="dashboard-accounts-title">Rekening<\/h2>/);
+  assert.match(desktop, /<h2 id="dashboard-accounts-title">Rekening keluarga<\/h2>/);
+  assert.match(desktop, /<AccountVisual account=\{cleanAccount\} carousel \/>/);
   assert.match(desktop, /accountTransactionDelta/);
   assert.match(desktop, /transaction\.transaction_type === "adjustment"/);
   assert.match(desktop, /other-categories/);
-  assert.match(desktop, /shared-transaction-table/);
-  assert.match(desktop, /shared-donut/);
+  assert.match(desktop, /desktop-activity-list/);
+  assert.doesNotMatch(desktop, /shared-transaction-table|shared-donut|dashboard-statistics-title/);
   assert.match(mobile, /type="button" className=\{dashboardClass\("mobile-transaction-item"\)\}/);
   assert.doesNotMatch(mobile, /mobile-dashboard-filter-button|onOpenFilters/);
   assert.match(mobile, /recentTransactions\.slice\(0, 3\)/);

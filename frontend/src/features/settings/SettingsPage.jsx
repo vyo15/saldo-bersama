@@ -18,6 +18,7 @@ const SettingsNavigationRow = ({ item, maintenanceMode }) => {
       <span className={styles.settingsListIcon}><Icon aria-hidden="true" /></span>
       <span className={styles.settingsListCopy}>
         <strong>{item.label}</strong>
+        {item.description ? <small>{item.description}</small> : null}
       </span>
       <span className={styles.settingsListMeta}>
         {maintenanceLabel ? <span className={styles.settingsListAlert}>{maintenanceLabel}</span> : null}

@@ -85,7 +85,7 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/reports/ReportsPage.module.css"),
   ]);
-  for (const label of ["Selisih bulan ini", "Masuk bulan ini", "Keluar bulan ini", "Kondisi Alokasi", "Penggunaan Alokasi", "Kebutuhan vs Pengeluaran", "Pengeluaran per kategori", "Transaksi terbaru", "Analisis lengkap", "Rincian lainnya"]) {
+  for (const label of ["Selisih bulan ini", "Masuk bulan ini", "Keluar bulan ini", "Saldo awal periode", "Kondisi Alokasi", "Penggunaan Alokasi", "Kebutuhan vs Pengeluaran", "Pengeluaran per kategori", "Transaksi terbaru", "Analisis lengkap", "Rincian lainnya"]) {
     assert.match(reports, new RegExp(label));
   }
   assert.match(reports, /allocation_rule_id/);
@@ -99,7 +99,9 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
   assert.doesNotMatch(reports, /FinancialAlertList|MobileSummaryAlerts|ReportAlerts|overview\?\.alerts/);
   assert.doesNotMatch(reports, /budgets\.upsert|budgets\.archive|transactions\.create/);
   assert.match(reportStyles, /@media \(max-width: 820px\)/);
-  assert.match(reportStyles, /\.summaryItem\.summaryPrimary/);
+  assert.doesNotMatch(reports, /SummaryStrip/);
+  assert.doesNotMatch(reportStyles, /\.summaryStrip|\.summaryItem/);
+  assert.match(reportStyles, /\.heroFacts/);
   assert.match(reportStyles, /\.allocationRow/);
   assert.match(reportStyles, /\.heroGrid/);
   assert.match(reportStyles, /\.reportPanel/);
@@ -299,7 +301,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.doesNotMatch(mobile, /mobile-finance-cash-strip/);
   assert.doesNotMatch(setupChecklist, /usableEnvelopes|sharedAccounts|planningStep/);
   assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);
-  assert.match(mobile, /Rencana terdekat/);
+  assert.doesNotMatch(mobile, /Rencana terdekat/);
   assert.doesNotMatch(mobile, /Rencana Bersama/);
   const quickActions = await source("src/features/dashboard/components/DashboardQuickActions.jsx");
   assert.match(quickActions, /\{ to: "\/rekening", label: "Rekening"/);
@@ -313,16 +315,16 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.doesNotMatch(mobile, /Keluar <strong>/);
   assert.doesNotMatch(mobile, /Jadwal Terdekat/);
   assert.match(mobile, /Aktivitas terbaru/);
-  assert.match(mobile, /Total investasi tercatat/);
+  assert.doesNotMatch(mobile, /Total investasi tercatat/);
   assert.match(desktop, /SensitiveMoney/);
-  assert.match(desktop, /Transaksi terbaru/);
+  assert.match(desktop, /Aktivitas rekening/);
   assert.match(desktop, /data-dashboard-account/);
-  assert.match(desktop, /<h2 id="dashboard-statistics-title">Pengeluaran<\/h2>/);
+  assert.doesNotMatch(desktop, /dashboard-statistics-title|Total pengeluaran bulan ini|StatisticsPanel/);
   assert.match(desktop, /Kebutuhan/);
-  assert.match(desktop, /Jadwal rutin/);
+  assert.match(desktop, /Jadwal mendatang/);
   assert.doesNotMatch(desktop, /Tagihan terdekat/);
-  assert.match(desktop, /dashboardNeedEmptyAction\(overview\)/);
-  assert.match(desktop, /Target tabungan/);
+  assert.doesNotMatch(desktop, /dashboardNeedEmptyAction\(overview\)/);
+  assert.match(desktop, /Target berjalan/);
   assert.match(desktop, /Perlu dilakukan/);
   assert.match(desktop, /to="\/notifikasi"[\s\S]{0,180}Lihat semua perhatian/);
   assert.doesNotMatch(desktop, /<FinancialAlertList|title="Perlu perhatian"/);
@@ -343,7 +345,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.doesNotMatch(mobile, /mobile-accounts-title|MobileAccounts|AccountVisual/);
   assert.doesNotMatch(mobile, /onOpenFilters|mobile-dashboard-filter-button|FiSliders/);
   assert.match(mobile, /recentTransactions\.slice\(0, 3\)/);
-  assert.match(mobile, /Sisa <SensitiveMoney/);
+  assert.match(mobile, /Sisa di Alokasi/);
   assert.doesNotMatch(mobile, /sudah dialokasikan/, "Hero harus fokus pada Saldo rekening; status alokasi tetap berada di bagian perencanaan.");
   assert.doesNotMatch(mobile, /allocationSummary/, "Beranda mobile tidak perlu menghitung ulang ringkasan alokasi untuk hero.");
   assert.match(mobile, /onOpenTransactionDetail/);
@@ -405,43 +407,15 @@ test("dashboard empty state menjaga satu aksi canonical dan mobile memakai quick
     source("src/features/goals/GoalsPage.jsx"),
     readDashboardStyleSource(),
   ]);
-  const presentation = await import("../src/features/dashboard/dashboardPresentation.js");
-
-  assert.deepEqual(presentation.dashboardNeedEmptyAction({
-    accountBalances: [{ account_id: "acc-1", can_transact: true }],
-    envelopes: [{ envelope_rule_id: "env-1", can_manage_needs: true }],
-  }), {
-    label: "Tambah kebutuhan",
-    description: "Atur rencana bulan ini",
-    to: "/perencanaan/kantong",
-    state: { workflowSource: "dashboard-empty-action", workflowAction: "add-need", envelopeRuleId: "env-1" },
-  });
-  assert.equal(presentation.dashboardNeedEmptyAction({
-    accountBalances: [{ account_id: "acc-1", can_transact: true }],
-    envelopes: [
-      { envelope_rule_id: "env-1", can_manage_needs: true },
-      { envelope_rule_id: "env-2", can_manage_needs: true },
-    ],
-  }).state.workflowAction, "choose-need-allocation");
-  assert.equal(presentation.dashboardNeedEmptyAction({ accountBalances: [{ account_id: "acc-1", can_transact: true }], envelopes: [] }).state.workflowAction, "create-allocation");
-  assert.equal(presentation.dashboardNeedEmptyAction({ accountBalances: [], envelopes: [] }).to, "/rekening");
-  assert.equal(presentation.dashboardRecurringEmptyAction({ accountBalances: [{ account_id: "acc-1", can_transact: true }] }).state.workflowAction, "create-recurring");
-  assert.equal(presentation.dashboardGoalEmptyAction({ accountBalances: [{ account_id: "acc-1", owner_scope: "shared", can_transact: true }] }).state.workflowAction, "create-goal");
-
-  assert.match(mobile, /const MobileEmptyAction/);
-  assert.match(mobile, /dashboardNeedEmptyAction\(overview\)/);
-  assert.match(mobile, /dashboardRecurringEmptyAction\(overview\)/);
+  assert.doesNotMatch(mobile, /const MobileEmptyAction|dashboardNeedEmptyAction\(overview\)|dashboardRecurringEmptyAction\(overview\)/);
   assert.match(mobile, /Belum ada aktivitas/);
   assert.match(mobile, /Gunakan tombol Catat di navigasi bawah/);
   assert.doesNotMatch(mobile, /onClick=\{onOpenTransaction\}/);
   assert.doesNotMatch(mobile, /mobile-compact-empty|Belum ada kebutuhan aktif|Belum ada jadwal mendatang|Belum ada aktivitas bulan ini/);
   assert.doesNotMatch(page, /<MobileFinanceDashboard[\s\S]*onOpenTransaction=\{openTransactionComposer\}/);
-  assert.match(desktop, /shared-widget-empty-action/);
-  assert.match(desktop, /dashboardGoalEmptyAction\(overview\)/);
+  assert.doesNotMatch(desktop, /shared-widget-empty-action|dashboardGoalEmptyAction\(overview\)/);
   assert.match(allocations, /"create-allocation", "add-need", "choose-need-allocation"/);
   assert.match(allocations, /setDetailAction\("add-need"\)/);
   assert.match(recurring, /workflowAction === "create-recurring"/);
   assert.match(goals, /workflowAction !== "create-goal"/);
-  assert.match(css, /\.mobile-empty-action \{[^}]*border:\s*1px dashed var\(--border-strong\)/s);
-  assert.match(css, /\.shared-widget-empty-action \{[^}]*border:\s*1px dashed var\(--border-strong\)/s);
 });

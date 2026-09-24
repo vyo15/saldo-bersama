@@ -70,3 +70,34 @@
 @media (min-width: 821px) {
   .header { display: none; }
 }
+
+/* Project-native notification layout: keep the shared AppShell and flatten the center into one focused reading column. */
+@media (min-width: 821px) {
+  .page {
+    max-width: 1080px;
+    margin-inline: auto;
+    display: grid;
+    gap: 0;
+  }
+
+  .filterBar {
+    margin-top: 14px;
+  }
+
+  .filters {
+    min-width: min(28rem, 100%);
+  }
+
+  .group {
+    margin-top: 14px;
+  }
+
+  .list {
+    box-shadow: none;
+  }
+
+  .row {
+    min-height: 82px;
+    padding-block: 14px;
+  }
+}

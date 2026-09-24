@@ -42,6 +42,10 @@
 - [ ] Detail Alokasi tidak memiliki section permanen `Kelola dana`; aksi administratif **Pindahkan dana / Pengingat / Hapus dari daftar** berada di menu overflow `•••`, sedangkan aksi transaksi/kebutuhan tetap berada dekat konteksnya.
 - [ ] Beranda mobile compact: **Saldo Keluarga** menjadi nominal utama, **Dana yang bisa kamu gunakan** tampil tepat di hero, panel **Saya / Pasangan / Bersama** tetap satu baris tiga kolom tanpa overflow, sementara Aman/hari dan Sisa di Alokasi tetap terlihat tanpa menambah card berlebihan.
 - [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
+- [ ] `Lainnya` hanya memakai empat kelompok canonical (Rencana & Insight, Keuangan, Keluarga & Akses, Aplikasi); owner-only tidak bocor ke Member.
+- [ ] Laporan tidak menggandakan KPI hero lewat summary strip kedua; Analisis lengkap tetap membuka planning/Kewajiban/rekening/pencatat.
+- [ ] Target card default tetap compact; rincian tanggal/estimasi/sumber dana dapat dibuka dari overflow dan target sentuh primary/overflow tetap ≥44px.
+- [ ] Pengaturan mobile menampilkan description singkat satu baris tanpa clipping label utama.
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
 - [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, tidak menghapus draft/form, dan node gesture hanya dirender pada viewport mobile (`<=820px`), bukan disembunyikan belakangan di desktop.
 - [ ] Reconnect/foreground/offline recovery tidak memicu duplicate mutation atau refresh ganda yang tidak perlu.
@@ -82,6 +86,8 @@
 - [ ] Aktivasi Notifikasi perangkat menjelaskan sebelum aksi bahwa satu notifikasi uji otomatis dikirim untuk verifikasi perangkat; permission tetap berasal dari user gesture.
 - [ ] Offline tidak mengizinkan financial write queue.
 - [ ] Responsive surface yang berubah diperiksa pada viewport/device target, bukan hanya CSS source.
+- [ ] Kategori pada ponsel kecil tidak memaksa dua kolom; nama panjang tetap terbaca dan overflow action tetap memiliki target minimal 44px.
+- [ ] Feature planning tidak membuat ulang progress primitive dan tidak menampilkan persentase ganda pada surface yang sama.
 
 ## 7. Data, operations, dan deployment
 

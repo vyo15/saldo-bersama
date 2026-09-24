@@ -10,6 +10,7 @@ import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
+import ProgressBar from "../../components/common/ProgressBar.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
@@ -40,9 +41,9 @@ const emptyForm = () => ({ commitment_type: "mortgage", name: "", provider: "", 
 const refreshKeys = ["commitments.list", "recurring.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState"];
 const typeLabel = (type) => TYPES.find((item) => item.value === type)?.label || "Kewajiban";
 
-const ProgressBar = ({ value, label, meta }) => <div className={styles.progressWrap}>
+const CommitmentProgress = ({ value, label, meta }) => <div className={styles.progressWrap}>
   {(label || meta) ? <div className={styles.progressMeta}><strong>{label}</strong><span>{meta}</span></div> : null}
-  <div className={styles.progress} aria-label={`Progress ${value}%`}><i style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>
+  <ProgressBar value={value} max={100} label={label || "Progress kewajiban"} showValue={false} compact />
 </div>;
 
 const installmentProgress = (item) => {
@@ -126,7 +127,7 @@ const CommitmentCard = ({ item, onEdit, onStop, compact = false, highlighted = f
     <div className={styles.cardIcon}>{completed ? <FiCheckCircle aria-hidden="true" /> : arisan ? <FiUsers aria-hidden="true" /> : <FiHome aria-hidden="true" />}</div>
     <div className={styles.cardTitle}><span>{typeLabel(item.commitment_type)}{item.provider ? ` · ${item.provider}` : ""}</span><h3>{item.name}</h3></div>
     <div className={styles.amountBlock}><span>{arisan ? "Sisa setoran" : "Sisa pokok"}</span><strong>{formatRupiah(item.current_balance || 0)}</strong><small>{completed ? "Lunas / selesai" : arisan ? `${balanceProgress}% selesai` : `${balanceProgress}% pokok lunas`}</small></div>
-    {showInstallmentProgress ? <ProgressBar value={completed ? 100 : installments.percent} label={completed ? `${installments.total} dari ${installments.total} cicilan` : `Cicilan berikutnya ke-${installments.next} dari ${installments.total}`} meta={completed ? "Selesai" : `${installments.paid} selesai · ${installments.remaining} tersisa`} /> : <ProgressBar value={completed ? 100 : balanceProgress} />}
+    {showInstallmentProgress ? <CommitmentProgress value={completed ? 100 : installments.percent} label={completed ? `${installments.total} dari ${installments.total} cicilan` : `Cicilan berikutnya ke-${installments.next} dari ${installments.total}`} meta={completed ? "Selesai" : `${installments.paid} selesai · ${installments.remaining} tersisa`} /> : <CommitmentProgress value={completed ? 100 : balanceProgress} />}
     {!compact ? <CommitmentMeta item={item} arisan={arisan} /> : null}
     {item.balance_needs_update ? <CompactNotice tone="info" title="Sisa pokok belum pasti">Pembayaran sebelumnya belum memiliki rincian pokok. Periksa kembali sebelum pembayaran berikutnya.</CompactNotice> : null}
     <CommitmentActions item={item} onEdit={onEdit} onStop={onStop} />
@@ -167,7 +168,7 @@ const MortgageProgressFields = ({ form, setForm, editing }) => {
       <span>Progress cicilan</span>
       <strong>{total ? `Cicilan berikutnya ke-${editing ? Math.min(total, paid + 1) : next} dari ${total}` : "Isi posisi cicilan"}</strong>
       <small>{total ? `${normalizedPaid} selesai · ${remaining} tersisa` : "Masukkan cicilan berikutnya dan total tenor."}</small>
-      <div className={styles.progress}><i style={{ width: `${percent}%` }} /></div>
+      <ProgressBar value={percent} max={100} label="Progress cicilan" showValue={false} compact />
     </div>
     <div className={styles.mortgageProgressInputs}>
       {!editing ? <input aria-label="Cicilan berikutnya" type="number" min="1" inputMode="numeric" value={form.next_installment || ""} onChange={(event) => updateNext(event.target.value)} placeholder="9" /> : <span>{Math.min(total || paid + 1, paid + 1)}</span>}
