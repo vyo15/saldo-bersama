@@ -147,8 +147,56 @@
   }
 }
 
+.emptyInvestmentExperience {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(18rem, .8fr) minmax(26rem, 1.2fr);
+  align-items: stretch;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.emptyInvestmentHero {
+  position: relative;
+  min-width: 0;
+  min-height: 29rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: calc(var(--radius-lg) + var(--space-1));
+  background:
+    radial-gradient(circle at 50% 36%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-strong) 72%, var(--surface)), var(--surface));
+  isolation: isolate;
+}
+
+.emptyInvestmentGlow {
+  position: absolute;
+  inset: 18% 10% 5%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 18%, transparent), transparent 68%);
+  filter: blur(1.6rem);
+}
+
+.emptyInvestmentArtwork {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 0;
+  width: min(118%, 39rem);
+  max-width: none;
+  height: auto;
+  transform: translateX(-50%);
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 1rem 1.7rem color-mix(in srgb, var(--text) 15%, transparent));
+  pointer-events: none;
+  user-select: none;
+}
+
 .firstInvestment {
   display: grid;
+  align-content: center;
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border));
@@ -292,15 +340,85 @@
   justify-self: start;
 }
 
+@media (max-width: 900px) {
+  .emptyInvestmentExperience {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .emptyInvestmentHero {
+    z-index: 1;
+    min-height: clamp(13.5rem, 48vw, 17rem);
+    margin: 0;
+    border: 0;
+    border-radius: calc(var(--radius-lg) + var(--space-1));
+    background:
+      radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 60%),
+      linear-gradient(180deg, color-mix(in srgb, var(--surface-soft) 38%, transparent), transparent);
+  }
+
+  .emptyInvestmentArtwork {
+    top: .35rem;
+    bottom: auto;
+    width: min(104%, 34rem);
+    filter: drop-shadow(0 .65rem 1rem color-mix(in srgb, var(--text) 12%, transparent));
+  }
+
+  .emptyInvestmentGlow {
+    inset: 18% 12% 8%;
+    filter: blur(1.25rem);
+  }
+
+  .firstInvestment {
+    position: relative;
+    z-index: 2;
+  }
+}
+
 @media (max-width: 620px) {
+  .emptyInvestmentHero {
+    min-height: clamp(12.5rem, 58vw, 14.5rem);
+  }
+
+  .emptyInvestmentArtwork {
+    top: .25rem;
+    width: min(100%, 28rem);
+  }
+
   .firstInvestment { padding: var(--space-3); }
+  .firstInvestmentIntro { gap: var(--space-2); }
+  .firstInvestmentVisual { width: 3rem; height: 3rem; padding-bottom: .65rem; }
+  .firstInvestmentChips { gap: .4rem; }
+  .firstInvestmentChips span { padding-inline: .5rem; }
   .firstInvestmentSetup { padding: var(--space-3) 0 0; }
   .firstInvestmentPaths { grid-template-columns: 1fr; }
   .firstInvestmentSetup :global(.button) { width: 100%; }
+}
+
+@media (max-width: 390px) {
+  .emptyInvestmentHero {
+    min-height: clamp(12rem, 57vw, 13.25rem);
+  }
+
+  .emptyInvestmentArtwork {
+    width: 100%;
+  }
 }
 
 @media (max-width: 820px) {
   .segment { padding: 3px; box-shadow: none; }
   .segment .segmentActive { box-shadow: none; }
   .firstInvestment { box-shadow: none; }
+}
+
+:global(:root[data-theme="dark"]) .emptyInvestmentHero {
+  background:
+    radial-gradient(circle at 50% 36%, color-mix(in srgb, var(--primary) 19%, transparent), transparent 46%),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-strong) 86%, var(--surface)), var(--surface));
+}
+
+@media (max-width: 900px) {
+  :global(:root[data-theme="dark"]) .emptyInvestmentHero {
+    background: radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 60%);
+  }
 }

@@ -9,6 +9,7 @@ import {
   FiUser,
   FiUsers,
 } from "react-icons/fi";
+import { useLayoutEffect, useRef } from "react";
 import { Link } from "react-router";
 import familyHero from "../../../assets/dashboard/family-hero.webp";
 import foliageLeft from "../../../assets/dashboard/foliage-left.webp";
@@ -18,6 +19,7 @@ import { financialAlertGuidance } from "../../../shared/workflows/financialAlert
 import { financialNotificationFact, financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
 import { dashboardOwnershipBreakdown, dashboardSyncLabel, dashboardUrgentAlerts } from "../dashboardPresentation.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
+import { prefersReducedMotion, semanticMotionDurationMs, semanticMotionEasing } from "../../../shared/motion.js";
 import DashboardQuickActions from "./DashboardQuickActions.jsx";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
@@ -120,7 +122,7 @@ const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, 
   const title = item.description || item.merchant || category?.name || "Transaksi";
   const sign = balanceVisible ? transactionSign(item.transaction_type) : "";
   const contextLabel = category?.name || transactionAccountLabel(item);
-  return <button type="button" className={dashboardClass("mobile-transaction-item")} onClick={() => onOpenTransactionDetail(item.transaction_id)} aria-label={`Buka detail ${title}`}>
+  return <button type="button" data-native-enter data-transaction-id={item.transaction_id} className={dashboardClass("mobile-transaction-item")} onClick={() => onOpenTransactionDetail(item.transaction_id)} aria-label={`Buka detail ${title}`}>
     <span className={dashboardClass(`mobile-transaction-icon mobile-transaction-icon--${item.transaction_type || "default"}`)}><Icon aria-hidden="true" /></span>
     <span className={dashboardClass("mobile-transaction-copy")}><strong>{title}</strong><small>{formatTransactionDate(item.transaction_date)} · {contextLabel} · dicatat {transactionCreatorLabel(item)}</small></span>
     <span className={dashboardClass(`mobile-transaction-amount money--${transactionTone(item.transaction_type)}`)}>{sign}{sign ? " " : ""}<SensitiveMoney visible={balanceVisible} value={item.amount} tone={transactionTone(item.transaction_type)} /></span>
@@ -128,12 +130,41 @@ const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, 
   </button>;
 };
 
-const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel, balanceVisible, onOpenTransactionDetail }) => (
-  <section className={dashboardClass("mobile-finance-section mobile-reference-panel mobile-activity-section")} aria-labelledby="recent-transactions-title">
-    <div className={dashboardClass("mobile-section-heading mobile-reference-panel__heading")}><h2 id="recent-transactions-title">Aktivitas terbaru</h2>{recentTransactions.length ? <Link to="/transaksi">Lihat semua</Link> : null}</div>
-    {recentTransactions.length ? <div className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <div className={dashboardClass("mobile-empty-guidance")}><span className={dashboardClass("mobile-empty-guidance__icon")}><FiPlus aria-hidden="true" /></span><span><strong>Belum ada aktivitas</strong><small>Gunakan tombol Catat di navigasi bawah untuk mencatat aktivitas pertama.</small></span></div>}
-  </section>
-);
+const MobileTransactions = ({ recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel, balanceVisible, onOpenTransactionDetail }) => {
+  const listRef = useRef(null);
+  const positionsRef = useRef(new Map());
+
+  useLayoutEffect(() => {
+    const container = listRef.current;
+    if (!container) { positionsRef.current = new Map(); return; }
+    const rows = [...container.querySelectorAll("[data-transaction-id]")];
+    const nextPositions = new Map(rows.map((row) => [row.dataset.transactionId, row.offsetTop]));
+
+    if (!prefersReducedMotion()) {
+      const duration = semanticMotionDurationMs("emphasized");
+      rows.forEach((row) => {
+        const previousTop = positionsRef.current.get(row.dataset.transactionId);
+        const currentTop = nextPositions.get(row.dataset.transactionId);
+        if (!Number.isFinite(previousTop) || !Number.isFinite(currentTop)) return;
+        const delta = previousTop - currentTop;
+        if (Math.abs(delta) < 1) return;
+        row.animate?.([
+          { transform: `translateY(${delta}px)` },
+          { transform: "translateY(0)" },
+        ], { duration, easing: semanticMotionEasing("enter") });
+      });
+    }
+
+    positionsRef.current = nextPositions;
+  }, [recentTransactions]);
+
+  return (
+    <section className={dashboardClass("mobile-finance-section mobile-reference-panel mobile-activity-section")} aria-labelledby="recent-transactions-title">
+      <div className={dashboardClass("mobile-section-heading mobile-reference-panel__heading")}><h2 id="recent-transactions-title">Aktivitas terbaru</h2>{recentTransactions.length ? <Link to="/transaksi">Lihat semua</Link> : null}</div>
+      {recentTransactions.length ? <div ref={listRef} className={dashboardClass("mobile-transaction-list")}>{recentTransactions.slice(0, 3).map((item) => <MobileTransactionItem key={item.transaction_id} item={item} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />)}</div> : <div className={dashboardClass("mobile-empty-guidance")}><span className={dashboardClass("mobile-empty-guidance__icon")}><FiPlus aria-hidden="true" /></span><span><strong>Belum ada aktivitas</strong><small>Gunakan tombol Catat di navigasi bawah untuk mencatat aktivitas pertama.</small></span></div>}
+    </section>
+  );
+};
 
 const MobileFinanceDashboard = ({ overview, viewModel, user, displayName, balanceVisible, onToggleBalance, onOpenTransactionDetail, setupContent }) => {
   const { recentTransactions, categoryLookup, transactionAccountLabel, transactionCreatorLabel } = viewModel;

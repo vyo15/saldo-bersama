@@ -9,8 +9,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = (relative) => readFile(path.join(root, relative), "utf8");
 
 test("notification center menggabungkan alert aktif dan event queue actor tanpa membuat mutation authority baru", async () => {
-  const [page, state, presentation, app] = await Promise.all([
+  const [page, row, state, presentation, app] = await Promise.all([
     source("src/features/notifications/NotificationsPage.jsx"),
+    source("src/features/notifications/NotificationRow.jsx"),
     source("src/shared/workflows/financialNotifications.js"),
     source("src/shared/workflows/financialAlerts.js"),
     source("src/app/App.jsx"),
@@ -23,8 +24,8 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
   assert.match(page, /financialAlertGuidance\(guidanceAlert, \{ source: "notification-center" \}\)/);
   assert.doesNotMatch(page, /notificationSource/);
   assert.match(page, /aria-label="Tandai semua dibaca"/);
-  assert.match(page, /financialNotificationEntity/);
-  assert.match(page, /financialNotificationFact/);
+  assert.match(row, /financialNotificationEntity/);
+  assert.match(row, /financialNotificationFact/);
   assert.doesNotMatch(page, /<p className=\{styles\.note\}/);
   assert.doesNotMatch(state, /localStorage|READ_TTL_MS|STORAGE_PREFIX|READ_STATE_EVENT/);
   assert.match(state, /readStates/);
@@ -32,6 +33,15 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
   assert.match(state, /markNotificationsRead/);
   assert.match(state, /remoteRead/);
   assert.match(state, /optimisticRead/);
+  assert.match(state, /notificationDismissIdentity/);
+  assert.match(state, /remoteDismissed/);
+  assert.match(state, /optimisticDismissed/);
+  assert.match(state, /dismiss/);
+  assert.match(row, /Geser ke kanan untuk bersihkan/);
+  assert.match(row, /FAST_SWIPE_VELOCITY_PX_MS/);
+  assert.match(row, /onPointerMove/);
+  assert.match(row, /aria-keyshortcuts="Delete"/);
+  assert.match(page, /notifications\.dismiss\(alert\)/);
   assert.match(presentation, /attentionSource: source/);
   assert.doesNotMatch(page, /notification_queue|createTransaction|adjustment|updateBalance/);
   assert.match(state, /mergeNotificationCenterItems/);
@@ -124,6 +134,18 @@ test("notification center menempatkan event bertimestamp paling baru di atas tan
 });
 
 
+test("dismiss notifikasi memakai fingerprint yang sama tetapi namespace terpisah agar kemunculan baru dapat muncul lagi", async () => {
+  const { notificationReadIdentity, notificationDismissIdentity } = await import("../src/shared/workflows/financialNotifications.js");
+  const alert = { id: "budget:abc:100", type: "budget_threshold", period: "2026-09" };
+  const read = notificationReadIdentity(alert);
+  const dismissed = notificationDismissIdentity(alert);
+  assert.equal(dismissed.fingerprint, read.fingerprint);
+  assert.equal(dismissed.key, `dismiss:${read.key}`);
+  const next = notificationDismissIdentity({ ...alert, period: "2026-10" });
+  assert.notEqual(next.fingerprint, dismissed.fingerprint);
+});
+
+
 test("notification center dan rekonsiliasi menjaga target sentuh mobile canonical", async () => {
   const [notificationsCss, reconciliationCss, contextBackCss] = await Promise.all([
     source("src/features/notifications/NotificationsPage.module.css"),
@@ -137,6 +159,10 @@ test("notification center dan rekonsiliasi menjaga target sentuh mobile canonica
   assert.match(notificationsCss, /\.row\[data-read="false"\][^}]*box-shadow:\s*inset 3px 0 0 var\(--primary\)/s);
   assert.match(notificationsCss, /\.row\[data-read="true"\] \.copy strong/);
   assert.match(notificationsCss, /\.unreadDot\s*\{/);
+  assert.match(notificationsCss, /\.swipeAction\s*\{/);
+  assert.match(notificationsCss, /--notification-swipe-x/);
+  assert.match(notificationsCss, /touch-action:\s*pan-y pinch-zoom/);
+  assert.match(notificationsCss, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(notificationsCss, /@media \(max-width: 820px\)[\s\S]*\.header \{[^}]*display:\s*grid;/s);
   assert.match(notificationsCss, /\.readAll \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);/s);
   assert.match(reconciliationCss, /@media \(max-width: 820px\)[\s\S]*\.notesToggle \{ min-height:\s*var\(--mobile-control-height\); \}/s);

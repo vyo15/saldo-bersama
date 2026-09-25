@@ -13,6 +13,7 @@ const MobileNavigation = ({ onQuickAdd, onMore, moreOpen = false, quickAddDisabl
   const location = useLocation();
   const activeArea = mobileNavigationArea(location.pathname);
   const moreActive = moreOpen || activeArea === "more";
+  const activeSlot = moreActive ? 4 : activeArea === "home" ? 0 : activeArea === "planning" ? 1 : activeArea === "transactions" ? 3 : null;
   const primaryLinks = MOBILE_PRIMARY_NAVIGATION.map((item) => ({ ...item, area: areaForPrimaryPath(item.to) }));
 
   const renderPrimaryLink = ({ to, label, icon: Icon, end, area }) => (
@@ -28,7 +29,7 @@ const MobileNavigation = ({ onQuickAdd, onMore, moreOpen = false, quickAddDisabl
   );
 
   return (
-    <nav className="mobile-navigation" aria-label="Navigasi mobile">
+    <nav className="mobile-navigation" aria-label="Navigasi mobile" data-active-slot={activeSlot ?? undefined}>
       {primaryLinks.slice(0, 2).map(renderPrimaryLink)}
       <button type="button" className="mobile-navigation__add" data-preload-action="transaction" onClick={onQuickAdd} aria-label="Catat aktivitas" title="Catat aktivitas" disabled={quickAddDisabled}><FiPlus aria-hidden="true" /></button>
       {primaryLinks.slice(2).map(renderPrimaryLink)}

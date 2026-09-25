@@ -427,6 +427,7 @@
 .app-shell,
 .desktop-app-header,
 .app-content { transition: background-color var(--motion-feedback) var(--ease-standard), border-color var(--motion-feedback) var(--ease-standard), color var(--motion-feedback) var(--ease-standard); }
+.app-shell { transition: background-color var(--motion-feedback) var(--ease-standard), border-color var(--motion-feedback) var(--ease-standard), color var(--motion-feedback) var(--ease-standard), transform var(--motion-sheet) var(--ease-enter); transform-origin: center top; }
 
 /* Sync state and shell actions */
 .sync-indicator {

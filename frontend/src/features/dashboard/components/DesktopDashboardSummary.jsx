@@ -70,8 +70,10 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible, onToggleBalanc
         </div>
 
         <div className={dashboardClass("desktop-family-hero__art")} aria-hidden="true">
-          <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--left")} src={foliageLeft} width="900" height="675" decoding="async" alt="" />
-          <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--right")} src={foliageRight} width="900" height="675" decoding="async" alt="" />
+          <div className={dashboardClass("desktop-family-hero__foliage-frame")}>
+            <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--left")} src={foliageLeft} width="900" height="675" decoding="async" alt="" />
+            <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--right")} src={foliageRight} width="900" height="675" decoding="async" alt="" />
+          </div>
           <img className={dashboardClass("desktop-family-hero__people")} src={familyHero} width="980" height="735" decoding="async" alt="" />
         </div>
       </section>

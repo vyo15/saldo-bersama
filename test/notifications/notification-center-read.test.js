@@ -67,7 +67,12 @@ test("status baca notifikasi tersimpan server-side per actor dan fingerprint bar
       actor: { user_id: "reader-a" },
       payload: { items: [{ key: "budget:abc:90", fingerprint: "v1:budget_threshold:budget:abc:90" }] },
     });
-    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM notification_read_states WHERE user_id=?", ["reader-a"])).count), 2);
+    await markNotificationRead(db, {
+      actor: { user_id: "reader-a" },
+      payload: { items: [{ key: "dismiss:budget:abc:90", fingerprint: "v1:budget_threshold:budget:abc:90" }] },
+    });
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM notification_read_states WHERE user_id=?", ["reader-a"])).count), 3);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM notification_read_states WHERE user_id=? AND notification_key LIKE 'dismiss:%'", ["reader-a"])).count), 1);
     assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM notification_read_states WHERE user_id=?", ["reader-b"])).count), 0);
   } finally { db.close(); }
 });

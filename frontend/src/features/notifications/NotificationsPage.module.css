@@ -4,6 +4,7 @@
 .contextBack { margin-inline-start: -6px; }
 .readAll { color: var(--primary); }
 .readAll:focus-visible, .filter:focus-visible, .row:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.row:focus-visible { outline-offset: -3px; }
 @media (hover: hover) and (pointer: fine) { .readAll:hover:not(:disabled) { background: var(--surface-soft); } }
 .readAll:active:not(:disabled) { background: var(--surface-strong); }
 .readAll svg { width: 20px; height: 20px; }
@@ -22,9 +23,16 @@
 .group { margin-top: var(--space-5); }
 .group h2 { margin: 0 4px var(--space-2); color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .06em; text-transform: uppercase; }
 .list { overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-sm); }
-.row { position: relative; width: 100%; min-height: 88px; padding: 16px 18px; border: 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 40px minmax(0, 1fr) 32px; align-items: center; gap: 14px; color: var(--text); background: transparent; text-align: left; cursor: pointer; }
-.row:last-child { border-bottom: 0; }
-.row[data-read="false"] { background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 10%, transparent), transparent 78%); box-shadow: inset 3px 0 0 var(--primary); }
+.swipeCollapse { min-height: 0; display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows var(--motion-standard) var(--ease-exit), opacity var(--motion-fast) var(--ease-exit); }
+.swipeCollapse[data-collapsing="true"] { grid-template-rows: 0fr; opacity: 0; }
+.swipeItem { min-height: 0; position: relative; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--surface); }
+.swipeCollapse:last-child .swipeItem { border-bottom: 0; }
+.swipeAction { position: absolute; inset: 0; padding-inline: 18px; display: flex; align-items: center; gap: 8px; color: var(--on-primary); background: linear-gradient(90deg, var(--primary-strong), var(--primary)); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .01em; }
+.swipeAction svg { width: 19px; height: 19px; flex: 0 0 auto; }
+.row { --notification-swipe-x: 0px; position: relative; z-index: 1; width: 100%; min-height: 88px; padding: 16px 18px; border: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr) 32px; align-items: center; gap: 14px; color: var(--text); background: var(--surface); text-align: left; cursor: pointer; transform: translate3d(var(--notification-swipe-x), 0, 0); transition: transform var(--motion-standard) var(--ease-enter), opacity var(--motion-fast) var(--ease-exit), background-color var(--motion-fast) var(--ease-standard); will-change: transform; }
+.row[data-dragging="true"] { transition: none; }
+.row[data-clearing="true"] { opacity: .2; pointer-events: none; }
+.row[data-read="false"] { background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 10%, var(--surface)), var(--surface) 78%); box-shadow: inset 3px 0 0 var(--primary); }
 .row[data-read="true"] { color: var(--text-soft); }
 .row[data-read="true"] .icon { opacity: .68; filter: saturate(.72); }
 .row[data-read="true"] .copy strong { color: var(--text-soft); font-weight: var(--font-weight-semibold); }
@@ -60,15 +68,23 @@
   .group { margin-top: 8px; }
   .group h2 { margin-bottom: 8px; }
   .list { border-width: 1px 0; border-radius: 0; box-shadow: none; background: transparent; }
-  .row { min-height: 82px; padding: 13px 2px; grid-template-columns: 42px minmax(0, 1fr) 24px; gap: 11px; }
+  .swipeItem { touch-action: pan-y pinch-zoom; }
+  .swipeAction { padding-inline: 14px; }
+  .row { min-height: 82px; padding: 13px 2px; grid-template-columns: 42px minmax(0, 1fr) 24px; gap: 11px; touch-action: pan-y pinch-zoom; }
   .row[data-read="false"] { box-shadow: inset 3px 0 0 var(--primary); }
   .icon { width: 40px; height: 40px; }
   .copy strong { font-size: 14px; }
   .empty { min-height: calc(100dvh - var(--mobile-navigation-height) - 132px); padding-top: 70px; }
 }
 
+
+@media (prefers-reduced-motion: reduce) {
+  .swipeCollapse, .row { transition: none; }
+}
+
 @media (min-width: 821px) {
   .header { display: none; }
+  .swipeAction { display: none; }
 }
 
 /* Project-native notification layout: keep the shared AppShell and flatten the center into one focused reading column. */

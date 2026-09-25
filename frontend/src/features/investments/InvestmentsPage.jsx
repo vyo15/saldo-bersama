@@ -11,6 +11,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { readInvestmentContinuation } from "../../shared/workflows/investmentContinuation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import investmentEmptyDuo from "../../assets/investments/investment-empty-duo.webp";
 import styles from "./InvestmentsPage.module.css";
 
 const InvestmentOverview = lazy(() => import("./InvestmentOverview.jsx"));
@@ -77,20 +78,33 @@ const InvestmentOverlays = ({ page }) => {
   </Suspense>;
 };
 
-const EmptyInvestmentState = ({ onAdd }) => <section className={styles.firstInvestment} aria-labelledby="investment-first-title">
-  <div className={styles.firstInvestmentIntro}>
-    <div className={styles.firstInvestmentVisual} aria-hidden="true"><span /><span /><span /></div>
-    <div>
-      <h2 id="investment-first-title">Mulai catat aset investasi</h2>
-      <p>Tambahkan saham atau reksa dana yang sudah Anda miliki. Catat aset langsung tanpa setup tambahan.</p>
-    </div>
+const EmptyInvestmentState = ({ onAdd }) => <section className={styles.emptyInvestmentExperience} aria-labelledby="investment-first-title">
+  <div className={styles.emptyInvestmentHero} aria-hidden="true">
+    <span className={styles.emptyInvestmentGlow} />
+    <img
+      className={styles.emptyInvestmentArtwork}
+      src={investmentEmptyDuo}
+      width="820"
+      height="658"
+      decoding="async"
+      alt=""
+    />
   </div>
-  <div className={styles.firstInvestmentChips} aria-label="Yang dapat dicatat"><span>Saham LQ45</span><span>Reksa Dana</span><span>Nilai & aktivitas</span></div>
-  <div className={styles.firstInvestmentSetup}>
-    <span className={styles.firstInvestmentEyebrow}>Langkah pertama</span>
-    <h3>Pilih aset lalu masukkan posisi</h3>
-    <p>Catat jumlah, harga rata-rata/modal, nilai saat ini, dan tanggal. Semua hanya pencatatan manual; aplikasi tidak mengirim order atau memindahkan saldo rekening.</p>
-    <Button variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={onAdd}>Tambah investasi</Button>
+  <div className={styles.firstInvestment}>
+    <div className={styles.firstInvestmentIntro}>
+      <div className={styles.firstInvestmentVisual} aria-hidden="true"><span /><span /><span /></div>
+      <div>
+        <h2 id="investment-first-title">Mulai catat aset investasi</h2>
+        <p>Tambahkan saham atau reksa dana yang sudah Anda miliki. Catat aset langsung tanpa setup tambahan.</p>
+      </div>
+    </div>
+    <div className={styles.firstInvestmentChips} aria-label="Yang dapat dicatat"><span>Saham LQ45</span><span>Reksa Dana</span></div>
+    <div className={styles.firstInvestmentSetup}>
+      <span className={styles.firstInvestmentEyebrow}>Belum ada investasi</span>
+      <h3>Mulai dari aset pertama Anda</h3>
+      <p>Catat posisi yang sudah dimiliki, lalu pantau nilai dan aktivitasnya dari satu tempat.</p>
+      <Button variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={onAdd}>Tambah investasi</Button>
+    </div>
   </div>
 </section>;
 

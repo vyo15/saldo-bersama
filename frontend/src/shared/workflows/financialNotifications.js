@@ -145,14 +145,27 @@ export const notificationReadIdentity = (alert = {}) => {
   return { key, fingerprint };
 };
 
+export const notificationDismissIdentity = (alert = {}) => {
+  const readIdentity = notificationReadIdentity(alert);
+  return {
+    key: `dismiss:${readIdentity.key}`.slice(0, 200),
+    fingerprint: readIdentity.fingerprint,
+  };
+};
+
 const identityToken = ({ key, fingerprint }) => `${key}\u0000${fingerprint}`;
 
 export const useFinancialNotificationReadState = ({ alerts = [], readStates = [] }) => {
   const [optimisticRead, setOptimisticRead] = useState(() => new Set());
-  const activeAlerts = useMemo(() => Array.isArray(alerts) ? alerts.filter((alert) => alert?.id) : [], [alerts]);
-  const remoteRead = useMemo(() => new Set((Array.isArray(readStates) ? readStates : [])
-    .filter((item) => item?.key && item?.fingerprint)
-    .map((item) => identityToken(item))), [readStates]);
+  const [optimisticDismissed, setOptimisticDismissed] = useState(() => new Set());
+  const allAlerts = useMemo(() => Array.isArray(alerts) ? alerts.filter((alert) => alert?.id) : [], [alerts]);
+  const normalizedReadStates = useMemo(() => Array.isArray(readStates) ? readStates.filter((item) => item?.key && item?.fingerprint) : [], [readStates]);
+  const remoteRead = useMemo(() => new Set(normalizedReadStates
+    .filter((item) => !String(item.key).startsWith("dismiss:"))
+    .map((item) => identityToken(item))), [normalizedReadStates]);
+  const remoteDismissed = useMemo(() => new Set(normalizedReadStates
+    .filter((item) => String(item.key).startsWith("dismiss:"))
+    .map((item) => identityToken(item))), [normalizedReadStates]);
 
   useEffect(() => {
     setOptimisticRead((current) => {
@@ -161,40 +174,66 @@ export const useFinancialNotificationReadState = ({ alerts = [], readStates = []
     });
   }, [remoteRead]);
 
+  useEffect(() => {
+    setOptimisticDismissed((current) => {
+      const next = new Set([...current].filter((token) => !remoteDismissed.has(token)));
+      return next.size === current.size ? current : next;
+    });
+  }, [remoteDismissed]);
+
+  const isDismissed = useCallback((alertOrId) => {
+    const alert = typeof alertOrId === "string" ? allAlerts.find((item) => item.id === alertOrId) : alertOrId;
+    if (!alert) return false;
+    const token = identityToken(notificationDismissIdentity(alert));
+    return remoteDismissed.has(token) || optimisticDismissed.has(token);
+  }, [allAlerts, optimisticDismissed, remoteDismissed]);
+
+  const activeAlerts = useMemo(() => allAlerts.filter((alert) => !isDismissed(alert)), [allAlerts, isDismissed]);
+
   const isRead = useCallback((alertOrId) => {
-    const alert = typeof alertOrId === "string" ? activeAlerts.find((item) => item.id === alertOrId) : alertOrId;
+    const alert = typeof alertOrId === "string" ? allAlerts.find((item) => item.id === alertOrId) : alertOrId;
     if (!alert) return false;
     const token = identityToken(notificationReadIdentity(alert));
     return remoteRead.has(token) || optimisticRead.has(token);
-  }, [activeAlerts, optimisticRead, remoteRead]);
+  }, [allAlerts, optimisticRead, remoteRead]);
 
   const unreadCount = useMemo(() => activeAlerts.filter((alert) => !isRead(alert)).length, [activeAlerts, isRead]);
 
-  const persistRead = useCallback(async (selected) => {
-    const identities = selected.map(notificationReadIdentity).filter((item) => item.key && item.fingerprint);
+  const persistState = useCallback(async ({ selected, identityFor, setOptimistic, remoteState }) => {
+    const identities = selected.map(identityFor).filter((item) => item.key && item.fingerprint);
     if (!identities.length) return;
     const tokens = identities.map(identityToken);
-    setOptimisticRead((current) => new Set([...current, ...tokens]));
+    setOptimistic((current) => new Set([...current, ...tokens]));
     try {
       for (let index = 0; index < identities.length; index += 100) {
         await markNotificationsRead(identities.slice(index, index + 100));
       }
     } catch (error) {
-      setOptimisticRead((current) => {
+      setOptimistic((current) => {
         const next = new Set(current);
-        for (const token of tokens) if (!remoteRead.has(token)) next.delete(token);
+        for (const token of tokens) if (!remoteState.has(token)) next.delete(token);
         return next;
       });
       throw error;
     }
-  }, [remoteRead]);
+  }, []);
 
   const markRead = useCallback((alertOrId) => {
-    const alert = typeof alertOrId === "string" ? activeAlerts.find((item) => item.id === alertOrId) : alertOrId;
-    return alert ? persistRead([alert]) : Promise.resolve();
-  }, [activeAlerts, persistRead]);
+    const alert = typeof alertOrId === "string" ? allAlerts.find((item) => item.id === alertOrId) : alertOrId;
+    return alert ? persistState({ selected: [alert], identityFor: notificationReadIdentity, setOptimistic: setOptimisticRead, remoteState: remoteRead }) : Promise.resolve();
+  }, [allAlerts, persistState, remoteRead]);
 
-  const markAllRead = useCallback(() => persistRead(activeAlerts), [activeAlerts, persistRead]);
+  const markAllRead = useCallback(() => persistState({
+    selected: activeAlerts,
+    identityFor: notificationReadIdentity,
+    setOptimistic: setOptimisticRead,
+    remoteState: remoteRead,
+  }), [activeAlerts, persistState, remoteRead]);
 
-  return { alerts: activeAlerts, unreadCount, isRead, markRead, markAllRead };
+  const dismiss = useCallback((alertOrId) => {
+    const alert = typeof alertOrId === "string" ? allAlerts.find((item) => item.id === alertOrId) : alertOrId;
+    return alert ? persistState({ selected: [alert], identityFor: notificationDismissIdentity, setOptimistic: setOptimisticDismissed, remoteState: remoteDismissed }) : Promise.resolve();
+  }, [allAlerts, persistState, remoteDismissed]);
+
+  return { alerts: activeAlerts, unreadCount, isRead, isDismissed, markRead, markAllRead, dismiss };
 };

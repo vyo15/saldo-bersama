@@ -46,3 +46,10 @@ export const semanticMotionDurationMs = (semantic = "standard") => {
   const token = `--motion-${semantic}`;
   return parseMotionDurationMs(getComputedStyle(document.documentElement).getPropertyValue(token)) ?? fallback;
 };
+
+export const semanticMotionEasing = (semantic = "enter") => {
+  const fallback = semantic === "exit" ? "cubic-bezier(0.4, 0, 1, 1)" : semantic === "standard" ? "cubic-bezier(0.2, 0, 0, 1)" : "cubic-bezier(0.16, 1, 0.3, 1)";
+  if (typeof document === "undefined" || typeof getComputedStyle !== "function") return fallback;
+  const token = semantic === "exit" ? "--ease-exit" : semantic === "standard" ? "--ease-standard" : "--ease-enter";
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
+};

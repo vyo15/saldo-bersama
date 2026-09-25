@@ -52,13 +52,24 @@
 .page-header__title-row > button { flex: 0 0 auto; }
 .page-header__actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .eyebrow { color: var(--primary); text-transform: uppercase; letter-spacing: .1em; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
-.money { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold); }
+.money { position: relative; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold); }
 .money--positive { color: var(--positive); }
 .money--negative { color: var(--negative); }
-.money--updated-a { animation: money-value-update-a var(--motion-feedback) var(--ease-standard); }
-.money--updated-b { animation: money-value-update-b var(--motion-feedback) var(--ease-standard); }
-@keyframes money-value-update-a { 0% { background: var(--primary-soft); box-shadow: 0 0 0 .22rem var(--primary-soft); } 100% { background: transparent; box-shadow: 0 0 0 0 transparent; } }
-@keyframes money-value-update-b { 0% { background: var(--primary-soft); box-shadow: 0 0 0 .22rem var(--primary-soft); } 100% { background: transparent; box-shadow: 0 0 0 0 transparent; } }
+.money__current { display: inline-block; }
+.money__previous { position: absolute; inset: 0 auto auto 0; display: inline-block; white-space: nowrap; pointer-events: none; }
+.money--updated-a .money__current,
+.money--updated-b .money__current { animation: money-value-current-in var(--motion-feedback) var(--ease-enter) both; }
+.money--updated-a .money__previous,
+.money--updated-b .money__previous { animation: money-value-previous-out var(--motion-feedback) var(--ease-exit) both; }
+@keyframes money-value-current-in { from { opacity: .2; transform: translateY(.24em); } to { opacity: 1; transform: translateY(0); } }
+@keyframes money-value-previous-out { from { opacity: .72; transform: translateY(0); } to { opacity: 0; transform: translateY(-.2em); } }
+@media (prefers-reduced-motion: reduce) {
+  .money--updated-a .money__current,
+  .money--updated-b .money__current,
+  .money--updated-a .money__previous,
+  .money--updated-b .money__previous { animation: none; }
+  .money__previous { display: none; }
+}
 .status-badge { width: fit-content; padding: 5px 9px; border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: capitalize; }
 .status-badge--active { background: var(--positive-soft); color: var(--positive); }
 .status-badge--info { background: var(--info-soft); color: var(--info); }
