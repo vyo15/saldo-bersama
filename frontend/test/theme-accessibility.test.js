@@ -93,16 +93,16 @@ const contrastPair = (values, foreground, background, host = "--surface") => {
 };
 const brighten = (color, factor) => color.slice(0, 3).map((channel) => Math.min(1, channel * factor)).concat(color[3]);
 
-test("palette Saldo Bersama yang disetujui tetap menjadi primitive canonical", () => {
+test("palette brand Saldo Bersama dari logo tetap menjadi primitive canonical", () => {
   for (const [name, value] of Object.entries({
-    "--palette-rich-black": "#0b1110",
-    "--palette-dark-green": "#0f1a18",
-    "--palette-bangladesh-green": "#03624c",
-    "--palette-mountain-meadow": "#2cc295",
-    "--palette-caribbean-green": "#00d681",
-    "--palette-mint": "#a7f3d0",
-    "--palette-anti-flash-white": "#f4faf7",
-    "--palette-pistachio": "#e8f5ef",
+    "--brand-teal-600": "#009b93",
+    "--brand-emerald-600": "#11b071",
+    "--brand-ocean-700": "#007696",
+    "--brand-emerald-500": "#2dc568",
+    "--neutral-light-900": "#192733",
+    "--neutral-dark-950": "#07131d",
+    "--accent-info": "#2f8ef4",
+    "--accent-purple": "#8670e8",
   })) assert.match(tokenSource, new RegExp(`${name}:\\s*${value};`, "i"));
 });
 
@@ -190,7 +190,7 @@ test("theme-color runtime dan fallback PWA mengikuti page token canonical", asyn
   const light = themeTokens(":root,");
   const lightPage = light["--page"];
   assert.match(themeContext, /getComputedStyle\(document\.documentElement\)\.getPropertyValue\("--page"\)/);
-  assert.doesNotMatch(themeContext, /THEME_COLORS|#f6fbf9|#0b1110/);
+  assert.doesNotMatch(themeContext, /THEME_COLORS|#f3f8fa|#07131d/);
   assert.match(indexHtml, new RegExp(`<meta name="theme-color" content="${lightPage}"`));
   assert.equal(manifest.background_color, lightPage);
   assert.equal(manifest.theme_color, lightPage);

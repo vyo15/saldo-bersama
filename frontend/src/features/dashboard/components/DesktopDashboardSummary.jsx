@@ -28,10 +28,7 @@ export const DashboardHeader = ({ overview, displayName, onOpenQuickRecord }) =>
   <header className={dashboardClass("shared-dashboard__header desktop-reference-header")}>
     <div>
       <h1>Halo, {displayName}!</h1>
-      <p>
-        Yuk, kelola keuangan keluarga dengan lebih baik <span aria-hidden="true">✨</span>
-        <span className={dashboardClass("desktop-reference-header__sync")}>{dashboardSyncLabel(overview.lastSyncedAt)}</span>
-      </p>
+      <p><span className={dashboardClass("desktop-reference-header__sync")}>{dashboardSyncLabel(overview.lastSyncedAt)}</span></p>
     </div>
     <div className={dashboardClass("desktop-reference-header__actions")}>
       <Button variant="primary" icon={FiPlus} onClick={onOpenQuickRecord}>Catat</Button>

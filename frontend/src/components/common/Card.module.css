@@ -1,8 +1,8 @@
 .card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-surface);
+  background: var(--ui-surface);
+  box-shadow: none;
   transition:
     border-color var(--motion-normal) var(--motion-easing),
     box-shadow var(--motion-normal) var(--motion-easing),
@@ -10,14 +10,15 @@
 }
 
 .card:focus-within {
-  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  border-color: color-mix(in srgb, var(--ui-primary) 42%, var(--ui-border));
 }
 
 @media (hover: hover) and (pointer: fine) {
   .card[data-interactive="true"]:hover {
-    border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--ui-primary) 34%, var(--ui-border));
+    background: var(--ui-interactive-hover);
+    box-shadow: var(--shadow-surface);
+    transform: translateY(-1px);
   }
 }
 

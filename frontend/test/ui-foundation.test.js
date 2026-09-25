@@ -238,7 +238,17 @@ test("design tokens expose shared control, motion, and layer contracts", async (
     "--motion-easing",
     "--layer-modal",
     "--shadow-control",
+    "--shadow-surface",
+    "--shadow-hero",
     "--shadow-floating",
+    "--brand-teal-600",
+    "--brand-emerald-600",
+    "--brand-ocean-700",
+    "--ui-surface",
+    "--ui-primary",
+    "--ui-interactive-hover",
+    "--radius-surface",
+    "--radius-hero",
   ]) assert.match(tokens, new RegExp(`${token}:`));
 });
 

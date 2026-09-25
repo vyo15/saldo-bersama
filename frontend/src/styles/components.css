@@ -25,24 +25,24 @@
 .brand-wordmark span:first-child { color: var(--primary-strong); }
 .brand-wordmark span:last-child { color: var(--primary); }
 
-.button { min-height: var(--control-height-md); padding: 0 16px; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: var(--font-weight-semibold); cursor: pointer; touch-action: manipulation; transition: background-color var(--motion-control) var(--ease-standard), border-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard), color var(--motion-control) var(--ease-standard), filter var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard); }
+.button { min-height: var(--control-height-md); padding: 0 16px; border: 1px solid var(--ui-border); border-radius: var(--control-radius); background: var(--ui-interactive); color: var(--ui-text); box-shadow: none; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: var(--font-weight-semibold); cursor: pointer; touch-action: manipulation; transition: background-color var(--motion-control) var(--ease-standard), border-color var(--motion-control) var(--ease-standard), box-shadow var(--motion-control) var(--ease-standard), color var(--motion-control) var(--ease-standard), filter var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard); }
 @media (hover: hover) and (pointer: fine) {
-  .button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--primary); }
+  .button:hover:not(:disabled) { border-color: var(--ui-primary); }
 }
 .button:active:not(:disabled) { transform: translateY(1px) scale(.985); }
 .button:disabled { opacity: .58; cursor: not-allowed; transform: none; }
-.button--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.button--primary { background: var(--ui-primary); border-color: var(--ui-primary); color: var(--on-primary); box-shadow: var(--shadow-primary-control); }
 .button--danger { background: var(--negative); border-color: var(--negative); color: var(--on-negative); }
 @media (hover: hover) and (pointer: fine) {
-  .button--primary:hover:not(:disabled) { background: var(--primary-hover); }
+  .button--primary:hover:not(:disabled) { background: var(--ui-primary-hover); border-color: var(--ui-primary-hover); }
   .button--danger:hover:not(:disabled) { filter: brightness(.92); border-color: var(--negative); }
 }
-.icon-button { width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; touch-action: manipulation; transition: background-color var(--motion-control) var(--ease-standard), border-color var(--motion-control) var(--ease-standard), color var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard); }
+.icon-button { width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; border: 1px solid var(--ui-border); border-radius: var(--radius-control); background: var(--ui-interactive); cursor: pointer; touch-action: manipulation; transition: background-color var(--motion-control) var(--ease-standard), border-color var(--motion-control) var(--ease-standard), color var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard); }
 @media (hover: hover) and (pointer: fine) {
-  .icon-button:hover { border-color: var(--primary); color: var(--primary); }
+  .icon-button:hover { border-color: var(--ui-primary); color: var(--ui-primary); background: var(--ui-interactive-hover); }
 }
-.icon-button:active:not(:disabled) { background: var(--surface-soft); transform: scale(.96); }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+.icon-button:active:not(:disabled) { background: var(--ui-interactive-hover); transform: scale(.96); }
+.card { background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--radius-surface); box-shadow: none; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .page-header__copy { min-width: 0; }
 .page-header__title-row { min-width: 0; display: flex; align-items: center; gap: 2px; }
@@ -67,7 +67,7 @@
 .status-badge--neutral { background: var(--surface-strong); color: var(--text-soft); }
 .progress { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; color: var(--muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 .field { display: grid; align-content: start; gap: 7px; color: var(--text-soft); font-size: 13px; font-weight: var(--font-weight-semibold); }
-.field input, .field textarea, .search-field { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: var(--text); padding: 10px 12px; }
+.field input, .field textarea, .search-field { width: 100%; min-height: 44px; border: 1px solid var(--ui-border); border-radius: var(--radius-control); background: var(--ui-input); color: var(--ui-text); padding: 10px 12px; }
 .field textarea { resize: vertical; }
 .field small { color: var(--muted); font-weight: var(--font-weight-regular); }
 .field__error { color: var(--negative); }
@@ -226,15 +226,15 @@ input[type="file"] {
 .field textarea,
 .search-field {
   min-height: 48px;
-  border-color: var(--border);
-  background: var(--input);
+  border-color: var(--ui-border);
+  background: var(--ui-input);
   font-size: var(--font-size-body);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .field input:hover,
   .field textarea:hover,
-  .search-field:hover { border-color: var(--border-strong); }
+  .search-field:hover { border-color: var(--ui-border-strong); }
 }
 
 .field input:focus-visible,
@@ -245,12 +245,12 @@ input[type="file"] {
 .quick-amounts button:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
-  border-color: var(--primary);
+  border-color: var(--ui-primary);
 }
 
 .field small { font-size: 12px; line-height: 1.45; }
 .quick-amounts { gap: 8px; }
-.quick-amounts button { min-height: 44px; padding: 7px 12px; font-size: 12px; background: var(--input); }
+.quick-amounts button { min-height: 44px; padding: 7px 12px; font-size: 12px; background: var(--ui-input); }
 
 .refresh-notice .button { flex: 0 0 auto; }
 

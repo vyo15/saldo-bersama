@@ -41,20 +41,22 @@ Current source memakai shared primitive dan stylesheet feature utama berbasis CS
 
 ## Palet warna canonical
 
-Palet visual yang disetujui disimpan sebagai primitive pada `frontend/src/styles/tokens.css`, lalu dipetakan ke token semantik yang berbeda untuk light dan dark mode. Komponen hanya boleh memakai token semantik, bukan menyalin hex palet langsung.
+Palet visual canonical diturunkan dari logo Saldo Bersama: **teal-cyan** sebagai identitas utama, **emerald-mint** sebagai supporting brand/growth tone, dan **ocean blue** sebagai accent analytics/informasi. Seluruh ramp disimpan sebagai primitive pada `frontend/src/styles/tokens.css`, lalu dipetakan ke token semantik light/dark. Komponen tidak boleh menyalin hex brand langsung.
 
-| Primitive | Nilai | Peran utama |
+| Family | Anchor logo | Peran utama |
 |---|---:|---|
-| Rich Black | `#0B1110` | Background utama dark mode |
-| Dark Green | `#0F1A18` | Surface dark dan teks utama light |
-| Bangladesh Green | `#03624C` | Primary light dan panel brand |
-| Mountain Meadow | `#2CC295` | Secondary/accent |
-| Caribbean Green | `#00D681` | Accent dekoratif terbatas |
-| Mint | `#A7F3D0` | Highlight lembut dan foreground pendukung |
-| Anti-Flash White | `#F4FAF7` | Teks utama dark/hero |
-| Pistachio | `#E8F5EF` | Surface kuat dan primary-soft light |
+| Brand Teal | `#009B93` | identitas logo, hero, navigation active, CTA melalui varian contrast-safe |
+| Brand Emerald | `#11B071` | growth, income, success/supporting accent |
+| Brand Ocean | `#007696` | analytics, transfer, information, chart |
+| Light Neutral | `#F3F8FA` / `#192733` | page light dan hierarchy teks |
+| Dark Neutral | `#07131D` / `#0C1E2A` | page/surface dark berlapis |
+| Utility accents | success / warning / danger / info / purple / rose | status dan icon spot terbatas |
 
-Status pada light mode memakai varian yang lebih gelap dari accent referensi agar teks dan kontrol tetap memenuhi kontras WCAG. Dark mode dapat memakai accent referensi yang lebih terang hanya jika **foreground di atas soft surface yang sudah dikompositkan ke host surface** tetap ≥4.5:1. Kontrak ini berlaku untuk `positive/negative/warning/info`, selected `primary-strong/primary-soft`, serta hover state solid. `secondary` dan `info` boleh memiliki nilai warna yang sama tetapi tetap dipisahkan karena semantic role-nya berbeda.
+Primitive canonical memakai ramp `--brand-teal-*`, `--brand-emerald-*`, `--brand-ocean-*`, `--neutral-light-*`, dan `--neutral-dark-*`. Hex anchor logo **tidak selalu menjadi foreground interaktif**: semantic `--primary`, `--positive`, `--negative`, `--warning`, dan `--info` memakai varian yang disesuaikan agar kontrak WCAG tetap terpenuhi. Alias `--palette-*` lama hanya dipertahankan sementara untuk ilustrasi compatibility dan bukan sumber warna baru.
+
+Hierarchy surface light adalah `page #F3F8FA → surface #FFFFFF → soft #F5FBFA → tint #E8F8F5`. Dark mode tidak meng-invert light mode; hierarchy-nya `page #07131D → surface #0C1E2A → soft #112635 → raised #102636 → tint #0E3136`. Shared primitive baru memakai semantic alias `--ui-page`, `--ui-surface`, `--ui-surface-soft`, `--ui-surface-tint`, `--ui-surface-raised`, `--ui-text*`, `--ui-border*`, `--ui-primary*`, dan `--ui-interactive*`.
+
+Status pada light mode memakai varian yang lebih gelap dari accent referensi agar teks dan kontrol tetap memenuhi kontras WCAG. Dark mode boleh memakai accent lebih luminous hanya jika **foreground di atas soft surface yang sudah dikompositkan ke host surface** tetap ≥4.5:1. Kontrak ini berlaku untuk `positive/negative/warning/info`, selected `primary-strong/primary-soft`, serta hover state solid.
 
 Browser `theme-color` runtime wajib membaca `--page` dari computed style setelah theme diterapkan; HTML/manifest hanya fallback boot dan nilainya harus mengikuti light `--page`. PWA background, sidebar rail, hero, focus ring, shadow, dan navigation surface wajib mengikuti token tema yang sama.
 
@@ -108,6 +110,8 @@ Styling feature harus colocated pada CSS Module pemiliknya. Global CSS dibatasi 
 8. Compatibility class hanya boleh dipertahankan bila masih memiliki consumer nyata; hapus setelah usage search dan regression test membuktikan aman.
 9. Page/form melakukan request melalui facade `features/<domain>/<domain>.api.js`; transport global bukan dependency langsung feature.
 10. Token visual yang hanya dipakai satu feature harus diberi section ownership yang jelas pada `tokens.css` atau dipindahkan ke module feature ketika tidak membutuhkan theme-level override. Token `--account-*` saat ini sengaja dikelompokkan sebagai Accounts-only agar tidak menjadi precedent untuk menaruh semua token feature di global root.
+11. `Card`/surface biasa default ke **surface + border tipis tanpa shadow**. Elevation adalah opt-in untuk hero/floating/modal atau interactive hover yang benar-benar membutuhkan depth; grouped list memakai divider/row alih-alih card per item.
+12. Button/input/shared control memakai semantic alias `--ui-*`; hover memprioritaskan perubahan tint/border dan tidak boleh memberi lift besar yang membuat setiap control terasa floating.
 
 ## Hierarchical navigation canonical
 

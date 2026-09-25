@@ -369,6 +369,22 @@ test("nominal finansial kritis tidak memakai ellipsis sebagai fallback responsiv
   }
 });
 
+test("dashboard mobile menjaga hero compact tanpa nominal pecah dan chrome header berlebih", async () => {
+  const [mobile, styles] = await Promise.all([
+    read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
+    read("src/features/dashboard/DashboardMobile.module.css"),
+  ]);
+
+  assert.doesNotMatch(mobile, /UserAvatar|Yuk, kelola keuangan keluarga/);
+  assert.match(mobile, /Dana yang bisa kamu gunakan/);
+  assert.match(styles, /\.mobile-family-hero \{[\s\S]*?min-height:\s*148px;/);
+  assert.match(styles, /\.mobile-usable-funds \{[\s\S]*?display:\s*grid;/);
+  assert.match(styles, /\.mobile-usable-funds :global\(\.money\),[\s\S]*?white-space:\s*nowrap;/);
+  assert.doesNotMatch(styles, /\.mobile-usable-funds :global\(\.money\),[\s\S]*?overflow-wrap:\s*anywhere;/);
+  assert.match(styles, /\.mobile-ownership-summary\.mobile-reference-ownership \{[\s\S]*?border:\s*1px solid var\(--border\);[\s\S]*?gap:\s*0;/);
+  assert.match(styles, /\.mobile-reference-ownership \.mobile-owner-card \{[\s\S]*?border:\s*0;[\s\S]*?box-shadow:\s*none;/);
+});
+
 test("login short-height memiliki fallback scroll vertikal untuk zoom dan viewport pendek", async () => {
   const mobile = await readFile(new URL("../src/features/auth/LoginMobile.module.css", import.meta.url), "utf8");
   assert.match(mobile, /@media \(max-height: 620px\) and \(max-width: 820px\)[\s\S]*\.login-mobile-stage \{[\s\S]*height:\s*auto;[\s\S]*min-height:\s*100dvh;[\s\S]*overflow-y:\s*auto;/);

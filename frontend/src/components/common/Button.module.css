@@ -1,11 +1,11 @@
 .button {
   min-height: var(--control-height-md);
   padding-inline: var(--space-4);
-  border: 1px solid var(--border);
+  border: 1px solid var(--ui-border);
   border-radius: var(--control-radius);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-control);
+  background: var(--ui-interactive);
+  color: var(--ui-text);
+  box-shadow: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -24,14 +24,13 @@
 
 @media (hover: hover) and (pointer: fine) {
   .button:hover:not(:disabled) {
-    border-color: var(--primary);
+    border-color: var(--ui-primary);
     box-shadow: var(--shadow-control-hover);
-    transform: translateY(-1px);
   }
 }
 
 .button:active:not(:disabled) {
-  box-shadow: var(--shadow-control);
+  box-shadow: none;
   transform: translateY(1px) scale(.985);
 }
 
@@ -53,25 +52,25 @@
 }
 
 .secondary {
-  background: var(--surface);
-  color: var(--text);
+  background: var(--ui-interactive);
+  color: var(--ui-text);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .secondary:hover:not(:disabled) { background: var(--surface-soft); }
+  .secondary:hover:not(:disabled) { background: var(--ui-interactive-hover); }
 }
 
 .primary {
-  border-color: var(--primary);
-  background: var(--primary);
+  border-color: var(--ui-primary);
+  background: var(--ui-primary);
   color: var(--on-primary);
   box-shadow: var(--shadow-primary-control);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .primary:hover:not(:disabled) {
-    border-color: var(--primary-hover);
-    background: var(--primary-hover);
+    border-color: var(--ui-primary-hover);
+    background: var(--ui-primary-hover);
   }
 }
 

@@ -10,7 +10,6 @@ import {
   FiUsers,
 } from "react-icons/fi";
 import { Link } from "react-router";
-import UserAvatar from "../../../components/common/UserAvatar.jsx";
 import familyHero from "../../../assets/dashboard/family-hero.webp";
 import foliageLeft from "../../../assets/dashboard/foliage-left.webp";
 import foliageRight from "../../../assets/dashboard/foliage-right.webp";
@@ -29,14 +28,13 @@ const ownershipIcon = (key) => {
   return FiUsers;
 };
 
-const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
+const MobileFinanceHero = ({ overview, displayName, balanceVisible, onToggleBalance, notificationCount }) => {
   const ownershipItems = dashboardOwnershipBreakdown(overview.familyBalanceBreakdown);
   return (
     <header className={dashboardClass("mobile-finance-hero mobile-reference-hero")}>
       <div className={dashboardClass("mobile-reference-topbar")}>
         <div className={dashboardClass("mobile-reference-greeting")}>
           <strong>Halo, {displayName}!</strong>
-          <span>Yuk, kelola keuangan keluarga dengan lebih baik <span aria-hidden="true">✨</span></span>
           <small>{dashboardSyncLabel(overview.lastSyncedAt)}</small>
         </div>
         <div className={dashboardClass("mobile-reference-actions")}>
@@ -44,7 +42,6 @@ const MobileFinanceHero = ({ overview, user, displayName, balanceVisible, onTogg
             <FiBell aria-hidden="true" />
             {notificationCount ? <span className={dashboardClass("mobile-notification-badge")}>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}
           </Link>
-          <UserAvatar user={user} className={dashboardClass("mobile-reference-avatar")} />
         </div>
       </div>
 
@@ -145,7 +142,7 @@ const MobileFinanceDashboard = ({ overview, viewModel, user, displayName, balanc
   const urgentAlerts = dashboardUrgentAlerts(overview.alerts);
   return <section className={dashboardClass("mobile-finance-dashboard mobile-reference-dashboard")} aria-label="Ringkasan keuangan mobile">
     <h1 className={dashboardClass("sr-only")}>Ringkasan Keuangan</h1>
-    <MobileFinanceHero overview={overview} user={user} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} notificationCount={notificationState.unreadCount} />
+    <MobileFinanceHero overview={overview} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} notificationCount={notificationState.unreadCount} />
     <div className={dashboardClass("mobile-finance-content mobile-reference-content")}>
       <MobileNextAction alerts={urgentAlerts} />
       <section className={dashboardClass("mobile-quick-section")} aria-labelledby="mobile-quick-title">
