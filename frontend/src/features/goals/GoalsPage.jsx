@@ -44,7 +44,7 @@ const useGoalCreation = ({ resource, investmentResource, refreshOverview, invali
     setMessage(null);
     if (!form.target_date) return setMessage({ type: "danger", text: "Tanggal target wajib dipilih." });
     if (["cash", "mixed"].includes(form.funding_mode) && !form.account_id) return setMessage({ type: "danger", text: "Pilih rekening tabungan Target." });
-    if (form.funding_mode === "investment" && !form.portfolio_id) return setMessage({ type: "danger", text: "Pilih portfolio investasi Target." });
+    if (form.funding_mode === "investment" && !form.portfolio_id) return setMessage({ type: "danger", text: "Pilih sumber investasi untuk Target." });
     return createMutation.run(async () => {
       const payload = { ...form, target_amount: assertPositiveRupiah(form.target_amount) };
       if (payload.funding_mode !== "investment") delete payload.portfolio_id;

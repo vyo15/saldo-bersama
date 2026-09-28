@@ -139,3 +139,19 @@
     text-align: start;
   }
 }
+
+.activityItemInteractive {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.activityItemInteractive:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .activityItemInteractive:hover {
+    background: color-mix(in srgb, var(--primary-soft) 34%, transparent);
+  }
+}

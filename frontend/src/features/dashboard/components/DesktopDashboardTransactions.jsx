@@ -14,17 +14,20 @@ const TransactionRow = ({ row, categoryLookup, transactionCreatorLabel, balanceV
     ? transactionCreatorLabel(item)
     : "Anggota keluarga";
 
+  const period = String(item.transaction_date || "").slice(0, 7);
   return (
-    <li className={dashboardClass("desktop-activity-row")}>
-      <span className={dashboardClass(`shared-transaction-icon shared-transaction-icon--${item.transaction_type || "default"}`)}><Icon aria-hidden="true" /></span>
-      <span className={dashboardClass("desktop-activity-row__copy")}>
-        <strong>{title}</strong>
-        <small>{categoryLabel} · {formatTransactionDate(item.transaction_date)} · dicatat {creatorLabel}</small>
-      </span>
-      <strong className={dashboardClass(`desktop-activity-row__amount money--${delta < 0 ? "negative" : delta > 0 ? "positive" : "default"}`)}>
-        {delta < 0 ? "−" : delta > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={Math.abs(delta)} tone={delta < 0 ? "negative" : delta > 0 ? "positive" : "default"} />
-      </strong>
-      <FiChevronRight className={dashboardClass("desktop-activity-row__chevron")} aria-hidden="true" />
+    <li>
+      <Link className={dashboardClass("desktop-activity-row")} to="/transaksi" state={{ transactionId: item.transaction_id, ...(period ? { period } : {}) }} aria-label={`Buka detail ${title}`}>
+        <span className={dashboardClass(`shared-transaction-icon shared-transaction-icon--${item.transaction_type || "default"}`)}><Icon aria-hidden="true" /></span>
+        <span className={dashboardClass("desktop-activity-row__copy")}>
+          <strong>{title}</strong>
+          <small>{categoryLabel} · {formatTransactionDate(item.transaction_date)} · dicatat {creatorLabel}</small>
+        </span>
+        <strong className={dashboardClass(`desktop-activity-row__amount money--${delta < 0 ? "negative" : delta > 0 ? "positive" : "default"}`)}>
+          {delta < 0 ? "−" : delta > 0 ? "+" : ""}<SensitiveMoney visible={balanceVisible} value={Math.abs(delta)} tone={delta < 0 ? "negative" : delta > 0 ? "positive" : "default"} />
+        </strong>
+        <FiChevronRight className={dashboardClass("desktop-activity-row__chevron")} aria-hidden="true" />
+      </Link>
     </li>
   );
 };

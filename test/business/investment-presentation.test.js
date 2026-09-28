@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { investmentActivityForInstrument, investmentActivityLabel, investmentOpeningPositionPreview, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentAssetPosition, validateInvestmentOperation } from "../../frontend/src/features/investments/investments.model.js";
+import { formatInvestmentUnitPrice } from "../../frontend/src/features/investments/investmentPresentation.js";
 
 const active = { instrument_id: "active", ticker: "BBCA", status: "active" };
 const inactiveHeld = { instrument_id: "inactive-held", ticker: "OLD", status: "inactive" };
@@ -33,6 +34,15 @@ test("trade preview hanya menghitung estimasi dari input dan lot size instrumen"
   assert.equal(buy.instrument.ticker, "BBCA");
 });
 
+
+test("harga satuan investasi mempertahankan dua desimal dan average price pecahan", () => {
+  assert.equal(formatInvestmentUnitPrice(5_021), "Rp5.021,00");
+  assert.equal(formatInvestmentUnitPrice(5_021.25), "Rp5.021,25");
+  const preview = investmentOpeningPositionPreview({
+    instrument_id: "active", opening_quantity: 10, average_price: 8_750.25, reference_price: 9_400,
+  }, [{ ...active, lot_size: 100 }]);
+  assert.equal(preview.costBasis, 8_750_250);
+});
 
 test("persentase return investasi hanya diturunkan dari P/L dan cost basis yang valid", () => {
   assert.equal(investmentReturnPercent(500_000, 5_000_000), 10);

@@ -117,14 +117,14 @@ const DesktopAccountMenu = ({ user, onLogout }) => {
 
   return (
     <div ref={accountMenuRef} className="desktop-account-menu">
-      <button ref={accountMenuTriggerRef} type="button" className="desktop-account-trigger" aria-haspopup="menu" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((current) => !current)}>
+      <button ref={accountMenuTriggerRef} type="button" className="desktop-account-trigger" aria-expanded={accountMenuOpen} aria-controls="desktop-account-popover" onClick={() => setAccountMenuOpen((current) => !current)}>
         <UserAvatar user={user} className="desktop-user-avatar" />
         <span className="desktop-account-copy"><strong>{user?.name || "Pengguna"}</strong><small>{user?.role === "owner" ? "Administrator" : "Anggota"}</small></span>
         <FiChevronDown aria-hidden="true" />
       </button>
-      {accountMenuOpen ? <div className="desktop-account-popover" role="menu" aria-label="Menu akun">
-        <NavLink role="menuitem" to="/pengaturan"><FiSettings aria-hidden="true" /><span>Pengaturan</span></NavLink>
-        <button role="menuitem" type="button" onClick={onLogout}><FiLogOut aria-hidden="true" /><span>Keluar</span></button>
+      {accountMenuOpen ? <div id="desktop-account-popover" className="desktop-account-popover" aria-label="Menu akun">
+        <NavLink to="/pengaturan"><FiSettings aria-hidden="true" /><span>Pengaturan</span></NavLink>
+        <button type="button" onClick={onLogout}><FiLogOut aria-hidden="true" /><span>Keluar</span></button>
       </div> : null}
     </div>
   );

@@ -51,7 +51,7 @@ const MobileFinanceHero = ({ overview, displayName, balanceVisible, onToggleBala
         <div className={dashboardClass("mobile-family-hero__copy")}>
           <div className={dashboardClass("mobile-family-hero__label")}>
             <span>Saldo Keluarga</span>
-            <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"} aria-pressed={!balanceVisible}>
+            <button type="button" className={dashboardClass("mobile-balance-visibility")} onClick={onToggleBalance} aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"} role="switch" aria-checked={!balanceVisible}>
               {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
             </button>
           </div>

@@ -36,8 +36,8 @@ const useLegacyInvestmentContinuation = ({ location, navigate, data, ready, setS
     const portfolio = portfolioForRdn(data.portfolios || [], continuation.payload.rdnAccountId);
     if (continuation.action === "buy" && portfolio?.can_operate !== false) {
       setDialog({ mode: "buy", portfolio, initialDraft: continuation.payload.draft || null });
-    } else if (continuation.action === "view-investment" && portfolio?.holdings?.length) {
-      setHoldingDetail({ portfolio, holding: portfolio.holdings[0] });
+    } else if (continuation.action === "view-investment" && (portfolio?.positions?.length || portfolio?.holdings?.length)) {
+      setHoldingDetail({ portfolio, holding: (portfolio.positions || portfolio.holdings)[0] });
     } else {
       setSetupOpen(true);
     }
@@ -136,7 +136,9 @@ const InvestmentsPage = () => {
   const [holdingDetail, setHoldingDetail] = useState(null);
   const data = overview.data || { summary: {}, portfolios: [], instruments: [], activity: [] };
   const goals = goalResource.data?.items || [];
-  const assetCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.holdings || []).length, 0), [data.portfolios]);
+  const positionCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.positions || portfolio.holdings || []).length, 0), [data.portfolios]);
+  const activityCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.activity || []).length, 0), [data.portfolios]);
+  const hasInvestmentHistory = positionCount > 0 || activityCount > 0;
 
   const openAction = (mode, portfolio, options = {}) => setDialog({ mode, portfolio, ...options });
   const clearSetupGoal = () => setSetupGoalId("");
@@ -171,7 +173,7 @@ const InvestmentsPage = () => {
     if (next.kind === "dialog") setDialog({ mode: "buy", portfolio: next.portfolio, initialDraft, initialGoalId });
     if (next.kind === "setup") openSetup(initialGoalId);
     if (next.kind === "choose") notify({
-      message: next.requestedUnavailable ? "Portofolio pilihan sudah tidak tersedia. Pilih portofolio investasi lain." : "Pilih portofolio investasi yang ingin dicatat dari tombol Catat.",
+      message: next.requestedUnavailable ? "Sumber investasi pilihan sudah tidak tersedia. Pilih sumber investasi lain." : "Pilih sumber investasi yang ingin digunakan dari tombol Catat.",
       tone: "info",
       dedupeKey: "investments:quick-record:choose-asset",
     });
@@ -190,10 +192,10 @@ const InvestmentsPage = () => {
     <RefreshWarning error={overview.refreshError || goalResource.error || goalResource.refreshError} onRetry={() => Promise.allSettled([overview.reload(), goalResource.reload()])} />
     <PageHeader
       title="Investasi"
-      actions={assetCount > 0 ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup()} aria-label="Tambah investasi">Tambah investasi</Button> : null}
+      actions={hasInvestmentHistory ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup()} aria-label="Tambah investasi">Tambah investasi</Button> : null}
       help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak memindahkan saldo rekening, dan tidak mengambil harga pasar live."
     />
-    {assetCount === 0 ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>
+    {!hasInvestmentHistory ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>
       <InvestmentOverview data={data} onHolding={(portfolio, holding) => setHoldingDetail({ portfolio, holding })} />
     </Suspense>}
     <InvestmentOverlays page={page} />

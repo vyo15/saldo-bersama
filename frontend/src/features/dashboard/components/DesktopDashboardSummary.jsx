@@ -60,7 +60,7 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible, onToggleBalanc
               className={dashboardClass("desktop-family-hero__visibility")}
               onClick={onToggleBalance}
               aria-label={balanceVisible ? "Sembunyikan seluruh nominal" : "Tampilkan seluruh nominal"}
-              aria-pressed={!balanceVisible}
+              role="switch" aria-checked={!balanceVisible}
             >
               {balanceVisible ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}
             </button>

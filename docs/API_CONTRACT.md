@@ -86,6 +86,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `sessions.revokeAllOwn` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/sessions.js` |
 | `archive.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `audit.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/audit.js` |
+
+`audit.list` mengembalikan maksimal 200 item newest-first dengan metadata aman `audit_id`, `request_id`, `timestamp`, `actor_email`, `action`, `entity_type`, `entity_id`, `result`, dan `detail_code` terbatas untuk kegagalan notifikasi. Snapshot `previous_value`/`new_value` tidak dikirim ke frontend.
 | `dashboard.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `investments.overview` | Ya | Ya | Read | Tidak | `api/_lib/services/investments.js` |
 | `investments.instruments.list` | Ya | Ya | Read | Tidak | `api/_lib/services/investments.js` |

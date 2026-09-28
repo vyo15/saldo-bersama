@@ -279,12 +279,13 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
   assert.match(reports, /const AllocationRows/);
   assert.match(accounts + accountSheets + mobileActivity, /mobileTransactionList/);
   assert.match(reconciliation, /styles\.mobileHistoryList/);
-  assert.match(settings, /mobile-data-list/);
+  assert.match(settings, /styles\.auditTimeline/);
+  assert.match(settings, /styles\.auditDesktopTable/);
   assert.match(settings, /audit\.list/);
   assert.match(transactions, /account_id:\s*filters\.account/);
   assert.match(transactions, /category_id:\s*filters\.category/);
   assert.match(transactions, /created_by:\s*filters\.creator/);
-  assert.match(transactions, /initialFilters\(attention\)/);
+  assert.match(transactions, /initialFilters\(location\.state \|\| attention\)/);
   assert.match(transactions, /useDashboardAttentionState/);
   assert.match(transactions, /state\?\.creatorId/);
   assert.match(transactions, /state\?\.period/);
@@ -636,7 +637,18 @@ test("pengaturan memakai kontrak system.health aktual dan status notifikasi akse
   assert.match(main, /from "\.\/services\/serviceWorker\.js"/);
   assert.doesNotMatch(main, /from "\.\/services\/notifications\.js"/);
   assert.match(presentation, /PUSH_DNS_FAILED/);
+  assert.match(presentation, /export const auditActionLabel/);
+  assert.match(presentation, /export const auditCategory/);
   assert.match(audit, /auditDetailLabel\(entry\.detail_code\)/);
+  assert.match(audit, /AUDIT_FILTERS/);
+  assert.match(audit, /Semua/);
+  assert.match(audit, /Keuangan/);
+  assert.match(audit, /Akses/);
+  assert.match(audit, /Sistem/);
+  assert.match(audit, /dateHeading\(entry\.timestamp\)/);
+  assert.match(audit, /<AuditDetailModal/);
+  assert.match(audit, /entry\.request_id/);
+  assert.doesNotMatch(audit, /<strong>\{entry\.action\}<\/strong>/);
 });
 
 

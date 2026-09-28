@@ -191,7 +191,7 @@ const NotificationRow = ({ alert, read, onOpen, onDismiss }) => {
           onKeyDown={onKeyDown}
           {...gesture}
           aria-keyshortcuts="Delete"
-          aria-label={`${read ? "Sudah dibaca" : "Belum dibaca"}. ${financialNotificationTitle(alert)}${fact ? `. ${fact}` : ""}. Geser ke kanan untuk bersihkan.`}
+          aria-label={`${read ? "Sudah dibaca" : "Belum dibaca"}. ${financialNotificationTitle(alert)}${fact ? `. ${fact}` : ""}. Tekan Delete untuk membersihkan. Pada layar sentuh, geser ke kanan.`}
         >
           <span className={styles.icon}><Icon aria-hidden="true" /></span>
           <span className={styles.copy}>

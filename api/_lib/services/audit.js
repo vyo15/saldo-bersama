@@ -14,7 +14,7 @@ export const appendAudit = async (db, context, { action = context.action, entity
 
 export const listAudit = async (db, context) => {
   const limit = Math.min(200, Math.max(1, Number(context.payload?.limit || 50)));
-  const rows = await db.all(`SELECT audit_id,timestamp,actor_email,action,entity_type,entity_id,result,new_value
+  const rows = await db.all(`SELECT audit_id,request_id,timestamp,actor_email,action,entity_type,entity_id,result,new_value
     FROM audit_log ORDER BY timestamp DESC LIMIT ?`, [limit]);
   return { items: rows.map((row) => {
     const detail = row.action === "notifications.test" && row.result === "failed"

@@ -151,6 +151,135 @@ export const roleLabel = userRoleLabel;
 export const userStatusLabel = (status) => status === "active" ? "Aktif" : status === "inactive" ? "Nonaktif" : status || "Tidak diketahui";
 export const auditResultLabel = (result) => result === "success" ? "Berhasil" : result === "failed" ? "Gagal" : result || "Tidak diketahui";
 
+const AUDIT_ENTITY_LABELS = Object.freeze({
+  account: "Rekening",
+  allocation: "Alokasi Dana",
+  archive: "Arsip",
+  backup: "Cadangan data",
+  budget: "Kebutuhan",
+  category: "Kategori",
+  commitment: "Kewajiban",
+  envelope: "Alokasi Dana",
+  envelope_movement: "Pergerakan Alokasi Dana",
+  envelope_period: "Periode Alokasi Dana",
+  envelope_rule: "Aturan Alokasi Dana",
+  goal: "Target",
+  goal_investment_event: "Aktivitas investasi Target",
+  goal_movement: "Pergerakan dana Target",
+  identity: "Identitas",
+  import: "Import data",
+  integration: "Integrasi",
+  investment: "Investasi",
+  investment_asset_position: "Posisi aset investasi",
+  investment_correction: "Koreksi investasi",
+  investment_instrument: "Instrumen investasi",
+  investment_opening_position: "Posisi awal investasi",
+  investment_portfolio: "Sumber investasi",
+  investment_reconciliation: "Pencocokan investasi",
+  investment_trade: "Transaksi investasi",
+  investment_valuation: "Nilai investasi",
+  maintenance: "Pemeliharaan",
+  maintenance_reset: "Reset data",
+  maintenance_full_reset: "Reset seluruh data",
+  manual_reminder: "Pengingat manual",
+  master_data_request: "Pengajuan data master",
+  notification: "Notifikasi",
+  notification_preference: "Preferensi notifikasi",
+  notification_settings: "Pengaturan notifikasi",
+  push_subscription: "Perangkat notifikasi",
+  period: "Periode",
+  period_closure: "Penutupan periode",
+  reconciliation: "Pencocokan saldo",
+  recurring: "Jadwal rutin",
+  recurring_occurrence: "Pembayaran rutin",
+  recurring_rule: "Jadwal rutin",
+  session: "Sesi",
+  transaction: "Transaksi",
+  transfer_request: "Pengajuan transfer",
+  restore: "Pemulihan data",
+  system: "Sistem",
+  system_config: "Konfigurasi sistem",
+  user: "Anggota",
+});
+
+const AUDIT_ACTION_LABELS = Object.freeze({
+  "accounts.create": "Rekening ditambahkan",
+  "accounts.update": "Rekening diperbarui",
+  "accounts.archive": "Rekening diarsipkan",
+  "accounts.restore": "Rekening dipulihkan",
+  "accounts.deleteUnused": "Rekening kosong dihapus",
+  "budgets.create": "Kebutuhan dibuat",
+  "budgets.update": "Kebutuhan diperbarui",
+  "budgets.remove": "Kebutuhan dihapus",
+  "categories.create": "Kategori dibuat",
+  "categories.update": "Kategori diperbarui",
+  "categories.archive": "Kategori diarsipkan",
+  "categories.restore": "Kategori dipulihkan",
+  "commitments.create": "Kewajiban dibuat",
+  "commitments.update": "Kewajiban diperbarui",
+  "commitments.stop": "Kewajiban dihentikan",
+  "envelopes.create": "Alokasi Dana dibuat",
+  "envelopes.update": "Alokasi Dana diperbarui",
+  "envelopes.archive": "Alokasi Dana diarsipkan",
+  "envelopes.restore": "Alokasi Dana dipulihkan",
+  "goals.create": "Target dibuat",
+  "goals.update": "Target diperbarui",
+  "goals.fund": "Dana Target ditambahkan",
+  "investments.assets.create": "Aset investasi ditambahkan",
+  "investments.trades.buy": "Pembelian investasi dicatat",
+  "investments.trades.sell": "Penjualan investasi dicatat",
+  "investments.valuations.update": "Nilai investasi diperbarui",
+  "notifications.test": "Uji notifikasi dijalankan",
+  "periods.close": "Periode ditutup",
+  "reconciliations.create": "Pencocokan saldo dicatat",
+  "transactions.create": "Transaksi dicatat",
+  "transactions.update": "Transaksi diperbarui",
+  "transactions.cancel": "Transaksi dibatalkan",
+  "transactions.restore": "Transaksi dipulihkan",
+  "transferRequests.create": "Pengajuan transfer dibuat",
+  "transferRequests.review": "Pengajuan transfer ditinjau",
+  "users.upsert": "Akses anggota diperbarui",
+  "users.deactivate": "Anggota dinonaktifkan",
+  "users.reactivate": "Anggota diaktifkan kembali",
+  "identity.firebase.bind": "Identitas login ditautkan",
+  "sessions.revokeOwn": "Sesi perangkat dicabut",
+  "sessions.revokeAllOwn": "Semua sesi perangkat dicabut",
+  "session.revoke.role_change": "Sesi dicabut setelah perubahan akses",
+  "session.revoke.deactivation": "Sesi dicabut setelah anggota dinonaktifkan",
+  "backup.create": "Cadangan data dibuat",
+  "reset.apply": "Pembersihan data testing dijalankan",
+  "fullReset.apply": "Reset seluruh data dijalankan",
+  "maintenance.recover": "Mode maintenance dipulihkan",
+});
+
+const auditVerbLabel = (action) => {
+  const tail = String(action || "").split(".").filter(Boolean).at(-1) || "";
+  const labels = {
+    create: "dibuat", update: "diperbarui", remove: "dihapus", delete: "dihapus",
+    archive: "diarsipkan", restore: "dipulihkan", cancel: "dibatalkan", review: "ditinjau",
+    close: "ditutup", fund: "ditambahkan dananya", buy: "dibeli", sell: "dijual",
+    recover: "dipulihkan", apply: "dijalankan", revoke: "dicabut", upsert: "diperbarui",
+    deactivate: "dinonaktifkan", reactivate: "diaktifkan kembali", bind: "ditautkan", test: "diuji",
+  };
+  return labels[tail] || "diperbarui";
+};
+
+export const auditEntityLabel = (entityType) => {
+  const key = String(entityType || "").trim();
+  return AUDIT_ENTITY_LABELS[key] || key.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase()) || "Aktivitas";
+};
+
+export const auditActionLabel = (action, entityType) => AUDIT_ACTION_LABELS[String(action || "")]
+  || `${auditEntityLabel(entityType)} ${auditVerbLabel(action)}`;
+
+export const auditCategory = (entry = {}) => {
+  const action = String(entry.action || "").toLowerCase();
+  const entity = String(entry.entity_type || "").toLowerCase();
+  if (/^(users|user|session|sessions|identity|bootstrap|masterdatarequests|transferrequests)/.test(action) || ["user", "session", "identity", "transfer_request"].includes(entity)) return "access";
+  if (/^(notifications|integrations|backup|import|restore|reset|fullreset|maintenance|jobs)/.test(action) || ["notification", "integration", "backup", "import", "maintenance", "maintenance_reset"].includes(entity)) return "system";
+  return "finance";
+};
+
 export const auditDetailLabel = (code) => {
   const labels = {
     PUSH_AUTH_REJECTED: "Identitas VAPID ditolak",

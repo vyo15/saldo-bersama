@@ -15,6 +15,22 @@ const ALERT_TARGETS = Object.freeze({
   goal_behind: { prefix: "goal-behind", fallbackPath: "/target" },
 });
 
+
+const ALERT_SELECTION_KEYS = Object.freeze({
+  investment_reconciliation_difference: "attentionRdnAccountId",
+  investment_reconciliation_stale: "attentionRdnAccountId",
+  reconciliation_difference: "accountId",
+  reconciliation_stale: "accountId",
+  unallocated_funds: "attentionEnvelopeId",
+  budget_threshold: "attentionBudgetId",
+  envelope_threshold: "attentionEnvelopeId",
+  recurring_overdue: "attentionOccurrenceId",
+  recurring_due: "attentionOccurrenceId",
+  recurring_funding_shortage: "attentionOccurrenceId",
+  recurring_completed: "attentionOccurrenceId",
+  goal_behind: "attentionGoalId",
+});
+
 const alertEntityId = (alert) => {
   const config = ALERT_TARGETS[alert?.type];
   const id = String(alert?.id || "");
@@ -176,4 +192,15 @@ export const financialAlertGuidance = (alert = {}, { source = "dashboard" } = {}
     baseState: { attentionSource: source, attentionType: alert.type || "unknown", ...returnContext },
   };
   return (ALERT_GUIDANCE_BUILDERS[alert.type] || defaultAlertGuidance)(context);
+};
+
+
+export const financialAlertSelectionGuard = (alert = {}, { source = "dashboard" } = {}) => {
+  const guidanceResult = financialAlertGuidance(alert, { source });
+  const selectionKey = ALERT_SELECTION_KEYS[alert.type] || "";
+  return {
+    guidance: guidanceResult,
+    selectionKey,
+    missingSelection: Boolean(selectionKey && !guidanceResult.state?.[selectionKey]),
+  };
 };

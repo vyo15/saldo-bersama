@@ -403,7 +403,7 @@ ${accountEditors}`;
   assert.match(cardStyles, /\.stackVisual\[data-visual-kind="ewallet"\]::after \{[^}]*background:\s*none;/s);
   assert.match(cardStyles, /\.stackVisual \.cardImage \{[^}]*clip-path:\s*none;/s);
   assert.match(mobileExperience, /MobileBalanceSummary/);
-  assert.match(mobileExperience, /Sembunyikan nominal rekening/);
+  assert.match(mobileExperience, /Sembunyikan seluruh nominal/);
   assert.match(mobileExperience, /<span>Dialokasikan<\/span>/);
   assert.match(mobileExperience, /Filter kepemilikan rekening/);
   for (const className of ["mobileOwnershipFilters", "mobileOwnershipFilter", "mobileCarouselDots", "mobileBalanceSummary", "mobileBalanceStats", "mobileQuickActions", "mobileQuickAction"]) {

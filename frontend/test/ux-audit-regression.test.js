@@ -303,9 +303,10 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(budgets, /Rutin/);
   assert.match(budgets, /Bisa dipakai beberapa kali/);
   assert.doesNotMatch(budgets, /Nominal menjadi bawaan pada jadwal pembayaran/);
-  assert.match(investments, /const assetCount = useMemo/);
-  assert.match(investments, /assetCount === 0 \? <EmptyInvestmentState/);
-  assert.match(investments, /actions=\{assetCount > 0 \? <Button[\s\S]*aria-label="Tambah investasi">Tambah investasi<\/Button> : null\}/);
+  assert.match(investments, /const positionCount = useMemo/);
+  assert.match(investments, /const hasInvestmentHistory = positionCount > 0 \|\| activityCount > 0/);
+  assert.match(investments, /!hasInvestmentHistory \? <EmptyInvestmentState/);
+  assert.match(investments, /actions=\{hasInvestmentHistory \? <Button[\s\S]*aria-label="Tambah investasi">Tambah investasi<\/Button> : null\}/);
   assert.match(investments, /<EmptyInvestmentState onAdd=\{\(\) => setSetupOpen\(true\)\} \/>/);
   assert.match(transactions, /const showHeaderCreate = !mobileLayout && \(resource\.status !== "ready" \|\| items\.length > 0 \|\| filtersActive\);/);
   assert.match(transactions, /mobileLayout \? "Gunakan tombol Catat pada navigasi bawah untuk mencatat transaksi pertama\."/);

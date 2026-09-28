@@ -21,10 +21,10 @@ const fundingOptions = [
   { value: "mixed", label: "Campuran", icon: TargetIcon, description: "Tunai + investasi" },
 ];
 
-const portfolioOptions = (portfolios = []) => portfolios.map((portfolio) => ({
+const investmentSourceOptions = (portfolios = []) => portfolios.map((portfolio) => ({
   value: portfolio.portfolio_id,
-  label: portfolio.name,
-  meta: portfolio.broker ? `Broker ${portfolio.broker}` : "Portfolio investasi",
+  label: portfolio.name || "Sumber investasi",
+  meta: portfolio.market_value ? `Nilai tercatat ${formatRupiah(portfolio.market_value)}` : "Sumber investasi",
   icon: InvestmentIcon,
 }));
 
@@ -50,10 +50,10 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, investmentPortf
       <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Cara menabung" name="goal-funding-mode" value={form.funding_mode} onChange={(funding_mode) => setForm((current) => ({ ...current, funding_mode, account_id: funding_mode === "investment" ? "" : current.account_id, portfolio_id: funding_mode === "investment" ? current.portfolio_id : "" }))} options={fundingOptions} columns={3} compact />
       {cashFunding ? <InlineSelectionPicker className="form-grid__full" label="Rekening tabungan" required value={form.account_id} onChange={(account_id) => setForm((current) => ({ ...current, account_id }))} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} /> : null}
-      {investmentFunding ? <InlineSelectionPicker className="form-grid__full" label="Portfolio investasi" required value={form.portfolio_id} onChange={(portfolio_id) => setForm((current) => ({ ...current, portfolio_id }))} placeholder="Pilih portfolio" placeholderOption={{ icon: InvestmentIcon }} options={portfolioOptions(investmentPortfolios)} /> : null}
+      {investmentFunding ? <InlineSelectionPicker className="form-grid__full" label="Sumber investasi" required value={form.portfolio_id} onChange={(portfolio_id) => setForm((current) => ({ ...current, portfolio_id }))} placeholder="Pilih sumber investasi" placeholderOption={{ icon: InvestmentIcon }} options={investmentSourceOptions(investmentPortfolios)} /> : null}
       {form.funding_mode === "mixed" ? <CompactNotice className="form-grid__full" tone="info" title="Satu Target, dua sumber">Dana tunai memakai rekening di atas. Saham atau reksa dana dapat dihubungkan dari tombol Tambah dana setelah Target dibuat.</CompactNotice> : null}
       {targetAccount && !compatibleSource && cashFunding ? <CompactNotice className="form-grid__full" tone="info" title="Target dapat dibuat, tetapi belum dapat ditambah tunai">Tambahkan rekening sumber lain yang dapat dioperasikan. Setoran tunai selalu berupa satu transfer antar rekening.</CompactNotice> : null}
-      {investmentFunding && !investmentPortfolios.length ? <CompactNotice className="form-grid__full" tone="warning" title="Belum ada portfolio Bersama">Buat portfolio investasi Bersama terlebih dahulu dari menu Investasi.</CompactNotice> : null}
+      {investmentFunding && !investmentPortfolios.length ? <CompactNotice className="form-grid__full" tone="warning" title="Belum ada sumber investasi Bersama">Tambahkan aset investasi Bersama terlebih dahulu dari menu Investasi.</CompactNotice> : null}
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
   </Modal>;

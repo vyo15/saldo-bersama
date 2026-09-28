@@ -14,6 +14,7 @@ import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { investmentAssetByTicker, isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import InvestmentFormField from "./InvestmentFormField.jsx";
+import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
 import { buyInvestment, invalidateInvestmentReads, sellInvestment, updateInvestmentValuation } from "./investments.api.js";
 import { investmentProjectedAverage, investmentTradePreview, selectInvestmentInstruments, validateInvestmentOperation } from "./investments.model.js";
 import formStyles from "./InvestmentForm.module.css";
@@ -81,7 +82,7 @@ const TradeFields = ({ mode, form, onFieldChange, instruments, portfolio, goals,
       <InvestmentFormField id="investment-trade-date" label="Tanggal" required error={errors.trade_date}><TemporalInput type="date" max={TODAY()} value={form.trade_date} onChange={(event) => onFieldChange("trade_date", event.target.value)} /></InvestmentFormField>
     </div>
     <MoneyInput id="investment-trade-price" label={mutualFund ? "Nilai per unit" : "Harga per saham"} required value={form.price_per_share || ""} error={errors.price_per_share} onChange={(value) => onFieldChange("price_per_share", value)} />
-    {mode === "buy" && instrument ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div className={formStyles.averagePreview} role="status"><span>{mutualFund ? "Average nilai/unit" : "Average harga/lembar"}</span><strong><Money value={average.nextAverage} /></strong><small>{average.currentShares > 0 ? <>Sebelum pembelian <Money value={average.currentAverage} /></> : "Posisi baru"}</small></div>; })() : null}
+    {mode === "buy" && instrument ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div className={formStyles.averagePreview} role="status"><span>{mutualFund ? "Average nilai/unit" : "Average harga/lembar"}</span><strong><InvestmentUnitPrice value={average.nextAverage} /></strong><small>{average.currentShares > 0 ? <>Sebelum pembelian <InvestmentUnitPrice value={average.currentAverage} /></> : "Posisi baru"}</small></div>; })() : null}
     <NotesField value={form.notes} error={errors.notes} onChange={(value) => onFieldChange("notes", value)} />
     {mode === "buy" ? <small className={formStyles.formHint}>Pembelian ini hanya menambah catatan posisi investasi dan tidak memindahkan saldo rekening.</small> : null}
     {mode === "sell" ? <SellAvailabilityHint holding={holding} instrument={instrument} goalId={form.goal_id} /> : null}
@@ -95,11 +96,11 @@ const TradeReview = ({ mode, form, instruments, portfolio, goals }) => {
   return <section className={formStyles.review} aria-labelledby="investment-trade-review-title"><div><h3 id="investment-trade-review-title">Tinjau catatan sebelum disimpan</h3><p className={formStyles.notice}>Ini hanya pencatatan. Saldo Bersama tidak mengirim order ke broker dan tidak memindahkan saldo rekening.</p></div><dl className={formStyles.reviewGrid}>
     <div><dt>Aset</dt><dd>{preview.instrument ? `${preview.instrument.ticker} · ${preview.instrument.name}` : "-"}</dd></div>
     <div><dt>Kuantitas</dt><dd>{preview.lots.toLocaleString("id-ID")} {mutualFund ? "unit" : "lot"}</dd></div>
-    <div><dt>{mutualFund ? "Nilai per unit" : "Harga per saham"}</dt><dd><Money value={preview.pricePerShare} /></dd></div>
+    <div><dt>{mutualFund ? "Nilai per unit" : "Harga per saham"}</dt><dd><InvestmentUnitPrice value={preview.pricePerShare} /></dd></div>
     <div><dt>Nilai tercatat</dt><dd><Money value={preview.rdnAmount} /></dd></div>
     {goal ? <div><dt>Target</dt><dd>{goal.name}</dd></div> : <div><dt>Target</dt><dd>Tidak terkait Target</dd></div>}
     {mode === "sell" && goal ? <div><dt>Hasil penjualan</dt><dd>{form.retain_for_goal === false ? "Lepaskan dari Target" : "Tetap untuk Target"}</dd></div> : null}
-    {mode === "buy" ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div><dt>{mutualFund ? "Average nilai/unit setelah beli" : "Average harga/lembar setelah beli"}</dt><dd><Money value={average.nextAverage} /></dd></div>; })() : null}
+    {mode === "buy" ? (() => { const average = investmentProjectedAverage(form, instruments, portfolio); return <div><dt>{mutualFund ? "Average nilai/unit setelah beli" : "Average harga/lembar setelah beli"}</dt><dd><InvestmentUnitPrice value={average.nextAverage} /></dd></div>; })() : null}
     <div><dt>Tanggal</dt><dd>{formatDateLongIndonesia(form.trade_date) || form.trade_date}</dd></div>{form.notes ? <div><dt>Catatan</dt><dd>{form.notes}</dd></div> : null}
   </dl></section>;
 };

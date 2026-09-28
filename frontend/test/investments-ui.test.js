@@ -13,10 +13,11 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.match(page, /useApiResource\("investments\.overview"\)/);
   assert.match(page, /Mulai catat aset investasi/);
   assert.match(page, /help="Investasi adalah pencatatan manual\. Saldo Bersama tidak terhubung ke broker/);
-  assert.match(page, /actions=\{assetCount > 0 \? <Button/);
+  assert.match(page, /actions=\{hasInvestmentHistory \? <Button/);
+  assert.match(page, /const hasInvestmentHistory = positionCount > 0 \|\| activityCount > 0/);
   assert.match(page, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
   assert.match(overview, /const total = Number\(values\.market_value \|\| 0\)/);
-  assert.match(overview, /Modal tercatat/);
+  assert.match(overview, /Modal aktif/);
   assert.match(overview, /Nilai saat ini/);
   assert.match(overview, /Total investasi tercatat/);
   assert.match(overview, />Aset <span>/);
@@ -27,6 +28,7 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.match(overview, /<strong><Money value=\{holding\.market_value\} \/><\/strong>/);
   assert.match(overview, /<Money value=\{unrealized\} \/>\{returnPercent != null \? ` \(\$\{percentLabel\(returnPercent\)\}\)`/);
   assert.doesNotMatch(overview, /FiChevronRight|holdingMetrics|assetType/);
+  assert.match(overview, /Catatan saldo lama tidak dicampurkan di sini/);
   assert.doesNotMatch(`${page}\n${overview}`, /Top up RDN|Tarik RDN|Sumber catatan|Ajaib|Bibit|Indodax|Market Movers|Top Gainers|Top Losers/i);
 });
 
@@ -49,7 +51,9 @@ test("aksi Investasi berada pada detail aset dan tetap capability-driven", async
   assert.match(detail, /portfolio\.can_operate \? <Button[\s\S]*?>Perbarui nilai<\/Button>/);
   assert.match(detail, /portfolio\.can_operate \? <Button[\s\S]*?>Beli<\/Button>/);
   assert.match(detail, /canSell \? <Button[\s\S]*?>Jual<\/Button>/);
-  assert.match(detail, /Aktivitas investasi terbaru/);
+  assert.match(detail, /Riwayat aset/);
+  assert.match(detail, /Posisi selesai/);
+  assert.match(detail, /Hasil direalisasi/);
   for (const label of ["Pembelian dicatat", "Penjualan dicatat", "Harga manual", "Nilai manual", "Koreksi dicatat", "Posisi awal dicatat"]) assert.match(`${model}\n${presentation}`, new RegExp(label));
 });
 
@@ -141,7 +145,8 @@ test("detail aset memakai modal, cost basis, nilai manual, dan aktivitas tanpa k
   assert.match(holdingDetail, /Modal tercatat/);
   assert.match(holdingDetail, /Nilai tercatat/);
   assert.match(holdingDetail, /Hasil belum direalisasi/);
-  assert.match(holdingDetail, /Aktivitas investasi terbaru/);
+  assert.match(holdingDetail, /Riwayat aset/);
+  assert.match(holdingDetail, /Total hasil penjualan/);
   assert.doesNotMatch(`${overview}\n${holdingDetail}`, /Saldo RDN|Top up|Tarik ke rekening/i);
 });
 

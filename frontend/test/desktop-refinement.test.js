@@ -21,10 +21,11 @@ test("shell desktop memberi notification entry point dan account menu aksesibel"
   const shell = await read("src/layouts/AppShell.jsx");
   assert.match(shell, /desktop-notification-button/);
   assert.match(shell, /notificationState\.unreadCount/);
-  assert.match(shell, /aria-haspopup="menu"/);
   assert.match(shell, /aria-expanded=\{accountMenuOpen\}/);
-  assert.match(shell, /role="menu"/);
-  assert.match(shell, /role="menuitem"/);
+  assert.match(shell, /aria-controls="desktop-account-popover"/);
+  assert.doesNotMatch(shell, /aria-haspopup="menu"/);
+  assert.doesNotMatch(shell, /role="menu"/);
+  assert.doesNotMatch(shell, /role="menuitem"/);
   assert.match(shell, /event\.key !== "Escape"/);
   assert.match(shell, /accountMenuTriggerRef\.current\?\.focus\(\)/);
 });

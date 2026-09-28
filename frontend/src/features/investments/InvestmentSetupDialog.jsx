@@ -9,30 +9,28 @@ import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import InvestmentAssetPicker from "./InvestmentAssetPicker.jsx";
 import InvestmentFormField from "./InvestmentFormField.jsx";
+import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
 import { createInvestmentAssetPosition, invalidateInvestmentReads } from "./investments.api.js";
-import { validateInvestmentAssetPosition } from "./investments.model.js";
+import { investmentOpeningPositionPreview, validateInvestmentAssetPosition } from "./investments.model.js";
 
 import styles from "./InvestmentForm.module.css";
 
 const TODAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 const ticker = (value) => String(value || "").trim().toUpperCase();
 
-const assetPositionPreview = (form, asset) => {
-  const quantity = Number(form.opening_quantity || 0);
-  const lotSize = Number(asset?.lot_size || 1);
-  const shares = isMutualFundInstrument(asset || {}) ? quantity : quantity * lotSize;
-  const averagePrice = Number(form.average_price || 0);
-  const referencePrice = Number(form.reference_price || 0);
-  const costBasis = Number.isSafeInteger(shares * averagePrice) ? shares * averagePrice : 0;
-  const marketValue = Number.isSafeInteger(shares * referencePrice) ? shares * referencePrice : 0;
-  return { shares, costBasis, marketValue };
-};
+const assetPositionPreview = (form, asset) => investmentOpeningPositionPreview({
+  ...form,
+  instrument_id: asset?.instrument_id || "asset-preview",
+}, [{ ...asset, instrument_id: asset?.instrument_id || "asset-preview" }]);
+
 
 const PositionSummary = ({ form, asset }) => {
   if (!asset || !Number(form.opening_quantity) || !Number(form.average_price) || !Number(form.reference_price)) return null;
   const preview = assetPositionPreview(form, asset);
   return <section className={styles.review} aria-label="Ringkasan posisi investasi">
     <dl className={styles.reviewGrid}>
+      <div><dt>Harga rata-rata</dt><dd><InvestmentUnitPrice value={preview.averagePrice} /></dd></div>
+      <div><dt>Harga saat ini</dt><dd><InvestmentUnitPrice value={preview.currentPrice} /></dd></div>
       <div><dt>Modal tercatat</dt><dd><Money value={preview.costBasis} /></dd></div>
       <div><dt>Nilai saat ini</dt><dd><Money value={preview.marketValue} /></dd></div>
     </dl>
@@ -82,7 +80,9 @@ const InvestmentPositionFields = ({ form, asset, heldTickers, allowedTickers, ou
           <TemporalInput type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />
         </InvestmentFormField>
       </div>
-      <MoneyInput id="investment-position-average" label={mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"} required value={form.average_price} error={fieldErrors.average_price} onChange={(value) => onFieldChange("average_price", value)} />
+      <InvestmentFormField id="investment-position-average" label={mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"} required error={fieldErrors.average_price}>
+        <input min="0.01" step="0.01" inputMode="decimal" type="number" value={form.average_price} onChange={(event) => onFieldChange("average_price", event.target.value)} />
+      </InvestmentFormField>
       <MoneyInput id="investment-position-current" label={mutualFund ? "Nilai per unit saat ini" : "Harga saham saat ini"} required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />
       <InvestmentFormField id="investment-position-notes" label="Catatan (opsional)" error={fieldErrors.notes}>
         <textarea maxLength="500" value={form.notes} onChange={(event) => onFieldChange("notes", event.target.value)} />

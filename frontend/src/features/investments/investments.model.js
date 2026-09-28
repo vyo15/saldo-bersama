@@ -18,6 +18,15 @@ const positiveIntegerError = (value, label) => {
   return "";
 };
 
+const positiveDecimalError = (value, label, maximumFractionDigits = 2) => {
+  const raw = String(value ?? "").trim();
+  const number = Number(raw);
+  if (!raw || !Number.isFinite(number) || number <= 0) return `${label} harus lebih dari 0.`;
+  const decimalPart = raw.includes(".") ? raw.split(".").at(-1) : "";
+  if (decimalPart.length > maximumFractionDigits) return `${label} maksimal ${maximumFractionDigits} angka di belakang desimal.`;
+  return "";
+};
+
 const nonNegativeIntegerError = (value, label) => {
   const number = finiteInteger(value);
   if (number == null || number < 0) return `${label} harus berupa bilangan bulat 0 atau lebih.`;
@@ -84,17 +93,19 @@ export const investmentProjectedAverage = (form = {}, instruments = [], portfoli
   const holding = (portfolio?.holdings || []).find((item) => item.instrument_id === preview.instrument?.instrument_id) || null;
   const currentShares = Number(holding?.shares || 0);
   const currentCostBasis = Number(holding?.cost_basis || 0);
-  const currentAverage = currentShares > 0 ? Math.round(currentCostBasis / currentShares) : 0;
+  const currentAverage = currentShares > 0 ? currentCostBasis / currentShares : 0;
   const nextShares = currentShares + Number(preview.shares || 0);
   const nextCostBasis = currentCostBasis + Number(preview.grossAmount || 0);
-  const nextAverage = nextShares > 0 ? Math.round(nextCostBasis / nextShares) : 0;
+  const nextAverage = nextShares > 0 ? nextCostBasis / nextShares : 0;
   return { currentAverage, nextAverage, currentShares, nextShares, holding, ...preview };
 };
 
 
 const safeIntegerProduct = (left, right) => {
   const product = Number(left) * Number(right);
-  return Number.isSafeInteger(left) && Number.isSafeInteger(right) && Number.isSafeInteger(product) ? product : 0;
+  if (!Number.isFinite(product) || product < 0 || product > Number.MAX_SAFE_INTEGER) return 0;
+  const rounded = Math.round(product);
+  return Number.isSafeInteger(rounded) ? rounded : 0;
 };
 
 export const investmentOpeningPositionPreview = (form = {}, instruments = []) => {
@@ -309,7 +320,7 @@ const openingPositionAssetErrors = (form, context) => {
     instrument || {},
     isMutualFundInstrument(instrument || {}) ? "Jumlah unit" : "Jumlah lot",
   );
-  const averageError = positiveIntegerError(form.average_price, "Harga rata-rata beli");
+  const averageError = positiveDecimalError(form.average_price, "Harga rata-rata beli");
   const priceError = positiveIntegerError(form.reference_price, "Harga sekarang");
   if (quantityError) errors.opening_quantity = quantityError;
   if (averageError) errors.average_price = averageError;
@@ -354,7 +365,7 @@ const assetPositionFieldErrors = (form, instrument, today) => {
   const errors = {};
   const mutualFund = isMutualFundInstrument(instrument || {});
   const quantityError = investmentQuantityError(form.opening_quantity, instrument || {}, mutualFund ? "Jumlah unit" : "Jumlah lot");
-  const averageError = positiveIntegerError(form.average_price, mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham");
+  const averageError = positiveDecimalError(form.average_price, mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham");
   const referenceError = positiveIntegerError(form.reference_price, mutualFund ? "Nilai per unit saat ini" : "Harga saham saat ini");
   const dateError = requiredDateError(form.position_date, "Tanggal posisi", today);
   if (!instrument || !String(form.ticker || instrument?.ticker || "").trim()) errors.ticker = "Pilih saham atau reksa dana yang ingin dicatat.";

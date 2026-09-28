@@ -2,6 +2,7 @@ import { APP_MEDIA } from "../../config/layout.js";
 import styles from "./TransactionsPage.module.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FiChevronLeft, FiChevronRight, FiCopy, FiEdit2, FiMoreHorizontal, FiPlus, FiRotateCcw, FiTrash2 } from "react-icons/fi";
+import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -232,13 +233,50 @@ const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentio
   return { state, handleSaved };
 };
 
+
+const useDirectTransactionDetail = ({ location, navigate, resourceStatus, items, setDetailTransaction }) => {
+  const handled = useRef("");
+  useEffect(() => {
+    const transactionId = String(location.state?.transactionId || "");
+    const key = transactionId ? `${location.key}:${transactionId}` : "";
+    if (!transactionId || resourceStatus !== "ready" || handled.current === key) return;
+    const target = items.find((item) => String(item.transaction_id) === transactionId);
+    if (!target) return;
+    handled.current = key;
+    setDetailTransaction(target);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [items, location.key, location.pathname, location.state, navigate, resourceStatus, setDetailTransaction]);
+};
+
+const transactionPageActions = ({ lifecycle, openTransactionComposer, setEditingTransaction, setDetailTransaction }) => {
+  const openEdit = (item) => setEditingTransaction(item);
+  const closeDetail = () => setDetailTransaction(null);
+  const openRepeat = (item) => {
+    closeDetail();
+    openTransactionComposer({ initialType: item.transaction_type, initialSourceAccountId: item.source_account_id || "", initialDraft: repeatDraftFromTransaction(item) });
+  };
+  return {
+    actions: { openEdit, openCancel: lifecycle.openCancel, openRestore: lifecycle.openRestore, openRepeat },
+    detailActions: {
+      openEdit: (item) => { closeDetail(); openEdit(item); },
+      openCancel: (item) => { closeDetail(); lifecycle.openCancel(item); },
+      openRestore: (item) => { closeDetail(); lifecycle.openRestore(item); },
+      openRepeat,
+    },
+    closeDetail,
+    openRepeat,
+  };
+};
+
 const TransactionsPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { attention, consumeAttention } = useDashboardAttentionState();
   const { bootstrap, refreshOverview, invalidate } = useFinance();
   const { openTransactionComposer } = useTransactionComposer();
   const mobileLayout = useMobileTransactionsLayout();
   const [draftQuery, setDraftQuery] = useState("");
-  const [filters, setFilters] = useState(() => initialFilters(attention));
+  const [filters, setFilters] = useState(() => initialFilters(location.state || attention));
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [detailTransaction, setDetailTransaction] = useState(null);
   const resource = useApiResource("transactions.list", transactionQuery(filters));
@@ -246,6 +284,7 @@ const TransactionsPage = () => {
   const reportResource = useApiResource("reports.monthly", { period: filters.period, trend_months: 6 });
   const lifecycle = useTransactionLifecycle({ resource, reportResource, refreshOverview, invalidate });
   const { accountLookup, categoryLookup, creatorLookup, items, filterOptions } = transactionPageData(bootstrap, resource);
+  useDirectTransactionDetail({ location, navigate, resourceStatus: resource.status, items, setDetailTransaction });
   const filtersActive = transactionFiltersActive(filters);
   const resetFilters = () => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", type: "all", allocation: "all", account: "all", category: "all", creator: "all", offset: 0 })); };
   const showHeaderCreate = !mobileLayout && (resource.status !== "ready" || items.length > 0 || filtersActive);
@@ -261,19 +300,7 @@ const TransactionsPage = () => {
   const accountLabel = (item) => accountLabelFor(accountLookup, item);
   const categoryLabel = (item) => categoryLabelFor(categoryLookup, item);
   const creatorLabel = (item) => creatorLookup[item.created_by] || "Pencatat tidak tersedia";
-  const openEdit = (item) => setEditingTransaction(item);
-  const closeDetail = () => setDetailTransaction(null);
-  const openRepeat = (item) => {
-    closeDetail();
-    openTransactionComposer({ initialType: item.transaction_type, initialSourceAccountId: item.source_account_id || "", initialDraft: repeatDraftFromTransaction(item) });
-  };
-  const actions = { openEdit, openCancel: lifecycle.openCancel, openRestore: lifecycle.openRestore, openRepeat };
-  const detailActions = {
-    openEdit: (item) => { closeDetail(); openEdit(item); },
-    openCancel: (item) => { closeDetail(); lifecycle.openCancel(item); },
-    openRestore: (item) => { closeDetail(); lifecycle.openRestore(item); },
-    openRepeat,
-  };
+  const { actions, detailActions, closeDetail, openRepeat } = transactionPageActions({ lifecycle, openTransactionComposer, setEditingTransaction, setDetailTransaction });
   const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, resource, filters, setFilters, onOpenDetail: setDetailTransaction };
   const modalProps = { ...lifecycle, accountLabel, categoryLabel };
 

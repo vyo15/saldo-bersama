@@ -49,8 +49,8 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.match(investmentHoldingDetail, />Beli<\/Button>/);
   assert.match(investmentHoldingDetail, />Jual<\/Button>/);
 
-  assert.match(investmentsPage, /assetCount === 0 \? <EmptyInvestmentState/);
-  assert.match(investmentsPage, /actions=\{assetCount > 0 \? <Button[\s\S]*aria-label="Tambah investasi">Tambah investasi<\/Button> : null\}/);
+  assert.match(investmentsPage, /!hasInvestmentHistory \? <EmptyInvestmentState/);
+  assert.match(investmentsPage, /actions=\{hasInvestmentHistory \? <Button[\s\S]*aria-label="Tambah investasi">Tambah investasi<\/Button> : null\}/);
 
   assert.match(allocationDetail, /onAdjustAllocation\(item, summary\.gap\)/);
   assert.doesNotMatch(allocationDetail, /showStandardAdjustAction|>Atur dana<\/Button>/);

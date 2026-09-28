@@ -207,8 +207,9 @@ test("kondisi awal dapat mencatat Saldo RDN tanpa aset dan bukan transfer", asyn
     const overview = await investmentOverview(db, context(owner, "investments.overview"));
     assert.equal(overview.portfolios[0].rdn_cash, 2_000_000);
     assert.equal(overview.portfolios[0].holdings.length, 0);
-    assert.equal(overview.portfolios[0].activity[0].activity_type, "opening_position");
-    assert.equal(overview.portfolios[0].activity[0].instrument_id, "");
+    assert.equal(overview.portfolios[0].activity.length, 0, "Riwayat aset tidak boleh dicampur dengan histori kas RDN lama.");
+    assert.equal(overview.portfolios[0].legacy_cash_activity[0].activity_type, "opening_position");
+    assert.equal(overview.portfolios[0].legacy_cash_activity[0].instrument_id, "");
     assert.deepEqual(await integrityIssues(db), []);
     await assert.rejects(() => createOpeningPosition(db, context(owner, "investments.openingPositions.create", {
       portfolio_id: portfolio.portfolio_id, actual_cash: 2_000_000, position_date: TODAY,
@@ -293,6 +294,35 @@ test("weighted-average cost basis tetap konsisten pada multi-buy dan partial sel
     assert.equal(holding.average_cost, 9_010);
     assert.equal(holding.realized_pl, 990_000);
     assert.equal(sold.row_version, 4);
+  } finally { db.close(); }
+});
+
+test("saham yang terjual habis tetap tersedia sebagai posisi selesai dengan hasil realisasi dan riwayat aset", async () => {
+  const db = await seed({ initialBalance: 20_000_000 });
+  try {
+    const { portfolio, instrument } = await setupPortfolio(db);
+    const bought = await buy(db, owner, portfolio, instrument, { lots: 10, price_per_share: 8_000, fee_amount: 10_000, key: "buy:closed-position:12345678" });
+    await db.execute("UPDATE investment_trades SET created_at='2026-09-02T00:00:00.000Z' WHERE portfolio_id=?", [portfolio.portfolio_id]);
+    await sellInvestment(db, context(owner, "investments.trades.sell", {
+      portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, lots: 10, price_per_share: 9_000, fee_amount: 5_000,
+    }, { rowVersion: bought.row_version, key: "sell:closed-position:12345678" }));
+
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    const item = overview.portfolios[0];
+    assert.equal(item.holdings.length, 0);
+    assert.equal(item.positions.length, 1);
+    assert.equal(item.positions[0].is_closed, true);
+    assert.equal(item.positions[0].shares, 0);
+    assert.equal(item.positions[0].realized_cost_basis, 8_010_000);
+    assert.equal(item.positions[0].sale_proceeds, 8_995_000);
+    assert.equal(item.positions[0].realized_pl, 985_000);
+    const sale = item.activity.find((entry) => entry.activity_type === "trade" && entry.trade_type === "sell");
+    assert.equal(sale.cost_basis_released, 8_010_000);
+    assert.equal(sale.sale_proceeds, 8_995_000);
+    assert.equal(sale.realized_pl, 985_000);
+    assert.equal(overview.summary.holding_count, 0);
+    assert.equal(overview.summary.position_count, 1);
+    assert.equal(overview.summary.realized_pl, 985_000);
   } finally { db.close(); }
 });
 

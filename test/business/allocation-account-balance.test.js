@@ -122,7 +122,8 @@ test("Tambah dan kembalikan dana alokasi muncul di aktivitas dana tanpa transaks
 
     const snapshot = await listEnvelopes(db, context("envelopes.list"));
     const activities = snapshot.recentMovements.filter((item) => item.envelope_period_id === envelope.periodId);
-    assert.deepEqual(activities.map((item) => item.movement_type).sort(), ["fund", "release"]);
+    assert.deepEqual(activities.map((item) => item.movement_type).sort(), ["allocation", "fund", "release"]);
+    assert.ok(activities.some((item) => item.movement_type === "allocation" && item.reason === "Alokasi awal"));
     assert.equal(activities.find((item) => item.movement_type === "fund")?.amount, 250_000);
     assert.equal(activities.find((item) => item.movement_type === "release")?.amount, 100_000);
     assert.equal(activities.every((item) => item.can_reverse === false), true);

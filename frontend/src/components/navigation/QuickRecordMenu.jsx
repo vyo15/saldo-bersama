@@ -157,18 +157,18 @@ const InvestmentList = ({ resource, onBack, onSelect, onOpenInvestments }) => {
     <StepBack onBack={onBack} />
     <ResourceStatus
       resource={resource}
-      loadingLabel="Menyiapkan portofolio investasi…"
+      loadingLabel="Menyiapkan sumber investasi…"
       errorTitle="Investasi belum dapat dimuat."
       isEmpty={!portfolios.length}
-      empty={<div className={styles.state}><strong>Belum ada portofolio yang dapat dicatat.</strong><span>Tambahkan aset investasi terlebih dahulu.</span><Button type="button" variant="primary" onClick={onOpenInvestments}>Buka Investasi</Button></div>}
+      empty={<div className={styles.state}><strong>Belum ada sumber investasi yang dapat dicatat.</strong><span>Tambahkan aset investasi terlebih dahulu.</span><Button type="button" variant="primary" onClick={onOpenInvestments}>Buka Investasi</Button></div>}
     />
     {resource.status === "ready" && portfolios.length > 1 ? <div className={styles.commitmentList}>
       {portfolios.map((portfolio) => <button key={portfolio.portfolio_id} type="button" className={styles.commitmentRow} onClick={() => onSelect(portfolio)}>
         <span className={styles.commitmentIcon} aria-hidden="true"><FiTrendingUp /></span>
         <span className={styles.commitmentCopy}>
           <span className={styles.commitmentHeading}><strong>{portfolio.name || "Investasi"}</strong><b>{(portfolio.holdings || []).length} aset</b></span>
-          <small>{portfolio.broker || "Portofolio investasi"}</small>
-          <small>Pilih portofolio lalu catat pembelian dengan form Investasi yang sama.</small>
+          <small>{portfolio.market_value ? `Nilai tercatat ${formatRupiah(portfolio.market_value)}` : "Sumber investasi"}</small>
+          <small>Pilih sumber bila diperlukan, lalu catat aset dengan form Investasi yang sama.</small>
         </span>
         <FiChevronRight className={styles.chevron} aria-hidden="true" />
       </button>)}
@@ -229,7 +229,7 @@ const QuickRecordMenu = ({ open, onClose, onOpenTransaction }) => {
     : step === "goals"
       ? "Pilih Target bila ada lebih dari satu. Jika hanya satu, alur dilanjutkan otomatis."
       : step === "investments"
-        ? "Pilih portofolio bila ada lebih dari satu. Aset dan nominal tetap dipilih di form Investasi."
+        ? "Pilih sumber investasi bila ada lebih dari satu. Aset dan nominal tetap dipilih di form Investasi."
         : "Pilih yang baru saja terjadi.";
 
   return <Modal

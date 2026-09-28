@@ -20,6 +20,40 @@ const validEnvelopeRuleOptions = ({ periodType, rollover, overspend, decorationK
 
 const envelopeLegacyAssignee = (owned) => owned.scope === "personal" ? owned.owner_user_id : null;
 
+const mapAllocationAdjustments = (rows) => rows.flatMap((row) => {
+  const payload = parseJson(row.new_value, {});
+  const adjustment = payload?.allocation_adjustment;
+  if (!adjustment || !["fund", "release"].includes(adjustment.direction)) return [];
+  return [{
+    movement_id: row.movement_id,
+    movement_type: adjustment.direction,
+    envelope_period_id: row.envelope_period_id,
+    envelope_name: row.envelope_name,
+    amount: Number(adjustment.amount || 0),
+    reason: sanitizeText(adjustment.reason, 180),
+    created_at: row.created_at,
+    created_by: row.created_by,
+    can_reverse: false,
+  }];
+});
+
+const mapInitialAllocations = (rows) => rows.flatMap((row) => {
+  const payload = parseJson(row.creation_value, {});
+  const originalAmount = Number(payload?.period?.allocated_amount ?? row.allocated_amount ?? 0);
+  if (!Number.isFinite(originalAmount) || originalAmount <= 0) return [];
+  return [{
+    movement_id: `allocation:${row.envelope_period_id}`,
+    movement_type: "allocation",
+    envelope_period_id: row.envelope_period_id,
+    envelope_name: row.envelope_name,
+    amount: originalAmount,
+    reason: "Alokasi awal",
+    created_at: row.created_at,
+    created_by: row.created_by,
+    can_reverse: false,
+  }];
+});
+
 // Stable envelope facade. Creation/list orchestration stays here; lifecycle and
 // allocation movements are isolated without changing action/public imports.
 export const listEnvelopes = async (db, context) => {
@@ -32,7 +66,7 @@ export const listEnvelopes = async (db, context) => {
       JOIN envelope_periods fp ON fp.envelope_period_id=m.from_envelope_period_id
       JOIN envelope_periods tp ON tp.envelope_period_id=m.to_envelope_period_id
       JOIN envelope_rules fr ON fr.envelope_rule_id=fp.envelope_rule_id
-      WHERE m.status='active' AND m.movement_type='reallocation' AND ${access.sql}
+      WHERE m.status='active' AND m.movement_type IN ('reallocation','rollover') AND ${access.sql}
       ORDER BY m.created_at DESC LIMIT 20`,
     args: access.args,
   };
@@ -47,7 +81,24 @@ export const listEnvelopes = async (db, context) => {
       ORDER BY a.timestamp DESC LIMIT 20`,
     args: adjustmentAccess.args,
   };
-  const statements = [itemStatement, movementStatement, adjustmentStatement];
+  const creationAccess = visibleScopeSql(context.actor, "cr");
+  const creationStatement = {
+    sql: `SELECT p.envelope_period_id,p.name AS envelope_name,p.allocated_amount,p.created_at,p.created_by,
+      (SELECT a.new_value FROM audit_log a
+        WHERE a.entity_id=p.envelope_period_id AND a.entity_type='envelope'
+          AND a.action IN ('envelopes.create','envelopes.createWithNeeds') AND a.result='success'
+        ORDER BY a.timestamp ASC LIMIT 1) AS creation_value
+      FROM envelope_periods p
+      JOIN envelope_rules cr ON cr.envelope_rule_id=p.envelope_rule_id
+      WHERE ${creationAccess.sql}
+        AND NOT EXISTS (
+          SELECT 1 FROM envelope_movements rm
+          WHERE rm.to_envelope_period_id=p.envelope_period_id AND rm.movement_type='rollover' AND rm.status='active'
+        )
+      ORDER BY p.created_at DESC LIMIT 20`,
+    args: creationAccess.args,
+  };
+  const statements = [itemStatement, movementStatement, adjustmentStatement, creationStatement];
   const archivedIndex = context.actor.role === "owner" ? statements.push({
     sql: `SELECT r.*,COALESCE(NULLIF(TRIM(au.name),''),NULLIF(TRIM(au.email),''),'') AS assignee_name,au.role AS assignee_role
       FROM envelope_rules r LEFT JOIN users au ON au.user_id=r.assignee_user_id
@@ -57,29 +108,16 @@ export const listEnvelopes = async (db, context) => {
   const resultRows = await readBatchRows(db, statements);
   const items = mapEnvelopeItemRows(resultRows[0] || []);
   const recentMovements = resultRows[1] || [];
-  const allocationAdjustments = (resultRows[2] || []).flatMap((row) => {
-    const payload = parseJson(row.new_value, {});
-    const adjustment = payload?.allocation_adjustment;
-    if (!adjustment || !["fund", "release"].includes(adjustment.direction)) return [];
-    return [{
-      movement_id: row.movement_id,
-      movement_type: adjustment.direction,
-      envelope_period_id: row.envelope_period_id,
-      envelope_name: row.envelope_name,
-      amount: Number(adjustment.amount || 0),
-      reason: sanitizeText(adjustment.reason, 180),
-      created_at: row.created_at,
-      created_by: row.created_by,
-      can_reverse: false,
-    }];
-  });
+  const allocationAdjustments = mapAllocationAdjustments(resultRows[2] || []);
+  const initialAllocations = mapInitialAllocations(resultRows[3] || []);
   const visibleMovements = [
     ...recentMovements.map((movement) => ({
       ...publicRow(movement),
-      can_reverse: context.actor.role === "owner" || movement.created_by === context.actor.user_id,
+      can_reverse: movement.movement_type === "reallocation" && (context.actor.role === "owner" || movement.created_by === context.actor.user_id),
     })),
     ...allocationAdjustments,
-  ].sort((left, right) => String(right.created_at || "").localeCompare(String(left.created_at || ""))).slice(0, 20);
+    ...initialAllocations,
+  ].sort((left, right) => String(right.created_at || "").localeCompare(String(left.created_at || ""))).slice(0, 30);
   const archivedRules = archivedIndex >= 0 ? resultRows[archivedIndex] || [] : [];
   return {
     items: items.map((item) => ({

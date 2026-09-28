@@ -21,7 +21,9 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
   assert.match(page, /useFinance\(\)/);
   assert.match(page, /mergeNotificationCenterItems\(overview\?\.alerts \|\| \[\], eventFeed\.data\?\.items \|\| \[\]\)/);
   assert.match(page, /useApiResource\("notifications\.center"/);
-  assert.match(page, /financialAlertGuidance\(guidanceAlert, \{ source: "notification-center" \}\)/);
+  assert.match(page, /financialAlertSelectionGuard\(guidanceAlert, \{ source: "notification-center" \}\)/);
+  assert.match(page, /title="Pilih data untuk melanjutkan"/);
+  assert.match(page, /Buka halaman terkait/);
   assert.doesNotMatch(page, /notificationSource/);
   assert.match(page, /aria-label="Tandai semua dibaca"/);
   assert.match(row, /financialNotificationEntity/);
@@ -37,7 +39,8 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
   assert.match(state, /remoteDismissed/);
   assert.match(state, /optimisticDismissed/);
   assert.match(state, /dismiss/);
-  assert.match(row, /Geser ke kanan untuk bersihkan/);
+  assert.match(row, /Tekan Delete untuk membersihkan/);
+  assert.match(row, /Pada layar sentuh, geser ke kanan/);
   assert.match(row, /FAST_SWIPE_VELOCITY_PX_MS/);
   assert.match(row, /onPointerMove/);
   assert.match(row, /aria-keyshortcuts="Delete"/);
@@ -49,6 +52,18 @@ test("notification center menggabungkan alert aktif dan event queue actor tanpa 
   assert.match(state, /recurring_funding_shortage/);
   assert.match(state, /recurring_completed/);
   assert.match(state, /Date\.parse\(left\.item\.occurredAt/);
+});
+
+test("notifikasi actionable tanpa entity terpilih memakai guard sebelum navigasi", async () => {
+  const { financialAlertSelectionGuard } = await import("../src/shared/workflows/financialAlerts.js");
+  const missing = financialAlertSelectionGuard({ type: "goal_behind", id: "goal-behind:" }, { source: "notification-center" });
+  assert.equal(missing.selectionKey, "attentionGoalId");
+  assert.equal(missing.missingSelection, true);
+  assert.equal(missing.guidance.to, "/target");
+
+  const selected = financialAlertSelectionGuard({ type: "goal_behind", id: "goal-behind:goal-123" }, { source: "notification-center" });
+  assert.equal(selected.missingSelection, false);
+  assert.equal(selected.guidance.state.attentionGoalId, "goal-123");
 });
 
 test("dashboard hanya menampilkan next action utama dan desktop/mobile mengarah ke notification center", async () => {

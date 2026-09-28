@@ -68,10 +68,9 @@ test("laporan dan dashboard menampilkan insight lintas bulan serta peringatan ac
   assert.match(mobile, /MobileNextAction alerts=\{urgentAlerts\}/);
   assert.match(mobile, /to="\/notifikasi"/);
   assert.match(mobile, /useFinancialNotificationReadState/);
-  assert.match(notifications, /Perlu dilakukan/);
   assert.match(notifications, /Perlu tindakan/);
-  assert.match(notifications, /Lainnya/);
-  assert.match(notifications, /financialAlertGuidance/);
+  assert.match(notifications, /Pengingat/);
+  assert.match(notifications, /financialAlertSelectionGuard/);
   assert.match(notifications, /markAllRead/);
   assert.match(notificationState, /readStates/);
   assert.match(notificationState, /markNotificationsRead/);

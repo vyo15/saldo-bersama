@@ -108,65 +108,113 @@ export const latestKnownPrices = async (db, portfolioId, cutoffDate = null) => {
   return [...latest.values()];
 };
 
+const emptyHoldingState = (instrumentId) => ({
+  instrument_id: instrumentId,
+  shares: 0,
+  cost_basis: 0,
+  realized_pl: 0,
+  realized_cost_basis: 0,
+  sale_proceeds: 0,
+  activity_count: 0,
+  first_activity_date: "",
+  last_activity_date: "",
+});
+
+const holdingStateFor = (states, instrumentId) => {
+  if (!states.has(instrumentId)) states.set(instrumentId, emptyHoldingState(instrumentId));
+  return states.get(instrumentId);
+};
+
+const touchHoldingActivity = (state, eventDate) => {
+  state.activity_count += 1;
+  if (!eventDate) return;
+  if (!state.first_activity_date || eventDate < state.first_activity_date) state.first_activity_date = eventDate;
+  if (!state.last_activity_date || eventDate > state.last_activity_date) state.last_activity_date = eventDate;
+};
+
+const applyBuyEvent = (state, event) => {
+  state.shares += Number(event.share_quantity);
+  state.cost_basis += Number(event.cash_amount);
+};
+
+const sellCostBasis = (state, quantity) => quantity === state.shares
+  ? state.cost_basis
+  : Number((BigInt(state.cost_basis) * BigInt(quantity)) / BigInt(state.shares));
+
+const applySellEvent = (state, event) => {
+  const quantity = Number(event.share_quantity);
+  if (quantity > state.shares) throw appError("INVESTMENT_INTEGRITY_ERROR", "Riwayat jual melebihi kepemilikan yang tersedia.", 500, { instrumentId: event.instrument_id, eventId: event.event_id });
+  const removedCost = sellCostBasis(state, quantity);
+  const proceeds = Number(event.cash_amount);
+  const realized = proceeds - removedCost;
+  state.shares -= quantity;
+  state.cost_basis -= removedCost;
+  state.realized_pl += realized;
+  state.realized_cost_basis += removedCost;
+  state.sale_proceeds += proceeds;
+  return { cost_basis_released: removedCost, realized_pl: realized, sale_proceeds: proceeds };
+};
+
+const applyCorrectionEvent = (state, event) => {
+  const nextShares = state.shares + Number(event.share_delta || 0);
+  const nextCost = state.cost_basis + Number(event.cost_basis_delta || 0);
+  if (nextShares < 0 || nextCost < 0 || (nextShares === 0 && nextCost !== 0)) {
+    throw appError("INVESTMENT_INTEGRITY_ERROR", "Koreksi menghasilkan kepemilikan atau cost basis yang tidak valid.", 500, { instrumentId: event.instrument_id, eventId: event.event_id });
+  }
+  state.shares = nextShares;
+  state.cost_basis = nextCost;
+};
+
+const applyHoldingEvent = (states, event) => {
+  if (!event.instrument_id) return null;
+  const state = holdingStateFor(states, event.instrument_id);
+  touchHoldingActivity(state, String(event.event_date || ""));
+  if (event.event_kind === "trade" && event.trade_type === "buy") {
+    applyBuyEvent(state, event);
+    return null;
+  }
+  if (event.event_kind === "trade" && event.trade_type === "sell") return applySellEvent(state, event);
+  if (event.event_kind === "correction") applyCorrectionEvent(state, event);
+  return null;
+};
+
+const positionFromState = (state, valuation) => {
+  const price = Number(valuation?.price_per_share || 0);
+  const marketValue = state.shares > 0 && price ? safeMultiply(state.shares, price, "Nilai pasar") : 0;
+  return {
+    ...state,
+    is_closed: state.shares === 0 && state.activity_count > 0,
+    average_cost: state.shares ? state.cost_basis / state.shares : 0,
+    price_per_share: price,
+    valuation_date: valuation?.valuation_date || "",
+    price_source: valuation?.price_source || "",
+    market_value: marketValue,
+    unrealized_pl: state.shares > 0 ? marketValue - state.cost_basis : 0,
+  };
+};
+
 export const holdingStateFromEvents = (events, valuations = []) => {
   const states = new Map();
+  const tradeRealizations = {};
   let realizedTotal = 0;
-  const stateFor = (instrumentId) => {
-    if (!states.has(instrumentId)) states.set(instrumentId, { instrument_id: instrumentId, shares: 0, cost_basis: 0, realized_pl: 0 });
-    return states.get(instrumentId);
-  };
   for (const event of events) {
-    if (!event.instrument_id) continue;
-    const state = stateFor(event.instrument_id);
-    if (event.event_kind === "trade" && event.trade_type === "buy") {
-      state.shares += Number(event.share_quantity);
-      state.cost_basis += Number(event.cash_amount);
-      continue;
-    }
-    if (event.event_kind === "trade" && event.trade_type === "sell") {
-      const quantity = Number(event.share_quantity);
-      if (quantity > state.shares) throw appError("INVESTMENT_INTEGRITY_ERROR", "Riwayat jual melebihi kepemilikan yang tersedia.", 500, { instrumentId: event.instrument_id, eventId: event.event_id });
-      const removedCost = quantity === state.shares ? state.cost_basis : Number((BigInt(state.cost_basis) * BigInt(quantity)) / BigInt(state.shares));
-      const realized = Number(event.cash_amount) - removedCost;
-      state.shares -= quantity;
-      state.cost_basis -= removedCost;
-      state.realized_pl += realized;
-      realizedTotal += realized;
-      continue;
-    }
-    if (event.event_kind === "correction") {
-      const nextShares = state.shares + Number(event.share_delta || 0);
-      const nextCost = state.cost_basis + Number(event.cost_basis_delta || 0);
-      if (nextShares < 0 || nextCost < 0 || (nextShares === 0 && nextCost !== 0)) {
-        throw appError("INVESTMENT_INTEGRITY_ERROR", "Koreksi menghasilkan kepemilikan atau cost basis yang tidak valid.", 500, { instrumentId: event.instrument_id, eventId: event.event_id });
-      }
-      state.shares = nextShares;
-      state.cost_basis = nextCost;
-    }
+    const realization = applyHoldingEvent(states, event);
+    if (!realization) continue;
+    tradeRealizations[event.event_id] = realization;
+    realizedTotal += realization.realized_pl;
   }
   const valuationMap = new Map(valuations.map((row) => [row.instrument_id, row]));
-  let marketValue = 0;
-  let costBasis = 0;
-  let unrealizedTotal = 0;
-  const holdings = [...states.values()].filter((state) => state.shares > 0).map((state) => {
-    const valuation = valuationMap.get(state.instrument_id) || null;
-    const price = Number(valuation?.price_per_share || 0);
-    const value = price ? safeMultiply(state.shares, price, "Nilai pasar") : 0;
-    const unrealized = value - state.cost_basis;
-    marketValue += value;
-    costBasis += state.cost_basis;
-    unrealizedTotal += unrealized;
-    return {
-      ...state,
-      average_cost: state.shares ? Math.round(state.cost_basis / state.shares) : 0,
-      price_per_share: price,
-      valuation_date: valuation?.valuation_date || "",
-      price_source: valuation?.price_source || "",
-      market_value: value,
-      unrealized_pl: unrealized,
-    };
-  });
-  return { holdings, market_value: marketValue, cost_basis: costBasis, realized_pl: realizedTotal, unrealized_pl: unrealizedTotal };
+  const positions = [...states.values()].map((state) => positionFromState(state, valuationMap.get(state.instrument_id) || null));
+  const holdings = positions.filter((state) => state.shares > 0);
+  return {
+    holdings,
+    positions,
+    trade_realizations: tradeRealizations,
+    market_value: holdings.reduce((total, state) => total + state.market_value, 0),
+    cost_basis: holdings.reduce((total, state) => total + state.cost_basis, 0),
+    realized_pl: realizedTotal,
+    unrealized_pl: holdings.reduce((total, state) => total + state.unrealized_pl, 0),
+  };
 };
 
 export const portfolioState = async (db, portfolio, cutoffDate = todayJakarta()) => {

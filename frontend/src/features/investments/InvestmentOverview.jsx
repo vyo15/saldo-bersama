@@ -6,6 +6,7 @@ import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import { investmentActivityLabel, investmentReturnPercent } from "./investments.model.js";
 import InvestmentAssetLogo from "./InvestmentAssetLogo.jsx";
+import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
 
 import layoutStyles from "./InvestmentsPage.module.css";
 import heroStyles from "./InvestmentHero.module.css";
@@ -30,12 +31,15 @@ const investmentTrendIcon = (value) => {
   return FiMinus;
 };
 
-const InvestmentHero = ({ summary, assetCount }) => {
+const InvestmentHero = ({ summary, assetCount, positionCount }) => {
   const values = summary || {};
   const total = Number(values.market_value || 0);
-  const unrealizedPercent = investmentReturnPercent(values.unrealized_pl, values.cost_basis);
-  const TrendIcon = investmentTrendIcon(values.unrealized_pl);
-  const invested = Number(values.cost_basis || 0) > 0 || assetCount > 0;
+  const hasActiveAssets = assetCount > 0;
+  const performance = hasActiveAssets ? Number(values.unrealized_pl || 0) : Number(values.realized_pl || 0);
+  const performanceBasis = hasActiveAssets ? Number(values.cost_basis || 0) : 0;
+  const unrealizedPercent = hasActiveAssets ? investmentReturnPercent(performance, performanceBasis) : null;
+  const TrendIcon = investmentTrendIcon(performance);
+  const hasHistory = positionCount > 0;
   return (
     <section className={heroStyles.hero} aria-labelledby="investment-total-value">
       <div className={heroStyles.heroMain}>
@@ -43,15 +47,18 @@ const InvestmentHero = ({ summary, assetCount }) => {
           <span className={heroStyles.heroLabel}>Total investasi tercatat</span>
           <strong className={heroStyles.heroValue} id="investment-total-value"><Money value={total} /></strong>
           <div className={heroStyles.heroReturnRow}>
-            {invested ? <span className={`${heroStyles.heroReturn} ${tone(values.unrealized_pl)}`}>
+            {hasActiveAssets ? <span className={`${heroStyles.heroReturn} ${tone(performance)}`}>
               <TrendIcon aria-hidden="true" />
-              <span><Money value={values.unrealized_pl} />{unrealizedPercent != null ? ` · ${percentLabel(unrealizedPercent)}` : ""}</span>
+              <span><Money value={performance} />{unrealizedPercent != null ? ` · ${percentLabel(unrealizedPercent)}` : ""}</span>
+            </span> : hasHistory ? <span className={`${heroStyles.heroReturn} ${tone(performance)}`}>
+              <TrendIcon aria-hidden="true" />
+              <span>Hasil direalisasi · <Money value={performance} /></span>
             </span> : <span className={heroStyles.heroReturn}>Belum ada aset tercatat</span>}
-            <span className={heroStyles.heroMeta}>{assetCount.toLocaleString("id-ID")} aset</span>
+            <span className={heroStyles.heroMeta}>{assetCount.toLocaleString("id-ID")} aset aktif{positionCount > assetCount ? ` · ${positionCount.toLocaleString("id-ID")} pernah dicatat` : ""}</span>
           </div>
         </div>
         <dl className={heroStyles.heroMiniMetrics}>
-          <div><dt>Modal tercatat</dt><dd><Money value={values.cost_basis} /></dd></div>
+          <div><dt>Modal aktif</dt><dd><Money value={values.cost_basis} /></dd></div>
           <div><dt>Nilai saat ini</dt><dd><Money value={values.market_value} /></dd></div>
         </dl>
       </div>
@@ -90,6 +97,7 @@ const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
 };
 
 const assetRowsForPortfolios = (portfolios = []) => portfolios.flatMap((portfolio) => (portfolio.holdings || []).map((holding) => ({ portfolio, holding })));
+const positionRowsForPortfolios = (portfolios = []) => portfolios.flatMap((portfolio) => (portfolio.positions || portfolio.holdings || []).map((holding) => ({ portfolio, holding })));
 
 const AssetPanel = ({ portfolios, filter, onHolding }) => {
   const rows = useMemo(() => assetRowsForPortfolios(portfolios).filter(({ holding }) => {
@@ -104,7 +112,7 @@ const AssetPanel = ({ portfolios, filter, onHolding }) => {
       <button type="button" aria-pressed={filter === "fund"} data-filter="fund">Reksa Dana</button>
     </div>
     <div className={holdingStyles.holdings}>
-      {rows.length ? rows.map(({ portfolio, holding }) => <AssetRow key={`${portfolio.portfolio_id}:${holding.instrument_id}`} portfolio={portfolio} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} />) : <p className={sharedStyles.inlineEmpty}>Belum ada aset pada kategori ini.</p>}
+      {rows.length ? rows.map(({ portfolio, holding }) => <AssetRow key={`${portfolio.portfolio_id}:${holding.instrument_id}`} portfolio={portfolio} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} />) : <p className={sharedStyles.inlineEmpty}>Belum ada aset aktif pada kategori ini. Posisi yang sudah selesai tetap tersedia di tab Aktivitas.</p>}
     </div>
   </Card>;
 };
@@ -115,32 +123,41 @@ const ActivityValue = ({ activity }) => {
   const quantity = (shares) => mutualFund
     ? `${Number(shares || 0).toLocaleString("id-ID")} unit`
     : `${(Number(shares || 0) / lotSize).toLocaleString("id-ID", { maximumFractionDigits: 2 })} lot`;
-  if (activity.activity_type === "trade") return <><span>{activity.trade_type === "buy" ? "Nilai pembelian" : "Nilai penjualan"}</span><Money value={activity.cash_amount} /></>;
-  if (activity.activity_type === "valuation") return <><span>Harga terakhir</span><Money value={activity.price_per_share} /></>;
+  if (activity.activity_type === "trade" && activity.trade_type === "buy") return <><span>Nilai pembelian</span><Money value={activity.cash_amount} /></>;
+  if (activity.activity_type === "trade") return <><span>Hasil penjualan</span><Money value={activity.cash_amount} />{Number.isFinite(Number(activity.realized_pl)) ? <span className={tone(activity.realized_pl)}>Hasil <Money value={activity.realized_pl} /></span> : null}</>;
+  if (activity.activity_type === "valuation") return <><span>Harga terakhir</span><InvestmentUnitPrice value={activity.price_per_share} /></>;
   if (activity.activity_type === "opening_position") return <><span>Posisi awal</span><strong>{quantity(activity.share_delta)}</strong></>;
   if (Number(activity.share_delta || 0) !== 0) return <><span>Koreksi kepemilikan</span><strong>{Number(activity.share_delta || 0) > 0 ? "+" : ""}{quantity(activity.share_delta)}</strong></>;
-  return <span>Koreksi tercatat</span>;
+  return <span>Koreksi aset tercatat</span>;
 };
 
 const activityRowsForPortfolios = (portfolios = []) => portfolios
-  .flatMap((portfolio) => (portfolio.activity || []).filter((activity) => activity.instrument_id).map((activity, index) => ({ portfolio, activity, index })))
+  .flatMap((portfolio) => {
+    const positions = new Map((portfolio.positions || portfolio.holdings || []).map((position) => [position.instrument_id, position]));
+    return (portfolio.activity || []).map((activity, index) => ({ portfolio, activity, position: positions.get(activity.instrument_id) || null, index }));
+  })
   .sort((left, right) => String(right.activity.activity_date || "").localeCompare(String(left.activity.activity_date || "")) || String(right.activity.created_at || "").localeCompare(String(left.activity.created_at || "")))
   .slice(0, 30);
 
-const InvestmentActivityPanel = ({ portfolios }) => {
+const InvestmentActivityPanel = ({ portfolios, onHolding }) => {
   const rows = useMemo(() => activityRowsForPortfolios(portfolios), [portfolios]);
+  const openFromKeyboard = (event, row) => {
+    if (!row.position || !["Enter", " "].includes(event.key)) return;
+    event.preventDefault();
+    onHolding(row.portfolio, row.position);
+  };
   return <Card className={activityStyles.activityCard}>
     <div className={sharedStyles.sectionHeading}>
-      <div><h3>Aktivitas terbaru</h3><p>Pembelian, penjualan, nilai manual, posisi awal, dan koreksi aset.</p></div>
+      <div><h3>Aktivitas aset</h3><p>Pembelian, penjualan, nilai manual, posisi awal, dan koreksi aset. Catatan saldo lama tidak dicampurkan di sini.</p></div>
       <span>{rows.length.toLocaleString("id-ID")} terbaru</span>
     </div>
-    {rows.length ? <ul className={activityStyles.activityList}>{rows.map(({ portfolio, activity, index }) => <li key={`${portfolio.portfolio_id}:${activity.activity_type}:${activity.activity_id || index}`} className={activityStyles.activityItem} data-native-enter>
+    {rows.length ? <ul className={activityStyles.activityList}>{rows.map((row) => <li key={`${row.portfolio.portfolio_id}:${row.activity.activity_type}:${row.activity.activity_id || row.index}`} className={`${activityStyles.activityItem}${row.position ? ` ${activityStyles.activityItemInteractive}` : ""}`} data-native-enter={row.position ? "true" : undefined} role={row.position ? "button" : undefined} tabIndex={row.position ? 0 : undefined} onClick={() => row.position && onHolding(row.portfolio, row.position)} onKeyDown={(event) => openFromKeyboard(event, row)} aria-label={row.position ? `Buka riwayat ${row.activity.ticker || "aset"}` : undefined}>
       <span className={activityStyles.activityIcon} aria-hidden="true"><FiActivity /></span>
       <div className={activityStyles.activityCopy}>
-        <strong>{investmentActivityLabel(activity)}</strong>
-        <small>{formatDateLongIndonesia(activity.activity_date) || activity.activity_date}</small>
+        <strong>{investmentActivityLabel(row.activity)}</strong>
+        <small>{formatDateLongIndonesia(row.activity.activity_date) || row.activity.activity_date}{row.position?.is_closed ? " · Posisi selesai" : ""}</small>
       </div>
-      <div className={activityStyles.activityValue}><ActivityValue activity={activity} /></div>
+      <div className={activityStyles.activityValue}><ActivityValue activity={row.activity} /></div>
     </li>)}</ul> : <p className={sharedStyles.inlineEmpty}>Belum ada aktivitas investasi yang tercatat.</p>}
   </Card>;
 };
@@ -151,6 +168,7 @@ const InvestmentOverview = ({ data, onHolding }) => {
   const assetTabRef = useRef(null);
   const activityTabRef = useRef(null);
   const assetCount = useMemo(() => assetRowsForPortfolios(data.portfolios).length, [data.portfolios]);
+  const positionCount = useMemo(() => positionRowsForPortfolios(data.portfolios).length, [data.portfolios]);
   const activityCount = useMemo(() => activityRowsForPortfolios(data.portfolios).length, [data.portfolios]);
   const selectTabFromKeyboard = (event) => {
     const tabs = ["assets", "activity"];
@@ -163,14 +181,14 @@ const InvestmentOverview = ({ data, onHolding }) => {
     (nextTab === "assets" ? assetTabRef : activityTabRef).current?.focus();
   };
   return <div className={layoutStyles.dashboard}>
-    <InvestmentHero summary={data.summary || {}} assetCount={assetCount} />
+    <InvestmentHero summary={data.summary || {}} assetCount={assetCount} positionCount={positionCount} />
     <div className={layoutStyles.segment} role="tablist" aria-label="Tampilan investasi">
       <button ref={assetTabRef} id="investment-tab-assets" data-tab="assets" className={activeTab === "assets" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "assets"} aria-controls="investment-panel-assets" tabIndex={activeTab === "assets" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("assets")}>Aset <span>{assetCount.toLocaleString("id-ID")}</span></button>
       <button ref={activityTabRef} id="investment-tab-activity" data-tab="activity" className={activeTab === "activity" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "activity"} aria-controls="investment-panel-activity" tabIndex={activeTab === "activity" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("activity")}>Aktivitas {activityCount ? <span>{Math.min(activityCount, 99).toLocaleString("id-ID")}{activityCount > 99 ? "+" : ""}</span> : null}</button>
     </div>
     {activeTab === "assets"
       ? <div id="investment-panel-assets" role="tabpanel" aria-labelledby="investment-tab-assets" onClick={(event) => { const next = event.target.closest("button[data-filter]")?.dataset.filter; if (next) setAssetFilter(next); }}><AssetPanel portfolios={data.portfolios} filter={assetFilter} onHolding={onHolding} /></div>
-      : <div id="investment-panel-activity" role="tabpanel" aria-labelledby="investment-tab-activity"><InvestmentActivityPanel portfolios={data.portfolios} /></div>}
+      : <div id="investment-panel-activity" role="tabpanel" aria-labelledby="investment-tab-activity"><InvestmentActivityPanel portfolios={data.portfolios} onHolding={onHolding} /></div>}
   </div>;
 };
 

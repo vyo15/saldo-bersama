@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiLink2, FiMinusCircle, FiTrendingUp } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import CompactNotice from "../../../components/common/CompactNotice.jsx";
@@ -32,10 +32,10 @@ const investmentActionOptions = (hasLinkedInvestment) => [
   ...(hasLinkedInvestment ? [{ value: "release", label: "Lepaskan", description: "Keluarkan aset/dana dari Target", icon: FiMinusCircle }] : []),
 ];
 
-const portfolioOptions = (portfolios) => portfolios.map((portfolio) => ({
+const investmentSourceOptions = (portfolios) => portfolios.map((portfolio) => ({
   value: portfolio.portfolio_id,
-  label: portfolio.name,
-  meta: [portfolio.broker ? `Broker ${portfolio.broker}` : "", portfolio.market_value ? formatRupiah(portfolio.market_value) : ""].filter(Boolean).join(" · "),
+  label: portfolio.name || "Sumber investasi",
+  meta: portfolio.market_value ? `Nilai tercatat ${formatRupiah(portfolio.market_value)}` : "Sumber investasi",
   icon: InvestmentIcon,
 }));
 
@@ -71,6 +71,8 @@ const CashFundingForm = ({ goal, accounts, transferRoutes, initialSourceAccountI
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("Menabung untuk Target");
   const [date, setDate] = useState(todayInJakarta());
+  const [fieldErrors, setFieldErrors] = useState({});
+  const amountRef = useRef(null);
 
   useEffect(() => {
     const source = compatibleAccounts.some((account) => account.account_id === initialSourceAccountId)
@@ -84,9 +86,17 @@ const CashFundingForm = ({ goal, accounts, transferRoutes, initialSourceAccountI
 
   const submit = (event) => {
     event.preventDefault();
-    const value = assertPositiveRupiah(amount);
-    if (!sourceAccountId) throw new Error("Pilih rekening sumber.");
-    if (value > Number(goal.remaining_amount || 0)) throw new Error("Nominal melebihi sisa Target.");
+    const nextErrors = {};
+    let value = 0;
+    if (!sourceAccountId) nextErrors.sourceAccountId = "Pilih rekening sumber.";
+    try { value = assertPositiveRupiah(amount); }
+    catch { nextErrors.amount = "Masukkan nominal tabungan yang valid."; }
+    if (!nextErrors.amount && value > Number(goal.remaining_amount || 0)) nextErrors.amount = `Maksimal ${formatRupiah(goal.remaining_amount || 0)} sesuai sisa Target.`;
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      if (nextErrors.amount) amountRef.current?.focus({ preventScroll: false });
+      return;
+    }
     return onSubmit({
       goal_id: goal.goal_id,
       movement_type: "deposit",
@@ -100,8 +110,8 @@ const CashFundingForm = ({ goal, accounts, transferRoutes, initialSourceAccountI
 
   return <form id="goal-funding-cash" className="form-grid" onSubmit={submit}>
     <CompactNotice className="form-grid__full" tone="info" title="Satu pencatatan">Transfer ini langsung menjadi progres tunai Target. Tidak dibuat catatan keuangan kedua, sehingga progress tidak dihitung ganda.</CompactNotice>
-    <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={sourceAccountId} onChange={setSourceAccountId} placeholder="Pilih rekening sumber" placeholderOption={{ icon: AccountIcon }} options={compatibleAccounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
-    <MoneyInput id="goal-funding-amount" label="Nominal ditabung" required value={amount} onChange={setAmount} />
+    <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={sourceAccountId} onChange={(value) => { setSourceAccountId(value); setFieldErrors((current) => ({ ...current, sourceAccountId: "" })); }} error={fieldErrors.sourceAccountId || ""} placeholder="Pilih rekening sumber" placeholderOption={{ icon: AccountIcon }} options={compatibleAccounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
+    <MoneyInput ref={amountRef} id="goal-funding-amount" label="Nominal ditabung" required value={amount} error={fieldErrors.amount || ""} onChange={(value) => { setAmount(value); setFieldErrors((current) => ({ ...current, amount: "" })); }} />
     <label className="field"><span>Tanggal *</span><TemporalInput required type="date" max={todayInJakarta()} value={date} onChange={(event) => setDate(event.target.value)} /></label>
     <label className="field form-grid__full"><span>Catatan</span><input maxLength="180" value={reason} onChange={(event) => setReason(event.target.value)} /></label>
     <div className="notice notice--neutral form-grid__full">Sisa Target <Money value={goal.remaining_amount || 0} />.</div>
@@ -112,7 +122,7 @@ const CashFundingForm = ({ goal, accounts, transferRoutes, initialSourceAccountI
 };
 
 // Buy, link, and release share state so investment funding stays atomic inside one Target workflow.
-// eslint-disable-next-line complexity
+// eslint-disable-next-line complexity, max-lines-per-function
 const InvestmentFundingForm = ({ goal, investmentOverview, initialAction = "buy", busy, error, onBuy, onAllocate, onRelease }) => {
   const allPortfolios = investmentOverview?.portfolios || [];
   const portfolios = allPortfolios.filter((item) => item.can_operate !== false && item.owner_scope === goal.scope && String(item.owner_user_id || "") === String(goal.owner_user_id || ""));
@@ -127,6 +137,7 @@ const InvestmentFundingForm = ({ goal, investmentOverview, initialAction = "buy"
   const [releaseCashPortfolioId, setReleaseCashPortfolioId] = useState("");
   const [cashAmount, setCashAmount] = useState("");
   const [date, setDate] = useState(todayInJakarta());
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     if (!investmentActionOptions(hasLinkedInvestment).some((item) => item.value === action)) setAction("buy");
@@ -137,6 +148,10 @@ const InvestmentFundingForm = ({ goal, investmentOverview, initialAction = "buy"
 
   const portfolio = portfolios.find((item) => item.portfolio_id === portfolioId) || null;
   const availableHoldings = (portfolio?.holdings || []).filter((holding) => Number(holding.unallocated_shares || 0) > 0);
+  const allocatableHoldings = portfolios.flatMap((source) => (source.holdings || [])
+    .filter((item) => Number(item.unallocated_shares || 0) > 0)
+    .map((item) => ({ ...item, portfolio_id: source.portfolio_id, source_name: source.name || "Sumber investasi" })));
+  const selectedHoldingRef = instrumentId ? `${portfolioId}:${instrumentId}` : "";
   const holding = availableHoldings.find((item) => item.instrument_id === instrumentId) || null;
   const mutualFund = isMutualFundInstrument(holding || {});
   const lotSize = Math.max(1, Number(holding?.lot_size || 100));
@@ -150,8 +165,11 @@ const InvestmentFundingForm = ({ goal, investmentOverview, initialAction = "buy"
   const submitLink = async (event) => {
     event.preventDefault();
     const normalized = Number(quantity);
-    if (!portfolioId || !instrumentId) throw new Error("Pilih investasi yang ingin dihubungkan.");
-    if (!Number.isSafeInteger(normalized) || normalized <= 0 || normalized > maxQuantity) throw new Error(`Jumlah harus 1–${maxQuantity.toLocaleString("id-ID")} ${mutualFund ? "unit" : "lot"}.`);
+    const nextErrors = {};
+    if (!portfolioId || !instrumentId) nextErrors.holding = "Pilih aset investasi yang ingin dihubungkan.";
+    if (!nextErrors.holding && (!Number.isSafeInteger(normalized) || normalized <= 0 || normalized > maxQuantity)) nextErrors.quantity = `Jumlah harus 1–${maxQuantity.toLocaleString("id-ID")} ${mutualFund ? "unit" : "lot"}.`;
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     const shares = mutualFund ? normalized : normalized * lotSize;
     return onAllocate({ goal_id: goal.goal_id, portfolio_id: portfolioId, instrument_id: instrumentId, shares, event_date: date, reason: `Ditautkan ke Target ${goal.name}` });
   };
@@ -159,52 +177,59 @@ const InvestmentFundingForm = ({ goal, investmentOverview, initialAction = "buy"
   const submitReleaseHolding = async (event) => {
     event.preventDefault();
     const normalized = Number(quantity);
-    if (!releaseHolding) throw new Error("Pilih investasi yang ingin dilepaskan.");
-    if (!Number.isSafeInteger(normalized) || normalized <= 0 || normalized > maxReleaseQuantity) throw new Error(`Jumlah harus 1–${maxReleaseQuantity.toLocaleString("id-ID")} ${releaseMutualFund ? "unit" : "lot"}.`);
+    const nextErrors = {};
+    if (!releaseHolding) nextErrors.releaseHolding = "Pilih aset investasi yang ingin dilepaskan.";
+    if (!nextErrors.releaseHolding && (!Number.isSafeInteger(normalized) || normalized <= 0 || normalized > maxReleaseQuantity)) nextErrors.releaseQuantity = `Jumlah harus 1–${maxReleaseQuantity.toLocaleString("id-ID")} ${releaseMutualFund ? "unit" : "lot"}.`;
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     const shares = releaseMutualFund ? normalized : normalized * releaseLotSize;
     return onRelease({ goal_id: goal.goal_id, portfolio_id: releaseHolding.portfolio_id, instrument_id: releaseHolding.instrument_id, shares, event_date: date, reason: `Dilepas dari Target ${goal.name}` });
   };
 
   const submitReleaseCash = async (event) => {
     event.preventDefault();
-    const normalized = assertPositiveRupiah(cashAmount);
+    const nextErrors = {};
+    let normalized = 0;
+    if (!releaseCashPortfolioId) nextErrors.releaseCashSource = "Pilih sumber dana hasil penjualan.";
+    try { normalized = assertPositiveRupiah(cashAmount); }
+    catch { nextErrors.cashAmount = "Masukkan nominal yang valid."; }
     const available = retained.find((item) => item.portfolio.portfolio_id === releaseCashPortfolioId)?.amount || 0;
-    if (!releaseCashPortfolioId) throw new Error("Pilih sumber hasil penjualan.");
-    if (normalized > available) throw new Error("Nominal melebihi dana hasil penjualan yang masih tersimpan untuk Target.");
+    if (!nextErrors.cashAmount && releaseCashPortfolioId && normalized > available) nextErrors.cashAmount = `Maksimal ${formatRupiah(available)} sesuai dana hasil penjualan yang tersedia.`;
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     return onRelease({ goal_id: goal.goal_id, portfolio_id: releaseCashPortfolioId, cash_amount: normalized, event_date: date, reason: `Dana hasil jual dilepas dari Target ${goal.name}` });
   };
 
-  if (!portfolios.length) return <div className="page-stack page-stack--compact"><CompactNotice tone="warning" title="Belum ada investasi Bersama">Buat portfolio investasi Bersama terlebih dahulu, lalu kembali ke Target.</CompactNotice>{error ? <div className="notice notice--danger" role="alert">{error.message}</div> : null}<Button type="button" variant="primary" onClick={() => onBuy(null)}>Buka Investasi</Button></div>;
+  if (!portfolios.length) return <div className="page-stack page-stack--compact"><CompactNotice tone="warning" title="Belum ada investasi Bersama">Tambahkan sumber dan aset investasi Bersama terlebih dahulu, lalu kembali ke Target.</CompactNotice>{error ? <div className="notice notice--danger" role="alert">{error.message}</div> : null}<Button type="button" variant="primary" onClick={() => onBuy(null)}>Buka Investasi</Button></div>;
 
   return <div className="page-stack page-stack--compact">
-    <VisualChoiceGroup legend="Apa yang ingin dilakukan?" name={`goal-investment-action-${goal.goal_id}`} value={action} onChange={(next) => { setAction(next); setQuantity(""); }} options={investmentActionOptions(hasLinkedInvestment)} columns={hasLinkedInvestment ? 3 : 2} compact />
+    <VisualChoiceGroup legend="Apa yang ingin dilakukan?" name={`goal-investment-action-${goal.goal_id}`} value={action} onChange={(next) => { setAction(next); setQuantity(""); setFieldErrors({}); }} options={investmentActionOptions(hasLinkedInvestment)} columns={hasLinkedInvestment ? 3 : 2} compact />
     {action === "buy" ? <div className="form-grid">
       <CompactNotice className="form-grid__full" tone="info" title="Pembelian untuk Target">Catat pembelian seperti biasa. Pilihan Target akan ikut terisi sehingga nilai pasar langsung menjadi progres.</CompactNotice>
-      <InlineSelectionPicker className="form-grid__full" label="Portfolio" required value={portfolioId} onChange={setPortfolioId} placeholder="Pilih portfolio" placeholderOption={{ icon: InvestmentIcon }} options={portfolioOptions(portfolios)} />
+      <InlineSelectionPicker className="form-grid__full" label="Sumber investasi" required value={portfolioId} error={fieldErrors.buySource || ""} onChange={(value) => { setPortfolioId(value); setFieldErrors({}); }} placeholder="Pilih sumber investasi" placeholderOption={{ icon: InvestmentIcon }} options={investmentSourceOptions(portfolios)} />
       {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
-      <div className="form-actions form-grid__full"><Button type="button" variant="primary" onClick={() => onBuy(portfolioId)}>Lanjut catat pembelian</Button></div>
+      <div className="form-actions form-grid__full"><Button type="button" variant="primary" onClick={() => { if (!portfolioId) { setFieldErrors({ buySource: "Pilih sumber investasi." }); return; } onBuy(portfolioId); }}>Lanjut catat pembelian</Button></div>
     </div> : null}
     {action === "link" ? <form className="form-grid" onSubmit={submitLink}>
-      <InlineSelectionPicker className="form-grid__full" label="Portfolio" required value={portfolioId} onChange={(value) => { setPortfolioId(value); setInstrumentId(""); setQuantity(""); }} placeholder="Pilih portfolio" placeholderOption={{ icon: InvestmentIcon }} options={portfolioOptions(portfolios)} />
-      <InlineSelectionPicker className="form-grid__full" label="Aset yang sudah dimiliki" required value={instrumentId} onChange={(value) => { setInstrumentId(value); setQuantity(""); }} placeholder={portfolioId ? "Pilih aset" : "Pilih portfolio terlebih dahulu"} searchable options={holdingOptions(availableHoldings)} />
-      <label className="field"><span>{mutualFund ? "Unit" : "Lot"} ditautkan *</span><input type="number" min="1" max={maxQuantity || undefined} step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
+      <InlineSelectionPicker className="form-grid__full" label="Aset yang sudah dimiliki" required value={selectedHoldingRef} error={fieldErrors.holding || ""} onChange={(value) => { const [nextPortfolioId, nextInstrumentId] = String(value).split(":"); setPortfolioId(nextPortfolioId || ""); setInstrumentId(nextInstrumentId || ""); setQuantity(""); setFieldErrors({}); }} placeholder="Pilih aset" searchable options={allocatableHoldings.map((item) => ({ ...holdingOptions([item])[0], value: `${item.portfolio_id}:${item.instrument_id}`, meta: `${holdingOptions([item])[0].meta} · ${item.source_name}` }))} />
+      <label className="field"><span>{mutualFund ? "Unit" : "Lot"} ditautkan *</span><input type="number" min="1" max={maxQuantity || undefined} step="1" value={quantity} aria-invalid={Boolean(fieldErrors.quantity) || undefined} aria-describedby={fieldErrors.quantity ? `goal-link-quantity-error-${goal.goal_id}` : undefined} onChange={(event) => { setQuantity(event.target.value); setFieldErrors((current) => ({ ...current, quantity: "" })); }} />{fieldErrors.quantity ? <small id={`goal-link-quantity-error-${goal.goal_id}`} className="field__error">{fieldErrors.quantity}</small> : null}</label>
       <label className="field"><span>Tanggal *</span><TemporalInput required type="date" max={todayInJakarta()} value={date} onChange={(event) => setDate(event.target.value)} /></label>
       {holding ? <div className="notice notice--neutral form-grid__full">Maksimal {maxQuantity.toLocaleString("id-ID")} {mutualFund ? "unit" : "lot"} yang belum terhubung ke Target lain.</div> : null}
-      {portfolioId && !availableHoldings.length ? <CompactNotice className="form-grid__full" tone="info" title="Belum ada aset bebas">Semua kepemilikan di portfolio ini sudah terhubung atau belum memiliki saldo.</CompactNotice> : null}
+      {portfolioId && !availableHoldings.length ? <CompactNotice className="form-grid__full" tone="info" title="Belum ada aset bebas">Semua kepemilikan pada sumber ini sudah terhubung atau belum memiliki saldo.</CompactNotice> : null}
       {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
       <div className="form-actions form-grid__full"><Button type="submit" variant="primary" loading={busy} disabled={!holding}>Hubungkan ke Target</Button></div>
     </form> : null}
     {action === "release" ? <div className="page-stack page-stack--compact">
       {linkedHoldings.length ? <form className="form-grid" onSubmit={submitReleaseHolding}>
-        <InlineSelectionPicker className="form-grid__full" label="Investasi terhubung" required value={releaseRef} onChange={(value) => { setReleaseRef(value); setQuantity(""); }} placeholder="Pilih aset" searchable options={linkedHoldingOptions(linkedHoldings)} />
-        <label className="field"><span>{releaseMutualFund ? "Unit" : "Lot"} dilepas *</span><input type="number" min="1" max={maxReleaseQuantity || undefined} step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
+        <InlineSelectionPicker className="form-grid__full" label="Investasi terhubung" required value={releaseRef} error={fieldErrors.releaseHolding || ""} onChange={(value) => { setReleaseRef(value); setQuantity(""); setFieldErrors({}); }} placeholder="Pilih aset" searchable options={linkedHoldingOptions(linkedHoldings)} />
+        <label className="field"><span>{releaseMutualFund ? "Unit" : "Lot"} dilepas *</span><input type="number" min="1" max={maxReleaseQuantity || undefined} step="1" value={quantity} aria-invalid={Boolean(fieldErrors.releaseQuantity) || undefined} aria-describedby={fieldErrors.releaseQuantity ? `goal-release-quantity-error-${goal.goal_id}` : undefined} onChange={(event) => { setQuantity(event.target.value); setFieldErrors((current) => ({ ...current, releaseQuantity: "" })); }} />{fieldErrors.releaseQuantity ? <small id={`goal-release-quantity-error-${goal.goal_id}`} className="field__error">{fieldErrors.releaseQuantity}</small> : null}</label>
         <label className="field"><span>Tanggal *</span><TemporalInput required type="date" max={todayInJakarta()} value={date} onChange={(event) => setDate(event.target.value)} /></label>
         {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
         <div className="form-actions form-grid__full"><Button type="submit" loading={busy} disabled={!releaseHolding}>Lepaskan aset</Button></div>
       </form> : null}
       {retained.length ? <form className="form-grid" onSubmit={submitReleaseCash}>
-        <InlineSelectionPicker className="form-grid__full" label="Dana hasil penjualan" required value={releaseCashPortfolioId} onChange={(value) => { setReleaseCashPortfolioId(value); setCashAmount(""); }} placeholder="Pilih portfolio" options={retained.map(({ portfolio: item, amount }) => ({ value: item.portfolio_id, label: item.name, meta: `Tersedia ${formatRupiah(amount)}`, icon: InvestmentIcon }))} />
-        <MoneyInput id="goal-release-investment-cash" label="Nominal dilepas" required value={cashAmount} onChange={setCashAmount} />
+        <InlineSelectionPicker className="form-grid__full" label="Dana hasil penjualan" required value={releaseCashPortfolioId} error={fieldErrors.releaseCashSource || ""} onChange={(value) => { setReleaseCashPortfolioId(value); setCashAmount(""); setFieldErrors({}); }} placeholder="Pilih sumber dana" options={retained.map(({ portfolio: item, amount }) => ({ value: item.portfolio_id, label: item.name || "Sumber investasi", meta: `Tersedia ${formatRupiah(amount)}`, icon: InvestmentIcon }))} />
+        <MoneyInput id="goal-release-investment-cash" label="Nominal dilepas" required value={cashAmount} error={fieldErrors.cashAmount || ""} onChange={(value) => { setCashAmount(value); setFieldErrors((current) => ({ ...current, cashAmount: "" })); }} />
         <div className="form-actions"><Button type="submit" loading={busy} disabled={!releaseCashPortfolioId}>Lepaskan dana</Button></div>
       </form> : null}
       {!linkedHoldings.length && !retained.length ? <CompactNotice tone="info" title="Tidak ada yang perlu dilepas">Belum ada investasi atau hasil penjualan yang masih terhubung ke Target ini.</CompactNotice> : null}

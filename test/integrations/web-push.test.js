@@ -293,6 +293,7 @@ test("kegagalan DNS notifikasi uji tetap menjaga subscription aktif dan memberi 
     const audit = await listAudit(db, contextFor(owner, "audit.list", { limit: 20 }));
     const failure = audit.items.find((item) => item.action === "notifications.test" && item.result === "failed");
     assert.equal(failure.detail_code, "PUSH_DNS_FAILED");
+    assert.ok(failure.request_id, "audit.list harus membawa request_id aman untuk korelasi troubleshooting");
     assert.equal(Object.hasOwn(failure, "new_value"), false);
   } finally {
     db.close();

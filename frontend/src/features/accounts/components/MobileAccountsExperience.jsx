@@ -1,7 +1,8 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback } from "react";
 import LazyActionFallback from "../../../components/feedback/LazyActionFallback.jsx";
 import { FiCheckCircle, FiEye, FiEyeOff, FiList, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router";
+import { usePrivacy } from "../../../app/PrivacyContext.jsx";
 import Money from "../../../components/common/Money.jsx";
 import PageInfoButton from "../../../components/common/PageInfoButton.jsx";
 import {
@@ -27,7 +28,7 @@ const PrivateMoney = ({ hidden, value }) => hidden
   : <Money value={value || 0} />;
 
 const MobileBalanceSummary = ({ account, onEnsureBalance, reconciliation, reconciliationLoaded }) => {
-  const [hidden, setHidden] = useState(false);
+  const { privacyEnabled: hidden, setPrivacyEnabled } = usePrivacy();
   const investment = account.account_type === "investment";
   const available = account.available_balance ?? account.balance ?? 0;
   return (
@@ -36,7 +37,7 @@ const MobileBalanceSummary = ({ account, onEnsureBalance, reconciliation, reconc
         <div className={styles.mobileBalanceLabel}>
           <span>{investment ? "Saldo RDN" : "Dana tersedia"}</span>
         </div>
-        <button type="button" className={styles.mobilePrivacyButton} onClick={() => setHidden((value) => !value)} aria-label={hidden ? "Tampilkan nominal rekening" : "Sembunyikan nominal rekening"} aria-pressed={hidden}>
+        <button type="button" className={styles.mobilePrivacyButton} onClick={() => setPrivacyEnabled((value) => !value)} aria-label={hidden ? "Tampilkan seluruh nominal" : "Sembunyikan seluruh nominal"} role="switch" aria-checked={hidden}>
           {hidden ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
         </button>
       </div>
@@ -64,6 +65,7 @@ const MobileQuickActions = ({ account, bootstrap, onTransferSaved, onViewTransac
 
 const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAccount, selectedAccountId, ownershipFilter, onOwnershipFilterChange, openCreateDialog, setMobileAccountSheet, setSelectedAccountId, bootstrap, onTransferSaved, reconciliationLookup = null }) => {
   const navigate = useNavigate();
+  const { privacyEnabled: hidden } = usePrivacy();
   const stack = useMobileStackController({ accounts, selectedAccountId, setSelectedAccountId, setMobileAccountSheet });
   const {
     refs: { cardRefs: mobileStackCardRefs, stageRef: mobileStackStageRef, statusRef: mobileStackStatusRef },
@@ -92,7 +94,7 @@ const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAc
       </div>
 
       <div className={styles.mobileTotalBalance} aria-label="Total saldo seluruh rekening non-investasi">
-        <span>Total saldo rekening</span><strong><Money value={totalAccountBalance} /></strong>
+        <span>Total saldo rekening</span><strong><PrivateMoney hidden={hidden} value={totalAccountBalance} /></strong>
       </div>
 
       <div ref={mobileStackStageRef} className={styles.mobileStackStage} tabIndex={0} aria-label="Rekening aktif. Geser kartu ke kiri atau kanan untuk mengganti rekening" aria-describedby="mobile-account-stack-hint" onKeyDown={handleMobileStackKeyDown}>

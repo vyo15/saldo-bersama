@@ -1,3 +1,8 @@
+export const formatInvestmentUnitPrice = (value) => {
+  const numeric = Number(value || 0);
+  const safe = Number.isFinite(numeric) ? numeric : 0;
+  return `Rp${safe.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 export const investmentOwnershipLabel = (portfolio = {}) => {
   if (portfolio.owner_scope !== "personal") return "Bersama";
   return portfolio.is_owned_by_actor ? "Pribadi" : "Pasangan";
