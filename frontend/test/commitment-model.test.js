@@ -12,11 +12,11 @@ test("bunga flat menghitung pokok, bunga, dan cicilan bulanan dari kondisi sekar
 });
 
 test("form Kewajiban hanya menampilkan data penting dan tidak menghidupkan lagi UX lama", async () => {
-  const [page, api] = await Promise.all([read("src/features/commitments/CommitmentsPage.jsx"), read("src/features/commitments/commitments.api.js")]);
+  const [page, createFlow, api] = await Promise.all([read("src/features/commitments/CommitmentsPage.jsx"), read("src/features/commitments/useCommitmentCreateFlow.js"), read("src/features/commitments/commitments.api.js")]);
   assert.match(page, /<h2>Kewajiban<\/h2>/);
   assert.match(page, /debt && !mortgage \? <FlatInterestField/);
   assert.match(page, /KPR memakai nominal cicilan aktual dari bank/);
-  assert.match(page, /installments_paid: form.commitment_type === "mortgage"/);
+  assert.match(createFlow, /installments_paid: mortgage \?/);
   assert.match(page, /Pencatatan otomatis siap/);
   assert.match(page, /Pembayaran ke bank atau penyedia tetap dilakukan di luar aplikasi/);
   assert.match(page, /Hentikan kewajiban\?/);
@@ -36,4 +36,11 @@ test("form Kewajiban hanya menampilkan data penting dan tidak menghidupkan lagi 
   assert.match(page, /Pembayaran berikutnya/);
   assert.match(page, /start_date/);
   assert.match(page, /Selesai sesuai kontrak/);
+  assert.match(page, /Apa yang ingin kamu catat\?/);
+  assert.match(page, /Data utama · Langkah 1 dari 2/);
+  assert.match(page, /Pembayaran · Langkah 2 dari 2/);
+  assert.match(page, /CommitmentTypeChooser/);
+  assert.match(createFlow, /workflowAction !== "create-commitment"/);
+  assert.match(createFlow, /commitmentType/);
+  assert.match(createFlow, /navigate\("\/perencanaan\/kantong"/);
 });

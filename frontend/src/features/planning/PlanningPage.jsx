@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { useLocation } from "react-router";
+import { NavLink, useLocation } from "react-router";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import ContextBack from "../../components/navigation/ContextBack.jsx";
@@ -18,15 +18,30 @@ const PlanningDetailShell = ({ children }) => <>
   {children}
 </>;
 
+const PLANNING_TABS = Object.freeze([
+  { to: "/perencanaan/kantong", label: "Aktif" },
+  { to: "/perencanaan/jadwal", label: "Jadwal" },
+  { to: "/perencanaan/komitmen", label: "Kewajiban" },
+  { to: "/target", label: "Target" },
+]);
+
+const PlanningTabs = () => <nav className={styles.tabs} aria-label="Navigasi Atur Dana">
+  {PLANNING_TABS.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `${styles.tab}${isActive ? ` ${styles.tabActive}` : ""}`}>{item.label}</NavLink>)}
+</nav>;
+
 const PlanningPage = () => {
   const location = useLocation();
   const surface = planningSurfaceFromPath(location.pathname);
 
   return <div className={`page-stack ${styles.page}`}>
-    {surface === "overview" ? <PageHeader
-      title="Atur Dana"
-      help="Atur penggunaan dana untuk pengeluaran. Alokasi Dana, pembayaran rutin, dan Kewajiban tetap saling terhubung di belakang layar, sementara halaman utama menampilkan satu daftar Aktif yang sederhana. Pemasukan yang sudah tercatat otomatis menambah dana rekening dan tidak perlu direncanakan ulang di sini."
-    /> : null}
+    {surface === "overview" ? <>
+      <PageHeader
+        title="Atur Dana"
+        description="Atur alokasi dana keluarga sesuai tujuanmu."
+        help="Atur penggunaan dana untuk pengeluaran dari satu tempat. Gunakan + Tambah untuk membuat Alokasi, KPR/kewajiban, atau Jadwal Rutin; semuanya tetap saling terhubung di belakang layar dan tampil sebagai satu daftar Aktif yang ringkas. Pemasukan yang sudah tercatat otomatis menambah dana rekening dan tidak perlu direncanakan ulang di sini."
+      />
+      <PlanningTabs />
+    </> : null}
     <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat pengaturan dana…" />}>
       {surface === "overview" ? <AllocationsPage embedded /> : null}
       {surface === "recurring" ? <PlanningDetailShell><RecurringPage embedded expenseOnly /></PlanningDetailShell> : null}

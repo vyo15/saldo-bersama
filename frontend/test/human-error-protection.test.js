@@ -215,7 +215,8 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
   assert.doesNotMatch(notifications, /Uji notifikasi/);
   assert.match(members, /Tambah anggota/);
   assert.match(members, /<Modal[\s\S]*title=\{editingMember \? "Ubah akses anggota" : "Tambah anggota"\}/);
-  assert.match(members, /Lihat aktivitas transaksi/);
+  assert.match(members, /key: "activity", label: "Aktivitas"/);
+  assert.match(members, /<MemberActivityPanel embedded member=\{member\}/);
   assert.doesNotMatch(members, /Tambah atau ubah akses/);
   assert.match(members, /users\.upsert/);
   assert.match(members, /reactivateUser/);

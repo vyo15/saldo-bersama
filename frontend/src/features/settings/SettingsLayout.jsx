@@ -21,6 +21,16 @@ const SETTINGS_ROUTE_META = Object.freeze({
       content: "Kelola akun, notifikasi, integrasi, data, dan pemeliharaan aplikasi dari satu tempat.",
     },
   },
+  "/pengaturan/akun": {
+    title: "Akun Saya",
+    summary: "Lihat identitas, keuangan, pengajuan, dan aktivitas pencatatan Anda dalam satu tempat.",
+    backTo: "/pengaturan",
+    backLabel: "Pengaturan",
+    help: {
+      title: "Tentang Akun Saya",
+      content: "Akun Saya mengumpulkan konteks yang terkait langsung dengan akun aktif. Rekening yang dimiliki, alokasi yang ditugaskan, pengajuan, dan transaksi yang dicatat tetap dibedakan agar tidak menimbulkan arti keuangan yang keliru.",
+    },
+  },
   "/pengaturan/notifikasi": {
     title: "Notifikasi perangkat",
     summary: "Kelola Web Push perangkat ini dan jenis pengingat yang ingin diterima.",

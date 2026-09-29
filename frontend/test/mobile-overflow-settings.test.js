@@ -163,7 +163,7 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(presentation, /Trigger belum siap/);
   assert.match(presentation, /signed health check gagal|Apps Script tidak merespons dalam batas waktu/);
   assert.match(members, /Tambah anggota/);
-  assert.match(members, /Lihat aktivitas transaksi/);
+  assert.match(members, /key: "activity", label: "Aktivitas"/);
   assert.match(members, /MemberActivityPanel/);
 });
 
@@ -191,17 +191,16 @@ test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pad
 
   assert.match(members, /UserAvatar/);
   assert.match(members, /photoURL:\s*user\?\.photoURL/);
-  assert.match(members, /currentMemberCard/);
+  assert.match(members, /memberCompactList/);
+  assert.match(members, /memberDetailTabs/);
   assert.match(members, /roleFilter/);
+  assert.match(members, /<MemberActivityPanel embedded member=\{member\}/);
   assert.match(activity, /created_by:\s*member\?\.user_id/);
   assert.match(activity, /reports\.monthly/);
   assert.match(activity, /navigate\("\/transaksi", \{ state: \{ creatorId: member\.user_id, period \} \}\)/);
-  assert.match(styles, /\.memberGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(styles, /\.memberFacts\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(styles, /\.memberFacts > div \{[^}]*background:\s*var\(--surface-soft\);/);
-  assert.match(styles, /\.memberFacts dd \{[^}]*margin:\s*\.3rem 0 0;/);
-  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*\.memberGrid\s*\{[\s\S]*?grid-template-columns:\s*1fr;/);
-  assert.match(styles, /@media \(max-width: 26rem\)[\s\S]*\.memberFacts\s*\{[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*@media \(max-width: 26rem\)[\s\S]*\.memberActivityMetrics\s*\{[\s\S]*?grid-template-columns:\s*1fr;/);
+  assert.match(styles, /\.memberCompactList\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(styles, /\.memberDetailGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.memberDetailGrid \{ grid-template-columns: minmax\(0, 1fr\); \}/);
   assert.match(activity, /import Modal from "\.\.\/\.\.\/\.\.\/components\/common\/Modal\.jsx"/);
   assert.match(activity, /<Modal[\s\S]*title="Aktivitas anggota"[\s\S]*mobileSwipeToClose/);
   assert.doesNotMatch(activity, /createPortal|useFocusTrap|popstate/);

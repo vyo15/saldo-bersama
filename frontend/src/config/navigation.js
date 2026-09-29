@@ -1,7 +1,6 @@
 import {
   FiBarChart2,
   FiBell,
-  FiCheckSquare,
   FiHome,
   FiList,
   FiPieChart,
@@ -21,8 +20,7 @@ export const PRIMARY_NAVIGATION = Object.freeze([
   { to: "/rekening", label: "Rekening", description: "Kelola seluruh rekening keluarga berdasarkan pemegang.", icon: AccountIcon },
   { to: "/investasi", label: "Investasi", description: "Pantau saham, reksa dana, nilai aset, dan aktivitas investasi yang dicatat manual.", icon: InvestmentIcon },
   { to: "/kategori", label: "Kategori", description: "Atur kategori transaksi yang digunakan.", icon: FiTag },
-  { to: "/anggota", label: "Anggota", description: "Kelola anggota yang dapat mengakses Saldo Bersama.", icon: FiUsers, ownerOnly: true },
-  { to: "/persetujuan", label: "Persetujuan", description: "Tinjau pengajuan rekening, kategori, dan transfer.", icon: FiCheckSquare, ownerOnly: true },
+  { to: "/anggota", label: "Keluarga", description: "Kelola anggota, pengajuan, dan konteks keuangan keluarga dalam satu tempat.", icon: FiUsers, ownerOnly: true },
   { to: "/notifikasi", label: "Notifikasi", description: "Lihat pengingat dan kondisi keuangan aktif yang perlu ditinjau.", icon: FiBell },
   { to: "/pengaturan", label: "Pengaturan", description: "Atur aplikasi dan integrasi.", icon: FiSettings },
 ]);
@@ -52,10 +50,10 @@ export const DESKTOP_NAVIGATION = Object.freeze([
   freezeGroup({
     id: "management",
     label: "Kelola",
-    description: "Anggota dan persetujuan Administrator.",
+    description: "Anggota dan pengajuan Administrator.",
     icon: FiUsers,
     ownerOnly: true,
-    items: pickNavigation("/anggota", "/persetujuan"),
+    items: pickNavigation("/anggota"),
   }),
 ]);
 
@@ -64,7 +62,7 @@ export const MOBILE_PRIMARY_NAVIGATION = Object.freeze(pickNavigation("/", "/per
 export const MOBILE_SECONDARY_GROUPS = Object.freeze([
   freezeGroup({ id: "planning-insight", label: "Rencana & Insight", items: pickNavigation("/target", "/laporan") }),
   freezeGroup({ id: "finance", label: "Keuangan", items: pickNavigation("/rekening", "/investasi", "/kategori") }),
-  freezeGroup({ id: "family-access", label: "Keluarga & Akses", items: pickNavigation("/anggota", "/persetujuan") }),
+  freezeGroup({ id: "family-access", label: "Keluarga & Akses", items: pickNavigation("/anggota") }),
   freezeGroup({ id: "application", label: "Aplikasi", items: pickNavigation("/notifikasi", "/pengaturan") }),
 ]);
 

@@ -51,20 +51,22 @@ const seed = async (db) => {
   return now;
 };
 
-const insertEnvelope = async (db, { id, name, amount, sourceAccountId, reserved = 0 }) => {
+const insertEnvelope = async (db, { id, name, amount, sourceAccountId, reserved = 0, periodType = "monthly", periodStart = "", periodEnd = "" }) => {
   const now = new Date().toISOString();
   const bounds = monthBounds(todayJakarta().slice(0, 7));
+  const start = periodStart || bounds.start;
+  const end = periodEnd || bounds.end;
   const ruleId = `rule-${id}`;
   const periodId = `period-${id}`;
   await db.execute(
     `INSERT INTO envelope_rules(envelope_rule_id,name,period_type,scope,owner_user_id,assignee_user_id,default_amount,source_account_id,rollover_policy,overspend_policy,status,row_version,created_by,created_at,updated_by,updated_at)
      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [ruleId, name, "monthly", "shared", null, null, amount, sourceAccountId, "unallocated", "confirm", "active", 1, owner.user_id, now, owner.user_id, now],
+    [ruleId, name, periodType, "shared", null, null, amount, sourceAccountId, "unallocated", "confirm", "active", 1, owner.user_id, now, owner.user_id, now],
   );
   await db.execute(
     `INSERT INTO envelope_periods(envelope_period_id,envelope_rule_id,name,period_start,period_end,allocated_amount,reserved_amount,status,row_version,created_by,created_at,updated_by,updated_at,closed_by,closed_at)
      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [periodId, ruleId, name, bounds.start, bounds.end, amount, reserved, "active", 1, owner.user_id, now, owner.user_id, now, null, null],
+    [periodId, ruleId, name, start, end, amount, reserved, "active", 1, owner.user_id, now, owner.user_id, now, null, null],
   );
   return { ruleId, periodId };
 };
@@ -224,8 +226,9 @@ test("transaksi Alokasi Dana bertanggal masa depan tidak melepaskan dana sebelum
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
-    const envelope = await insertEnvelope(db, { id: "future", name: "Kebutuhan depan", amount: 1_500_000, sourceAccountId: "account-a" });
-    const futureDate = addDays(todayJakarta(), 2);
+    const today = todayJakarta();
+    const futureDate = addDays(today, 2);
+    const envelope = await insertEnvelope(db, { id: "future", name: "Kebutuhan depan", amount: 1_500_000, sourceAccountId: "account-a", periodType: "custom", periodStart: today, periodEnd: futureDate });
 
     await createTransaction(db, context("transactions.create", {
       transaction_type: "expense",

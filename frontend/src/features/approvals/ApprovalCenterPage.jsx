@@ -42,6 +42,7 @@ const ApprovalCenterContent = ({
   masterReview,
   transferReview,
   accounts,
+  embedded = false,
 }) => {
   const pendingCount = masterItems.length + transferItems.length;
   const activateTab = (nextTab, { focus = false } = {}) => {
@@ -59,7 +60,7 @@ const ApprovalCenterContent = ({
   };
   if (!pendingCount) return <OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda">
     <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
-    <EmptyState title="Tidak ada pengajuan yang menunggu" description="Semua pengajuan rekening, kategori, dan transfer sudah ditinjau." action={<ButtonLink to="/">Kembali ke Beranda</ButtonLink>} />
+    <EmptyState title="Tidak ada pengajuan yang menunggu" description="Semua pengajuan rekening, kategori, dan transfer sudah ditinjau." action={embedded ? null : <ButtonLink to="/">Kembali ke Beranda</ButtonLink>} />
   </OwnerSettingsGuard>;
   return <OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda">
     <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
@@ -74,7 +75,7 @@ const ApprovalCenterContent = ({
   </OwnerSettingsGuard>;
 };
 
-const ApprovalCenterPage = () => {
+const ApprovalCenterPage = ({ embedded = false, requesterId = "" }) => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
   const { notify } = useFeedback();
@@ -82,8 +83,10 @@ const ApprovalCenterPage = () => {
   const [tab, setTab] = useState("all");
   const masterRequests = useApiResource("masterDataRequests.list", { status: "pending" }, { enabled: ownerMode });
   const transferRequests = useApiResource("transferRequests.list", { status: "pending" }, { enabled: ownerMode });
-  const masterItems = masterRequests.data?.items || [];
-  const transferItems = transferRequests.data?.items || [];
+  const allMasterItems = masterRequests.data?.items || [];
+  const allTransferItems = transferRequests.data?.items || [];
+  const masterItems = requesterId ? allMasterItems.filter((item) => String(item.requested_by || "") === String(requesterId)) : allMasterItems;
+  const transferItems = requesterId ? allTransferItems.filter((item) => String(item.requested_by || "") === String(requesterId)) : allTransferItems;
   const { visibleMasterItems, showMaster, showTransfer } = approvalView(tab, masterItems);
 
   const reloadApprovedMasterData = async () => {
@@ -110,9 +113,7 @@ const ApprovalCenterPage = () => {
   if (ownerMode && masterRequests.status === "error") return <ErrorState error={masterRequests.error} onRetry={masterRequests.reload} />;
   if (ownerMode && transferRequests.status === "error") return <ErrorState error={transferRequests.error} onRetry={transferRequests.reload} />;
 
-  return <div className="page-stack">
-    <PageHeader title="Persetujuan" help="Tinjau pengajuan rekening, kategori, dan transfer. Keputusan tetap mengikuti hak akses, status pengajuan, dan aturan keuangan yang berlaku." />
-    <ApprovalCenterContent
+  const content = <ApprovalCenterContent
       tab={tab}
       setTab={setTab}
       masterItems={masterItems}
@@ -125,7 +126,12 @@ const ApprovalCenterPage = () => {
       masterReview={masterReview}
       transferReview={transferReview}
       accounts={bootstrap?.accounts || []}
-    />
+      embedded={embedded}
+    />;
+  if (embedded) return content;
+  return <div className="page-stack">
+    <PageHeader title="Persetujuan" help="Tinjau pengajuan rekening, kategori, dan transfer. Keputusan tetap mengikuti hak akses, status pengajuan, dan aturan keuangan yang berlaku." />
+    {content}
   </div>;
 };
 

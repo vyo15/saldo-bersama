@@ -29,7 +29,8 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /requestCategoryCreation/);
   assert.doesNotMatch(page, /useMasterDataRequestReview/);
   assert.match(page, /Pengajuan kategori saya/);
-  assert.match(navigation, /to: "\/persetujuan", label: "Persetujuan"/);
+  assert.match(navigation, /to: "\/anggota", label: "Keluarga"/);
+  assert.doesNotMatch(navigation, /to: "\/persetujuan", label: "Persetujuan"/);
   assert.match(reviewHook, /reviewMasterDataRequest/);
   assert.match(reviewService, /masterDataRequests\.review/);
   assert.match(page, /useApiResource\("categories\.list"\)/);
@@ -110,7 +111,8 @@ test("pusat Persetujuan owner mereuse contract review rekening kategori dan tran
     read("src/features/transactions/TransactionsPage.jsx"),
   ]);
   assert.match(app, /path="persetujuan"/);
-  assert.match(navigation, /to: "\/persetujuan", label: "Persetujuan"[\s\S]*ownerOnly: true/);
+  assert.match(navigation, /to: "\/anggota", label: "Keluarga"[\s\S]*ownerOnly: true/);
+  assert.doesNotMatch(navigation, /to: "\/persetujuan", label: "Persetujuan"/);
   assert.match(approvals, /masterDataRequests\.list/);
   assert.match(approvals, /transferRequests\.list/);
   assert.match(approvals, /useMasterDataRequestReview/);

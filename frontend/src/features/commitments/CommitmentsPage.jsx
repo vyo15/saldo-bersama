@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiArchive, FiCheckCircle, FiEdit2, FiHome, FiMoreHorizontal, FiPlus, FiUsers } from "react-icons/fi";
-import { useLocation } from "react-router";
+import { FiArchive, FiCheckCircle, FiChevronRight, FiEdit2, FiHome, FiMoreHorizontal, FiPlus, FiUsers } from "react-icons/fi";
+import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -15,7 +15,7 @@ import SelectionField from "../../components/common/SelectionField.jsx";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import { accountOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
-import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { AccountIcon, BalanceIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
@@ -26,8 +26,9 @@ import { currentMonthBoundsInJakarta, currentMonthInJakarta, formatDateLongIndon
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
-import { archiveCommitment, createCommitment, updateCommitment } from "./commitments.api.js";
+import { archiveCommitment, updateCommitment } from "./commitments.api.js";
 import { applyFlatEstimate, commitmentCollectionState, flatLoanEstimate, inferFlatAnnualRate, isDebtCommitment } from "./commitmentModel.js";
+import useCommitmentCreateFlow from "./useCommitmentCreateFlow.js";
 import styles from "./CommitmentsPage.module.css";
 
 const TYPES = [
@@ -37,6 +38,7 @@ const TYPES = [
   { value: "arisan", label: "Arisan", description: "Setoran berkala sampai selesai" },
   { value: "other", label: "Lainnya", description: "Kewajiban berkala lainnya" },
 ];
+const TYPE_ICONS = Object.freeze({ mortgage: FiHome, installment: BalanceIcon, loan: MoneyOutIcon, arisan: FiUsers, other: FiMoreHorizontal });
 const emptyForm = () => ({ commitment_type: "mortgage", name: "", provider: "", original_amount: "", current_balance: "", installment_amount: "", total_installments: "", installments_paid: "", next_installment: "", flat_interest_rate: "0", default_account_id: "", category_id: "", budget_id: "", due_day: "10", start_date: "", end_date: "" });
 const refreshKeys = ["commitments.list", "recurring.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState"];
 const typeLabel = (type) => TYPES.find((item) => item.value === type)?.label || "Kewajiban";
@@ -178,8 +180,8 @@ const MortgageProgressFields = ({ form, setForm, editing }) => {
   </div>;
 };
 
-const CommitmentIdentityFields = ({ form, setForm, categories, editing, arisan }) => <>
-  {!editing ? <SelectionField className="form-grid__full" label="Jenis kewajiban" value={form.commitment_type} onChange={(commitment_type) => setForm({ ...emptyForm(), commitment_type, category_id: suggestedCategoryId(categories, commitment_type) })} options={TYPES} /> : null}
+const CommitmentIdentityFields = ({ form, setForm, categories, editing, arisan, showTypeField = true }) => <>
+  {!editing && showTypeField ? <SelectionField className="form-grid__full" label="Jenis kewajiban" value={form.commitment_type} onChange={(commitment_type) => setForm({ ...emptyForm(), commitment_type, category_id: suggestedCategoryId(categories, commitment_type) })} options={TYPES} /> : null}
   <label className="field form-grid__full"><span>{arisan ? "Nama arisan" : "Nama kewajiban"} *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder={arisan ? "Contoh: Arisan Keluarga" : "Contoh: KPR Rumah"} /></label>
   <label className="field form-grid__full"><span>{arisan ? "Grup/penyelenggara" : "Bank/Penyedia"}</span><input maxLength="100" value={form.provider || ""} onChange={(event) => setForm((current) => ({ ...current, provider: event.target.value }))} placeholder={arisan ? "Keluarga" : "BTN"} /></label>
 </>;
@@ -215,19 +217,25 @@ const CommitmentFormNotices = ({ editing, debt, error }) => <>
   {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
 </>;
 
-const CommitmentForm = ({ form, setForm, accounts, categories, budgets, error, editing = false }) => {
+const CommitmentForm = ({ form, setForm, accounts, categories, budgets, error, editing = false, section = "all", showTypeField = true }) => {
   const arisan = form.commitment_type === "arisan";
   const debt = isDebtCommitment(form.commitment_type);
   const mortgage = form.commitment_type === "mortgage";
   const setEstimated = (patch) => setForm((current) => applyFlatEstimate(current, patch));
+  const showDetails = section !== "payment";
+  const showPayment = section !== "details";
   return <div className="form-grid">
-    <CommitmentIdentityFields form={form} setForm={setForm} categories={categories} editing={editing} arisan={arisan} />
-    <CommitmentPrincipalFields form={form} setForm={setForm} editing={editing} arisan={arisan} debt={debt} mortgage={mortgage} setEstimated={setEstimated} />
-    <CommitmentTenorFields form={form} setForm={setForm} editing={editing} arisan={arisan} debt={debt} mortgage={mortgage} setEstimated={setEstimated} />
-    <CommitmentDueField form={form} setForm={setForm} editing={editing} mortgage={mortgage} />
-    <CommitmentPlanningFields form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} />
-    {mortgage ? <MortgageDetails form={form} setForm={setForm} /> : null}
-    <CommitmentFormNotices editing={editing} debt={debt} error={error} />
+    {showDetails ? <>
+      <CommitmentIdentityFields form={form} setForm={setForm} categories={categories} editing={editing} arisan={arisan} showTypeField={showTypeField} />
+      <CommitmentPrincipalFields form={form} setForm={setForm} editing={editing} arisan={arisan} debt={debt} mortgage={mortgage} setEstimated={setEstimated} />
+      <CommitmentTenorFields form={form} setForm={setForm} editing={editing} arisan={arisan} debt={debt} mortgage={mortgage} setEstimated={setEstimated} />
+      <CommitmentDueField form={form} setForm={setForm} editing={editing} mortgage={mortgage} />
+    </> : null}
+    {showPayment ? <>
+      <CommitmentPlanningFields form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} />
+      {mortgage ? <MortgageDetails form={form} setForm={setForm} /> : null}
+      <CommitmentFormNotices editing={editing} debt={debt} error={error} />
+    </> : null}
   </div>;
 };
 
@@ -245,6 +253,26 @@ const suggestedCategoryId = (categories, type) => {
   return categories.length === 1 ? categories[0].category_id : "";
 };
 
+const CommitmentTypeChooser = ({ onSelect }) => <div className={styles.typeList}>
+  {TYPES.map((item) => {
+    const Icon = TYPE_ICONS[item.value] || FiMoreHorizontal;
+    return <button type="button" className={styles.typeOption} key={item.value} onClick={() => onSelect(item.value)}>
+      <span className={styles.typeOptionIcon}><Icon aria-hidden="true" /></span>
+      <span className={styles.typeOptionCopy}><strong>{item.label}</strong><small>{item.description}</small></span>
+      <FiChevronRight className={styles.typeOptionArrow} aria-hidden="true" />
+    </button>;
+  })}
+</div>;
+
+const commitmentDetailsError = (form) => {
+  if (!String(form.name || "").trim()) return "Nama kewajiban wajib diisi.";
+  if (isDebtCommitment(form.commitment_type) && Number(form.original_amount || 0) <= 0) return "Nilai pinjaman awal wajib diisi.";
+  if (Number(form.installment_amount || 0) <= 0) return form.commitment_type === "arisan" ? "Setoran per bulan wajib diisi." : "Cicilan per bulan wajib diisi.";
+  if (Number(form.total_installments || 0) <= 0) return form.commitment_type === "mortgage" ? "Total cicilan wajib diisi." : "Jumlah periode wajib diisi.";
+  if (form.commitment_type === "mortgage" && !form.start_date) return "Tanggal pembayaran berikutnya wajib diisi.";
+  return "";
+};
+
 const commitmentResourceGate = (resource) => {
   if (resource.status === "loading") return <NativePageSkeleton kind="planning" label="Memuat Kewajiban…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
@@ -253,15 +281,35 @@ const commitmentResourceGate = (resource) => {
 
 const highlightedCommitmentIdFromState = (state) => String(state?.planningCommitmentId || "");
 
+const createModalFooter = ({ stage, busy, guard, setStage, type }) => {
+  if (stage === "type") return <Button disabled={busy} onClick={guard.discardAndClose}>Batal</Button>;
+  if (stage === "details") return <><Button disabled={busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-create-details-form">Lanjut</Button></>;
+  return <><Button disabled={busy} onClick={() => setStage("details")}>Kembali</Button><Button variant="primary" type="submit" form="commitment-create-form" loading={busy}>Simpan {typeLabel(type)}</Button></>;
+};
+
+const CommitmentCreateModal = ({ flow, mutation, accounts, categories, budgets }) => {
+  const { form, setForm, open, stage, stepError, guard, selectType, continueDetails, submit, setStage, setStepError } = flow;
+  const title = stage === "type" ? "Tambah kewajiban" : `Tambah ${typeLabel(form.commitment_type)}`;
+  const description = stage === "type" ? "Apa yang ingin kamu catat?" : stage === "details" ? "Data utama · Langkah 1 dari 2" : "Pembayaran · Langkah 2 dari 2";
+  const backAction = stage === "details"
+    ? { label: "Pilih jenis kewajiban", onClick: () => { setStepError(""); setStage("type"); } }
+    : stage === "payment" ? { label: "Kembali ke data kewajiban", onClick: () => setStage("details") } : null;
+  const footer = createModalFooter({ stage, busy: mutation.busy, guard, setStage, type: form.commitment_type });
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="kewajiban baru" dismissible={!mutation.busy} title={title} description={description} headerBackAction={backAction} footer={footer}>
+    {stage === "type" ? <CommitmentTypeChooser onSelect={selectType} /> : stage === "details"
+      ? <form id="commitment-create-details-form" onSubmit={continueDetails}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} section="details" showTypeField={false} />{stepError ? <div className="notice notice--danger" role="alert">{stepError}</div> : null}</form>
+      : <form id="commitment-create-form" onSubmit={submit}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} error={mutation.error} section="payment" showTypeField={false} /></form>}
+  </Modal>;
+};
+
 const CommitmentsPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const resource = useApiResource("commitments.list", {});
   const budgetResource = useApiResource("budgets.list", { period: currentMonthInJakarta() });
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
   const { notify } = useFeedback();
   const mutation = useGuardedMutation();
-  const [form, setForm] = useState(emptyForm);
-  const [createOpen, setCreateOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [stopTarget, setStopTarget] = useState(null);
   const [stopError, setStopError] = useState(null);
@@ -276,35 +324,10 @@ const CommitmentsPage = () => {
   const accounts = useMemo(() => (bootstrap?.accounts || []).filter((item) => item.status === "active" && item.account_type !== "investment").map((item) => ({ ...item, ...(overview?.accountBalances || []).find((row) => row.account_id === item.account_id) })), [bootstrap?.accounts, overview?.accountBalances]);
   const expenseCategories = useMemo(() => (bootstrap?.categories || []).filter((item) => item.status === "active" && item.transaction_type === "expense"), [bootstrap?.categories]);
   const budgets = useMemo(() => (budgetResource.data?.items || []).filter((item) => item.can_manage !== false), [budgetResource.data?.items]);
-  const closeCreate = () => { if (!mutation.busy) setCreateOpen(false); };
   const closeEdit = () => { if (!mutation.busy) setEdit(null); };
-  const createGuard = useUnsavedChangesGuard({ open: createOpen, value: form, onClose: closeCreate, blocked: mutation.busy });
   const editGuard = useUnsavedChangesGuard({ open: Boolean(edit), value: edit, onClose: closeEdit, blocked: mutation.busy });
   const reloadAll = async () => { invalidate(refreshKeys); await Promise.allSettled([resource.reload(), budgetResource.reload(), refreshOverview()]); };
-
-  const submitCreate = (event) => { event.preventDefault(); return mutation.run(async () => {
-    const arisan = form.commitment_type === "arisan";
-    await createCommitment({
-      commitment_type: form.commitment_type,
-      name: form.name,
-      provider: form.provider,
-      original_amount: arisan ? undefined : assertPositiveRupiah(form.original_amount),
-      current_balance: form.current_balance === "" ? undefined : Number(form.current_balance),
-      installment_amount: assertPositiveRupiah(form.installment_amount),
-      total_installments: Number(form.total_installments),
-      installments_paid: form.commitment_type === "mortgage" ? Math.max(0, Number(form.installments_paid || 0)) : undefined,
-      default_account_id: form.default_account_id,
-      category_id: form.category_id,
-      budget_id: form.budget_id || null,
-      frequency: "monthly",
-      due_day: Number(form.due_day),
-      start_date: form.commitment_type === "mortgage" ? form.start_date : undefined,
-      end_date: form.end_date || undefined,
-      payment_method: "transfer",
-    });
-    const name = form.name || "Kewajiban";
-    setCreateOpen(false); setForm(emptyForm()); notify({ message: `${name} berhasil dibuat. Jadwal pembayaran berikutnya sudah disiapkan.`, tone: "success", dedupeKey: "commitments:create" }); await reloadAll();
-  }).catch(() => undefined); };
+  const createFlow = useCommitmentCreateFlow({ emptyForm, expenseCategories, location, mutation, navigate, notify, reloadAll, resourceStatus: resource.status, suggestedCategoryId, validateDetails: commitmentDetailsError });
 
   const openEdit = (item) => {
     mutation.reset();
@@ -335,27 +358,20 @@ const CommitmentsPage = () => {
   const activeItems = items.filter((item) => item.status === "active");
   const completedItems = items.filter((item) => item.status === "completed");
   const collectionState = commitmentCollectionState(items);
-  const openCreate = () => {
-    mutation.reset();
-    const next = emptyForm();
-    next.category_id = suggestedCategoryId(expenseCategories, next.commitment_type);
-    setForm(next);
-    setCreateOpen(true);
-  };
   const cardProps = { onEdit: openEdit, onStop: (target) => { setStopError(null); setStopTarget(target); } };
 
   return <div className={styles.page}>
     <RefreshWarning error={resource.refreshError || budgetResource.error || budgetResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), budgetResource.reload()])} />
-    <div className={styles.header}><div><h2>Kewajiban</h2></div>{collectionState !== "empty" ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button> : null}</div>
+    <div className={styles.header}><div><h2>Kewajiban</h2></div>{collectionState !== "empty" ? <Button variant="primary" icon={FiPlus} onClick={createFlow.openCreate}>Tambah kewajiban</Button> : null}</div>
     {collectionState !== "empty" ? <>
       {activeItems.length > 1 ? <CommitmentSummary items={items} /> : null}
       {activeItems.length ? <section className={styles.grid}>{activeItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} highlighted={String(item.commitment_id) === highlightedCommitmentId} {...cardProps} />)}</section> : collectionState === "completed"
         ? <EmptyState icon={FiCheckCircle} title="Semua kewajiban selesai" description="Belum ada cicilan atau kewajiban aktif yang perlu dipantau." />
         : <EmptyState icon={FiArchive} title="Tidak ada kewajiban aktif" description="Kewajiban yang dihentikan tetap tersimpan sebagai histori. Tambahkan kewajiban jika ada cicilan atau pembayaran rutin baru." />}
       {completedItems.length ? <section className={styles.completed}><div className={styles.sectionHeading}><div><h3>Selesai</h3><p>Kewajiban yang sudah lunas tetap ringan dan tersimpan sebagai histori.</p></div><span>{completedItems.length}</span></div><div className={styles.grid}>{completedItems.map((item) => <CommitmentCard key={item.commitment_id} item={item} compact highlighted={String(item.commitment_id) === highlightedCommitmentId} {...cardProps} />)}</div></section> : null}
-    </> : <EmptyState icon={FiHome} title="Punya cicilan, KPR, pinjaman, atau Arisan?" description="Mulai dari sisa dan cicilan sekarang. Pembayaran lama tidak perlu dibuat ulang; jadwal berikutnya disiapkan otomatis." action={<Button variant="primary" icon={FiPlus} onClick={openCreate}>Tambah kewajiban</Button>} />}
+    </> : <EmptyState icon={FiHome} title="Punya cicilan, KPR, pinjaman, atau Arisan?" description="Mulai dari sisa dan cicilan sekarang. Pembayaran lama tidak perlu dibuat ulang; jadwal berikutnya disiapkan otomatis." action={<Button variant="primary" icon={FiPlus} onClick={createFlow.openCreate}>Tambah kewajiban</Button>} />}
 
-    <Modal open={createOpen} onClose={createGuard.requestClose} discardGuard={createGuard} discardSubject="kewajiban baru" dismissible={!mutation.busy} title="Tambah kewajiban" footer={<><Button disabled={mutation.busy} onClick={createGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-create-form" loading={mutation.busy}>Simpan {typeLabel(form.commitment_type)}</Button></>}><form id="commitment-create-form" onSubmit={submitCreate}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={expenseCategories} budgets={budgets} error={mutation.error} /></form></Modal>
+    <CommitmentCreateModal flow={createFlow} mutation={mutation} accounts={accounts} categories={expenseCategories} budgets={budgets} />
     <Modal open={Boolean(edit)} onClose={editGuard.requestClose} discardGuard={editGuard} discardSubject="perubahan kewajiban" dismissible={!mutation.busy} title={edit ? `Edit ${typeLabel(edit.commitment_type)}` : "Edit kewajiban"} description="Perubahan berlaku untuk jadwal berikutnya tanpa mengubah histori pembayaran." footer={<><Button disabled={mutation.busy} onClick={editGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-edit-form" loading={mutation.busy}>Simpan perubahan</Button></>}><form id="commitment-edit-form" onSubmit={submitEdit}>{edit ? <CommitmentForm form={edit} setForm={setEdit} accounts={accounts} categories={expenseCategories} budgets={budgets} error={mutation.error} editing /> : null}</form></Modal>
     <ConfirmationModal open={Boolean(stopTarget)} title="Hentikan kewajiban?" description={stopTarget ? `${stopTarget.name} tidak lagi aktif dan jadwal berikutnya dihentikan. Transaksi yang sudah tercatat tetap disimpan agar saldo dan laporan tetap benar.` : ""} confirmLabel="Hentikan kewajiban" busy={mutation.busy} error={stopError} onCancel={() => !mutation.busy && setStopTarget(null)} onConfirm={submitStop} />
   </div>;

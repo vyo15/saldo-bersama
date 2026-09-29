@@ -5,7 +5,6 @@ import LoadingScreen from "../components/feedback/LoadingScreen.jsx";
 import RequireAuth from "../features/auth/RequireAuth.jsx";
 import {
   loadActiveSessionsPage,
-  loadApprovalCenterPage,
   loadAccountsPage,
   loadAuditPage,
   loadBackupPage,
@@ -21,6 +20,7 @@ import {
   loadLoginPage,
   loadMaintenanceDataPage,
   loadMembersSettingsPage,
+  loadMyAccountPage,
   loadNotFoundPage,
   loadNotificationsPage,
   loadPeriodControlPage,
@@ -43,7 +43,6 @@ const ReportsPage = lazy(loadReportsPage);
 const AccountsPage = lazy(loadAccountsPage);
 const InvestmentsPage = lazy(loadInvestmentsPage);
 const CategoriesPage = lazy(loadCategoriesPage);
-const ApprovalCenterPage = lazy(loadApprovalCenterPage);
 const ReconciliationsPage = lazy(loadReconciliationsPage);
 const NotificationsPage = lazy(loadNotificationsPage);
 const SettingsLayout = lazy(loadSettingsLayout);
@@ -52,6 +51,7 @@ const DeviceNotificationsPage = lazy(loadDeviceNotificationsPage);
 const ActiveSessionsPage = lazy(loadActiveSessionsPage);
 const GoogleIntegrationsPage = lazy(loadGoogleIntegrationsPage);
 const MembersSettingsPage = lazy(loadMembersSettingsPage);
+const MyAccountPage = lazy(loadMyAccountPage);
 const DataStoragePage = lazy(loadDataStoragePage);
 const ExportDataPage = lazy(loadExportDataPage);
 const ImportTransactionsPage = lazy(loadImportTransactionsPage);
@@ -112,9 +112,11 @@ const App = () => (
         <Route path="notifikasi" element={routeElement(NotificationsPage)} />
         <Route path="kategori" element={routeElement(CategoriesPage)} />
         <Route path="anggota" element={routeElement(MembersSettingsPage)} />
-        <Route path="persetujuan" element={routeElement(ApprovalCenterPage)} />
+        <Route path="anggota/:memberId" element={routeElement(MembersSettingsPage)} />
+        <Route path="persetujuan" element={<Navigate to="/anggota?tab=pengajuan" replace />} />
         <Route path="pengaturan" element={routeElement(SettingsLayout, { motion: false })}>
           <Route index element={routeElement(SettingsPage)} />
+          <Route path="akun" element={routeElement(MyAccountPage)} />
           <Route path="notifikasi" element={routeElement(DeviceNotificationsPage)} />
           <Route path="perangkat" element={routeElement(ActiveSessionsPage)} />
           <Route path="integrasi" element={routeElement(GoogleIntegrationsPage)} />

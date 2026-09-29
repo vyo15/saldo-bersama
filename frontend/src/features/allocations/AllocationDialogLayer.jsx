@@ -18,6 +18,7 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 import { allocationClass } from "./allocationStyles.js";
 import { ALLOCATION_DECORATIONS, allocationDecoration } from "./allocationDecorations.js";
+import { allocationQuickTemplates } from "./allocationArt.js";
 import { ALLOCATION_CREATE_NEED_LIMIT, createAllocationNeedDraft } from "./allocationNeedDraft.js";
 import { budgetBatchScheduleLabel } from "../budgets/budgetBatchModel.js";
 import { BUDGET_RECORDING_OPTIONS, budgetRecordingLabel } from "../budgets/budgetRecordingOptions.js";
@@ -229,10 +230,37 @@ const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) =
   </section>;
 };
 
+const createTemplateMatcher = (name = "") => {
+  const haystack = String(name || "").trim().toLocaleLowerCase("id-ID");
+  return allocationQuickTemplates.find((template) => template.keywords.some((keyword) => haystack.includes(keyword)))?.key || "";
+};
+
+const CreateEnvelopeTemplatePicker = ({ value, onSelect }) => <fieldset className={allocationClass("allocation-template-picker form-grid__full")}>
+  <legend>Pilih kategori alokasi</legend>
+  <div className={allocationClass("allocation-template-picker__grid")}>
+    {allocationQuickTemplates.map((template) => <button key={template.key} type="button" className={allocationClass(`allocation-template-picker__item${value === template.key ? " is-active" : ""}`)} onClick={() => onSelect(template)}>
+      <span className={allocationClass("allocation-template-picker__art")}><img src={template.art} width="1448" height="1086" alt="" decoding="async" /></span>
+      <span className={allocationClass("allocation-template-picker__copy")}><strong>{template.label}</strong><small>{template.hint}</small></span>
+    </button>)}
+  </div>
+</fieldset>;
+
+const CreateStepDots = ({ step }) => <div className={allocationClass("allocation-create-steps form-grid__full")} aria-label="Progres pembuatan alokasi">
+  {[1, 2].map((value) => <span key={value} className={allocationClass(`allocation-create-steps__item${step === value ? " is-active" : ""}`)} aria-current={step === value ? "step" : undefined}>{value}</span>)}
+</div>;
+
 const CreateEnvelopeBasics = ({ createForm, setCreateForm, accounts, usersStatus, assigneeState, assigneeOptions, onChangeSource, onNext }) => {
   const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
+  const activeTemplate = createTemplateMatcher(createForm.name);
+  const applyTemplate = (template) => setCreateForm((current) => ({
+    ...current,
+    name: current.name?.trim() ? current.name : template.label,
+    decoration_key: current.decoration_key === "auto" || !current.decoration_key ? template.decorationKey : current.decoration_key,
+  }));
   return <form id="create-envelope-basics-form" className={allocationClass("form-grid")} onSubmit={(event) => { event.preventDefault(); onNext(); }}>
-    <label className="field form-grid__full"><span>Untuk apa alokasi ini? *</span><input autoFocus required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Rumah Tangga" /></label>
+    <CreateStepDots step={1} />
+    <CreateEnvelopeTemplatePicker value={activeTemplate} onSelect={applyTemplate} />
+    <label className="field form-grid__full"><span>Nama alokasi *</span><input autoFocus required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Kebutuhan Rumah Tangga" /></label>
     <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
     {assigneeState.locked ? <div className={allocationClass("allocation-owner-lock form-grid__full")}><span>Digunakan oleh</span><strong>{assigneeOptions[0]?.label || sourceAccount?.owner_name || "Pemilik rekening"}</strong><small>Mengikuti pemilik rekening sumber pribadi.</small></div> : <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : "Rekening Bersama dapat dialokasikan untuk Bersama atau anggota tertentu."} />}
   </form>;
@@ -241,6 +269,7 @@ const CreateEnvelopeBasics = ({ createForm, setCreateForm, accounts, usersStatus
 const CreateEnvelopePlan = ({ createForm, setCreateForm, createNeeds, setCreateNeeds, categories, accounts, message, createEnvelope }) => {
   const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
   return <form id="create-envelope-form" className={allocationClass("form-grid")} onSubmit={createEnvelope}>
+    <CreateStepDots step={2} />
     <div className={allocationClass("allocation-create-summary form-grid__full")} role="status">
       <span><strong>{createForm.name || "Alokasi baru"}</strong><small>{sourceAccount ? accountDisplayLabel(sourceAccount) : "Rekening belum dipilih"}</small></span>
       <small>Langkah terakhir: susun kebutuhan awal.</small>
@@ -280,7 +309,7 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
   const goToPlan = () => { if (canContinue) setStep(2); };
   const footer = step === 1 ? <>
     <Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button>
-    <Button variant="primary" icon={FiArrowRight} type="submit" form="create-envelope-basics-form" disabled={!canContinue || createMutation.busy}>Lanjut</Button>
+    <Button variant="primary" icon={FiArrowRight} type="submit" form="create-envelope-basics-form" disabled={!canContinue || createMutation.busy}>Lanjutkan</Button>
   </> : <>
     <Button type="button" disabled={createMutation.busy} onClick={() => setStep(1)}>Kembali</Button>
     <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>{submitLabel}</Button>
@@ -291,8 +320,8 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
     discardGuard={guard}
     discardSubject="Alokasi Dana"
     dismissible={!createMutation.busy}
-    title="Alokasi baru"
-    description={step === 1 ? "Langkah 1 dari 2 · Tentukan tujuan dan rekening sumber." : "Langkah 2 dari 2 · Atur kebutuhan awal. Detail tambahan tetap opsional."}
+    title="Buat Alokasi Baru"
+    description={step === 1 ? "Pilih kategori alokasi, tentukan nama, lalu pilih rekening sumber." : "Susun kebutuhan awal agar dana bisa langsung dipakai dengan rapi."}
     headerBackAction={step === 2 ? { label: "Kembali ke informasi Alokasi", onClick: () => setStep(1), disabled: createMutation.busy } : null}
     footer={footer}
   >

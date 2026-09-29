@@ -287,8 +287,8 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(recurringSchedule, /<div className=\{styles\.sectionHeader\}>[\s\S]*\{allItems\.length \? <ScheduleKindTabs/);
   assert.match(recurringSchedule, /if \(!expenseCount \|\| !incomeCount\) return null;/);
 
-  assert.match(commitments, /\{collectionState !== "empty" \? <Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button> : null\}/);
-  assert.match(commitments, /action=\{<Button variant="primary" icon=\{FiPlus\} onClick=\{openCreate\}>Tambah kewajiban<\/Button>\}/);
+  assert.match(commitments, /\{collectionState !== "empty" \? <Button variant="primary" icon=\{FiPlus\} onClick=\{createFlow\.openCreate\}>Tambah kewajiban<\/Button> : null\}/);
+  assert.match(commitments, /action=\{<Button variant="primary" icon=\{FiPlus\} onClick=\{createFlow\.openCreate\}>Tambah kewajiban<\/Button>\}/);
   assert.equal((commitments.match(/>Tambah kewajiban<\/Button>/g) || []).length, 2, "label boleh ada di dua branch source, tetapi branch header wajib kondisional terhadap state koleksi non-empty");
 
   assert.match(goals, /\{summary\.activeCount \? <GoalSummary items=\{items\} \/> : null\}/);
@@ -325,7 +325,9 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
     read("src/features/allocations/AllocationOverview.module.css"),
   ]);
 
-  assert.match(overview, />Alokasi baru<\/Button>/);
+  assert.match(overview, />Tambah<\/Button>/);
+  assert.match(overview, /Tambah rencana/);
+  assert.match(overview, /PlanningCreateLauncher/);
   assert.match(overview, /allocation-funding-summary__actions/);
   assert.doesNotMatch(overview, /allocation-card__fund|allocation-card__expand|>Lihat detail|>Tambah kebutuhan<\/Button>/);
   assert.doesNotMatch(overview, /allocation-header-actions--with-move|allocation-move-action/);

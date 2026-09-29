@@ -220,3 +220,26 @@
     gap: 8px;
   }
 }
+
+/* Compact create flow: choose the user's goal first, then reveal only the fields for that step. */
+.typeList { display: grid; gap: 7px; }
+.typeOption {
+  width: 100%; min-height: 58px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 14px;
+  display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  background: var(--surface); color: var(--text); text-align: left; cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
+}
+.typeOption:hover { border-color: color-mix(in srgb, var(--primary) 42%, var(--border)); background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }
+.typeOption:active { transform: translateY(1px); }
+.typeOption:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.typeOptionIcon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); }
+.typeOptionIcon svg { width: 18px; height: 18px; }
+.typeOptionCopy { min-width: 0; display: grid; gap: 2px; }
+.typeOptionCopy strong { font-size: 13px; line-height: 1.25; }
+.typeOptionCopy small { color: var(--text-muted); font-size: 12px; line-height: 1.35; }
+.typeOptionArrow { width: 16px; height: 16px; color: var(--text-muted); }
+@media (max-width: 760px) {
+  .summary { padding: 10px 12px; }
+  .card { padding: 11px 12px; gap: 8px 10px; }
+  .typeOption { min-height: 56px; padding-block: 8px; }
+}

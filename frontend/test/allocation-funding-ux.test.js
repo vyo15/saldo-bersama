@@ -59,14 +59,27 @@ test("create Alokasi mengikuti ownership rekening dan menyimpan opsi lanjutan se
 });
 
 test("overview menyatukan objek aktif dan hanya menampilkan filter ownership ketika dataset membutuhkannya", async () => {
-  const overview = await read("src/features/allocations/AllocationOverviewLayer.jsx");
+  const [overview, launcher, workspace] = await Promise.all([
+    read("src/features/allocations/AllocationOverviewLayer.jsx"),
+    read("src/features/allocations/PlanningCreateLauncher.jsx"),
+    read("src/features/allocations/AllocationsWorkspace.jsx"),
+  ]);
   assert.match(overview, /buildPlanningActiveItems/);
   assert.match(overview, /planningActiveOwnership/);
   assert.match(overview, /filterPlanningActiveItems/);
   assert.match(overview, /ownership\.showFilter \? <div className=\{allocationClass\("allocation-filters"\)\}/);
   assert.match(overview, />Aktif<\/h2>/);
   assert.match(overview, /Alokasikan dana/);
-  assert.match(overview, /Alokasi baru/);
+  assert.match(overview, />Tambah<\/Button>/);
+  assert.match(overview, /Tambah rencana/);
+  assert.match(overview, /PlanningCreateLauncher/);
+  assert.match(launcher, /Tambah di Atur Dana/);
+  assert.match(launcher, /title="Alokasi dana"/);
+  assert.match(launcher, /title="Kewajiban"/);
+  assert.match(launcher, /title="Jadwal rutin"/);
+  assert.match(launcher, /value: "mortgage", label: "KPR"/);
+  assert.match(workspace, /workflowAction: "create-commitment"/);
+  assert.match(workspace, /workflowAction: "create-recurring"/);
 });
 
 test("attention kekurangan dana mengunci Alokasi yang sudah diketahui", async () => {

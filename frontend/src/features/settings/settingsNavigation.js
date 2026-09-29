@@ -6,6 +6,7 @@ import {
   FiMonitor,
   FiShield,
   FiTool,
+  FiUser,
 } from "react-icons/fi";
 
 const DATA_STORAGE_ROUTES = Object.freeze([
@@ -21,6 +22,7 @@ export const MOBILE_SETTINGS_GROUPS = Object.freeze([
     id: "umum",
     label: "Umum",
     items: [
+      { to: "/pengaturan/akun", label: "Akun Saya", description: "Ringkasan, keuangan, pengajuan & aktivitas Anda", icon: FiUser },
       { to: "/pengaturan/notifikasi", label: "Notifikasi perangkat", description: "Pengingat & Web Push perangkat ini", icon: FiBell },
       { to: "/pengaturan/perangkat", label: "Perangkat & sesi", description: "Kelola perangkat yang masih login", icon: FiMonitor },
       { to: "/pengaturan/integrasi", label: "Integrasi Google", description: "Sheets, Calendar & Drive", icon: FiCalendar },
@@ -49,6 +51,7 @@ export const DESKTOP_SETTINGS_CATEGORIES = Object.freeze([
     id: "umum",
     label: "Umum",
     items: [
+      { to: "/pengaturan/akun", label: "Akun Saya", description: "Ringkasan keuangan dan aktivitas Anda", icon: FiUser },
       { to: "/pengaturan/notifikasi", label: "Notifikasi perangkat", description: "Push dan jenis pengingat", icon: FiBell },
     ],
   },
