@@ -31,6 +31,30 @@ test("pengaturan menggabungkan reset ke satu menu pemeliharaan dengan dua tab te
   assert.match(maintenance, /tabIndex=\{activeTab === TAB_TESTING \? 0 : -1\}/);
 });
 
+
+test("pemeliharaan mobile memakai progressive disclosure dan jalur persiapan canonical", async () => {
+  const [maintenance, trial, full, settingsStyles, resetStyles] = await Promise.all([
+    read("src/features/settings/MaintenanceDataPage.jsx"),
+    read("src/features/settings/ResetDataPage.jsx"),
+    read("src/features/settings/FullResetPage.jsx"),
+    read("src/features/settings/Settings.module.css"),
+    read("src/features/settings/components/SettingsResetPanels.module.css"),
+  ]);
+
+  assert.match(maintenance, /Reset selalu dipreview terlebih dahulu/);
+  assert.match(maintenance, /to="\/pengaturan\/backup"/);
+  assert.match(maintenance, /to="\/pengaturan\/periode"/);
+  assert.match(maintenance, /to="\/pengaturan\/pemulihan"/);
+  assert.doesNotMatch(maintenance, /Bersihkan data testing atau kembalikan seluruh dataset/);
+  assert.match(trial, /Bersihkan data uji tanpa menghapus master utama/);
+  assert.match(full, /Kembalikan aplikasi ke kondisi awal setelah preview dan backup aman/);
+  assert.match(settingsStyles, /\.maintenanceCompactIntro\s*\{/);
+  assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.maintenancePrepLinks\s*\{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(resetStyles, /\.resetFlowSteps\s*\{/);
+  assert.match(resetStyles, /\.resetImpactCard\s*\{/);
+  assert.match(resetStyles, /@media \(max-width: 36rem\)[\s\S]*\.resetFlowPanel > :global\(\[data-ui="button"\]\)[\s\S]*min-height:\s*var\(--mobile-control-height\);/);
+});
+
 test("checklist destructive menyimpan nilai checkbox sebelum state updater dan tetap focusable", async () => {
   const [modal, componentsCss] = await Promise.all([
     read("src/components/common/ConfirmationModal.jsx"),

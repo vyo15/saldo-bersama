@@ -4,7 +4,7 @@ import { useFinance } from "../../app/FinanceContext.jsx";
 import { createSecureRandomId } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { FullResetConfirmation, FullResetStatusPanels, FullResetSteps } from "./components/FullResetPanels.jsx";
+import { FullResetConfirmation, FullResetFlow, FullResetStatusPanels } from "./components/FullResetPanels.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { isSettingsOutcomeUnknownError, runSettingsAction } from "./settings.api.js";
@@ -23,10 +23,10 @@ const FULL_RESET_INVALIDATIONS = Object.freeze([
 ]);
 
 const FULL_RESET_ACKNOWLEDGEMENTS = Object.freeze([
-  "Saya memahami semua rekening dan kategori pada preview akan dihapus.",
-  "Saya memahami seluruh saldo, transaksi, perencanaan, dan riwayat keuangan aplikasi akan dikosongkan.",
-  "Saya sudah memastikan safety backup Google Drive terverifikasi sebelum reset dijalankan.",
-  "Saya memahami pemulihan data setelah full reset hanya dapat dilakukan melalui backup yang valid.",
+  "Saya memahami rekening, kategori, dan data pada preview akan dihapus.",
+  "Saya memahami saldo, transaksi, dan perencanaan aplikasi akan dikosongkan.",
+  "Saya memastikan backup Google Drive sudah terverifikasi.",
+  "Saya memahami pemulihan setelah reset penuh hanya melalui backup yang valid.",
 ]);
 
 const useFullResetRecovery = ({ statusResource, integrationsResource, invalidate, refreshAll, setRecoveryToken }) => {
@@ -91,7 +91,7 @@ const useFullResetPreview = ({ recoveryToken, statusResource, integrationsResour
 
   const loadPreview = async () => {
     setPreviewBusy(true);
-    setResult({ status: "loading", text: "Memeriksa status, Google Drive, dan seluruh data yang akan direset..." });
+    setResult({ status: "loading", text: "Memeriksa data dan kesiapan reset penuh..." });
     try {
       const [status, integrations] = await Promise.all([statusResource.reload(), integrationsResource.reload()]);
       if (recoveryToken && status?.outcome === "committed") {
@@ -231,15 +231,15 @@ const FullResetPage = () => {
       <section className={styles.pageContent} aria-labelledby="full-reset-title">
         <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}>
           <h2 id="full-reset-title">Reset semua data</h2>
-          <p>Kembalikan data aplikasi ke kondisi awal. Rekening, kategori, saldo, riwayat keuangan, perencanaan, dan data operasional akan dihapus. Pengguna, audit, backup, dan struktur database tetap disimpan.</p>
+          <p>Kembalikan aplikasi ke kondisi awal setelah preview dan backup aman.</p>
         </div>
-        <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
+        <div className={styles.resetResultNotice}><SettingsNotice result={preview.preview ? null : recovery.result} /></div>
         <FullResetStatusPanels status={resetState.status} statusResource={statusResource} recovery={recovery} />
         <div className={`${styles.resetGuardNotice} ${styles.fullResetGuard}`} role="note">
           <FiShield aria-hidden="true" />
-          <span><strong>Tindakan ini menghapus hampir seluruh data aplikasi.</strong> Gunakan reset penuh hanya untuk mengembalikan aplikasi ke kondisi awal. Gunakan Restore jika Anda hanya perlu kembali ke backup tertentu.</span>
+          <span><strong>Reset penuh menghapus data aplikasi.</strong> Gunakan Pemulihan jika hanya ingin kembali ke backup tertentu.</span>
         </div>
-        <FullResetSteps preview={preview} statusBlocked={resetState.blocked} integrationsResource={integrationsResource} driveReadiness={drive.readiness} driveReady={drive.ready} canOpenReset={canOpenReset} apply={apply} />
+        <FullResetFlow preview={preview} statusBlocked={resetState.blocked} driveReadiness={drive.readiness} driveReady={drive.ready} canOpenReset={canOpenReset} apply={apply} setResult={recovery.setResult} />
         <FullResetConfirmation
           preview={preview.preview}
           acknowledgementItems={FULL_RESET_ACKNOWLEDGEMENTS}

@@ -249,8 +249,9 @@ test("Web Push memakai secure context, status backend, lock-screen privacy, dan 
   assert.match(frontendNotifications, /notifications\.updatePreference/);
   assert.match(frontendNotifications, /verification = await apiClient\.request/);
   assert.doesNotMatch(notificationsPage, /Uji notifikasi/);
-  assert.match(notificationsPage, /tileAction/);
-  assert.match(notificationsPage, /tileAction && runPushAction\(tileAction\)/);
+  assert.match(notificationsPage, /const primaryPushAction = view\.canEnable/);
+  assert.match(notificationsPage, /onClick=\{\(\) => runPushAction\(primaryPushAction\)\}/);
+  assert.match(notificationsPage, /Notifikasi di perangkat ini/);
   assert.match(serviceWorker, /NOTIFICATION_COPY/);
   assert.doesNotMatch(serviceWorker, /payload\.title|payload\.body/);
   assert.match(serviceWorker, /Ada pengingat keuangan yang perlu diperiksa/);

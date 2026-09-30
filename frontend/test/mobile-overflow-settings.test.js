@@ -140,7 +140,7 @@ test("pengaturan memakai route internal, desktop workspace khusus, dan mobile gr
   assert.match(settingsStyles, /@media \(max-width: 820px\)[\s\S]*\.settingsMobileOverview\s*\{[\s\S]*display:\s*grid;/);
   assert.match(settingsStyles, /\.settingsAccountAvatar\s*\{[\s\S]*border-color:[\s\S]*box-shadow:/);
   assert.match(settingsStyles, /\.settingsAccountStatus\s*\{[\s\S]*border-top:[\s\S]*grid-template-columns:/);
-  assert.match(notifications, /type="checkbox" role="switch"/);
+  assert.match(notifications, /type="checkbox"\s+role="switch"/);
   const preferenceSwitchBlock = settingsStyles.match(/\.preferenceItem input\[role="switch"\]\s*\{([^}]*)\}/)?.[1] || "";
   assert.match(preferenceSwitchBlock, /appearance:\s*none;/);
   assert.match(preferenceSwitchBlock, /border-radius:\s*var\(--radius-pill\);/);
@@ -176,10 +176,10 @@ test("panel reset Pengaturan memiliki stylesheet ownership sendiri tanpa selecto
   ]);
   assert.match(fullReset, /import styles from "\.\/SettingsResetPanels\.module\.css"/);
   assert.match(trialReset, /import styles from "\.\/SettingsResetPanels\.module\.css"/);
-  assert.match(resetPanelStyles, /\.resetStepCard\s*\{/);
+  assert.match(resetPanelStyles, /\.resetTestingFlow\s*\{/);
   assert.match(resetPanelStyles, /\.resetScopeSelector\s*\{/);
   assert.match(resetPanelStyles, /@media \(max-width: 36rem\)/);
-  assert.doesNotMatch(settingsStyles, /\.resetStepCard\s*\{|\.resetScopeSelector\s*\{|resetRecoveryCard_(?:danger|success)/);
+  assert.doesNotMatch(settingsStyles, /\.resetTestingFlow\s*\{|\.resetScopeSelector\s*\{|resetRecoveryCard_(?:danger|success)/);
 });
 
 test("anggota memakai grid responsif dan panel aktivitas berubah full-screen pada breakpoint mobile", async () => {

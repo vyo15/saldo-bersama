@@ -460,7 +460,7 @@ test("audit density menjaga desktop stabil, kontrol progresif, dan kolom finansi
   assert.doesNotMatch(settings, /desktopSettingsCategoryForPath/);
   assert.match(settingsCss, /\.settingsWorkspace \{[\s\S]*grid-template-columns:\s*minmax\(14rem, 16rem\) minmax\(0, 1fr\)/);
   assert.doesNotMatch(settingsCss, /settingsDesktopCategories/);
-  assert.match(categoriesCss, /repeat\(auto-fit, minmax\(11\.5rem, 1fr\)\)/);
+  assert.match(categoriesCss, /repeat\(auto-fill, minmax\(8\.75rem, 1fr\)\)/);
   assert.doesNotMatch(planningCss, /\.tabs|planning-tab/);
   assert.match(planningCss, /\.detailBack/);
 });

@@ -25,6 +25,7 @@ import { categoryTypeLabel } from "../../shared/presentation/category.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import { ArchiveCategoryModal, CreateCategoryModal, EditCategoryModal } from "./CategoryDialogs.jsx";
 import { categoryIconToneClass } from "./categoryUi.js";
+import CategoryVisualIntro from "./CategoryVisualIntro.jsx";
 import styles from "./CategoriesPage.module.css";
 
 const emptyCategoryForm = () => ({
@@ -263,6 +264,7 @@ const CategoriesPageContent = ({ page }) => {
     {archiveEnabled ? <RefreshWarning error={archiveResource.refreshError} onRetry={archiveResource.reload} /> : null}
     {archiveEnabled && archiveResource.status === "error" ? <div className="notice notice--warning" role="status"><span>Arsip kategori belum dapat dimuat. Kategori aktif tetap dapat digunakan.</span><Button type="button" onClick={archiveResource.reload}>Coba lagi</Button></div> : null}
     <PageHeader title="Kategori" help="Kategori mengelompokkan pemasukan, pengeluaran, dan pengembalian dana tanpa mengubah aturan saldo." actions={items.length ? <Button className={styles.categoryCreateButton} icon={FiPlus} onClick={actions.openCreate} aria-label={ownerMode ? "Tambah kategori" : "Ajukan kategori"}>{ownerMode ? "Tambah" : "Ajukan"}</Button> : null} />
+    <CategoryVisualIntro />
     {requestsResource.status === "error" ? <RefreshWarning error={requestsResource.error} onRetry={requestsResource.reload} /> : !ownerMode ? <MasterDataRequestsPanel items={requestsResource.data?.items || []} title="Pengajuan kategori saya" /> : null}
     {setupCreated ? <div><CompactNotice tone="success" title="Dasar pencatatan siap." role="status">Rekening dan kategori sudah cukup untuk mulai mencatat. Fitur perencanaan dapat ditambahkan kapan saja.</CompactNotice><div className="form-actions"><Button type="button" onClick={() => navigate("/perencanaan/kantong")}>Atur Alokasi Dana</Button><Button type="button" variant="primary" onClick={() => navigate("/transaksi")}>Catat transaksi</Button></div></div> : null}
     {actions.message ? <div className={`notice notice--${actions.message.type}`} role="status">{actions.message.text}</div> : null}

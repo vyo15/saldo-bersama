@@ -1,34 +1,7 @@
-import { FiHardDrive, FiShield } from "react-icons/fi";
+import { FiShield } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
 import styles from "./Settings.module.css";
-
-import { formatMaintenanceCount } from "./settingsPresentation.js";
-
-export const MaintenanceSummaryGrid = ({ labels, summary, ariaLabel }) => (
-  <div className={styles.resetPreviewGrid} aria-label={ariaLabel}>
-    {labels.map(([key, label]) => (
-      <div key={key}><span>{label}</span><strong>{formatMaintenanceCount(summary?.[key])}</strong></div>
-    ))}
-  </div>
-);
-
-export const SafetyBackupPreflight = ({ resource, readiness }) => {
-  const statusText = resource.status === "loading" || resource.status === "refreshing"
-    ? "Memeriksa Google Drive..."
-    : readiness.text;
-  return (
-    <div className={styles.resetSafetyPreflight}>
-      <span className={styles.serviceIcon}><FiHardDrive aria-hidden="true" /></span>
-      <span>
-        <strong>Safety backup Google Drive</strong>
-        <small>{statusText}</small>
-        {readiness.errorCode ? <small>Kode diagnosis: {readiness.errorCode}</small> : null}
-      </span>
-      <span className={`status-badge status-badge--${readiness.tone}`}>{readiness.label}</span>
-    </div>
-  );
-};
 
 const MaintenanceRecoveryPanel = ({
   maintenanceMode,

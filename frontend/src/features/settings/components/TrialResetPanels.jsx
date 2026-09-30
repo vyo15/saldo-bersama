@@ -1,123 +1,155 @@
-import { FiAlertTriangle, FiCheckCircle, FiDatabase, FiHardDrive, FiRefreshCw, FiShield, FiTrash2 } from "react-icons/fi";
+import { FiAlertTriangle, FiCheckCircle, FiDatabase, FiRefreshCw, FiShield } from "react-icons/fi";
 import { BalanceIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { Link } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import Card from "../../../components/common/Card.jsx";
 import ConfirmationModal from "../../../components/common/ConfirmationModal.jsx";
 import { formatRupiah } from "../../../domain/money.js";
-import { MaintenanceSummaryGrid as SummaryGrid, SafetyBackupPreflight } from "../MaintenanceRecoveryPanel.jsx";
 import { RESET_DOMAIN_LABELS, RESET_TRIAL_OPERATIONAL_LABELS, RESET_TRIAL_PRESERVED_LABELS } from "../resetSummaryLabels.js";
 import { formatMaintenanceCount as formatCount } from "../settingsPresentation.js";
 import styles from "./SettingsResetPanels.module.css";
 
-const RESET_INTENT_STATE_LABELS = Object.freeze({
-  processing: "Sedang diproses",
-  unknown: "Belum pasti",
-  completed: "Selesai",
-  missing: "Tidak ditemukan",
-});
-
-const RESET_BACKUP_STATE_LABELS = Object.freeze({
-  pending: "Menunggu",
-  processing: "Sedang dibuat",
-  completed: "Selesai",
-  verified: "Terverifikasi",
-  failed: "Gagal",
-});
+const RESET_INTENT_STATE_LABELS = Object.freeze({ processing: "Sedang diproses", unknown: "Belum pasti", completed: "Selesai", missing: "Tidak ditemukan" });
+const RESET_BACKUP_STATE_LABELS = Object.freeze({ pending: "Menunggu", processing: "Sedang dibuat", completed: "Selesai", verified: "Terverifikasi", failed: "Gagal" });
 
 const intentStateLabel = (state) => RESET_INTENT_STATE_LABELS[state] || state || "Tidak tersedia";
 const backupStateLabel = (state) => RESET_BACKUP_STATE_LABELS[state] || state || "Belum tersedia";
+const count = (value) => Math.max(0, Number(value || 0));
+const nonZeroEntries = (labels, summary) => labels.filter(([key]) => count(summary?.[key]) > 0);
 
-const ResetStepHeader = ({ number, icon: Icon, title, description }) => (
-  <div className={styles.resetStepHeader}>
-    <span className={styles.resetStepNumber} aria-hidden="true">{number}</span>
-    <div>
-      <h2>{title}</h2>
-      <p>{description}</p>
+const ResetFlowSteps = ({ activeStep }) => (
+  <ol className={styles.resetFlowSteps} aria-label="Tahapan reset testing">
+    {["Pilih reset", "Dampak", "Konfirmasi"].map((label, index) => {
+      const step = index + 1;
+      return <li key={label} className={step === activeStep ? styles.isActive : step < activeStep ? styles.isComplete : ""} aria-current={step === activeStep ? "step" : undefined}>
+        <span>{step < activeStep ? <FiCheckCircle aria-hidden="true" /> : step}</span><small>{label}</small>
+      </li>;
+    })}
+  </ol>
+);
+
+const ResetScopeSelector = ({ resetScope, activityScope, activityAndBalancesScope, setResetScope, setPreview, setResult }) => {
+  const selectScope = (scope) => { setResetScope(scope); setPreview(null); setResult(null); };
+  return (
+    <fieldset className={styles.resetScopeSelector}>
+      <legend><strong>Apa yang ingin dibersihkan?</strong><small>Pilih hasil akhir yang paling sesuai.</small></legend>
+      <label className={resetScope === activityScope ? styles.isSelected : ""}>
+        <input type="radio" name="reset-testing-scope" value={activityScope} checked={resetScope === activityScope} onChange={() => selectScope(activityScope)} />
+        <span className={styles.resetScopeIcon}><FiRefreshCw aria-hidden="true" /></span>
+        <span><strong>Hapus data testing</strong><small>Data uji dihapus. Saldo awal rekening tetap.</small></span>
+      </label>
+      <label className={resetScope === activityAndBalancesScope ? styles.isSelected : ""}>
+        <input type="radio" name="reset-testing-scope" value={activityAndBalancesScope} checked={resetScope === activityAndBalancesScope} onChange={() => selectScope(activityAndBalancesScope)} />
+        <span className={styles.resetScopeIcon}><BalanceIcon aria-hidden="true" /></span>
+        <span><strong>Hapus data + saldo awal</strong><small>Data uji dihapus dan saldo rekening pada preview menjadi Rp0.</small></span>
+      </label>
+    </fieldset>
+  );
+};
+
+const ResetDetailRows = ({ labels, summary }) => {
+  const entries = nonZeroEntries(labels, summary);
+  if (!entries.length) return null;
+  return <div className={styles.resetDetailRows}>{entries.map(([key, label]) => <div key={key}><span>{label}</span><strong>{formatCount(summary?.[key])}</strong></div>)}</div>;
+};
+
+const ResetImpactPreview = ({ preview }) => {
+  const totalRows = count(preview.summary?.totalRows);
+  const balanceReset = preview.balanceReset;
+  const balanceAffected = count(balanceReset?.accountsAffected);
+  const hasDomain = nonZeroEntries(RESET_DOMAIN_LABELS, preview.summary).length > 0;
+  const hasOperational = nonZeroEntries(RESET_TRIAL_OPERATIONAL_LABELS, preview.summary).length > 0;
+  const preservedEntries = RESET_TRIAL_PRESERVED_LABELS.filter(([key]) => count(preview.preserved?.[key]) > 0);
+
+  return (
+    <section className={styles.resetImpactCard} aria-labelledby="reset-impact-title">
+      <div className={styles.resetImpactHeader}>
+        <div><strong id="reset-impact-title">Dampak reset</strong><small>Hanya informasi yang relevan ditampilkan.</small></div>
+        <span>{formatCount(totalRows)} data</span>
+      </div>
+
+      <div className={styles.resetImpactSummary}>
+        {totalRows > 0 ? <div><span>Data testing</span><strong>{formatCount(totalRows)} baris</strong></div> : <div><span>Data testing</span><strong>Tidak ada</strong></div>}
+        {balanceAffected > 0 ? <div><span>Saldo rekening</span><strong>Menjadi Rp0</strong></div> : null}
+      </div>
+
+      <div className={styles.resetImpactSafeList}>
+        <span><FiCheckCircle aria-hidden="true" />Rekening, kategori, investasi, dan pengguna tetap ada.</span>
+        <span><FiCheckCircle aria-hidden="true" />Audit, backup, dan data pemulihan tetap disimpan.</span>
+      </div>
+
+      {hasDomain || hasOperational || balanceAffected > 0 || preservedEntries.length ? <details className={styles.resetImpactDetails}>
+        <summary>Lihat rincian data</summary>
+        <div className={styles.resetImpactDetailContent}>
+          {hasDomain ? <div><strong>Aktivitas & perencanaan</strong><ResetDetailRows labels={RESET_DOMAIN_LABELS} summary={preview.summary} /></div> : null}
+          {hasOperational ? <div><strong>Proses sementara</strong><ResetDetailRows labels={RESET_TRIAL_OPERATIONAL_LABELS} summary={preview.summary} /></div> : null}
+          {balanceAffected > 0 ? <BalanceResetDetails balanceReset={balanceReset} /> : null}
+          {preservedEntries.length ? <div><strong>Tetap disimpan</strong><div className={styles.resetDetailRows}>{preservedEntries.map(([key, label]) => <div key={key}><span>{label}</span><strong>{formatCount(preview.preserved?.[key])}</strong></div>)}</div></div> : null}
+        </div>
+      </details> : null}
+    </section>
+  );
+};
+
+const BalanceResetDetails = ({ balanceReset }) => (
+  <div>
+    <strong>Saldo rekening</strong>
+    <div className={styles.resetBalanceCompact}>
+      <div><span>Total saldo saat ini</span><strong>{formatRupiah(balanceReset.totalCurrentBalance)} <span aria-hidden="true">→</span> Rp0</strong></div>
+      {balanceReset.accounts?.map((account) => <div key={account.accountId}><span>{account.name}</span><strong>{formatRupiah(account.currentBalance)} → Rp0</strong></div>)}
     </div>
-    <span className={styles.resetStepIcon} aria-hidden="true"><Icon /></span>
   </div>
 );
-const BalanceResetPreview = ({ balanceReset }) => {
-  if (!balanceReset) return null;
+
+const ResetSafetySummary = ({ driveReadiness, driveReady, statusBlocksReset }) => (
+  <section className={`${styles.resetSafetySummary} ${!driveReady || statusBlocksReset ? styles.hasWarning : ""}`} aria-labelledby="reset-safety-title">
+    <div className={styles.resetSafetyTitle}><FiShield aria-hidden="true" /><strong id="reset-safety-title">Keamanan sebelum reset</strong></div>
+    <div className={styles.resetSafetyRows}>
+      <div><span>Backup Google Drive</span><strong>{driveReady ? "Siap" : driveReadiness.label}</strong></div>
+      <div><span>Status reset lain</span><strong>{statusBlocksReset ? "Perlu diperiksa" : "Tidak ada"}</strong></div>
+      <div><span>Preview</span><strong>Valid</strong></div>
+    </div>
+    {!driveReady ? <p>Backup keamanan belum siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</p> : null}
+  </section>
+);
+
+const ResetTestingFlow = ({ resetScope, setResetScope, activityScope, activityAndBalancesScope, previewState, statusBlocksReset, driveReadiness, driveReady, canOpenReset, apply, setResult }) => {
+  const preview = previewState.preview;
+  const backToScope = () => { previewState.setPreview(null); setResult(null); apply.setApplyError(null); };
+
   return (
-    <div className={styles.resetBalancePreview}>
-      <div className={styles.resetPreviewSectionHeading}>
-        <BalanceIcon aria-hidden="true" />
-        <div>
-          <strong>Saldo rekening akan menjadi Rp0</strong>
-          <small>Riwayat testing dibersihkan. Saldo awal rekening yang masih bernilai juga dinolkan.</small>
+    <div className={styles.resetTestingFlow}>
+      <ResetFlowSteps activeStep={preview ? 2 : 1} />
+      {!preview ? <div className={styles.resetFlowPanel}>
+        <ResetScopeSelector resetScope={resetScope} activityScope={activityScope} activityAndBalancesScope={activityAndBalancesScope} setResetScope={setResetScope} setPreview={previewState.setPreview} setResult={setResult} />
+        <Button variant="primary" icon={FiRefreshCw} loading={previewState.previewBusy} disabled={statusBlocksReset} onClick={previewState.loadPreview}>Lihat dampak</Button>
+      </div> : <>
+        <ResetImpactPreview preview={preview} />
+        <ResetSafetySummary driveReadiness={driveReadiness} driveReady={driveReady} statusBlocksReset={statusBlocksReset} />
+        <div className={styles.resetFlowActions}>
+          <Button type="button" disabled={previewState.previewBusy} onClick={backToScope}>Ubah pilihan</Button>
+          <Button variant="primary" disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Lanjutkan</Button>
         </div>
-      </div>
-      <div className={styles.resetBalanceTotal}>
-        <span>Total saldo saat ini</span>
-        <strong>{formatRupiah(balanceReset.totalCurrentBalance)} <span aria-hidden="true">→</span> Rp0</strong>
-      </div>
-      {balanceReset.accounts?.length ? (
-        <div className={styles.resetBalanceAccounts} aria-label="Rekening yang saldo akhirnya akan menjadi nol">
-          {balanceReset.accounts.map((account) => (
-            <div key={account.accountId}>
-              <span><strong>{account.name}</strong><small>Saldo awal {formatRupiah(account.initialBalance)}</small></span>
-              <strong>{formatRupiah(account.currentBalance)} <span aria-hidden="true">→</span> Rp0</strong>
-            </div>
-          ))}
-        </div>
-      ) : <small className={styles.resetBalanceEmpty}>Semua rekening sudah memiliki saldo Rp0.</small>}
+      </>}
     </div>
   );
 };
 
-const ResetPreview = ({ preview }) => (
-  <div className={styles.resetPreview}>
-    <div className={styles.resetOverview} aria-label="Ringkasan data testing">
-      <div><span>Total dibersihkan</span><strong>{formatCount(preview.summary?.totalRows)}</strong><small>baris</small></div>
-      <div><span>Data finansial</span><strong>{formatCount(preview.summary?.businessRows)}</strong><small>baris</small></div>
-      <div><span>Data operasional</span><strong>{formatCount(preview.summary?.operationalRows)}</strong><small>baris</small></div>
-    </div>
-
-    <div className={styles.resetPreviewSection}>
-      <div className={styles.resetPreviewSectionHeading}>
-        <FiDatabase aria-hidden="true" />
-        <div><strong>Aktivitas dan perencanaan</strong><small>Data trial finansial, investasi, dan perencanaan yang akan dibersihkan.</small></div>
-      </div>
-      <SummaryGrid labels={RESET_DOMAIN_LABELS} summary={preview.summary} ariaLabel="Aktivitas dan perencanaan yang akan dibersihkan" />
-    </div>
-
-    <div className={styles.resetPreviewSection}>
-      <div className={styles.resetPreviewSectionHeading}>
-        <FiRefreshCw aria-hidden="true" />
-        <div><strong>Sisa proses testing</strong><small>Pengajuan, pengingat, notifikasi tertunda, data sinkronisasi testing, dan preview sementara ikut dibersihkan. Tugas sinkronisasi baru yang dibuat setelah reset tidak dihitung sebagai data testing.</small></div>
-      </div>
-      <SummaryGrid labels={RESET_TRIAL_OPERATIONAL_LABELS} summary={preview.summary} ariaLabel="Data operasional yang akan dibersihkan" />
-    </div>
-
-    <BalanceResetPreview balanceReset={preview.balanceReset} />
-
-    <div className={styles.resetPreserved}>
-      <div className={styles.resetPreviewSectionHeading}>
-        <FiShield aria-hidden="true" />
-        <div><strong>Tetap disimpan</strong><small>Rekening, kategori, master investasi, pengguna, audit, backup, perangkat notifikasi, dan data pemulihan tetap disimpan.</small></div>
-      </div>
-      <div className={styles.resetPreservedGrid}>
-        {RESET_TRIAL_PRESERVED_LABELS.map(([key, label]) => (
-          <div key={key}><FiCheckCircle aria-hidden="true" /><span>{label}</span><strong>{formatCount(preview.preserved?.[key])}</strong></div>
-        ))}
-        <div><FiCheckCircle aria-hidden="true" /><span>Konfigurasi sistem</span><strong>Tetap</strong></div>
-      </div>
-    </div>
+const ResetConfirmationSummary = ({ preview }) => (
+  <div className={styles.resetConfirmationSummary}>
+    <ResetFlowSteps activeStep={3} />
+    <ResetImpactPreview preview={preview} />
   </div>
 );
 
 const ResetConfirmationModal = ({ preview, open, busy, error, onCancel, onConfirm, resetBalances, acknowledgementItems }) => (
   <ConfirmationModal
     open={open}
-    title="Bersihkan data testing?"
-    description={resetBalances
-      ? "Seluruh riwayat testing pada preview akan dihapus dan saldo rekening akan dikembalikan ke Rp0 setelah safety backup."
-      : "Seluruh data pada preview akan dihapus permanen setelah safety backup. Gunakan hanya selama data yang tersimpan benar-benar masih data trial/error."}
-    confirmLabel="Bersihkan data testing"
-    reasonLabel="Alasan pembersihan"
-    reasonPlaceholder="Contoh: Membersihkan transaksi dan rekonsiliasi hasil trial"
+    title="Konfirmasi reset testing"
+    description={resetBalances ? "Data pada preview akan dihapus dan saldo rekening terkait menjadi Rp0 setelah safety backup." : "Data pada preview akan dihapus permanen setelah safety backup."}
+    confirmLabel="Reset data"
+    reasonLabel="Alasan reset"
+    reasonPlaceholder="Contoh: Membersihkan data trial"
     requireReason
     expectedConfirmation={preview?.confirmationPhrase || "BERSIHKAN DATA TESTING"}
     acknowledgementItems={acknowledgementItems}
@@ -128,15 +160,15 @@ const ResetConfirmationModal = ({ preview, open, busy, error, onCancel, onConfir
     onCancel={onCancel}
     onConfirm={onConfirm}
   >
-    {preview ? <ResetPreview preview={preview} /> : null}
+    {preview ? <ResetConfirmationSummary preview={preview} /> : null}
   </ConfirmationModal>
 );
 
 const resetStatusPresentation = (status) => {
   const presentations = {
     processing: ["warning", "Operasi sebelumnya masih diproses", "Jangan kirim reset baru. Periksa status lagi sampai hasilnya pasti."],
-    recovery_required: ["danger", "Mode pemulihan aktif", "Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dapat dibuka kembali."],
-    not_committed: ["warning", "Status operasi sebelumnya belum pasti", "Periksa data terbaru sebelum memulai pembersihan baru."],
+    recovery_required: ["danger", "Mode pemulihan aktif", "Pemeriksaan konsistensi wajib lulus sebelum perubahan data dibuka kembali."],
+    not_committed: ["warning", "Status operasi sebelumnya belum pasti", "Periksa data terbaru sebelum memulai reset baru."],
   };
   return presentations[status?.outcome] || null;
 };
@@ -165,58 +197,7 @@ const ResetRecoveryPanel = ({ status, statusBusy, onCheck, onReloadPreview }) =>
 };
 
 const ResetStatusFailure = ({ resource, status, onCheck }) => ((resource.status === "error" || resource.refreshError) && !resetStatusPresentation(status) ? (
-  <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Pembersihan tetap diblokir. Periksa status operasi sebelum membuat preview atau memulai pembersihan baru.</span><Button type="button" icon={FiRefreshCw} loading={resource.isRefreshing} onClick={onCheck}>Periksa status operasi</Button></div>
+  <div className="notice notice--danger" role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>Status reset belum dapat diverifikasi.</strong> Reset tetap diblokir sampai status operasi dipastikan aman.</span><Button type="button" icon={FiRefreshCw} loading={resource.isRefreshing} onClick={onCheck}>Periksa status</Button></div>
 ) : null);
 
-const ResetScopeSelector = ({ resetScope, activityScope, activityAndBalancesScope, setResetScope, setPreview, setResult }) => {
-  const selectScope = (scope) => { setResetScope(scope); setPreview(null); setResult(null); };
-  return (
-    <fieldset className={styles.resetScopeSelector}>
-      <legend>Pilih hasil akhir reset testing</legend>
-      <label className={resetScope === activityScope ? styles.isSelected : ""}>
-        <input type="radio" name="reset-testing-scope" value={activityScope} checked={resetScope === activityScope} onChange={() => selectScope(activityScope)} />
-        <span className={styles.resetScopeIcon}><FiRefreshCw aria-hidden="true" /></span>
-        <span><strong>Bersihkan aktivitas testing</strong><small>Hapus riwayat keuangan dan perencanaan testing. Rekening, kategori, master investasi, dan saldo awal tetap.</small></span>
-      </label>
-      <label className={resetScope === activityAndBalancesScope ? styles.isSelected : ""}>
-        <input type="radio" name="reset-testing-scope" value={activityAndBalancesScope} checked={resetScope === activityAndBalancesScope} onChange={() => selectScope(activityAndBalancesScope)} />
-        <span className={styles.resetScopeIcon}><BalanceIcon aria-hidden="true" /></span>
-        <span><strong>Bersihkan aktivitas + nolkan saldo</strong><small>Hapus seluruh riwayat testing dan kembalikan saldo seluruh rekening pada preview menjadi Rp0.</small></span>
-      </label>
-    </fieldset>
-  );
-};
-
-const ResetPreviewStep = ({ previewState, statusBlocksReset }) => (
-  <Card className={`panel ${styles.resetStepCard}`}>
-    <ResetStepHeader number="1" icon={FiRefreshCw} title="Periksa data" description="Lihat tepatnya data keuangan dan proses testing yang akan dibersihkan." />
-    <Button variant="primary" icon={FiRefreshCw} loading={previewState.previewBusy} disabled={statusBlocksReset} onClick={previewState.loadPreview}>Periksa data testing</Button>
-    {previewState.preview ? <ResetPreview preview={previewState.preview} /> : null}
-  </Card>
-);
-
-const ResetBackupStep = ({ integrationsResource, driveReadiness, driveReady }) => (
-  <Card className={`panel ${styles.resetStepCard}`}>
-    <ResetStepHeader number="2" icon={FiHardDrive} title="Verifikasi backup keamanan" description="Google Drive wajib siap sebelum pembersihan data dapat dimulai." />
-    <SafetyBackupPreflight resource={integrationsResource} readiness={driveReadiness} />
-    {!driveReady ? <div className={styles.resetInlineWarning}><span>Backup keamanan belum siap. <Link to="/pengaturan/integrasi">Periksa Integrasi Google</Link>.</span></div> : null}
-  </Card>
-);
-
-const ResetApplyStep = ({ canOpenReset, apply }) => (
-  <Card className={`panel ${styles.resetStepCard} ${styles.resetDangerStep}`}>
-    <ResetStepHeader number="3" icon={FiTrash2} title="Bersihkan sekaligus" description="Server membuat backup keamanan, mengunci perubahan selama proses, membersihkan data, memeriksa konsistensi, lalu menulis audit." />
-    <div className={styles.resetSafeHint}><FiShield aria-hidden="true" /><span>Jika koneksi terputus, jangan kirim ulang. Gunakan pemeriksaan status agar operasi yang sama tidak berjalan dua kali.</span></div>
-    <Button variant="danger" icon={FiTrash2} disabled={!canOpenReset} onClick={() => { apply.setApplyError(null); apply.setConfirmationOpen(true); }}>Bersihkan data testing</Button>
-  </Card>
-);
-
-const ResetStepCards = ({ previewState, statusBlocksReset, integrationsResource, driveReadiness, driveReady, canOpenReset, apply }) => (
-  <>
-    <ResetPreviewStep previewState={previewState} statusBlocksReset={statusBlocksReset} />
-    <ResetBackupStep integrationsResource={integrationsResource} driveReadiness={driveReadiness} driveReady={driveReady} />
-    <ResetApplyStep canOpenReset={canOpenReset} apply={apply} />
-  </>
-);
-
-export { ResetConfirmationModal, ResetRecoveryPanel, ResetScopeSelector, ResetStatusFailure, ResetStepCards };
+export { ResetConfirmationModal, ResetRecoveryPanel, ResetStatusFailure, ResetTestingFlow };

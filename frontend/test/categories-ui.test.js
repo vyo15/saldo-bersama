@@ -5,10 +5,11 @@ import test from "node:test";
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain rekening", async () => {
-  const [app, navigation, page, dialogs, iconPicker, styles, presentation, api, accountPage, categoryPresentation, reviewHook, reviewService] = await Promise.all([
+  const [app, navigation, page, visualIntro, dialogs, iconPicker, styles, presentation, api, accountPage, categoryPresentation, reviewHook, reviewService] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/config/navigation.js"),
     read("src/features/categories/CategoriesPage.jsx"),
+    read("src/features/categories/CategoryVisualIntro.jsx"),
     read("src/features/categories/CategoryDialogs.jsx"),
     read("src/features/categories/CategoryIconPicker.jsx"),
     read("src/features/categories/CategoriesPage.module.css"),
@@ -70,9 +71,11 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /event\.key === "ArrowDown"/);
   assert.match(page, /event\.key === "ArrowUp"/);
   assert.match(page, /role="menuitem"/);
-  assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(11\.5rem, 1fr\)\)/);
-  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*?\.categoryList \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /@media \(max-width: 36\.25rem\)[\s\S]*?\.categoryList \{ grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(page, /CategoryVisualIntro/);
+  assert.match(visualIntro, /category-picker\.avif/);
+  assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(auto-fill, minmax\(8\.75rem, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*?\.categoryList \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 36\.25rem\)[\s\S]*?\.categoryList \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.categoryMenuTrigger \{[\s\S]*?width: 44px;[\s\S]*?height: 44px;/);
   assert.match(styles, /\.categoryMenu[\s\S]*position: fixed[\s\S]*mobile-navigation-height/);
   assert.doesNotMatch(styles, /\.categoryStatusActive/);

@@ -6,7 +6,7 @@ import { createSecureRandomId } from "../../domain/security.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import MaintenanceRecoveryPanel from "./MaintenanceRecoveryPanel.jsx";
-import { ResetConfirmationModal, ResetRecoveryPanel, ResetScopeSelector, ResetStatusFailure, ResetStepCards } from "./components/TrialResetPanels.jsx";
+import { ResetConfirmationModal, ResetRecoveryPanel, ResetStatusFailure, ResetTestingFlow } from "./components/TrialResetPanels.jsx";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { isSettingsOutcomeUnknownError, runSettingsAction } from "./settings.api.js";
@@ -25,14 +25,14 @@ const RESET_SCOPE_ACTIVITY = "activity";
 const RESET_SCOPE_ACTIVITY_AND_BALANCES = "activity_and_balances";
 
 const RESET_ACKNOWLEDGEMENTS = Object.freeze([
-  "Saya memahami seluruh data pada preview akan dihapus permanen.",
-  "Saya sudah memastikan data yang tersimpan masih data testing/trial, bukan transaksi nyata.",
-  "Saya memahami safety backup Google Drive harus terverifikasi sebelum pembersihan dimulai.",
+  "Saya memahami data pada preview akan dihapus permanen.",
+  "Saya memastikan data ini masih testing/trial, bukan transaksi nyata.",
+  "Saya memahami backup Google Drive wajib terverifikasi sebelum reset.",
 ]);
 
 const RESET_BALANCE_ACKNOWLEDGEMENTS = Object.freeze([
   ...RESET_ACKNOWLEDGEMENTS,
-  "Saya memahami saldo awal rekening yang masuk preview akan dinolkan dan row version rekening terkait akan diperbarui.",
+  "Saya memahami saldo rekening pada preview akan menjadi Rp0.",
 ]);
 
 const RESET_RECOVERY_STORAGE_KEY = "saldo-bersama:reset-recovery";
@@ -114,7 +114,7 @@ const useResetPreview = ({ recoveryToken, resetScope, resetStatusResource, integ
 
   const loadPreview = async () => {
     setPreviewBusy(true);
-    setResult({ status: "loading", text: "Memeriksa status reset, kesiapan backup, dan seluruh data testing..." });
+    setResult({ status: "loading", text: "Memeriksa data dan kesiapan reset..." });
     try {
       const [status, integrations] = await Promise.all([resetStatusResource.reload(), integrationsResource.reload()]);
       if (recoveryToken && status?.outcome === "committed") {
@@ -279,8 +279,8 @@ const ResetEnvironmentNotice = ({ environment, resource }) => (
   <OwnerSettingsGuard>
     <section className={styles.pageContent} aria-labelledby="reset-data-title">
       <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}>
-        <h2 id="reset-data-title">Reset data testing</h2>
-        <p>Pembersihan hanya tersedia untuk Administrator pada database Development atau Production yang sudah terikat.</p>
+        <h2 id="reset-data-title">Reset testing</h2>
+        <p>Reset tersedia setelah database Development atau Production terverifikasi.</p>
       </div>
       <div className={`notice notice--${environment.tone}`} role={environment.failed ? "alert" : "status"}>
         <span><strong>{environment.title}.</strong> {environment.text}</span>
@@ -314,14 +314,25 @@ const ResetDataPage = () => {
   return (
     <OwnerSettingsGuard>
       <section className={styles.pageContent} aria-labelledby="reset-data-title">
-        <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Reset data testing</h2><p>Pilih apakah hanya riwayat testing yang dibersihkan atau sekaligus mengembalikan nominal saldo rekening ke Rp0. Rekening, kategori, master investasi, pengguna, audit, dan data pemulihan tetap dipertahankan.</p></div>
-        <div className={styles.resetResultNotice}><SettingsNotice result={recovery.result} /></div>
+        <div className={`${styles.pageHeading} ${styles.resetPageHeading}`}><h2 id="reset-data-title">Reset testing</h2><p>Bersihkan data uji tanpa menghapus master utama.</p></div>
+        <div className={styles.resetResultNotice}><SettingsNotice result={previewState.preview ? null : recovery.result} /></div>
         <ResetRecoveryPanel status={resetState.status} statusBusy={resetStatusResource.status === "loading" || resetStatusResource.isRefreshing} onCheck={recovery.checkResetStatus} onReloadPreview={previewState.loadPreview} />
         <MaintenanceRecoveryPanel maintenanceMode={Boolean(resetState.status?.maintenanceMode)} busy={recovery.recoveryBusy} onRecover={recovery.recoverMaintenance} description="Reset sebelumnya meninggalkan mode pemulihan aktif. Pemeriksaan konsistensi data wajib lulus sebelum perubahan data dibuka kembali." />
         <ResetStatusFailure resource={resetStatusResource} status={resetState.status} onCheck={recovery.checkResetStatus} />
-        <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Mode awal/testing.</strong> Administrator dapat memakai reset pada Development maupun Production yang terikat selama data masih dalam fase setup/trial. Setelah transaksi nyata digunakan, jangan gunakan pembersihan massal.</span></div>
-        <ResetScopeSelector resetScope={resetScope} activityScope={RESET_SCOPE_ACTIVITY} activityAndBalancesScope={RESET_SCOPE_ACTIVITY_AND_BALANCES} setResetScope={setResetScope} setPreview={previewState.setPreview} setResult={recovery.setResult} />
-        <ResetStepCards previewState={previewState} statusBlocksReset={resetState.blocked} integrationsResource={integrationsResource} driveReadiness={drive.readiness} driveReady={drive.ready} canOpenReset={canOpenReset} apply={apply} />
+        <div className={styles.resetGuardNotice} role="note"><FiShield aria-hidden="true" /><span><strong>Hanya untuk data trial.</strong> Jangan gunakan pembersihan massal setelah transaksi nyata mulai dipakai.</span></div>
+        <ResetTestingFlow
+          resetScope={resetScope}
+          setResetScope={setResetScope}
+          activityScope={RESET_SCOPE_ACTIVITY}
+          activityAndBalancesScope={RESET_SCOPE_ACTIVITY_AND_BALANCES}
+          previewState={previewState}
+          statusBlocksReset={resetState.blocked}
+          driveReadiness={drive.readiness}
+          driveReady={drive.ready}
+          canOpenReset={canOpenReset}
+          apply={apply}
+          setResult={recovery.setResult}
+        />
         <ResetConfirmationModal preview={previewState.preview} resetBalances={previewState.preview?.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES} acknowledgementItems={previewState.preview?.resetScope === RESET_SCOPE_ACTIVITY_AND_BALANCES ? RESET_BALANCE_ACKNOWLEDGEMENTS : RESET_ACKNOWLEDGEMENTS} open={apply.confirmationOpen} busy={apply.applyBusy} error={apply.applyError} onCancel={() => { if (!apply.applyBusy) { apply.setConfirmationOpen(false); apply.setApplyError(null); } }} onConfirm={apply.applyReset} />
       </section>
     </OwnerSettingsGuard>

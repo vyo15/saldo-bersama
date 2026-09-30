@@ -169,12 +169,12 @@ Minimum contract:
 
 ## Notification dan Web Push
 
-- Pengaturan Notifikasi perangkat menyediakan preview native lokal bertema **Liburan** dan **Masa Depan**; tombol dijalankan dari user gesture, meminta permission bila perlu, dan menggunakan service worker canonical.
+- Pengaturan Notifikasi perangkat memakai surface utama yang compact: status perangkat + aksi eksplisit, satu daftar **Jenis notifikasi**, dan **Pengingat berkala**. Preview native lokal bertema **Liburan** dan **Masa Depan** dibuka dari aksi **Kirim uji** ke modal, dijalankan dari user gesture, meminta permission bila perlu, dan menggunakan service worker canonical.
 - Preview lokal tidak mengubah subscription/backend queue. Tap notifikasi harus deep-link ke `/target`; rich image adalah best-effort dan boleh diabaikan OS tanpa dianggap gagal selama title/body native tetap tampil.
 
 - Notification Center menggunakan feed/action canonical yang sama untuk mobile/desktop dan status baca server-side actor yang sinkron lintas perangkat. Read receipt memakai fingerprint kondisi; menandai dibaca tidak menyelesaikan alert aktif, sedangkan perubahan fingerprint harus tampil unread kembali. Swipe kanan mobile untuk **Bersihkan** hanya menyembunyikan fingerprint/kemunculan saat ini (bukan delete queue atau resolve kondisi), tetap membiarkan scroll vertikal menang, collapse dengan motion singkat, menghormati reduced-motion, dan fingerprint baru boleh tampil lagi.
 - Lock-screen Push tidak memuat nominal, rekening, merchant, atau nama objek finansial sensitif.
-- Flow aktivasi Web Push harus memberi disclosure sebelum register bahwa satu notifikasi uji otomatis akan dikirim; test/preview manual tetap terpisah dan permission tidak diminta tanpa user gesture.
+- Flow aktivasi Web Push harus memberi disclosure singkat sebelum register bahwa satu notifikasi uji otomatis akan dikirim; test/preview manual tetap menjadi aksi terpisah di modal dan permission tidak diminta tanpa user gesture. Detail konfigurasi internal seperti VAPID/server tidak ditampilkan sebagai microcopy normal kepada user.
 - Preference user dihormati; `recurring_completed` default mati, cadence rekonsiliasi default 30 hari, reminder konsistensi pencatatan default mati/opt-in, dan VAPID incomplete menonaktifkan Push fail-closed tanpa merusak in-app notifications.
 - Cadence rekonsiliasi menerima hanya 0/14/30/60 hari; reminder konsistensi pencatatan hanya 0/3/5/7 hari, actor-scoped, dedupe, dan tidak menganggap hari tanpa transaksi sebagai error. Scheduler membaca users/settings/recurring/budget/alokasi/target/unallocated/reconciliation/activity/balance dalam satu batch source read.
 - Funding/recurring shortage menjelaskan kondisi actionable tanpa membuat mutation finansial otomatis.

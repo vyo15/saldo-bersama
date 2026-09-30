@@ -33,12 +33,12 @@ const SETTINGS_ROUTE_META = Object.freeze({
   },
   "/pengaturan/notifikasi": {
     title: "Notifikasi perangkat",
-    summary: "Kelola Web Push perangkat ini dan jenis pengingat yang ingin diterima.",
+    summary: "Atur notifikasi dan pengingat di perangkat ini.",
     backTo: "/pengaturan",
     backLabel: "Pengaturan",
     help: {
       title: "Tentang Notifikasi perangkat",
-      content: "Kelola Web Push untuk perangkat ini serta jenis pengingat yang ingin diterima. Pengaturan satu perangkat tidak otomatis menonaktifkan perangkat lain.",
+      content: "Atur notifikasi pada perangkat ini, jenis notifikasi yang diterima, dan pengingat berkala. Menonaktifkan perangkat ini tidak mematikan notifikasi di perangkat lain.",
     },
   },
   "/pengaturan/perangkat": {

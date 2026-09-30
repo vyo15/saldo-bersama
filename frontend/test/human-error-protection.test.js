@@ -245,14 +245,20 @@ test("pengaturan memisahkan tindakan berisiko, reaktivasi, dan preview periode p
 });
 
 
-test("reset data testing selalu mendefinisikan helper presentasi recovery dan step yang dirender", async () => {
+test("reset data testing memakai flow pilih-dampak-konfirmasi dan recovery tetap terlihat", async () => {
   const reset = await resetSource();
-  assert.match(reset, /const ResetStepHeader =/);
+  assert.match(reset, /const ResetFlowSteps =/);
+  assert.match(reset, /const ResetTestingFlow =/);
+  assert.match(reset, /const ResetImpactPreview =/);
+  assert.match(reset, /const ResetSafetySummary =/);
+  assert.match(reset, /Hapus data testing/);
+  assert.match(reset, /Hapus data \+ saldo awal/);
+  assert.match(reset, />Lihat dampak<\/Button>/);
+  assert.match(reset, />Lanjutkan<\/Button>/);
+  assert.match(reset, /nonZeroEntries\(RESET_DOMAIN_LABELS/);
+  assert.match(reset, /nonZeroEntries\(RESET_TRIAL_OPERATIONAL_LABELS/);
   assert.match(reset, /const intentStateLabel =/);
   assert.match(reset, /const backupStateLabel =/);
-  assert.match(reset, /<ResetStepHeader number="1"/);
-  assert.match(reset, /<ResetStepHeader number="2"/);
-  assert.match(reset, /<ResetStepHeader number="3"/);
   assert.match(reset, /intentStateLabel\(status\.intent\?\.state\)/);
   assert.match(reset, /backupStateLabel\(status\.backup\?\.status\)/);
 });

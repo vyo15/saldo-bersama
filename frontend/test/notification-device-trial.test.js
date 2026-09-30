@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = (relative) => readFile(path.join(root, relative), "utf8");
 
-test("trial notifikasi perangkat memakai native showNotification dengan asset non-sensitif dan deep-link target", async () => {
+test("trial notifikasi perangkat tetap native tetapi dipindahkan ke aksi compact dan modal", async () => {
   const [service, presets, panel, page, sw] = await Promise.all([
     source("src/services/notifications.js"),
     source("src/services/notificationTrials.js"),
@@ -30,10 +30,12 @@ test("trial notifikasi perangkat memakai native showNotification dengan asset no
   assert.match(presets, /\/notifications\/trial\/masa-depan\.webp\?v=2/);
   assert.ok((presets.match(/targetPath: "\/target"/g) || []).length >= 2);
 
-  assert.match(panel, /Coba notifikasi di HP ini/);
-  assert.match(panel, /Tampilkan di perangkat ini/);
+  assert.match(panel, />Kirim uji<\/Button>/);
+  assert.match(panel, /<Modal[\s\S]*title="Kirim notifikasi uji"/);
+  assert.match(panel, /TRIAL_THEMES\.map/);
   assert.match(panel, /showNotificationTrial\(theme\)/);
-  assert.match(page, /<NotificationTrialPanel pushState=\{pushState\} refreshPushState=\{refreshPushState\} \/>/);
+  assert.doesNotMatch(panel, /<section className=\{styles\.panel\}/);
+  assert.match(page, /<NotificationTrialPanel pushState=\{pushState\} refreshPushState=\{refreshPushState\} disabled=\{busy\} \/>/);
   assert.match(sw, /\/notifications\/trial\/liburan\.webp\?v=2/);
   assert.match(sw, /\/notifications\/trial\/masa-depan\.webp\?v=2/);
 });

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
-import { FiRefreshCw, FiTrash2 } from "react-icons/fi";
-import { useSearchParams } from "react-router";
+import { FiCheckCircle, FiHardDrive, FiRefreshCw, FiRotateCcw, FiShield, FiTrash2 } from "react-icons/fi";
+import { Link, useSearchParams } from "react-router";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import styles from "./Settings.module.css";
 
@@ -37,12 +37,21 @@ const MaintenanceDataPage = () => {
 
   return (
     <OwnerSettingsGuard>
-      <section className={styles.maintenanceHub} aria-labelledby="maintenance-data-title">
-        <div className={`${styles.pageHeading} ${styles.maintenanceHubHeading}`}>
-          <h2 id="maintenance-data-title">Pemeliharaan data</h2>
-          <p>Bersihkan data testing atau kembalikan seluruh dataset ke kondisi awal dari satu tempat. Kedua proses tetap memakai pemeriksaan, preview, dan konfirmasi masing-masing.</p>
+      <section className={styles.maintenanceHub} aria-label="Pemeliharaan data">
+        <div className={styles.maintenanceCompactIntro}>
+          <span className={styles.maintenanceCompactIcon}><FiShield aria-hidden="true" /></span>
+          <div>
+            <strong>Reset selalu dipreview terlebih dahulu</strong>
+            <small>Backup keamanan dan pemeriksaan status tetap wajib sebelum eksekusi.</small>
+          </div>
+          <nav className={styles.maintenancePrepLinks} aria-label="Persiapan sebelum reset">
+            <Link to="/pengaturan/backup"><FiHardDrive aria-hidden="true" />Backup</Link>
+            <Link to="/pengaturan/periode"><FiCheckCircle aria-hidden="true" />Integritas</Link>
+            <Link to="/pengaturan/pemulihan"><FiRotateCcw aria-hidden="true" />Pemulihan</Link>
+          </nav>
         </div>
 
+        <div className={styles.maintenanceModeLabel}>Pilih jenis reset</div>
         <div className={styles.maintenanceTabs} role="tablist" aria-label="Jenis pemeliharaan data">
           <button
             className={`${styles.maintenanceTab}${activeTab === TAB_TESTING ? ` ${styles.isActive}` : ""}`}
@@ -56,10 +65,7 @@ const MaintenanceDataPage = () => {
             onKeyDown={handleTabKeyDown}
           >
             <FiRefreshCw aria-hidden="true" />
-            <span>
-              <strong>Reset Testing</strong>
-              <small>Data uji & saldo</small>
-            </span>
+            <span><strong>Reset Testing</strong></span>
           </button>
           <button
             className={`${styles.maintenanceTab} ${styles.maintenanceTabDanger}${activeTab === TAB_FULL_RESET ? ` ${styles.isActive}` : ""}`}
@@ -73,10 +79,7 @@ const MaintenanceDataPage = () => {
             onKeyDown={handleTabKeyDown}
           >
             <FiTrash2 aria-hidden="true" />
-            <span>
-              <strong>Reset Semua</strong>
-              <small>Danger zone</small>
-            </span>
+            <span><strong>Reset Semua</strong></span>
           </button>
         </div>
 
