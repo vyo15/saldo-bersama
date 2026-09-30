@@ -128,6 +128,22 @@ const ReminderFields = ({ form, setForm, maxDate, minTime, busy, ready }) => <>
   <p className="field-hint form-grid__full">Asia/Jakarta · notifikasi dapat terlambat beberapa menit.</p>
 </>;
 
+const reminderMutationState = ({ saveMutation, cancelMutation, current, lastDispatch, loadState }) => ({
+  busy: saveMutation.busy || cancelMutation.busy,
+  saveRetryOnly: saveMutation.outcomeUnknown,
+  cancelRetryOnly: cancelMutation.outcomeUnknown,
+  retryOnly: saveMutation.outcomeUnknown || cancelMutation.outcomeUnknown,
+  ready: loadState.status === "ready",
+  deliveryPending: Boolean(!current && lastDispatch && !["sent", "dead_letter"].includes(lastDispatch.status)),
+  error: loadState.error || saveMutation.error || cancelMutation.error,
+});
+
+const ManualReminderFooter = ({ current, busy, ready, saveRetryOnly, cancelRetryOnly, retryOnly, deliveryPending, cancel, guard, saveBusy, cancelBusy }) => <>
+  {current ? <Button type="button" variant="danger" icon={FiTrash2} loading={cancelBusy} disabled={busy || !ready || saveRetryOnly} onClick={cancel}>{cancelRetryOnly ? "Coba lagi pembatalan" : "Batalkan pengingat"}</Button> : null}
+  <Button type="button" disabled={busy || retryOnly} onClick={guard.discardAndClose}>Tutup</Button>
+  <Button type="submit" form="manual-reminder-form" variant="primary" icon={FiBell} loading={saveBusy} disabled={busy || !ready || deliveryPending || cancelRetryOnly}>{saveRetryOnly ? "Coba lagi data yang sama" : current ? "Ubah jadwal" : "Simpan pengingat"}</Button>
+</>;
+
 const ManualReminderModal = ({ target, onClose }) => {
   const { notify } = useFeedback();
   const saveMutation = useGuardedMutation();
@@ -136,11 +152,9 @@ const ManualReminderModal = ({ target, onClose }) => {
   const { loadState, current, setCurrent, lastDispatch, setLastDispatch, pushState, form, setForm } = state;
   const scheduledLocal = useMemo(() => `${form.date}T${form.time}`, [form.date, form.time]);
   const soon = localDateTimeParts(new Date(Date.now() + (5 * 60_000)));
-  const busy = saveMutation.busy || cancelMutation.busy;
-  const ready = loadState.status === "ready";
-  const deliveryPending = Boolean(!current && lastDispatch && !["sent", "dead_letter"].includes(lastDispatch.status));
-  const close = () => { if (!busy) onClose?.(); };
-  const guard = useUnsavedChangesGuard({ open: Boolean(target) && ready, value: form, onClose: close, blocked: busy });
+  const { busy, saveRetryOnly, cancelRetryOnly, retryOnly, ready, deliveryPending, error } = reminderMutationState({ saveMutation, cancelMutation, current, lastDispatch, loadState });
+  const close = () => { if (!busy && !retryOnly) onClose?.(); };
+  const guard = useUnsavedChangesGuard({ open: Boolean(target) && ready, value: form, onClose: close, blocked: busy || retryOnly });
 
   const save = async (event) => {
     event.preventDefault();
@@ -167,17 +181,12 @@ const ManualReminderModal = ({ target, onClose }) => {
     } catch { /* mutation state menampilkan error */ }
   };
 
-  const error = loadState.error || saveMutation.error || cancelMutation.error;
-  const footer = <>
-    {current ? <Button type="button" variant="danger" icon={FiTrash2} loading={cancelMutation.busy} disabled={busy || !ready} onClick={cancel}>Batalkan pengingat</Button> : null}
-    <Button type="button" disabled={busy} onClick={guard.discardAndClose}>Tutup</Button>
-    <Button type="submit" form="manual-reminder-form" variant="primary" icon={FiBell} loading={saveMutation.busy} disabled={busy || !ready || deliveryPending}>{current ? "Ubah jadwal" : "Simpan pengingat"}</Button>
-  </>;
+  const footer = <ManualReminderFooter current={current} busy={busy} ready={ready} saveRetryOnly={saveRetryOnly} cancelRetryOnly={cancelRetryOnly} retryOnly={retryOnly} deliveryPending={deliveryPending} cancel={cancel} guard={guard} saveBusy={saveMutation.busy} cancelBusy={cancelMutation.busy} />;
 
-  return <Modal open={Boolean(target)} title="Pengingat manual" description={reminderDescription(target)} onClose={guard.requestClose} discardGuard={guard} discardSubject="pengingat manual" dismissible={!busy} mobileSwipeToClose size="sm" footer={footer}>
+  return <Modal open={Boolean(target)} title="Pengingat manual" description={reminderDescription(target)} onClose={guard.requestClose} discardGuard={guard} discardSubject="pengingat manual" dismissible={!busy && !retryOnly} mobileSwipeToClose size="sm" footer={footer}>
     <form id="manual-reminder-form" className="form-grid" onSubmit={save}>
       <ReminderNotices current={current} activeLabel={current?.scheduled_at ? formatDateTimeJakarta(current.scheduled_at) : ""} dispatch={dispatchNotice(lastDispatch)} pushNotice={pushAvailabilityNotice(pushState)} loadState={loadState} error={error} />
-      <ReminderFields form={form} setForm={setForm} maxDate={addLocalDays(todayInJakarta(), 365)} minTime={soon?.date === form.date ? soon.time : undefined} busy={busy} ready={ready} />
+      <fieldset className="mutation-retry-lock" disabled={retryOnly}><ReminderFields form={form} setForm={setForm} maxDate={addLocalDays(todayInJakarta(), 365)} minTime={soon?.date === form.date ? soon.time : undefined} busy={busy} ready={ready} /></fieldset>
     </form>
   </Modal>;
 };

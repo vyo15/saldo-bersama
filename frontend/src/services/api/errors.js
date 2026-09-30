@@ -4,8 +4,13 @@ export class ApiError extends Error {
     this.name = "ApiError";
     this.code = code;
     this.status = status;
-    this.details = details;
     this.requestId = requestId || details?.requestId || "";
+    if (details && !Array.isArray(details) && typeof details === "object") {
+      const { requestId: _diagnosticRequestId, ...businessDetails } = details;
+      this.details = Object.keys(businessDetails).length ? businessDetails : undefined;
+    } else {
+      this.details = details;
+    }
   }
 }
 

@@ -141,24 +141,25 @@ const CommitmentTypeChooser = ({ onSelect }) => <div className={styles.typeList}
   })}
 </div>;
 
-const createModalFooter = ({ stage, busy, guard, setStage, type }) => {
-  if (stage === "type") return <Button disabled={busy} onClick={guard.discardAndClose}>Batal</Button>;
-  if (stage === "details") return <><Button disabled={busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-create-details-form">Lanjut</Button></>;
-  return <><Button disabled={busy} onClick={() => setStage("details")}>Kembali</Button><Button variant="primary" type="submit" form="commitment-create-form" loading={busy}>Simpan {typeLabel(type)}</Button></>;
+const createModalFooter = ({ stage, busy, retryOnly, guard, setStage, type }) => {
+  if (stage === "type") return <Button disabled={busy || retryOnly} onClick={guard.discardAndClose}>Batal</Button>;
+  if (stage === "details") return <><Button disabled={busy || retryOnly} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-create-details-form" disabled={retryOnly}>Lanjut</Button></>;
+  return <><Button disabled={busy || retryOnly} onClick={() => setStage("details")}>Kembali</Button><Button variant="primary" type="submit" form="commitment-create-form" loading={busy}>{retryOnly ? "Coba lagi data yang sama" : `Simpan ${typeLabel(type)}`}</Button></>;
 };
 
 const CommitmentCreateModal = ({ flow, mutation, accounts, categories, budgets }) => {
   const { form, setForm, open, stage, stepError, guard, selectType, continueDetails, submit, setStage, setStepError } = flow;
   const title = stage === "type" ? "Tambah kewajiban" : `Tambah ${typeLabel(form.commitment_type)}`;
+  const retryOnly = mutation.outcomeUnknown;
   const description = stage === "type" ? "Apa yang ingin kamu catat?" : stage === "details" ? "Data utama · Langkah 1 dari 2" : "Pembayaran · Langkah 2 dari 2";
   const backAction = stage === "details"
-    ? { label: "Pilih jenis kewajiban", onClick: () => { setStepError(""); setStage("type"); } }
-    : stage === "payment" ? { label: "Kembali ke data kewajiban", onClick: () => setStage("details") } : null;
-  const footer = createModalFooter({ stage, busy: mutation.busy, guard, setStage, type: form.commitment_type });
-  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="kewajiban baru" dismissible={!mutation.busy} title={title} description={description} headerBackAction={backAction} footer={footer}>
-    {stage === "type" ? <CommitmentTypeChooser onSelect={selectType} /> : stage === "details"
+    ? { label: "Pilih jenis kewajiban", onClick: () => { setStepError(""); setStage("type"); }, disabled: retryOnly }
+    : stage === "payment" ? { label: "Kembali ke data kewajiban", onClick: () => setStage("details"), disabled: retryOnly } : null;
+  const footer = createModalFooter({ stage, busy: mutation.busy, retryOnly, guard, setStage, type: form.commitment_type });
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="kewajiban baru" dismissible={!mutation.busy && !retryOnly} title={title} description={description} headerBackAction={backAction} footer={footer}>
+    <fieldset className="mutation-retry-lock" disabled={retryOnly}>{stage === "type" ? <CommitmentTypeChooser onSelect={selectType} /> : stage === "details"
       ? <form id="commitment-create-details-form" onSubmit={continueDetails}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} section="details" />{stepError ? <div className="notice notice--danger" role="alert">{stepError}</div> : null}</form>
-      : <form id="commitment-create-form" onSubmit={submit}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} error={mutation.error} section="payment" /></form>}
+      : <form id="commitment-create-form" onSubmit={submit}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} error={mutation.error} section="payment" /></form>}</fieldset>
   </Modal>;
 };
 
@@ -178,7 +179,8 @@ const CommitmentDialogLayer = ({
   setStopTarget,
   submitStop,
 }) => {
-  const editGuard = useUnsavedChangesGuard({ open: Boolean(edit), value: edit, onClose: closeEdit, blocked: mutation.busy });
+  const retryOnly = mutation.outcomeUnknown;
+  const editGuard = useUnsavedChangesGuard({ open: Boolean(edit), value: edit, onClose: closeEdit, blocked: mutation.busy || retryOnly });
   return <>
     <CommitmentCreateModal flow={createFlow} mutation={mutation} accounts={accounts} categories={categories} budgets={budgets} />
     <Modal
@@ -186,12 +188,12 @@ const CommitmentDialogLayer = ({
       onClose={editGuard.requestClose}
       discardGuard={editGuard}
       discardSubject="perubahan kewajiban"
-      dismissible={!mutation.busy}
+      dismissible={!mutation.busy && !retryOnly}
       title={edit ? `Edit ${typeLabel(edit.commitment_type)}` : "Edit kewajiban"}
       description="Perubahan berlaku untuk jadwal berikutnya tanpa mengubah histori pembayaran."
-      footer={<><Button disabled={mutation.busy} onClick={editGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-edit-form" loading={mutation.busy}>Simpan perubahan</Button></>}
+      footer={<><Button disabled={mutation.busy || retryOnly} onClick={editGuard.discardAndClose}>Batal</Button><Button variant="primary" type="submit" form="commitment-edit-form" loading={mutation.busy}>{retryOnly ? "Coba lagi data yang sama" : "Simpan perubahan"}</Button></>}
     >
-      <form id="commitment-edit-form" onSubmit={submitEdit}>{edit ? <CommitmentForm form={edit} setForm={setEdit} accounts={accounts} categories={categories} budgets={budgets} error={mutation.error} editing /> : null}</form>
+      <form id="commitment-edit-form" onSubmit={submitEdit}><fieldset className="mutation-retry-lock" disabled={retryOnly}>{edit ? <CommitmentForm form={edit} setForm={setEdit} accounts={accounts} categories={categories} budgets={budgets} error={mutation.error} editing /> : null}</fieldset></form>
     </Modal>
     <ConfirmationModal
       open={Boolean(stopTarget)}
@@ -199,8 +201,9 @@ const CommitmentDialogLayer = ({
       description={stopTarget ? `${stopTarget.name} tidak lagi aktif dan jadwal berikutnya dihentikan. Transaksi yang sudah tercatat tetap disimpan agar saldo dan laporan tetap benar.` : ""}
       confirmLabel="Hentikan kewajiban"
       busy={mutation.busy}
+      retryOnly={mutation.outcomeUnknown}
       error={stopError}
-      onCancel={() => !mutation.busy && setStopTarget(null)}
+      onCancel={() => !mutation.busy && !mutation.outcomeUnknown && setStopTarget(null)}
       onConfirm={submitStop}
     />
   </>;

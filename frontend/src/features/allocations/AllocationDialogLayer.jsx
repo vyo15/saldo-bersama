@@ -13,6 +13,7 @@ import TemporalInput from "../../components/common/TemporalInput.jsx";
 import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { allocationAssigneeLabel } from "./allocationPresentation.js";
+import { AllocationCreateFooter } from "./AllocationCreateChrome.jsx";
 import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
@@ -286,12 +287,26 @@ const CreateEnvelopePlan = ({ createForm, setCreateForm, createNeeds, setCreateN
   </form>;
 };
 
+const createEnvelopeSubmitLabel = ({ sourceAccount, total, available, fundedNow }) => {
+  if (!sourceAccount || total <= 0) return "Buat Alokasi";
+  if (total <= available) return "Buat & alokasikan";
+  return fundedNow > 0 ? `Buat dengan ${formatRupiah(fundedNow)}` : "Buat Alokasi";
+};
+
+const CreateEnvelopeStepContent = ({ step, basicsProps, planProps }) => {
+  if (step === 1) return <CreateEnvelopeBasics {...basicsProps} />;
+  return <CreateEnvelopePlan {...planProps} />;
+};
+
+const createEnvelopeHeaderBackAction = ({ step, setStep, busy, retryOnly }) => step === 2 ? { label: "Kembali ke informasi Alokasi", onClick: () => setStep(1), disabled: busy || retryOnly } : null;
+
 const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNeeds, setCreateNeeds, categories, accounts, users, usersStatus, createEnvelope, createMutation, message }) => {
   const [step, setStep] = useState(1);
   useEffect(() => { if (!open) setStep(1); }, [open]);
   const assigneeState = envelopeAssigneeOptions(createForm, accounts, users);
   const assigneeOptions = buildAssigneeOptions(assigneeState);
-  const guard = useUnsavedChangesGuard({ open, value: { createForm, createNeeds }, onClose: close, blocked: createMutation.busy });
+  const retryOnly = createMutation.outcomeUnknown;
+  const guard = useUnsavedChangesGuard({ open, value: { createForm, createNeeds }, onClose: close, blocked: createMutation.busy || retryOnly });
   const changeSource = (sourceAccountId) => {
     const source = accounts.find((item) => item.account_id === sourceAccountId) || null;
     setCreateForm((current) => ({ ...current, source_account_id: sourceAccountId, assignee_user_id: source?.owner_scope === "personal" ? source.owner_user_id || "" : "" }));
@@ -300,45 +315,41 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
   const total = createNeedsTotal(createNeeds);
   const available = Math.max(0, Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0));
   const fundedNow = Math.min(total, available);
-  const submitLabel = !sourceAccount || total <= 0
-    ? "Buat Alokasi"
-    : total > available
-      ? fundedNow > 0 ? `Buat dengan ${formatRupiah(fundedNow)}` : "Buat Alokasi"
-      : "Buat & alokasikan";
+  const submitLabel = createEnvelopeSubmitLabel({ sourceAccount, total, available, fundedNow });
   const canContinue = Boolean(String(createForm.name || "").trim() && createForm.source_account_id && usersStatus !== "loading");
   const goToPlan = () => { if (canContinue) setStep(2); };
-  const footer = step === 1 ? <>
-    <Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button>
-    <Button variant="primary" icon={FiArrowRight} type="submit" form="create-envelope-basics-form" disabled={!canContinue || createMutation.busy}>Lanjutkan</Button>
-  </> : <>
-    <Button type="button" disabled={createMutation.busy} onClick={() => setStep(1)}>Kembali</Button>
-    <Button variant="primary" icon={FiPlus} type="submit" form="create-envelope-form" loading={createMutation.busy}>{submitLabel}</Button>
-  </>;
+  const footer = <AllocationCreateFooter step={step} busy={createMutation.busy} retryOnly={retryOnly} guard={guard} canContinue={canContinue} submitLabel={submitLabel} setStep={setStep} />;
+  const headerBackAction = createEnvelopeHeaderBackAction({ step, setStep, busy: createMutation.busy, retryOnly });
+  const basicsProps = { createForm, setCreateForm, accounts, usersStatus, assigneeState, assigneeOptions, onChangeSource: changeSource, onNext: goToPlan };
+  const planProps = { createForm, setCreateForm, createNeeds, setCreateNeeds, categories, accounts, message, createEnvelope };
   return <Modal
     open={open}
     onClose={guard.requestClose}
     discardGuard={guard}
     discardSubject="Alokasi Dana"
-    dismissible={!createMutation.busy}
+    dismissible={!createMutation.busy && !retryOnly}
     title="Alokasi baru"
     description={step === 1 ? "Langkah 1 dari 2 · Pilih kategori alokasi, tentukan nama, lalu pilih rekening sumber." : "Langkah 2 dari 2 · Susun kebutuhan awal agar dana bisa langsung dipakai dengan rapi."}
-    headerBackAction={step === 2 ? { label: "Kembali ke informasi Alokasi", onClick: () => setStep(1), disabled: createMutation.busy } : null}
+    headerBackAction={headerBackAction}
     footer={footer}
   >
-    {step === 1
-      ? <CreateEnvelopeBasics createForm={createForm} setCreateForm={setCreateForm} accounts={accounts} usersStatus={usersStatus} assigneeState={assigneeState} assigneeOptions={assigneeOptions} onChangeSource={changeSource} onNext={goToPlan} />
-      : <CreateEnvelopePlan createForm={createForm} setCreateForm={setCreateForm} createNeeds={createNeeds} setCreateNeeds={setCreateNeeds} categories={categories} accounts={accounts} message={message} createEnvelope={createEnvelope} />}
+    <fieldset className="mutation-retry-lock" disabled={retryOnly}>
+      <CreateEnvelopeStepContent step={step} basicsProps={basicsProps} planProps={planProps} />
+    </fieldset>
   </Modal>;
 };
 
 const MoveEnvelopeModal = ({ open, close, move, setMove, items, destinations, submitMove, moveMutation, message }) => {
-  const guard = useUnsavedChangesGuard({ open, value: move, onClose: close, blocked: moveMutation.busy });
+  const retryOnly = moveMutation.outcomeUnknown;
+  const guard = useUnsavedChangesGuard({ open, value: move, onClose: close, blocked: moveMutation.busy || retryOnly });
   return <>
-    <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="pemindahan dana" dismissible={!moveMutation.busy} title="Pindahkan dana" footer={<><Button type="button" disabled={moveMutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiArrowRight} type="submit" form="move-envelope-form" loading={moveMutation.busy}>Pindahkan dana</Button></>}><form id="move-envelope-form" className="form-grid" onSubmit={submitMove}>
+    <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="pemindahan dana" dismissible={!moveMutation.busy && !retryOnly} title="Pindahkan dana" footer={<><Button type="button" disabled={moveMutation.busy || retryOnly} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiArrowRight} type="submit" form="move-envelope-form" loading={moveMutation.busy}>{retryOnly ? "Coba lagi data yang sama" : "Pindahkan dana"}</Button></>}><form id="move-envelope-form" className="form-grid" onSubmit={submitMove}>
+      <fieldset className="mutation-retry-lock" disabled={retryOnly}>
       <InlineSelectionPicker label="Dari alokasi" required value={move.fromEnvelopePeriodId} onChange={(fromEnvelopePeriodId) => setMove((current) => ({ ...current, fromEnvelopePeriodId, toEnvelopePeriodId: "" }))} placeholder="Pilih sumber" placeholderOption={allocationOptionVisual()} searchable={items.length > 8} searchPlaceholder="Cari Alokasi Dana…" options={items.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: `${item.source_account_name || "Sumber belum ditentukan"} · ${allocationAssigneeLabel(item)} · sisa ${formatRupiah(item.remaining_amount || 0)}`, ...allocationOptionVisual() }))} />
       <InlineSelectionPicker label="Ke alokasi" required value={move.toEnvelopePeriodId} onChange={(toEnvelopePeriodId) => setMove((current) => ({ ...current, toEnvelopePeriodId }))} placeholder="Pilih tujuan" placeholderOption={allocationOptionVisual()} searchable={destinations.length > 8} searchPlaceholder="Cari Alokasi Dana…" options={destinations.map((item) => ({ value: item.envelope_period_id, label: item.name, meta: `${item.source_account_name || "Sumber belum ditentukan"} · ${allocationAssigneeLabel(item)}`, ...allocationOptionVisual() }))} />
       <MoneyInput id="move-amount" label="Nominal dipindahkan" value={move.amount} onChange={(amount) => setMove((current) => ({ ...current, amount }))} />
       <label className="field form-grid__full"><span>Alasan *</span><input required value={move.reason} maxLength="160" onChange={(event) => setMove((current) => ({ ...current, reason: event.target.value }))} placeholder="Contoh: prioritas kebutuhan berubah" /></label>
+      </fieldset>
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form></Modal>
   </>;
@@ -347,16 +358,19 @@ const MoveEnvelopeModal = ({ open, close, move, setMove, items, destinations, su
 
 const AdjustAllocationModal = ({ target, close, form, setForm, submit, mutation, message }) => {
   const funding = form.direction === "fund";
+  const retryOnly = mutation.outcomeUnknown;
   const committed = Math.max(0, Number(target?.used_amount || 0)) + Math.max(0, Number(target?.reserved_amount || 0));
   const removable = Math.max(0, Number(target?.allocated_amount || 0) - committed);
-  const guard = useUnsavedChangesGuard({ open: Boolean(target), value: form, onClose: close, blocked: mutation.busy });
+  const guard = useUnsavedChangesGuard({ open: Boolean(target), value: form, onClose: close, blocked: mutation.busy || retryOnly });
   return <>
-    <Modal open={Boolean(target)} onClose={guard.requestClose} discardGuard={guard} discardSubject="penyesuaian dana" dismissible={!mutation.busy} title={funding ? "Tambah dana ke alokasi" : "Kembalikan dana alokasi"} description={target ? `${target.name} · ${target.source_account_name || "Rekening sumber"}` : ""} footer={<><Button type="button" disabled={mutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={funding ? FiPlus : FiArrowLeft} type="submit" form="adjust-envelope-form" loading={mutation.busy}>{funding ? "Tambah dana" : "Kembalikan"}</Button></>}>
+    <Modal open={Boolean(target)} onClose={guard.requestClose} discardGuard={guard} discardSubject="penyesuaian dana" dismissible={!mutation.busy && !retryOnly} title={funding ? "Tambah dana ke alokasi" : "Kembalikan dana alokasi"} description={target ? `${target.name} · ${target.source_account_name || "Rekening sumber"}` : ""} footer={<><Button type="button" disabled={mutation.busy || retryOnly} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={funding ? FiPlus : FiArrowLeft} type="submit" form="adjust-envelope-form" loading={mutation.busy}>{retryOnly ? "Coba lagi data yang sama" : funding ? "Tambah dana" : "Kembalikan"}</Button></>}>
       <form id="adjust-envelope-form" className="form-grid" onSubmit={submit}>
+        <fieldset className="mutation-retry-lock" disabled={retryOnly}>
         <VisualChoiceGroup className="form-grid__full" legend="Aksi" name="allocation-adjustment-direction" value={form.direction} onChange={(direction) => setForm((current) => ({ ...current, direction, amount: "", reason: "" }))} options={[{ value: "fund", label: "Tambah dana", icon: FiPlus, description: "Dana tersedia → alokasi" }, { value: "release", label: "Kembalikan", icon: FiArrowLeft, description: "Alokasi → dana tersedia" }]} columns={2} descriptive />
         <MoneyInput id="allocation-adjustment-amount" label="Nominal" value={form.amount} onChange={(amount) => setForm((current) => ({ ...current, amount }))} required />
         <div className="notice notice--info form-grid__full" role="status">{funding ? "Dana diambil dari saldo rekening yang belum dialokasikan. Saldo rekening tidak berubah." : `Maksimal ${formatRupiah(removable)} dapat dikembalikan tanpa menyentuh dana terpakai atau yang disiapkan untuk jadwal.`}</div>
         <label className="field form-grid__full"><span>Catatan</span><input maxLength="180" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} placeholder={funding ? "Contoh: tambah dana bulan ini" : "Contoh: sisa tidak dibutuhkan"} /></label>
+        </fieldset>
         {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
       </form>
     </Modal>

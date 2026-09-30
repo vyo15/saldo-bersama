@@ -17,6 +17,7 @@ import TransactionPostSaveModal from "./components/TransactionPostSaveModal.jsx"
 import { UNALLOCATED_NEED_VALUE, contextualPlanningData, earlyFundsWarning, mergeContextualAllocationCandidate, smartAllocationCandidates } from "./transactionFormSmartDefaults.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 import { quickRecordBackPresentation } from "./transactionFormPresentation.js";
+import { hasUnresolvedTransactionIntent } from "./transactions.api.js";
 import { applyPlanningIntentToDraft, isLockedPlanningIntent, planningDependencyInvalidatesSelection, planningIntentLocksField, transactionPlanningState } from "./transactionPlanningIntent.js";
 import {
   applySourceAccountChange,
@@ -117,7 +118,6 @@ const TransactionFormBody = ({ mobileLayout, mobileTransferMode, fields }) => {
     </fieldset>
   );
 };
-
 const useTransactionFormState = ({ open, transaction, initialType, initialSourceAccountId, initialDraft }) => {
   const [form, setForm] = useState(() => transaction
     ? editableTransactionForm(transaction)
@@ -135,7 +135,6 @@ const useTransactionFormState = ({ open, transaction, initialType, initialSource
 
   return { form, setForm, errors, setErrors, confirmation, setConfirmation, submitState, setSubmitState, postSave, setPostSave, forceOverspendNote, setForceOverspendNote, allocationMode, setAllocationMode, idempotencyKeyRef, amountRef };
 };
-
 const useTransactionDerived = ({ bootstrap, overview, form, transaction, presentation, mobileLayout, submitState, initialAllocationContext }) => {
   const data = useTransactionData(bootstrap, overview, form);
   const { isIncome, isTransfer } = transactionMode(form);
@@ -169,7 +168,6 @@ const useTransactionDerived = ({ bootstrap, overview, form, transaction, present
 
   return { data, isIncome, isTransfer, mobileTransferMode, allocationCandidates, impact, fundsWarning, outcomeUnknown: submitState.status === "unknown", ...derived };
 };
-
 const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, transaction, allocationCandidates, planningIntent, markDirty }) => {
   const setDirtyForm = (updater) => { markDirty(); state.setForm(updater); };
   const update = (field, value) => {
@@ -221,7 +219,6 @@ const useTransactionFormActions = ({ state, data, isTransfer, outcomeUnknown, tr
   return { update, onSourceAccountChange, onNeedChange };
 };
 
-
 const useTransactionDraftLifecycle = ({ open, postSave, onClose, onDirtyChange }) => {
   const [draftDirty, setDraftDirty] = useState(false);
 
@@ -248,8 +245,7 @@ const useTransactionDraftLifecycle = ({ open, postSave, onClose, onDirtyChange }
   return { markDirty, requestClose };
 };
 
-
-const transactionFields = ({ state, derived, actions, lockType, lockPlanningSelection, planningDateMin, planningDateMax, submitting, transaction }) => ({
+const transactionFields = ({ state, derived, actions, lockType, lockPlanningSelection, planningDateMin, planningDateMax, submitting, transaction, unresolvedIntentPresent, onReviewTransactions }) => ({
   form: state.form,
   update: actions.update,
   errors: state.errors,
@@ -281,6 +277,8 @@ const transactionFields = ({ state, derived, actions, lockType, lockPlanningSele
   onSourceAccountChange: actions.onSourceAccountChange,
   submitting,
   outcomeUnknown: derived.outcomeUnknown,
+  unresolvedIntentPresent,
+  onReviewTransactions,
 });
 
 const TransactionEditorModal = ({
@@ -311,6 +309,14 @@ const TransactionEditorModal = ({
     </form>
   </Modal>
 );
+
+const unresolvedTransactionIntentPresent = ({ open, outcomeUnknown, submitError, transaction }) => (!open || outcomeUnknown || submitError ? false : hasUnresolvedTransactionIntent(Boolean(transaction)));
+
+const transactionPostSavePresentation = ({ open, planning, initialAllocationContext, postSave, accounts, onClose, navigate, addAnother }) => {
+  if (!postSave) return null;
+  const singleUseNeedCompleted = planning.locked && initialAllocationContext?.budget?.recording_mode === "fixed_once";
+  return <TransactionPostSaveModal open={open} postSave={postSave} accounts={accounts} onClose={onClose} navigate={navigate} onAddAnother={singleUseNeedCompleted ? null : addAnother} />;
+};
 
 const TransactionForm = ({
   open,
@@ -353,8 +359,13 @@ const TransactionForm = ({
   useSmartAllocationSelection({ open, transaction, allocationMode: state.allocationMode, candidates: derived.allocationCandidates, form: state.form, setForm: state.setForm, setErrors: state.setErrors, disabled: planning.locked });
   useMobileTransferDestination({ open, enabled: derived.mobileTransferMode, destinationAccountId: state.form.destination_account_id, compatibleDestinationAccounts: derived.compatibleDestinationAccounts, setForm: state.setForm, setErrors: state.setErrors });
 
-  const fields = transactionFields({ state, derived, actions, lockType: lockType || planning.locked, lockPlanningSelection: planning.locked, planningDateMin: planning.dateMin, planningDateMax: planning.dateMax, submitting, transaction });
   const requestModalClose = draftLifecycle.requestClose;
+  const unresolvedIntentPresent = unresolvedTransactionIntentPresent({ open, outcomeUnknown, submitError: state.submitState.error, transaction });
+  const reviewTransactions = () => {
+    requestModalClose();
+    navigate("/transaksi");
+  };
+  const fields = transactionFields({ state, derived, actions, lockType: lockType || planning.locked, lockPlanningSelection: planning.locked, planningDateMin: planning.dateMin, planningDateMax: planning.dateMax, submitting, transaction, unresolvedIntentPresent, onReviewTransactions: reviewTransactions });
   const quickRecordBack = quickRecordBackPresentation({ onBack, requestModalClose, submitting, outcomeUnknown, mobileTransferMode: derived.mobileTransferMode });
   const modal = resolveTransactionPresentation({ mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout, headerBackAction: quickRecordBack.headerBackAction });
   const addAnother = () => {
@@ -364,10 +375,8 @@ const TransactionForm = ({
     state.setAllocationMode("manual");
   };
 
-  if (state.postSave) {
-    const singleUseNeedCompleted = planning.locked && initialAllocationContext?.budget?.recording_mode === "fixed_once";
-    return <TransactionPostSaveModal open={open} postSave={state.postSave} accounts={derived.data.readableAccounts} onClose={onClose} navigate={navigate} onAddAnother={singleUseNeedCompleted ? null : addAnother} />;
-  }
+  const postSaveView = transactionPostSavePresentation({ open, planning, initialAllocationContext, postSave: state.postSave, accounts: derived.data.readableAccounts, onClose, navigate, addAnother });
+  if (postSaveView) return postSaveView;
 
   return (
     <TransactionEditorModal

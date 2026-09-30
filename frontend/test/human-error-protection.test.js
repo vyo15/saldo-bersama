@@ -301,19 +301,24 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
   assert.match(budgets, /const submitting = saveState\.status === "submitting"/);
   assert.match(budgets, /dismissible=\{!submitting\}/);
   assert.match(budgets, /onClose=\{guard\.requestClose\}/);
-  assert.match(allocations, /dismissible=\{!createMutation\.busy\}/);
-  assert.match(allocations, /dismissible=\{!moveMutation\.busy\}/);
+  assert.match(allocations, /dismissible=\{!createMutation\.busy && !retryOnly\}/);
+  assert.match(allocations, /dismissible=\{!moveMutation\.busy && !retryOnly\}/);
+  assert.match(allocations, /retryOnly = createMutation\.outcomeUnknown/);
+  assert.match(allocations, /retryOnly = moveMutation\.outcomeUnknown/);
 
-  assert.match(goals, /dismissible=\{!createMutation\.busy\}/);
+  assert.match(goals, /dismissible=\{!createMutation\.busy && !retryOnly\}/);
+  assert.match(goals, /retryOnly = createMutation\.outcomeUnknown/);
   assert.match(goals, /const submitting = editState\.status === "submitting"/);
   assert.match(goals, /dismissible=\{!submitting\}/);
   assert.doesNotMatch(goals, /movementState|GoalMovementModal/);
-  assert.match(allocations, /dismissible=\{!busy\}/);
+  assert.match(allocations, /dismissible=\{!busy && !retryOnly\}/);
 
-  assert.match(recurring, /dismissible=\{!createMutation\.busy\}/);
+  assert.match(recurring, /dismissible=\{!createMutation\.busy && !retryOnly\}/);
+  assert.match(recurring, /retryOnly = createMutation\.outcomeUnknown/);
   assert.match(recurring, /const submitting = paymentState\.status === "submitting"/);
   assert.match(recurring, /const submitting = editState\.status === "submitting"/);
-  assert.ok((recurring.match(/dismissible=\{!submitting\}/g) || []).length >= 2);
+  assert.match(recurring, /dismissible=\{!submitting && !retryOnly\}/);
+  assert.ok((recurring.match(/dismissible=\{!submitting\}/g) || []).length >= 1);
 
   assert.ok((categories.match(/const submitting = dialogState\.status === "submitting"/g) || []).length >= 2);
   assert.ok((categories.match(/dismissible=\{!submitting\}/g) || []).length >= 2);
@@ -344,7 +349,9 @@ test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry,
   assert.match(hook, /if \(inFlightRef\.current && promiseRef\.current\) return promiseRef\.current/);
   assert.match(modal, /submitLockRef\.current/);
   assert.match(modal, /submitLockRef\.current\) return/);
-  assert.match(modal, /dismissible=\{!isPending\}/);
+  assert.match(modal, /dismissible=\{!isPending && !retryOnly\}/);
+  assert.match(modal, /disabled=\{retryOnly\}/);
+  assert.match(modal, /Coba lagi data yang sama/);
   assert.match(transactionForm, /Promise\.allSettled\(\[refreshOverview\(\), Promise\.resolve\(\)\.then/, "refresh gagal setelah transaksi tersimpan tidak boleh dilaporkan sebagai save gagal");
   assert.match(notifications, /useGuardedMutation/, "aksi subscription/push browser wajib punya synchronous reentrancy guard");
   for (const [name, source] of [["goals", goals], ["recurring", recurring], ["allocations", allocations]]) {
@@ -667,7 +674,8 @@ test("form transaksi mengunci field setelah outcome unknown dan hanya menawarkan
   assert.match(form, /Coba lagi data yang sama/);
   assert.match(form, /dismissible=\{!submitting && !outcomeUnknown\}/);
   assert.match(transfer, /intentLocked=\{outcomeUnknown\}/);
-  assert.match(transfer, /Data transfer dikunci sementara/);
+  assert.match(transfer, /transactionSubmitFeedback\(submitState\.error\)/);
+  assert.doesNotMatch(transfer, /Data transfer dikunci sementara/, "pesan outcome unknown tidak boleh didobel di transfer mobile");
   assert.match(money, /disabled=\{disabled\}/);
 });
 
@@ -680,4 +688,29 @@ test("halaman sesi aktif mempertahankan revoke milik sendiri, revoke-all, dan lo
   assert.match(sessions, /if \(result\?\.revokedCurrent\) \{[\s\S]*await logout\(\)/);
   assert.match(sessions, /<ConfirmationModal/);
   assert.match(sessions, /Mencabut sesi tidak menghapus transaksi, saldo, atau data keuangan/);
+});
+
+test("error metadata API tidak boleh berubah menjadi field validation dan guarded form mempertahankan exact-retry", async () => {
+  const [controller, desktopFields, mobileFields, apiClient, commitments, reminders] = await Promise.all([
+    read("src/features/transactions/transactionFormController.js"),
+    read("src/features/transactions/components/TransactionFields.jsx"),
+    read("src/features/transactions/MobileTransactionFields.jsx"),
+    read("src/services/api/client.js"),
+    read("src/features/commitments/CommitmentDialogLayer.jsx"),
+    read("src/features/reminders/ManualReminderModal.jsx"),
+  ]);
+
+  assert.doesNotMatch(controller, /\.\.\.error\??\.details|\.\.\.error\.details/, "metadata API tidak boleh di-spread ke state field error");
+  assert.match(controller, /transactionFieldErrorsFromApiError\(error\)/);
+  assert.doesNotMatch(desktopFields, /Object\.values\(errors\)/);
+  assert.doesNotMatch(mobileFields, /Object\.values\(errors\)/);
+  assert.match(desktopFields, /transactionValidationMessages\(errors\)/);
+  assert.match(mobileFields, /transactionValidationMessages\(errors\)/);
+  assert.doesNotMatch(apiClient, /MUTATION_INTENT_LOCKED[\s\S]{0,300}details:\s*\{\s*action/, "mutation safety lock tidak boleh mengirim nama action sebagai field-style details");
+
+  for (const [name, source] of [["commitments", commitments], ["reminders", reminders]]) {
+    assert.match(source, /outcomeUnknown/, `${name} harus mengenali outcome mutation yang belum pasti`);
+    assert.match(source, /Coba lagi data yang sama/, `${name} harus menawarkan exact same-data retry`);
+    assert.match(source, /mutation-retry-lock|retryOnly/, `${name} harus mengunci input/aksi yang dapat mengubah intent`);
+  }
 });

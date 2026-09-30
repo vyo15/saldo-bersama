@@ -75,6 +75,10 @@ export const subscribeToMutationActivity = (listener) => {
 
 export const getMutationActivitySnapshot = () => mutationActivitySnapshot;
 
+// Exposes only whether a safety lock exists. Fingerprints/idempotency metadata stay
+// private to the canonical client and financial payloads are never persisted here.
+export const hasUnresolvedMutationIntent = (action) => unresolvedMutationIntents.has(String(action || ""));
+
 const fnv1a64 = (value) => {
   let hash = 0xcbf29ce484222325n;
   const text = String(value || "");
@@ -137,7 +141,7 @@ const hydrateMutationIntents = () => {
   for (const item of readStoredIntents()) {
     memoryMutationIntents.set(item.fingerprint, { idempotencyKey: item.idempotencyKey, action: item.action, createdAt: Number(item.createdAt) });
     if (!unresolvedMutationIntents.has(item.action)) {
-      unresolvedMutationIntents.set(item.action, { fingerprint: item.fingerprint, idempotencyKey: item.idempotencyKey });
+      unresolvedMutationIntents.set(item.action, { fingerprint: item.fingerprint, idempotencyKey: item.idempotencyKey, createdAt: Number(item.createdAt) });
     }
   }
 };
@@ -173,8 +177,8 @@ const assertCompatibleUnknownIntent = (action, fingerprint, options) => {
   const unresolved = unresolvedMutationIntents.get(action);
   if (!unresolved || unresolved.fingerprint === fingerprint || options.newIntent) return;
   throw new ApiError(
-    "Perubahan sebelumnya untuk tindakan ini belum terkonfirmasi. Data yang sekarang berbeda dari request terakhir. Coba lagi request lama dengan data yang sama sebelum membuat perubahan baru.",
-    { code: "MUTATION_INTENT_LOCKED", status: 409, details: { action } },
+    "Perubahan sebelumnya belum terkonfirmasi. Periksa data terbaru. Jika perubahan belum tercatat, ulangi data sebelumnya dengan data yang sama sebelum membuat perubahan baru.",
+    { code: "MUTATION_INTENT_LOCKED", status: 409 },
   );
 };
 
@@ -219,7 +223,7 @@ const guardedMutationRequest = (action, payload, options = {}) => {
     .catch((error) => {
       if (isOutcomeUnknownError(error)) {
         persistIntent(action, fingerprint, idempotencyKey);
-        unresolvedMutationIntents.set(action, { fingerprint, idempotencyKey });
+        unresolvedMutationIntents.set(action, { fingerprint, idempotencyKey, createdAt: Date.now() });
       } else {
         clearIntent(fingerprint);
         clearUnresolvedIntent(action, fingerprint);

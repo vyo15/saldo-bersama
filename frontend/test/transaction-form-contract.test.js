@@ -321,10 +321,43 @@ test("validasi transaksi memfokuskan field wajib dan expense tanpa kandidat mema
   assert.match(fields, /<strong>Dana Tersedia\.<\/strong>/);
   assert.match(mobile, /<strong>Dana Tersedia<\/strong>/);
   assert.match(mobile, /Belum ada Kebutuhan yang cocok · transaksi dicatat tanpa Alokasi/);
-  assert.match(fields, /Lengkapi data transaksi yang wajib dipilih/);
+  assert.match(fields, /transactionValidationMessages\(errors\)/);
+  assert.match(fields, /Data belum lengkap/);
+  assert.doesNotMatch(fields, /Object\.values\(errors\)/, "metadata API tidak boleh langsung dirender sebagai validasi field");
   assert.match(fields, /aria-live="assertive"/);
   assert.match(fields, /transaction-date-error/);
   assert.match(fields, /source-account-error/);
   assert.match(fields, /destination-account-error/);
   assert.match(fields, /category-error/);
+});
+
+test("preview dampak transaksi compact menampilkan nominal sekali dan hasil akhir tanpa delta berulang", async () => {
+  const [impact, impactCss, transfer, transferCss, design] = await Promise.all([
+    readFile(new URL("../src/features/transactions/components/TransactionImpactPreview.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransferFields.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransferFields.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../../docs/UI_DESIGN_SYSTEM.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(impact, /impactAmountLabel/);
+  assert.match(impact, /Setelah disimpan/);
+  assert.match(impact, /label: "Dana Tersedia"/);
+  assert.match(impact, /AccountIcon/);
+  assert.match(impact, /BalanceIcon/);
+  assert.doesNotMatch(impact, /signedRupiah|impactDelta|resultLabel=/, "delta yang sama tidak boleh diulang pada setiap mini-stat");
+  assert.match(impactCss, /grid-template-columns:\s*repeat\(auto-fit, minmax\(9rem, 1fr\)\)/);
+  assert.match(impactCss, /\.impactStatCopy strong[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.doesNotMatch(impactCss, /\.impactStatCopy strong[\s\S]{0,220}text-overflow:\s*ellipsis/, "nominal hasil tidak boleh terpotong ellipsis");
+
+  assert.match(transfer, /Setelah transfer/);
+  assert.match(transfer, /impactAmount/);
+  assert.match(transfer, /label=\{`Dari · \$\{impact\.source\.name\}`\}/);
+  assert.match(transfer, /label=\{`Ke · \$\{impact\.destination\.name\}`\}/);
+  assert.doesNotMatch(transfer, /positiveDelta|negativeDelta|safeImpact/, "transfer mobile mengikuti hierarchy compact yang sama");
+  assert.match(transferCss, /\.impactStats/);
+  assert.doesNotMatch(transferCss, /\.safeImpact|\.positiveDelta|\.negativeDelta/);
+
+  assert.match(design, /nominal transaksi satu kali → hasil akhir entity yang berubah/);
+  assert.match(design, /Nominal hasil tidak boleh dipotong dengan ellipsis pada mobile/);
 });

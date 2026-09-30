@@ -190,16 +190,17 @@ const RecurringActiveRow = ({ row, onOpen }) => {
   </button>;
 };
 
-const EmptyAllocationState = ({ totalItems, canCreate, clearFilter }) => <div className={allocationClass("allocation-empty-state")}>
-  <img src={allocationArt.emptyState} width="512" height="384" alt="" decoding="async" />
-  <EmptyState
-    variant="compact"
-    headingLevel={3}
-    title={totalItems ? "Tidak ada alokasi yang sesuai" : canCreate ? "Belum ada alokasi" : "Belum ada rekening yang dapat digunakan"}
-    description={totalItems ? "Coba ubah pencarian atau filter untuk melihat alokasi lain." : canCreate ? "Yuk, atur dana sesuai tujuanmu dengan membuat alokasi baru." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum mengatur dana."}
-    action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua</Button> : canCreate ? null : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>}
-  />
-</div>;
+const AllocationEmptyArt = (props) => <img {...props} src={allocationArt.emptyState} width="512" height="384" alt="" decoding="async" />;
+
+const EmptyAllocationState = ({ totalItems, canCreate, clearFilter }) => <EmptyState
+  className={allocationClass("allocation-empty-state")}
+  variant="compact"
+  headingLevel={3}
+  icon={AllocationEmptyArt}
+  title={totalItems ? "Tidak ada alokasi yang sesuai" : canCreate ? "Belum ada alokasi" : "Belum ada rekening yang dapat digunakan"}
+  description={totalItems ? "Coba ubah pencarian atau filter untuk melihat alokasi lain." : canCreate ? "Yuk, atur dana sesuai tujuanmu dengan membuat alokasi baru." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum mengatur dana."}
+  action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua</Button> : canCreate ? null : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>}
+/>;
 
 const PlanningActiveList = ({ rows, totalItems, attentionEnvelopeId, onOpenDetail, onOpenCommitmentDetail, onOpenRecurringDetail, canCreate, clearFilter }) => {
   if (!rows.length) return <EmptyAllocationState totalItems={totalItems} canCreate={canCreate} clearFilter={clearFilter} />;

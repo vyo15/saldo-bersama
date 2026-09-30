@@ -200,65 +200,112 @@
 }
 
 .impact {
-  padding: .72rem .78rem;
+  padding: .6rem .7rem;
   border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
   border-radius: .9rem;
   display: grid;
-  gap: .55rem;
-  background: color-mix(in srgb, var(--primary-soft) 22%, var(--surface));
+  gap: .45rem;
+  background: color-mix(in srgb, var(--primary-soft) 18%, var(--surface));
+}
+
+.impactHeader {
+  min-width: 0;
+  min-height: 1.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
 }
 
 .impactLabel {
-  color: var(--text-muted);
+  color: var(--text-soft);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
 }
 
-.impactRoute {
-  min-width: 0;
-  display: grid;
-  gap: .4rem;
+.impactAmount {
+  flex: 0 1 auto;
+  max-width: 64%;
+  padding: .28rem .45rem;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary-soft) 76%, transparent);
+  color: var(--primary-strong);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-align: right;
+  white-space: normal;
 }
 
-.impactValue {
+.impactStats {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: .38rem .8rem;
+}
+
+.impactStat {
   min-width: 0;
   min-height: 2.45rem;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
+  gap: .45rem;
 }
 
-.impactValue + .impactValue {
-  padding-top: .4rem;
-  border-top: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+.impactStatIcon {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: .5rem;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--primary-soft) 62%, transparent);
+  color: var(--primary-strong);
 }
 
-.impactValue > span:first-child {
+.impactStatIcon svg {
+  width: .95rem;
+  height: .95rem;
+}
+
+.impactStatCopy {
   min-width: 0;
   display: grid;
-  gap: .1rem;
+  gap: .08rem;
 }
 
-.impactValue small,
-.impactValue b {
+.impactStatCopy small {
   overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.impactValue small { color: var(--text-muted); font-size: var(--font-size-xs); }
-.impactValue b { color: var(--text); font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; }
-.impactValue > strong { flex: 0 0 auto; font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
-.positiveDelta { color: var(--primary); }
-.negativeDelta { color: var(--warning); }
+.impactStatCopy strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
 
 .impact p,
 .guard {
   margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.5;
+  line-height: 1.4;
+}
+
+.impact p {
+  padding-top: .4rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .warning,
@@ -279,6 +326,8 @@
 }
 .warning svg { width: 1rem; height: 1rem; flex: 0 0 auto; margin-top: .05rem; }
 .failure { border: 1px solid color-mix(in srgb, var(--negative) 24%, var(--border)); background: var(--negative-soft); color: var(--negative); }
+.feedbackAction { display: block; min-height: 32px; margin-top: .35rem; padding: 0; border: 0; background: transparent; color: currentColor; font: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: .18em; cursor: pointer; }
+.feedbackAction:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 4px; }
 .error { color: var(--negative); font-size: var(--font-size-xs); line-height: 1.4; }
 
 @media (max-width: 25rem) {
@@ -289,15 +338,3 @@
   .note,
   .submitButton { transition: none; }
 }
-
-.safeImpact {
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 8px;
-}
-.safeImpact span { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
-.safeImpact strong { font-size: 13px; }
-.safeImpact small { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }

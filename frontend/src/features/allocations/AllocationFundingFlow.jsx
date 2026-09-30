@@ -66,6 +66,17 @@ const fundingModalCopy = ({ lockSelection, target, amountNumber, invalidAmount }
     : lockSelection ? "Tambah dana" : "Alokasikan dana",
 });
 
+const submitAllocationFunding = ({ event, target, invalidAmount, busy, onSubmit, form }) => {
+  event.preventDefault();
+  if (!target || invalidAmount || busy) return;
+  onSubmit?.({ target, amount: form.amount, reason: form.reason });
+};
+
+const AllocationFundingFooter = ({ busy, retryOnly, guard, target, invalidAmount, submitLabel }) => <>
+  <Button type="button" disabled={busy || retryOnly} onClick={guard.discardAndClose}>Batal</Button>
+  <Button type="submit" form="allocation-funding-form" variant="primary" loading={busy} disabled={!target || invalidAmount || busy}>{retryOnly ? "Coba lagi data yang sama" : submitLabel}</Button>
+</>;
+
 const useAllocationFundingForm = ({ open, accounts, items, initialSourceAccountId, initialEnvelopePeriodId, suggestedAmount, lockSelection }) => {
   const [form, setForm] = useState(initialForm);
   const [ready, setReady] = useState(false);
@@ -85,7 +96,7 @@ const useAllocationFundingForm = ({ open, accounts, items, initialSourceAccountI
   return { form, setForm, ready, eligibleAccounts, envelopes, changeSource };
 };
 
-const AllocationFundingFlow = ({ open, accounts, items, initialSourceAccountId = "", initialEnvelopePeriodId = "", suggestedAmount = 0, lockSelection = false, busy = false, error = null, onClose, onSubmit }) => {
+const AllocationFundingFlow = ({ open, accounts, items, initialSourceAccountId = "", initialEnvelopePeriodId = "", suggestedAmount = 0, lockSelection = false, busy = false, retryOnly = false, error = null, onClose, onSubmit }) => {
   const fundingForm = useAllocationFundingForm({ open, accounts, items, initialSourceAccountId, initialEnvelopePeriodId, suggestedAmount, lockSelection });
   const { form, setForm, ready, eligibleAccounts, envelopes, changeSource } = fundingForm;
   const selectedAccount = eligibleAccounts.find((item) => item.account_id === form.sourceAccountId) || null;
@@ -93,14 +104,17 @@ const AllocationFundingFlow = ({ open, accounts, items, initialSourceAccountId =
   const available = allocationAvailableBalance(selectedAccount);
   const amountNumber = Number(String(form.amount || "").replace(/\D/g, "")) || 0;
   const invalidAmount = amountNumber <= 0 || amountNumber > available;
-  const submit = (event) => { event.preventDefault(); if (target && !invalidAmount && !busy) onSubmit?.({ target, amount: form.amount, reason: form.reason }); };
-  const guard = useUnsavedChangesGuard({ open: open && ready, value: form, onClose, blocked: busy });
+  const submit = (event) => submitAllocationFunding({ event, target, invalidAmount, busy, onSubmit, form });
+  const guard = useUnsavedChangesGuard({ open: open && ready, value: form, onClose, blocked: busy || retryOnly });
   const copy = fundingModalCopy({ lockSelection, target, amountNumber, invalidAmount });
+  const footer = <AllocationFundingFooter busy={busy} retryOnly={retryOnly} guard={guard} target={target} invalidAmount={invalidAmount} submitLabel={copy.submitLabel} />;
 
-  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="alokasi dana" dismissible={!busy} title={copy.title} description={copy.description} size="sm" footer={<><Button type="button" disabled={busy} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="allocation-funding-form" variant="primary" loading={busy} disabled={!target || invalidAmount || busy}>{copy.submitLabel}</Button></>}>
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="alokasi dana" dismissible={!busy && !retryOnly} title={copy.title} description={copy.description} size="sm" footer={footer}>
     <form id="allocation-funding-form" className="form-grid" onSubmit={submit}>
-      <FundingFields accounts={eligibleAccounts} envelopes={envelopes} selectedAccount={selectedAccount} target={target} form={form} setForm={setForm} changeSource={changeSource} available={available} invalidAmount={invalidAmount} amountNumber={amountNumber} lockSelection={lockSelection} />
-      <FundingImpact selectedAccount={selectedAccount} target={target} amountNumber={amountNumber} />
+      <fieldset className="mutation-retry-lock" disabled={retryOnly}>
+        <FundingFields accounts={eligibleAccounts} envelopes={envelopes} selectedAccount={selectedAccount} target={target} form={form} setForm={setForm} changeSource={changeSource} available={available} invalidAmount={invalidAmount} amountNumber={amountNumber} lockSelection={lockSelection} />
+        <FundingImpact selectedAccount={selectedAccount} target={target} amountNumber={amountNumber} />
+      </fieldset>
       {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
     </form>
   </Modal>;

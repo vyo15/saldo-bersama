@@ -79,7 +79,7 @@ const ActiveSessionList = ({ sessions, busy, onSelect }) => {
   );
 };
 
-const RevocationDialog = ({ target, busy, error, onCancel, onConfirm }) => {
+const RevocationDialog = ({ target, busy, retryOnly, error, onCancel, onConfirm }) => {
   const copy = revocationDialogCopy(target);
   return (
     <ConfirmationModal
@@ -88,6 +88,7 @@ const RevocationDialog = ({ target, busy, error, onCancel, onConfirm }) => {
       description={copy.description}
       confirmLabel={copy.confirmLabel}
       busy={busy}
+      retryOnly={retryOnly}
       error={error}
       onCancel={onCancel}
       onConfirm={onConfirm}
@@ -142,8 +143,9 @@ const ActiveSessionsPage = () => {
       <RevocationDialog
         target={target}
         busy={mutation.busy}
+        retryOnly={mutation.outcomeUnknown}
         error={mutation.error}
-        onCancel={() => !mutation.busy && setTarget(null)}
+        onCancel={() => !mutation.busy && !mutation.outcomeUnknown && setTarget(null)}
         onConfirm={revokeTarget}
       />
     </section>

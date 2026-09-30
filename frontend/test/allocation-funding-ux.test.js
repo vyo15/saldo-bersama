@@ -5,9 +5,11 @@ import test from "node:test";
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru", async () => {
-  const [planning, overview] = await Promise.all([
+  const [planning, planningStyles, overview, overviewStyles] = await Promise.all([
     read("src/features/planning/PlanningPage.jsx"),
+    read("src/features/planning/PlanningPage.module.css"),
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
+    read("src/features/allocations/AllocationOverview.module.css"),
   ]);
   assert.match(planning, /title="Atur Dana"/);
   assert.match(planning, /satu daftar Aktif/);
@@ -19,6 +21,11 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
   assert.match(overview, /fundingAccountsForItems\(accounts, fundableItems\)/);
   assert.match(overview, /Hanya dana bebas dari rekening sumber Alokasi aktif/);
   assert.match(overview, /Lihat \{sources\.length\} rekening sumber/);
+  assert.match(overview, /icon=\{AllocationEmptyArt\}/);
+  assert.doesNotMatch(overview, /<div className=\{allocationClass\("allocation-empty-state"\)\}>/);
+  assert.match(overviewStyles, /\.allocation-empty-state > img \{/);
+  assert.doesNotMatch(overviewStyles, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-empty-state \{[\s\S]*?border:\s*0;/);
+  assert.match(planningStyles, /\.page > \.mobileHeader \{[\s\S]*?width:\s*calc\(100% \+ \(var\(--mobile-page-gutter\) \* 2\)\);[\s\S]*?max-width:\s*none;/);
   assert.doesNotMatch(overview, /wallet\.webp/);
 });
 

@@ -8,6 +8,7 @@ import { canRepresentAccountTransfer } from "../../domain/ownership.js";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
 import { parseTransactionAmount } from "./transactionImpact.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
+import { transactionFieldErrorsFromApiError } from "./transactionErrorPresentation.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 import { isInvestmentAccount } from "../../shared/presentation/account.js";
 import { planningIntentMatchesForm } from "./transactionPlanningIntent.js";
@@ -120,14 +121,20 @@ const transactionPreparedInput = ({ form, transaction, isIncome, confirmation, o
   confirm_duplicate: confirmation?.code === "POSSIBLE_DUPLICATE",
 });
 
-const handleTransactionError = (error, setters) => {
+const handleTransactionError = (error, setters, formElement) => {
   if (error.code === "POSSIBLE_DUPLICATE") { setters.setConfirmation({ code: error.code, message: error.message, details: error.details }); setters.setSubmitState({ status: "idle", error: null }); return; }
-  if (["OVERSPEND_REASON_REQUIRED", "OVER_BUDGET_CONFIRMATION_REQUIRED"].includes(error.code)) {
+  const fieldErrors = transactionFieldErrorsFromApiError(error);
+  if (fieldErrors.description && ["OVERSPEND_REASON_REQUIRED", "OVER_BUDGET_CONFIRMATION_REQUIRED"].includes(error.code)) {
     setters.setForceOverspendNote(true);
-    setters.setErrors((current) => ({ ...current, description: "Isi Catatan untuk menjelaskan penggunaan di atas dana tersisa pada Alokasi Dana." }));
+    fieldErrors.description = "Isi Catatan untuk menjelaskan penggunaan di atas dana tersisa pada Alokasi Dana.";
+  }
+  if (Object.keys(fieldErrors).length) {
+    setters.setErrors((current) => ({ ...clearTransactionFieldErrors(current, []), ...fieldErrors }));
+    setters.setSubmitState({ status: "idle", error: null });
+    focusFirstTransactionError(formElement, fieldErrors);
+    return;
   }
   setters.setSubmitState({ status: isOutcomeUnknownError(error) ? "unknown" : "error", error });
-  if (error.details && !Array.isArray(error.details)) setters.setErrors((current) => ({ ...current, ...error.details }));
 };
 
 const prepareTransactionSubmission = ({ form, transaction, isIncome, confirmation, envelopes, forceOverspendNote }) => {
@@ -230,7 +237,7 @@ export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome
     const saved = await saveTransaction(validation.value, { idempotencyKey: idempotencyKeyRef.current, rowVersion: transaction?.row_version });
     const keepOpen = await finalizeTransactionSave({ saved, transaction, form, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters });
     if (!keepOpen) onClose();
-  } catch (error) { handleTransactionError(error, setters); }
+  } catch (error) { handleTransactionError(error, setters, formElement); }
 };
 
 export const applySourceAccountChange = ({ nextId, accounts, envelopes, isTransfer, setForm, setErrors, setConfirmation, setSubmitState }) => {

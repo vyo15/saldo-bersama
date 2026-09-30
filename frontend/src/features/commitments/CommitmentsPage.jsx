@@ -172,7 +172,7 @@ const CommitmentsPage = () => {
   const accounts = useMemo(() => (bootstrap?.accounts || []).filter((item) => item.status === "active" && item.account_type !== "investment").map((item) => ({ ...item, ...(overview?.accountBalances || []).find((row) => row.account_id === item.account_id) })), [bootstrap?.accounts, overview?.accountBalances]);
   const expenseCategories = useMemo(() => (bootstrap?.categories || []).filter((item) => item.status === "active" && item.transaction_type === "expense"), [bootstrap?.categories]);
   const budgets = useMemo(() => (budgetResource.data?.items || []).filter((item) => item.can_manage !== false), [budgetResource.data?.items]);
-  const closeEdit = () => { if (!mutation.busy) setEdit(null); };
+  const closeEdit = () => { if (!mutation.busy && !mutation.outcomeUnknown) setEdit(null); };
   const reloadAll = async () => { invalidate(refreshKeys); await Promise.allSettled([resource.reload(), budgetResource.reload(), refreshOverview()]); };
   const createFlow = useCommitmentCreateFlow({ emptyForm, expenseCategories, location, mutation, navigate, notify, reloadAll, resourceStatus: resource.status, suggestedCategoryId, validateDetails: commitmentDetailsError });
 

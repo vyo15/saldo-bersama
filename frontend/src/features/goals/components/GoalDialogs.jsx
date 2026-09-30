@@ -33,17 +33,19 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, investmentPortf
   const investmentFunding = form.funding_mode === "investment";
   const targetAccount = accounts.find((item) => item.account_id === form.account_id) || null;
   const compatibleSource = targetAccount ? accounts.some((item) => item.account_id !== targetAccount.account_id && canRepresentAccountTransfer(item, targetAccount)) : true;
-  const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: createMutation.busy });
+  const retryOnly = createMutation.outcomeUnknown;
+  const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: createMutation.busy || retryOnly });
   return <Modal
     open={open}
     onClose={guard.requestClose}
     discardGuard={guard}
     discardSubject="target baru"
-    dismissible={!createMutation.busy}
+    dismissible={!createMutation.busy && !retryOnly}
     title="Buat target"
-    footer={<><Button type="button" disabled={createMutation.busy} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="goal-create-form" variant="primary" icon={FiPlus} loading={createMutation.busy}>Buat target</Button></>}
+    footer={<><Button type="button" disabled={createMutation.busy || retryOnly} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="goal-create-form" variant="primary" icon={FiPlus} loading={createMutation.busy}>{retryOnly ? "Coba lagi data yang sama" : "Buat target"}</Button></>}
   >
     <form id="goal-create-form" className="form-grid" onSubmit={createGoal}>
+      <fieldset className="mutation-retry-lock" disabled={retryOnly}>
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Jenis target" name="goal-type" value={form.goal_type} onChange={(goal_type) => setForm((current) => ({ ...current, goal_type }))} options={[{ value: "savings", label: "Tabungan tujuan", icon: TargetIcon, description: "Target nominal" }, { value: "emergency_fund", label: "Dana darurat", icon: EmergencyFundIcon, description: "Cadangan kebutuhan mendadak" }, { value: "sinking_fund", label: "Dana berkala", icon: SinkingFundIcon, description: "Kebutuhan periodik" }]} columns={3} />
       <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
@@ -54,6 +56,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, investmentPortf
       {form.funding_mode === "mixed" ? <CompactNotice className="form-grid__full" tone="info" title="Satu Target, dua sumber">Dana tunai memakai rekening di atas. Saham atau reksa dana dapat dihubungkan dari tombol Tambah dana setelah Target dibuat.</CompactNotice> : null}
       {targetAccount && !compatibleSource && cashFunding ? <CompactNotice className="form-grid__full" tone="info" title="Target dapat dibuat, tetapi belum dapat ditambah tunai">Tambahkan rekening sumber lain yang dapat dioperasikan. Setoran tunai selalu berupa satu transfer antar rekening.</CompactNotice> : null}
       {investmentFunding && !investmentPortfolios.length ? <CompactNotice className="form-grid__full" tone="warning" title="Belum ada sumber investasi Bersama">Tambahkan aset investasi Bersama terlebih dahulu dari menu Investasi.</CompactNotice> : null}
+      </fieldset>
       {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
     </form>
   </Modal>;

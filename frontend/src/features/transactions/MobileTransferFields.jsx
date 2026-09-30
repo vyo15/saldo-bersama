@@ -1,5 +1,5 @@
 import { FiAlertTriangle, FiArrowRight, FiCalendar, FiChevronRight } from "react-icons/fi";
-import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
+import { AccountIcon, BalanceIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
@@ -7,6 +7,7 @@ import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { sourceAccountPicker } from "./transactionFormSmartDefaults.js";
+import { transactionSubmitFeedback } from "./transactionErrorPresentation.js";
 import styles from "./MobileTransferFields.module.css";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
@@ -123,53 +124,62 @@ const TransferDate = ({ form, update, errors, intentLocked }) => (
   </section>
 );
 
-const TransferImpactValue = ({ label, value, delta, tone }) => (
-  <span className={styles.impactValue}>
-    <span>
+const TransferImpactValue = ({ label, value, icon: Icon, ariaLabel }) => (
+  <span className={styles.impactStat} aria-label={ariaLabel}>
+    <span className={styles.impactStatIcon} aria-hidden="true"><Icon /></span>
+    <span className={styles.impactStatCopy}>
       <small>{label}</small>
-      <b>{formatRupiah(value)}</b>
+      <strong>{formatRupiah(value)}</strong>
     </span>
-    <strong className={tone === "negative" ? styles.negativeDelta : styles.positiveDelta}>
-      {tone === "negative" ? "−" : "+"}{formatRupiah(Math.abs(delta))}
-    </strong>
   </span>
 );
 
 const ImpactPreview = ({ impact }) => {
   if (!impact || Number(impact.amount || 0) <= 0 || !impact.source || !impact.destination) return null;
+  const safeDelta = Number(impact.safeToSpendDelta || 0);
+  const safeAfter = Number(impact.safeToSpendAfter || 0);
   return (
     <section className={styles.impact} aria-live="polite">
-      <span className={styles.impactLabel}>Setelah transfer</span>
-      <div className={styles.impactRoute}>
+      <div className={styles.impactHeader}>
+        <span className={styles.impactLabel}>Setelah transfer</span>
+        <strong className={styles.impactAmount}>{formatRupiah(impact.amount)}</strong>
+      </div>
+      <div className={styles.impactStats}>
         <TransferImpactValue
-          label={impact.source.name}
+          label={`Dari · ${impact.source.name}`}
           value={impact.sourceAfter}
-          delta={Number(impact.sourceAfter || 0) - Number(impact.source.balance || 0)}
-          tone="negative"
+          icon={AccountIcon}
+          ariaLabel={`Saldo akhir rekening asal ${impact.source.name}: ${formatRupiah(impact.sourceAfter)}`}
         />
         <TransferImpactValue
-          label={impact.destination.name}
+          label={`Ke · ${impact.destination.name}`}
           value={impact.destinationAfter}
-          delta={Number(impact.destinationAfter || 0) - Number(impact.destination.balance || 0)}
-          tone="positive"
+          icon={AccountIcon}
+          ariaLabel={`Saldo akhir rekening tujuan ${impact.destination.name}: ${formatRupiah(impact.destinationAfter)}`}
         />
+        {safeDelta !== 0 ? (
+          <TransferImpactValue
+            label="Dana Tersedia"
+            value={safeAfter}
+            icon={BalanceIcon}
+            ariaLabel={`Dana Tersedia setelah transfer: ${formatRupiah(safeAfter)}`}
+          />
+        ) : null}
       </div>
-      <div className={styles.safeImpact}>
-        <span>Dana Tersedia</span>
-        <strong>{formatRupiah(impact.safeToSpendAfter || 0)}</strong>
-        <small>{Number(impact.safeToSpendDelta || 0) === 0 ? "Tetap" : `${Number(impact.safeToSpendDelta || 0) > 0 ? "+" : "−"}${formatRupiah(Math.abs(Number(impact.safeToSpendDelta || 0)))}`}</small>
-      </div>
-      <p>{Number(impact.safeToSpendDelta || 0) === 0 ? "Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga." : Number(impact.safeToSpendDelta || 0) < 0 ? "Dana berpindah keluar dari uang operasional sehingga Dana Tersedia berkurang." : "Dana kembali ke rekening operasional sehingga Dana Tersedia bertambah."}</p>
+      <p>{safeDelta === 0 ? "Pemindahan antar rekening operasional tidak mengubah Dana Tersedia keluarga." : safeDelta < 0 ? "Dana berpindah keluar dari uang operasional sehingga Dana Tersedia berkurang." : "Dana kembali ke rekening operasional sehingga Dana Tersedia bertambah."}</p>
     </section>
   );
 };
 
-const TransferStatus = ({ confirmation, submitState }) => (
-  <>
+const TransferStatus = ({ confirmation, submitState, onReviewTransactions }) => {
+  const feedback = transactionSubmitFeedback(submitState.error);
+  return <>
     {confirmation ? <div className={styles.warning} role="alert"><FiAlertTriangle aria-hidden="true" /><span>{confirmation.message} Periksa data, lalu tekan tombol panah sekali lagi untuk mengonfirmasi.</span></div> : null}
-    {submitState.error ? <div className={styles.failure} role="alert">{submitState.error.message}</div> : null}
-  </>
-);
+    {feedback ? <div className={feedback.tone === "danger" ? styles.failure : styles.warning} role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>{feedback.title}.</strong> {feedback.message}{feedback.reviewRecommended && onReviewTransactions ? <button type="button" className={styles.feedbackAction} onClick={onReviewTransactions}>Periksa transaksi</button> : null}</span></div> : null}
+  </>;
+};
+
+const MutationRecoveryNotice = ({ visible, onReviewTransactions }) => visible ? <div className={styles.warning} role="status"><FiAlertTriangle aria-hidden="true" /><span><strong>Ada transfer yang belum terkonfirmasi.</strong> Periksa transaksi terbaru. Jika belum tercatat, masukkan kembali data transfer sebelumnya dengan data yang sama.{onReviewTransactions ? <button type="button" className={styles.feedbackAction} onClick={onReviewTransactions}>Periksa transaksi</button> : null}</span></div> : null;
 
 const MobileTransferFields = ({
   form,
@@ -185,6 +195,8 @@ const MobileTransferFields = ({
   submitState,
   submitting,
   outcomeUnknown,
+  onReviewTransactions,
+  unresolvedIntentPresent,
 }) => {
   const sourceAccounts = sourceAccountPicker({
     accounts,
@@ -195,6 +207,7 @@ const MobileTransferFields = ({
 
   return (
     <div className={styles.composer}>
+      <MutationRecoveryNotice visible={unresolvedIntentPresent} onReviewTransactions={onReviewTransactions} />
       <TransferAccountPicker
         label="Dari rekening"
         value={form.source_account_id}
@@ -220,8 +233,7 @@ const MobileTransferFields = ({
       <TransferAmount form={form} update={update} errors={errors} amountRef={amountRef} submitting={submitting} confirmation={confirmation} intentLocked={outcomeUnknown} />
       <TransferDate form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
       <ImpactPreview impact={impact} />
-      <TransferStatus confirmation={confirmation} submitState={submitState} />
-      {outcomeUnknown ? <p className={styles.guard}>Data transfer dikunci sementara. Coba lagi dengan data yang sama agar tidak membuat transaksi ganda.</p> : null}
+      <TransferStatus confirmation={confirmation} submitState={submitState} onReviewTransactions={onReviewTransactions} />
     </div>
   );
 };

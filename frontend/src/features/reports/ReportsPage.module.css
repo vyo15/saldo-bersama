@@ -6,7 +6,6 @@
 }
 
 .header h1,
-.header p,
 .sectionHeading h2,
 .sectionHeading p {
   margin: 0;
@@ -20,14 +19,6 @@
   font-size: clamp(30px, 3vw, 38px);
   line-height: 1.02;
   letter-spacing: -.05em;
-}
-
-.header p {
-  max-width: 720px;
-  margin-top: 7px;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  line-height: 1.45;
 }
 
 .reportContextBar,
@@ -179,11 +170,10 @@
 .eyebrow {
   display: block;
   margin-bottom: 5px;
-  color: var(--primary);
+  color: var(--text-muted);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: .075em;
-  text-transform: uppercase;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: .01em;
 }
 
 .heroHeading :global(.money) {
@@ -252,8 +242,7 @@
 }
 
 
-.planningGrid,
-.secondaryGrid {
+.planningGrid {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
@@ -442,83 +431,42 @@
   cursor: pointer;
 }
 
-.breakdownDetails {
-  padding: 15px 17px;
-  border: 1px solid var(--border);
-  border-radius: 17px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.breakdownDetails > summary {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  list-style: none;
-}
-
-.breakdownDetails > summary::-webkit-details-marker { display: none; }
-.breakdownDetails > summary span { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
-.breakdownGrid { padding-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
-.breakdownGrid > div { min-width: 0; }
-.breakdownGrid h3 { margin: 0 0 8px; font-size: var(--font-size-sm); }
-.breakdownGrid p { margin: 0; min-height: 36px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--font-size-xs); }
-.breakdownGrid p span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.breakdownGrid > div > small { display: block; margin-top: 8px; color: var(--text-muted); font-size: var(--font-size-xs); }
-
-.documentsSection {
-  padding: 18px;
-}
-
-.documentRows {
+.breakdownGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
-.documentRows > div {
+.breakdownPanel {
   min-width: 0;
-  padding: 11px 12px;
+  padding: 13px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
   background: var(--surface-soft);
 }
 
-.documentIcon { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); }
-.documentIcon > svg { width: 19px; height: 19px; }
-.documentRows > div > span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
-.documentRows strong { font-size: var(--font-size-sm); }
-.documentRows small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
+.breakdownPanel h3 { margin: 0 0 8px; font-size: var(--font-size-sm); }
+.breakdownPanel p { margin: 0; min-height: 36px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--font-size-xs); }
+.breakdownPanel p span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.breakdownPanel > small { display: block; margin-top: 8px; color: var(--text-muted); font-size: var(--font-size-xs); }
 
 @media (max-width: 1180px) {
   .heroGrid { grid-template-columns: minmax(0, 1.3fr) minmax(290px, .7fr); }
-  .planningGrid, .secondaryGrid { grid-template-columns: 1fr 1fr; }
+  .planningGrid { grid-template-columns: 1fr 1fr; }
   .budgetRow { grid-template-columns: minmax(0, 1fr) auto auto; }
   .budgetRow > span:nth-child(2) { display: none; }
 }
 
 @media (max-width: 980px) {
   .heroGrid,
-  .planningGrid,
-  .secondaryGrid { grid-template-columns: 1fr; }
+  .planningGrid { grid-template-columns: 1fr; }
   .heroPanel,
   .categoryPanel { min-height: 0; }
-  .documentRows { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 820px) {
   .page { gap: 16px; }
   .header h1 { font-size: clamp(22px, 6.4vw, 27px); }
-  .header p { font-size: var(--font-size-xs); line-height: 1.4; }
   .reportContextBar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
   .filters { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; }
   .periodControl, .scopeControl { width: auto; min-width: 0; }
@@ -535,7 +483,7 @@
   .heroHeading :global(.money) { font-size: 24px; }
   .heroFacts { gap: 13px; padding-top: 8px; }
   .categoryPanel { padding-top: 14px; border-top: 1px solid var(--border); }
-  .planningGrid, .secondaryGrid { gap: 16px; }
+  .planningGrid { gap: 16px; }
   .planningPanel, .activityPanel, .transactionPanel { padding-top: 14px; border-top: 1px solid var(--border); }
   .sectionHeading { margin-bottom: 8px; align-items: center; }
   .sectionHeading h2 { font-size: 16px; }
@@ -566,18 +514,11 @@
   .transactionRow strong { font-size: var(--font-size-xs); }
   .transactionRow small { font-size: var(--font-size-xs); }
   .transactionAmount strong { font-size: var(--font-size-xs); }
-  .breakdownDetails { padding: 14px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
-  .breakdownGrid { grid-template-columns: 1fr; gap: 18px; }
-  .documentsSection { padding-top: 14px; border-top: 1px solid var(--border); }
-  .documentRows { grid-template-columns: 1fr; gap: 0; }
-  .documentRows > div { padding: 8px 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; grid-template-columns: 30px minmax(0, 1fr) auto; background: transparent; }
-  .documentIcon { width: 28px; height: 28px; border-radius: 9px; }
-  .documentIcon > svg { width: 17px; height: 17px; }
-  .documentRows :global([data-ui="button"]) { min-width: 76px; }
+  .breakdownGrid { grid-template-columns: 1fr; gap: 12px; }
+  .breakdownPanel { padding: 12px; }
 }
 
 @media (max-width: 390px) {
-  .header p { max-width: 260px; }
   .allocationRemaining { display: none; }
   .allocationRow { grid-template-columns: 32px minmax(0, 1fr); }
   .inlineTrend { width: 114px; }
@@ -586,7 +527,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .allocationRow,
-  .downloadPopover button { transition: none; }
+  .downloadPopover button,
+  .analysisDetails > summary > svg { transition: none; }
 }
 
 @media (min-width: 821px) {
@@ -636,40 +578,144 @@
 .periodBalanceContext > span { color: var(--text-muted); font-size: var(--font-size-xs); }
 .periodBalanceContext > strong,
 .periodBalanceContext :global(.money) { color: var(--text); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
-.analysisContent > .breakdownDetails { box-shadow: none; }
-.documentsSection { box-shadow: none; }
-/* Compact report status strip: enough context without another dashboard-sized card. */
+/* Financial health stays compact: one visual signal, one interpretation, details on demand. */
 .allocationHealthStrip {
-  min-height: 58px;
-  padding: 9px 12px;
-  display: grid;
-  grid-template-columns: minmax(150px, 1fr) repeat(3, auto) auto;
-  align-items: center;
-  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
-.allocationHealthStrip > div { min-width: 0; display: grid; gap: 1px; }
-.allocationHealthStrip > div strong { font-size: var(--font-size-sm); }
-.allocationHealthStrip > div small { color: var(--text-muted); font-size: var(--font-size-xs); }
-.allocationHealthStrip > span { display: inline-flex; align-items: baseline; gap: 4px; color: var(--text-muted); font-size: var(--font-size-xs); white-space: nowrap; }
-.allocationHealthStrip > span strong { font-size: var(--font-size-sm); color: var(--text); }
-.allocationHealthStrip > span[data-tone="safe"] strong { color: var(--positive); }
-.allocationHealthStrip > span[data-tone="warning"] strong { color: var(--warning); }
-.allocationHealthStrip > span[data-tone="danger"] strong { color: var(--negative); }
-.allocationHealthStrip > a { min-height: 44px; padding-inline: 6px; display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-decoration: none; white-space: nowrap; }
+
+.allocationHealthHeading {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.allocationHealthHeading > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.allocationHealthHeading strong { font-size: var(--font-size-sm); }
+.allocationHealthHeading small { color: var(--text-muted); font-size: var(--font-size-xs); }
+
+.healthReviewAction {
+  min-height: 44px;
+  margin: -8px -5px -8px 0;
+  padding: 0 5px;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  color: var(--primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.healthReviewAction:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 9px;
+}
+
+.healthSegments {
+  width: 100%;
+  height: 9px;
+  margin: 12px 0 10px;
+  border-radius: 999px;
+  display: flex;
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+
+.healthSegments > i {
+  min-width: 3px;
+  height: 100%;
+  display: block;
+}
+
+.healthSegments > i[data-tone="safe"] { background: var(--positive); }
+.healthSegments > i[data-tone="warning"] { background: var(--warning); }
+.healthSegments > i[data-tone="danger"] { background: var(--negative); }
+
+.healthFooter {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.healthLegend {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 15px;
+}
+
+.healthLegend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.healthLegend > span > i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.healthLegend > span[data-tone="safe"] > i { background: var(--positive); }
+.healthLegend > span[data-tone="warning"] > i { background: var(--warning); }
+.healthLegend > span[data-tone="danger"] > i { background: var(--negative); }
+.healthLegend strong { color: var(--text); }
+
+.healthInsight {
+  flex: 0 0 auto;
+  font-size: var(--font-size-xs);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.healthInsight[data-tone="safe"] { color: var(--positive); }
+.healthInsight[data-tone="warning"] { color: var(--warning); }
+
+.planningPanel[tabindex="-1"]:focus {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
 
 @media (max-width: 820px) {
   .allocationHealthStrip {
-    min-height: 0;
-    padding: 9px 0;
-    grid-template-columns: minmax(0, 1fr) repeat(3, auto);
-    gap: 7px;
+    padding: 12px 0;
     border-inline: 0;
     border-radius: 0;
     background: transparent;
+    box-shadow: none;
   }
-  .allocationHealthStrip > div small { display: none; }
-  .allocationHealthStrip > a { grid-column: 1 / -1; min-height: var(--mobile-control-height); padding: 0; justify-content: flex-start; }
+
+  .allocationHealthHeading small { display: none; }
+  .healthReviewAction { min-height: var(--mobile-control-height); margin-block: -9px; }
+  .healthSegments { margin-block: 10px 9px; }
+  .healthFooter { align-items: flex-start; }
+  .healthInsight { max-width: 135px; white-space: normal; }
+}
+
+@media (max-width: 390px) {
+  .healthFooter { display: grid; gap: 7px; }
+  .healthInsight { max-width: none; text-align: left; }
 }

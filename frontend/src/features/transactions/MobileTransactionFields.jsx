@@ -22,6 +22,8 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import MobileTransactionCategoryField from "./MobileTransactionCategoryField.jsx";
 import { UNALLOCATED_NEED_VALUE, needSelectionValue, sourceAccountPicker } from "./transactionFormSmartDefaults.js";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, paymentMethodLabel, quickAmountLabel } from "./transactionFormPresentation.js";
+import { transactionValidationMessages } from "./transactionFormFieldErrors.js";
+import { transactionSubmitFeedback } from "./transactionErrorPresentation.js";
 import TransactionImpactPreview from "./components/TransactionImpactPreview.jsx";
 import styles from "./MobileTransactionFields.module.css";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
@@ -336,30 +338,42 @@ const AdditionalDetails = (p) => {
 };
 
 const ValidationSummary = ({ errors }) => {
-  const messages = Object.values(errors || {}).filter(Boolean);
+  const messages = transactionValidationMessages(errors);
   if (!messages.length) return null;
-  return <div className={styles.validationNotice} role="alert" aria-live="assertive"><FiAlertTriangle aria-hidden="true" /><span><strong>Lengkapi data transaksi yang wajib dipilih.</strong> {messages[0]}</span></div>;
+  return <div className={styles.validationNotice} role="alert" aria-live="assertive"><FiAlertTriangle aria-hidden="true" /><span><strong>Data belum lengkap.</strong> {messages[0]}</span></div>;
 };
 
 const FundsWarning = ({ warning }) => warning ? <div className={styles.warningNotice} role="status"><FiAlertTriangle aria-hidden="true" /><span><strong>{warning.title}</strong> {warning.message}</span></div> : null;
 
-const SubmitFeedback = ({ confirmation, submitState }) => (
-  <>
+const MutationRecoveryNotice = ({ visible, onReviewTransactions }) => visible ? (
+  <div className={styles.warningNotice} role="status">
+    <FiAlertTriangle aria-hidden="true" />
+    <span><strong>Ada transaksi yang belum terkonfirmasi.</strong> Periksa transaksi terbaru. Jika belum tercatat, masukkan kembali data sebelumnya dengan data yang sama.{onReviewTransactions ? <button type="button" className={styles.feedbackAction} onClick={onReviewTransactions}>Periksa transaksi</button> : null}</span>
+  </div>
+) : null;
+
+const SubmitFeedback = ({ confirmation, submitState, onReviewTransactions }) => {
+  const feedback = transactionSubmitFeedback(submitState.error);
+  return <>
     {confirmation ? <div className={styles.warningNotice} role="alert"><FiAlertTriangle aria-hidden="true" /><span>{confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}
-    {submitState.error ? <div className={styles.failureNotice} role="alert">{submitState.error.message}</div> : null}
-  </>
-);
+    {feedback ? <div className={feedback.tone === "danger" ? styles.failureNotice : styles.warningNotice} role="alert">
+      <FiAlertTriangle aria-hidden="true" />
+      <span><strong>{feedback.title}.</strong> {feedback.message}{feedback.reviewRecommended && onReviewTransactions ? <button type="button" className={styles.feedbackAction} onClick={onReviewTransactions}>Periksa transaksi</button> : null}</span>
+    </div> : null}
+  </>;
+};
 
 const MobileTransactionFields = (p) => (
   <div className={styles.composer}>
     <ValidationSummary errors={p.errors} />
+    <MutationRecoveryNotice visible={p.unresolvedIntentPresent} onReviewTransactions={p.onReviewTransactions} />
     <TypeSelector form={p.form} update={p.update} lockType={p.lockType} />
     <AmountField form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} />
     <PrimaryDetails {...p} />
     <AdditionalDetails {...p} />
     <FundsWarning warning={p.fundsWarning} />
     <TransactionImpactPreview impact={p.impact} isTransfer={false} />
-    <SubmitFeedback confirmation={p.confirmation} submitState={p.submitState} />
+    <SubmitFeedback confirmation={p.confirmation} submitState={p.submitState} onReviewTransactions={p.onReviewTransactions} />
   </div>
 );
 

@@ -198,14 +198,14 @@ const DeviceStatusCard = ({ pushState, view, primaryPushAction, busy, refreshPus
   </section>
 );
 
-const DeviceNotificationView = ({ pushState, view, primaryPushAction, busy, result, preferenceState, preferenceMutation, settingsMutation, refreshPushState, refreshPreferences, togglePreference, updateCadence, runPushAction, disableOpen, setDisableOpen }) => (
+const DeviceNotificationView = ({ pushState, view, primaryPushAction, busy, pushRetryOnly, pushError, result, preferenceState, preferenceMutation, settingsMutation, refreshPushState, refreshPreferences, togglePreference, updateCadence, runPushAction, disableOpen, setDisableOpen }) => (
   <section className={styles.pageContent} aria-labelledby="notification-settings-title">
     <div className={styles.pageHeading}><h2 id="notification-settings-title">Notifikasi perangkat</h2></div>
     <SettingsNotice result={result} />
     <DeviceStatusCard pushState={pushState} view={view} primaryPushAction={primaryPushAction} busy={busy} refreshPushState={refreshPushState} runPushAction={runPushAction} setDisableOpen={setDisableOpen} />
     <PreferenceSection preferenceState={preferenceState} preferenceMutation={preferenceMutation} refreshPreferences={refreshPreferences} togglePreference={togglePreference} />
     <CadenceSection preferenceState={preferenceState} settingsMutation={settingsMutation} updateCadence={updateCadence} />
-    <ConfirmationModal open={disableOpen} title="Nonaktifkan notifikasi?" description="Notifikasi pada perangkat ini akan dinonaktifkan. Perangkat lain tetap aktif." confirmLabel="Nonaktifkan" busy={busy} onCancel={() => !busy && setDisableOpen(false)} onConfirm={() => runPushAction("disable")} />
+    <ConfirmationModal open={disableOpen} title="Nonaktifkan notifikasi?" description="Notifikasi pada perangkat ini akan dinonaktifkan. Perangkat lain tetap aktif." confirmLabel="Nonaktifkan" busy={busy} retryOnly={pushRetryOnly} error={pushRetryOnly ? pushError : null} onCancel={() => !busy && !pushRetryOnly && setDisableOpen(false)} onConfirm={() => runPushAction("disable")} />
   </section>
 );
 
@@ -308,7 +308,7 @@ const DeviceNotificationsPage = () => {
   const view = pushPresentation(pushState);
   const primaryPushAction = view.canEnable ? "enable" : pushState.reason === "ready_unverified" ? "verify" : null;
 
-  return <DeviceNotificationView pushState={pushState} view={view} primaryPushAction={primaryPushAction} busy={busy} result={result} preferenceState={preferenceState} preferenceMutation={preferenceMutation} settingsMutation={settingsMutation} refreshPushState={refreshPushState} refreshPreferences={refreshPreferences} togglePreference={togglePreference} updateCadence={updateCadence} runPushAction={runPushAction} disableOpen={disableOpen} setDisableOpen={setDisableOpen} />;
+  return <DeviceNotificationView pushState={pushState} view={view} primaryPushAction={primaryPushAction} busy={busy} pushRetryOnly={pushMutation.outcomeUnknown} pushError={pushMutation.error} result={result} preferenceState={preferenceState} preferenceMutation={preferenceMutation} settingsMutation={settingsMutation} refreshPushState={refreshPushState} refreshPreferences={refreshPreferences} togglePreference={togglePreference} updateCadence={updateCadence} runPushAction={runPushAction} disableOpen={disableOpen} setDisableOpen={setDisableOpen} />;
 };
 
 export default DeviceNotificationsPage;

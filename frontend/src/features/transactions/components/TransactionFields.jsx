@@ -10,6 +10,8 @@ import { formatRupiah } from "../../../domain/money.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { UNALLOCATED_NEED_VALUE, frequentCategories, needSelectionValue, sourceAccountPicker } from "../transactionFormSmartDefaults.js";
 import { PAYMENT_METHOD_OPTIONS, QUICK_EXPENSE_AMOUNTS, TRANSACTION_TYPE_OPTIONS, quickAmountLabel } from "../transactionFormPresentation.js";
+import { transactionValidationMessages } from "../transactionFormFieldErrors.js";
+import { transactionSubmitFeedback } from "../transactionErrorPresentation.js";
 import styles from "../TransactionForm.module.css";
 import TransactionImpactPreview from "./TransactionImpactPreview.jsx";
 
@@ -128,14 +130,19 @@ const AccountCategoryFields = (p) => <>
 const DirectDetailsFields = ({ form, update, errors }) => <><label className={`field ${styles.visualField}`}><span>Metode pembayaran</span><FieldControl icon={FiCreditCard}><SelectionControl id="payment-method" embedded value={form.payment_method} onChange={(value) => update("payment_method", value)} ariaLabel="Metode pembayaran" options={[...(form.payment_method === "autodebit" ? [{ value: "autodebit", label: "Auto-debit (data lama)", disabled: true }] : []), ...PAYMENT_METHOD_OPTIONS.map((item) => ({ value: item.value, label: item.label, icon: item.icon }))]} /></FieldControl></label><label className={`field form-grid__full ${styles.notesField}`} htmlFor="description"><span>Catatan</span><textarea id="description" rows="2" maxLength="250" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Opsional" aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined} />{errors.description ? <small id="description-error" className="field__error">{errors.description}</small> : null}</label></>;
 
 const ValidationSummary = ({ errors }) => {
-  const messages = Object.values(errors || {}).filter(Boolean);
+  const messages = transactionValidationMessages(errors);
   if (!messages.length) return null;
-  return <div className="notice notice--danger form-grid__full" role="alert" aria-live="assertive"><FiAlertTriangle aria-hidden="true" /><span><strong>Lengkapi data transaksi yang wajib dipilih.</strong> {messages[0]}</span></div>;
+  return <div className="notice notice--danger form-grid__full" role="alert" aria-live="assertive"><FiAlertTriangle aria-hidden="true" /><span><strong>Data belum lengkap.</strong> {messages[0]}</span></div>;
 };
 
 const FundsWarning = ({ warning }) => warning ? <div className="notice notice--warning form-grid__full" role="status"><FiAlertTriangle aria-hidden="true" /><span><strong>{warning.title}</strong> {warning.message}</span></div> : null;
 
-const TransactionFields = (p) => <><ValidationSummary errors={p.errors} />{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} min={p.planningDateMin} max={p.planningDateMax} /><AccountCategoryFields {...p} /><DirectDetailsFields form={p.form} update={p.update} errors={p.errors} /><FundsWarning warning={p.fundsWarning} /><TransactionImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{p.submitState.error ? <div className="notice notice--danger form-grid__full" role="alert">{p.submitState.error.message}</div> : null}</>;
+const MutationRecoveryNotice = ({ visible, onReviewTransactions }) => visible ? <div className="notice notice--warning form-grid__full" role="status"><FiAlertTriangle aria-hidden="true" /><span><strong>Ada transaksi yang belum terkonfirmasi.</strong> Periksa transaksi terbaru. Jika belum tercatat, masukkan kembali data sebelumnya dengan data yang sama.{onReviewTransactions ? <> <button type="button" className={styles.feedbackAction} onClick={onReviewTransactions}>Periksa transaksi</button></> : null}</span></div> : null;
+
+const TransactionFields = (p) => {
+  const feedback = transactionSubmitFeedback(p.submitState.error);
+  return <><ValidationSummary errors={p.errors} /><MutationRecoveryNotice visible={p.unresolvedIntentPresent} onReviewTransactions={p.onReviewTransactions} />{p.lockType ? null : <TypeSelector form={p.form} update={p.update} />}<AmountDateFields form={p.form} update={p.update} errors={p.errors} amountRef={p.amountRef} min={p.planningDateMin} max={p.planningDateMax} /><AccountCategoryFields {...p} /><DirectDetailsFields form={p.form} update={p.update} errors={p.errors} /><FundsWarning warning={p.fundsWarning} /><TransactionImpactPreview impact={p.impact} isTransfer={p.isTransfer} />{p.confirmation ? <div className="notice notice--warning form-grid__full" role="alert"><FiAlertTriangle /><span>{p.confirmation.message} Periksa data, lalu tekan “Simpan tetap” untuk mengonfirmasi.</span></div> : null}{feedback ? <div className={`notice notice--${feedback.tone} form-grid__full`} role="alert"><FiAlertTriangle aria-hidden="true" /><span><strong>{feedback.title}.</strong> {feedback.message}{feedback.reviewRecommended && p.onReviewTransactions ? <> <button type="button" className={styles.feedbackAction} onClick={p.onReviewTransactions}>Periksa transaksi</button></> : null}</span></div> : null}</>;
+};
 
 
 export default TransactionFields;

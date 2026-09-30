@@ -325,7 +325,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
   assert.match(dashboard, /\.mobile-balance-visibility \{[^}]*width:\s*var\(--mobile-control-height\);[^}]*min-width:\s*var\(--mobile-control-height\);[^}]*height:\s*var\(--mobile-control-height\);[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(notifications, /\.filter \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
-  assert.match(reports, /@media \(max-width: 820px\)[\s\S]*\.allocationHealthStrip > a \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  assert.match(reports, /@media \(max-width: 820px\)[\s\S]*\.healthReviewAction \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(commitments, /\.cardDetails > summary \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
   assert.match(dashboard, /\.shared-account-pagination button::before \{[^}]*width:\s*22px;[^}]*height:\s*7px;[^}]*transform:\s*scaleX\(\.318\)/);
   assert.match(contextBack, /\.back:focus-visible \{[^}]*outline:\s*3px solid var\(--focus-ring\);/s);

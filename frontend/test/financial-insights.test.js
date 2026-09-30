@@ -84,7 +84,7 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
     source("src/features/reports/ReportsPage.jsx"),
     source("src/features/reports/ReportsPage.module.css"),
   ]);
-  for (const label of ["Selisih bulan ini", "Masuk bulan ini", "Keluar bulan ini", "Saldo awal periode", "Kondisi Alokasi", "Penggunaan Alokasi", "Kebutuhan vs Pengeluaran", "Pengeluaran per kategori", "Transaksi terbaru", "Analisis lengkap", "Rincian lainnya"]) {
+  for (const label of ["Selisih bulan ini", "Masuk bulan ini", "Keluar bulan ini", "Saldo awal periode", "Kondisi Alokasi", "Penggunaan Alokasi", "Kebutuhan vs Pengeluaran", "Pengeluaran per kategori", "Transaksi terbaru", "Analisis lengkap", "Pengeluaran per rekening", "Aktivitas pencatatan"]) {
     assert.match(reports, new RegExp(label));
   }
   assert.match(reports, /allocation_rule_id/);
@@ -109,6 +109,11 @@ test("laporan responsive memakai hierarchy compact, scope Alokasi, dan export te
   assert.match(reports, /const HeroOverview/);
   assert.match(reports, /const PlanningReport/);
   assert.match(reports, /Kondisi Alokasi/);
+  assert.match(reports, /buildAllocationHealthModel/);
+  assert.match(reports, /healthSegments/);
+  assert.match(reports, /3 Alokasi perlu ditinjau|model\.summary/);
+  assert.match(reports, /Buka Transaksi/);
+  assert.doesNotMatch(reports, /Rincian lainnya/);
   assert.doesNotMatch(reports, /AppShell|DesktopModuleDock|DesktopSidebar/);
   assert.match(reportStyles, /prefers-reduced-motion: reduce/);
 });

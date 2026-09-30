@@ -38,7 +38,7 @@ const useGoalCreation = ({ resource, investmentResource, refreshOverview, invali
   const [form, setForm] = useState(emptyGoalForm);
   const [open, setOpen] = useState(false);
   const openCreate = useCallback(() => { setMessage(null); setOpen(true); }, []);
-  const closeCreate = useCallback(() => { if (!createMutation.busy) setOpen(false); }, [createMutation.busy]);
+  const closeCreate = useCallback(() => { if (!createMutation.busy && !createMutation.outcomeUnknown) setOpen(false); }, [createMutation.busy, createMutation.outcomeUnknown]);
   const createGoal = (event) => {
     event.preventDefault();
     setMessage(null);

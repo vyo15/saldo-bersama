@@ -455,3 +455,38 @@ test("parseResponse menolak HTTP sukses yang tidak memenuhi envelope kontrak", a
     (error) => error.code === "INVALID_RESPONSE" && error.requestId === "req-invalid-envelope",
   );
 });
+
+test("ApiError memisahkan requestId diagnostik dari business details", async () => {
+  const { ApiError } = await import("../src/services/api/errors.js");
+  const error = new ApiError("Gagal", { details: { requestId: "req-123", accountId: "acc-1" } });
+  assert.equal(error.requestId, "req-123");
+  assert.deepEqual(error.details, { accountId: "acc-1" });
+});
+
+test("mutation lock tidak membocorkan action teknis dan expose hanya boolean recovery state", async () => {
+  const originalFetch = globalThis.fetch;
+  let attempt = 0;
+  globalThis.fetch = async () => {
+    attempt += 1;
+    if (attempt === 1) throw new Error("connection reset after request");
+    return successfulResponse({ created: true });
+  };
+  try {
+    const { apiClient, hasUnresolvedMutationIntent, isOutcomeUnknownError } = await import("../src/services/api/client.js");
+    apiClient.clearCache();
+    apiClient.setSessionScope("mutation-lock-presentation");
+    const original = { name: "Dana rumah", default_amount: 750000 };
+    await assert.rejects(() => apiClient.request("envelopes.create", original, {}), isOutcomeUnknownError);
+    assert.equal(hasUnresolvedMutationIntent("envelopes.create"), true);
+    await assert.rejects(
+      () => apiClient.request("envelopes.create", { ...original, default_amount: 700000 }, {}),
+      (error) => error.code === "MUTATION_INTENT_LOCKED"
+        && !error.details?.action
+        && !/envelopes\.create|tindakan ini/i.test(error.message),
+    );
+    await apiClient.request("envelopes.create", original, {});
+    assert.equal(hasUnresolvedMutationIntent("envelopes.create"), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

@@ -14,6 +14,7 @@ import { budgetVisualState } from "../../shared/presentation/budget.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { allocationDecoration } from "../allocations/allocationDecorations.js";
 import { downloadFinancialReport } from "./reports.api.js";
+import { buildAllocationHealthModel } from "./reportPresentation.js";
 import styles from "./ReportsPage.module.css";
 
 const TREND_OPTIONS = [1, 3, 6, 12];
@@ -172,7 +173,7 @@ const HeroOverview = ({ summary = {}, scope, trend, period, trendMonths, setTren
       <div className={styles.heroFacts}>{model.facts.map(([label, value]) => <span key={label}>{label} <strong>{typeof value === "number" ? formatCompactRupiah(value) : value}</strong></span>)}</div>
     </section>
     <section className={`${styles.reportPanel} ${styles.categoryPanel}`}>
-      <div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Distribusi pengeluaran pada pilihan saat ini.</p></div></div>
+      <div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Lihat penyumbang pengeluaran terbesar pada pilihan saat ini.</p></div></div>
       <CategoryRows items={categories} />
     </section>
   </div>;
@@ -194,31 +195,33 @@ const CommitmentActivity = ({ activity = {} }) => {
   </section>;
 };
 
-const BreakdownDetails = ({ accountExpenses, creatorExpenses }) => <details className={styles.breakdownDetails}>
-  <summary>Rincian lainnya <span>Rekening & pencatat</span></summary>
-  <div className={styles.breakdownGrid}>
-    <div><h3>Pengeluaran per rekening</h3>{accountExpenses.length ? accountExpenses.map((item) => <p key={item.account_id}><span>{item.label}</span><strong>{formatCompactRupiah(item.amount)}</strong></p>) : <small>Belum ada data.</small>}</div>
-    <div><h3>Aktivitas pencatatan</h3>{creatorExpenses.length ? creatorExpenses.map((item) => <p key={item.user_id}><span>{item.label}</span><strong>{formatCompactRupiah(item.amount)}</strong></p>) : <small>Belum ada data.</small>}<small>Menunjukkan pencatat, bukan penanggung biaya.</small></div>
-  </div>
-</details>;
+const BreakdownPanels = ({ accountExpenses, creatorExpenses }) => <div className={styles.breakdownGrid} aria-label="Rincian rekening dan pencatat">
+  <section className={styles.breakdownPanel}>
+    <h3>Pengeluaran per rekening</h3>
+    {accountExpenses.length ? accountExpenses.map((item) => <p key={item.account_id}><span>{item.label}</span><strong>{formatCompactRupiah(item.amount)}</strong></p>) : <small>Belum ada data.</small>}
+  </section>
+  <section className={styles.breakdownPanel}>
+    <h3>Aktivitas pencatatan</h3>
+    {creatorExpenses.length ? creatorExpenses.map((item) => <p key={item.user_id}><span>{item.label}</span><strong>{formatCompactRupiah(item.amount)}</strong></p>) : <small>Belum ada data.</small>}
+    <small>Menunjukkan pencatat, bukan penanggung biaya.</small>
+  </section>
+</div>;
 
-const AllocationHealthSummary = ({ items = [] }) => {
+const AllocationHealthSummary = ({ items = [], onReview }) => {
   if (!items.length) return null;
-  const counts = items.reduce((result, item) => {
-    const allocated = Number(item.allocated_amount || 0);
-    const used = Number(item.used_amount || 0);
-    const remaining = Number(item.remaining_amount || 0);
-    if (remaining < 0 || used > allocated) result.over += 1;
-    else if (allocated > 0 && used / allocated >= .8) result.attention += 1;
-    else result.safe += 1;
-    return result;
-  }, { safe: 0, attention: 0, over: 0 });
+  const model = buildAllocationHealthModel(items);
   return <section className={styles.allocationHealthStrip} aria-label="Kondisi Alokasi">
-    <div><strong>Kondisi Alokasi</strong><small>{items.length} Alokasi aktif periode ini</small></div>
-    <span data-tone="safe"><strong>{counts.safe}</strong> aman</span>
-    <span data-tone="warning"><strong>{counts.attention}</strong> perhatian</span>
-    <span data-tone="danger"><strong>{counts.over}</strong> melewati</span>
-    <Link to="/perencanaan/kantong">Tinjau <FiChevronRight aria-hidden="true" /></Link>
+    <div className={styles.allocationHealthHeading}>
+      <div><strong>Kondisi Alokasi</strong><small>{model.total} Alokasi aktif periode ini</small></div>
+      <button className={styles.healthReviewAction} type="button" onClick={onReview}>Tinjau <FiChevronRight aria-hidden="true" /></button>
+    </div>
+    <div className={styles.healthSegments} role="img" aria-label={model.ariaLabel}>
+      {model.segments.filter((segment) => segment.count > 0).map((segment) => <i key={segment.key} data-tone={segment.tone} style={{ flexBasis: `${segment.percent}%` }} />)}
+    </div>
+    <div className={styles.healthFooter}>
+      <div className={styles.healthLegend}>{model.segments.map((segment) => <span key={segment.key} data-tone={segment.tone}><i aria-hidden="true" /><strong>{segment.count}</strong> {segment.label}</span>)}</div>
+      <strong className={styles.healthInsight} data-tone={model.summaryTone}>{model.summary}</strong>
+    </div>
   </section>;
 };
 
@@ -231,27 +234,39 @@ const PeriodBalanceContext = ({ summary = {} }) => {
   </div>;
 };
 
-const PlanningReport = ({ data, scope, setAllocationRuleId }) => <div className={`${styles.planningGrid}${scope.mode === "allocation" ? ` ${styles.singlePlanning}` : ""}`}>
-  {scope.mode === "all" ? <section className={`${styles.reportPanel} ${styles.planningPanel}`}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Buka Alokasi</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : null}
+const PlanningReport = ({ data, scope, setAllocationRuleId, allocationSectionRef }) => <div className={`${styles.planningGrid}${scope.mode === "allocation" ? ` ${styles.singlePlanning}` : ""}`}>
+  {scope.mode === "all" ? <section ref={allocationSectionRef} tabIndex="-1" className={`${styles.reportPanel} ${styles.planningPanel}`}><div className={styles.sectionHeading}><div><h2>Penggunaan Alokasi</h2><p>Dana terpakai dan sisa pada periode ini.</p></div><Link className={styles.headingLink} to="/perencanaan/kantong">Buka Alokasi</Link></div><AllocationRows items={data.allocationOptions || []} onSelect={setAllocationRuleId} /></section> : null}
   <section className={`${styles.reportPanel} ${styles.planningPanel}`}><div className={styles.sectionHeading}><div><h2>{scope.mode === "all" ? "Kebutuhan vs Pengeluaran" : `Kebutuhan di ${scope.label}`}</h2><p>Rencana dibanding realisasi pengeluaran pada periode ini.</p></div></div><BudgetRows budgets={data.budgets || []} /></section>
 </div>;
 
 const ReportsContent = ({ data, period, setPeriod, trendMonths, setTrendMonths, allocationRuleId, setAllocationRuleId, refreshError, reload }) => {
   const [transactionsExpanded, setTransactionsExpanded] = useState(false);
+  const analysisRef = useRef(null);
+  const allocationSectionRef = useRef(null);
   const scope = data.reportScope || { mode: "all", label: "Semua Alokasi" };
+  const reviewAllocationHealth = useCallback(() => {
+    if (!analysisRef.current) return;
+    analysisRef.current.open = true;
+    requestAnimationFrame(() => {
+      const target = allocationSectionRef.current || analysisRef.current;
+      target.scrollIntoView({ block: "center" });
+      target.focus?.({ preventScroll: true });
+    });
+  }, []);
+
   return <div className={styles.page}>
     <RefreshWarning error={refreshError} onRetry={reload} />
     <ReportHeader period={period} setPeriod={setPeriod} trendMonths={trendMonths} allocationRuleId={allocationRuleId} setAllocationRuleId={setAllocationRuleId} allocationOptions={data.allocationOptions || []} />
     <HeroOverview summary={data.reportSummary} scope={scope} trend={data.trend} period={period} trendMonths={trendMonths} setTrendMonths={setTrendMonths} categories={data.categoryExpenses || []} />
-    {scope.mode === "all" ? <AllocationHealthSummary items={data.allocationOptions || []} /> : null}
-    <section className={`${styles.reportPanel} ${styles.transactionPanel}`}><div className={styles.sectionHeading}><div><h2>Transaksi terbaru</h2></div><Link className={styles.headingLink} to="/transaksi">Lihat semua</Link></div><TransactionRows items={data.reportTransactions || []} expanded={transactionsExpanded} onToggle={() => setTransactionsExpanded((value) => !value)} /></section>
-    <details className={styles.analysisDetails}>
+    {scope.mode === "all" ? <AllocationHealthSummary items={data.allocationOptions || []} onReview={reviewAllocationHealth} /> : null}
+    <section className={`${styles.reportPanel} ${styles.transactionPanel}`}><div className={styles.sectionHeading}><div><h2>Transaksi terbaru</h2></div><Link className={styles.headingLink} to="/transaksi">Buka Transaksi</Link></div><TransactionRows items={data.reportTransactions || []} expanded={transactionsExpanded} onToggle={() => setTransactionsExpanded((value) => !value)} /></section>
+    <details className={styles.analysisDetails} ref={analysisRef}>
       <summary><span><strong>Analisis lengkap</strong><small>Alokasi, Kebutuhan, Kewajiban, rekening & pencatat</small></span><FiChevronRight aria-hidden="true" /></summary>
       <div className={styles.analysisContent}>
         <PeriodBalanceContext summary={data.reportSummary} />
-        <PlanningReport data={data} scope={scope} setAllocationRuleId={setAllocationRuleId} />
+        <PlanningReport data={data} scope={scope} setAllocationRuleId={setAllocationRuleId} allocationSectionRef={allocationSectionRef} />
         <CommitmentActivity activity={data.commitmentActivity || {}} />
-        <BreakdownDetails accountExpenses={data.accountExpenses || []} creatorExpenses={data.creatorExpenses || []} />
+        <BreakdownPanels accountExpenses={data.accountExpenses || []} creatorExpenses={data.creatorExpenses || []} />
       </div>
     </details>
   </div>;

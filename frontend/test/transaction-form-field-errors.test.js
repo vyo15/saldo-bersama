@@ -40,3 +40,22 @@ test("edit jenis transaksi dan cost sharing membersihkan error turunan yang rele
   assert.equal(next.transaction_date, errors.transaction_date, "Tanggal tetap harus diperbaiki sendiri jika masih invalid.");
   for (const key of ["transaction_type", "source_account_id", "destination_account_id", "category_id", "envelope_period_id", "cost_share_mode", "cost_share_percentages", "description"]) assert.equal(next[key], undefined);
 });
+
+test("metadata API tidak pernah masuk ke state validasi field transaksi", async () => {
+  const { sanitizeTransactionFieldErrors, transactionValidationMessages } = await import("../src/features/transactions/transactionFormFieldErrors.js");
+  const errors = {
+    category_id: "Pilih kategori.",
+    action: "transactions.create",
+    requestId: "req-secret-ish",
+    accountId: "acc-1",
+    remainingAmount: 125000,
+    currentVersion: 4,
+  };
+  assert.deepEqual(sanitizeTransactionFieldErrors(errors), { category_id: "Pilih kategori." });
+  assert.deepEqual(transactionValidationMessages(errors), ["Pilih kategori."]);
+});
+
+test("clear field errors juga membuang rogue metadata lama agar banner tidak stale", () => {
+  const errors = { amount: "Nominal wajib diisi", action: "transactions.create", requestId: "req-1" };
+  assert.deepEqual(clearTransactionFieldErrors(errors, "amount"), {});
+});

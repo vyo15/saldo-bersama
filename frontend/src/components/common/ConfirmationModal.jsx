@@ -19,6 +19,15 @@ const confirmationRequirementHint = ({ remainingSeconds, reasonReady, confirmati
   return "";
 };
 
+const confirmationCountdownAnnouncement = ({ countdownSeconds, remainingSeconds }) => {
+  if (countdownSeconds <= 0) return "";
+  return remainingSeconds > 0
+    ? "Tombol konfirmasi akan aktif setelah jeda keamanan."
+    : "Jeda keamanan selesai. Lanjutkan verifikasi yang diperlukan.";
+};
+
+const visibleConfirmationRequirementHint = ({ retryOnly, requirementHint }) => (retryOnly ? "" : requirementHint);
+
 const useCountdownReset = ({
   open, countdownSeconds, acknowledgementItems, setReason, setConfirmation, setAcknowledged, setAcknowledgedItems,
   setRemainingSeconds, setValidationError, submitLockRef,
@@ -142,11 +151,11 @@ const ConfirmationFields = ({
   </>
 );
 
-const ConfirmationFooter = ({ close, isPending, formId, tone, confirmDisabled, remainingSeconds, confirmLabel, cancelLabel }) => (
+const ConfirmationFooter = ({ close, isPending, retryOnly, retryLabel, formId, tone, confirmDisabled, remainingSeconds, confirmLabel, cancelLabel }) => (
   <>
-    <Button type="button" onClick={close} disabled={isPending}>{cancelLabel}</Button>
+    <Button type="button" onClick={close} disabled={isPending || retryOnly}>{cancelLabel}</Button>
     <Button type="submit" form={formId} variant={tone === "danger" ? "danger" : "primary"} disabled={confirmDisabled}>
-      {isPending ? "Memproses..." : remainingSeconds > 0 ? `Tunggu ${remainingSeconds} detik` : confirmLabel}
+      {isPending ? "Memproses..." : retryOnly ? retryLabel : remainingSeconds > 0 ? `Tunggu ${remainingSeconds} detik` : confirmLabel}
     </Button>
   </>
 );
@@ -200,6 +209,7 @@ const ConfirmationModal = (props) => {
     reasonPlaceholder = "", reasonRequired = false, requireReason = false, confirmationLabel = "Ketik frasa konfirmasi",
     expectedConfirmation = "", acknowledgementLabel = "", acknowledgementItems: acknowledgementItemsProp = EMPTY_ACKNOWLEDGEMENT_ITEMS, countdownSeconds = 0, pending = false, busy = false,
     error = null, tone = "danger", children, onClose, onCancel, onConfirm,
+    retryOnly = false, retryLabel = "Coba lagi data yang sama",
   } = props;
   const formId = useId();
   const acknowledgementItems = useMemo(
@@ -227,11 +237,8 @@ const ConfirmationModal = (props) => {
   });
 
   const requirementHint = confirmationRequirementHint({ remainingSeconds, reasonReady, confirmationReady, acknowledgementReady });
-  const countdownAnnouncement = countdownSeconds > 0
-    ? remainingSeconds > 0
-      ? "Tombol konfirmasi akan aktif setelah jeda keamanan."
-      : "Jeda keamanan selesai. Lanjutkan verifikasi yang diperlukan."
-    : "";
+  const countdownAnnouncement = confirmationCountdownAnnouncement({ countdownSeconds, remainingSeconds });
+  const visibleRequirementHint = visibleConfirmationRequirementHint({ retryOnly, requirementHint });
   const submit = (event) => submitConfirmation({
     event, reason, mustProvideReason, confirmationReady, acknowledgementReady, reasonLabel,
     remainingSeconds, submitLockRef, setValidationError, onConfirm, confirmation,
@@ -242,38 +249,40 @@ const ConfirmationModal = (props) => {
     <Modal
       open={open}
       onClose={close}
-      dismissible={!isPending}
+      dismissible={!isPending && !retryOnly}
       title={title}
       description={description}
       size="sm"
-      footer={<ConfirmationFooter close={close} isPending={isPending} formId={formId} tone={tone} confirmDisabled={confirmDisabled} remainingSeconds={remainingSeconds} confirmLabel={confirmLabel} cancelLabel={cancelLabel} />}
+      footer={<ConfirmationFooter close={close} isPending={isPending} retryOnly={retryOnly} retryLabel={retryLabel} formId={formId} tone={tone} confirmDisabled={confirmDisabled} remainingSeconds={remainingSeconds} confirmLabel={confirmLabel} cancelLabel={cancelLabel} />}
     >
       <form id={formId} className="stack-form" onSubmit={submit} onKeyDown={blockAccidentalEnter}>
         {countdownAnnouncement ? <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{countdownAnnouncement}</span> : null}
-        <ConfirmationFields
-          formId={formId}
-          children={children}
-          reason={reason}
-          setReason={setReason}
-          reasonLabel={reasonLabel}
-          reasonPlaceholder={reasonPlaceholder}
-          mustProvideReason={mustProvideReason}
-          confirmation={confirmation}
-          setConfirmation={setConfirmation}
-          confirmationLabel={confirmationLabel}
-          expectedConfirmation={expectedConfirmation}
-          requiresTypedConfirmation={requiresTypedConfirmation}
-          acknowledged={acknowledged}
-          setAcknowledged={setAcknowledged}
-          acknowledgementLabel={acknowledgementLabel}
-          acknowledgementItems={acknowledgementItems}
-          acknowledgedItems={acknowledgedItems}
-          setAcknowledgedItems={setAcknowledgedItems}
-          requiresAcknowledgement={requiresAcknowledgement}
-          requirementHint={requirementHint}
-          validationError={validationError}
-          error={error}
-        />
+        <fieldset className="confirmation-retry-lock" disabled={retryOnly}>
+          <ConfirmationFields
+            formId={formId}
+            children={children}
+            reason={reason}
+            setReason={setReason}
+            reasonLabel={reasonLabel}
+            reasonPlaceholder={reasonPlaceholder}
+            mustProvideReason={mustProvideReason}
+            confirmation={confirmation}
+            setConfirmation={setConfirmation}
+            confirmationLabel={confirmationLabel}
+            expectedConfirmation={expectedConfirmation}
+            requiresTypedConfirmation={requiresTypedConfirmation}
+            acknowledged={acknowledged}
+            setAcknowledged={setAcknowledged}
+            acknowledgementLabel={acknowledgementLabel}
+            acknowledgementItems={acknowledgementItems}
+            acknowledgedItems={acknowledgedItems}
+            setAcknowledgedItems={setAcknowledgedItems}
+            requiresAcknowledgement={requiresAcknowledgement}
+            requirementHint={visibleRequirementHint}
+            validationError={validationError}
+            error={error}
+          />
+        </fieldset>
       </form>
     </Modal>
   );

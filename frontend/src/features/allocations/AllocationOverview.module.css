@@ -565,45 +565,32 @@
   color: var(--text-muted);
 }
 
-/* Empty state uses the character art as a visual anchor, not another heavy card. */
-.allocation-empty {
-  min-height: 112px;
-  place-self: stretch;
-}
-
-.allocation-empty p {
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-}
-
+/* Empty state keeps the character artwork and message inside one canonical boundary. */
 .allocation-empty-state {
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border));
+  min-height: 0;
+  padding: 18px 16px 20px;
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
   border-radius: 20px;
-  display: grid;
-  justify-items: center;
-  gap: 10px;
+  gap: 8px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, var(--primary-soft)), var(--surface));
-  text-align: center;
 }
 
-.allocation-empty-state img {
+.allocation-empty-state > img {
   width: min(260px, 100%);
   height: auto;
+  margin-bottom: 2px;
   object-fit: contain;
 }
 
-.allocation-empty-state div {
-  display: grid;
-  gap: 8px;
-}
-
-.allocation-empty-state strong {
+.allocation-empty-state h3 {
+  margin: 0;
   font-size: 15px;
+  line-height: 1.35;
 }
 
 .allocation-empty-state p {
   max-width: 38ch;
+  margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.5;
@@ -773,14 +760,15 @@
   }
 
   .allocation-empty-state {
-    padding: 8px 12px 14px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
+    min-height: 0;
+    padding: 14px 14px 18px;
+    border-radius: var(--mobile-card-radius);
+    gap: 7px;
   }
 
-  .allocation-empty-state img {
-    width: min(252px, 78vw);
+  .allocation-empty-state > img {
+    width: min(246px, 74vw);
+    margin-bottom: 1px;
   }
 }
 

@@ -25,7 +25,9 @@
     display: none;
   }
 
-  .mobileHeader {
+  .page > .mobileHeader {
+    width: calc(100% + (var(--mobile-page-gutter) * 2));
+    max-width: none;
     min-height: 52px;
     margin-inline: calc(var(--mobile-page-gutter) * -1);
     padding-inline: calc(var(--mobile-page-gutter) - 4px);

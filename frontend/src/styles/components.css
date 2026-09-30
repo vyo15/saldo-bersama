@@ -394,3 +394,6 @@ input[type="file"] {
 @media (prefers-reduced-motion: reduce) { [data-native-enter] { animation: none; } }
 
 /* Compact hierarchy: headings stay clear without consuming showcase-like space. */
+
+.confirmation-retry-lock { min-width: 0; margin: 0; padding: 0; border: 0; display: contents; }
+.mutation-retry-lock { min-width: 0; margin: 0; padding: 0; border: 0; display: contents; }

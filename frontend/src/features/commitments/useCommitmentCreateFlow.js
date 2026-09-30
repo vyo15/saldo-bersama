@@ -48,12 +48,12 @@ const useCommitmentCreateFlow = ({
   const workflowHandled = useRef("");
   const resetMutation = mutation.reset;
   const close = () => {
-    if (mutation.busy) return;
+    if (mutation.busy || mutation.outcomeUnknown) return;
     setOpen(false);
     setStepError("");
     setStage("type");
   };
-  const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: mutation.busy });
+  const guard = useUnsavedChangesGuard({ open, value: form, onClose: close, blocked: mutation.busy || mutation.outcomeUnknown });
 
   useEffect(() => {
     if (resourceStatus !== "ready" || location.state?.workflowAction !== "create-commitment") return;
