@@ -13,7 +13,7 @@ test("lifecycle action membedakan hard-delete, archive, dan penghentian Kewajiba
     read("src/features/budgets/BudgetDialogLayer.jsx"),
     readMany(["src/features/recurring/RecurringSchedule.jsx", "src/features/recurring/RecurringDialogs.jsx"]),
     readMany(["src/features/goals/components/GoalCards.jsx", "src/features/goals/components/GoalDialogs.jsx"]),
-    read("src/features/commitments/CommitmentsPage.jsx"),
+    readMany(["src/features/commitments/CommitmentsPage.jsx", "src/features/commitments/CommitmentDialogLayer.jsx"]),
     read("src/features/commitments/commitments.api.js"),
   ]);
 

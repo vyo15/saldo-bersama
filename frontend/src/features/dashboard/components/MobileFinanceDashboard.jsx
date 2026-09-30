@@ -11,9 +11,9 @@ import {
 } from "react-icons/fi";
 import { useLayoutEffect, useRef } from "react";
 import { Link } from "react-router";
-import familyHero from "../../../assets/dashboard/family-hero.webp";
-import foliageLeft from "../../../assets/dashboard/foliage-left.webp";
-import foliageRight from "../../../assets/dashboard/foliage-right.webp";
+import familyHero from "../../../assets/dashboard/family-hero.avif";
+import foliageLeft from "../../../assets/dashboard/foliage-left.avif";
+import foliageRight from "../../../assets/dashboard/foliage-right.avif";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { financialNotificationFact, financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";

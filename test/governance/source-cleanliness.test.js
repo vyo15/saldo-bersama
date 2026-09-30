@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const CODE_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".cjs"]);
-const IMAGE_EXTENSIONS = new Set([".webp", ".png", ".jpg", ".jpeg", ".svg"]);
+const IMAGE_EXTENSIONS = new Set([".webp", ".avif", ".png", ".jpg", ".jpeg", ".svg"]);
 const toPosixPath = (value) => value.split(path.sep).join("/");
 
 const walk = async (directory) => {

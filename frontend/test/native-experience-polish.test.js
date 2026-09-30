@@ -198,7 +198,7 @@ test("micro continuity menjaga nominal final langsung dan motion reduced-motion 
 
 test("planning forms yang dapat kehilangan input mengikuti lifecycle guard canonical", async () => {
   const files = [
-    "src/features/commitments/CommitmentsPage.jsx",
+    "src/features/commitments/CommitmentDialogLayer.jsx",
     "src/features/allocations/AllocationFundingFlow.jsx",
     "src/features/reminders/ManualReminderModal.jsx",
   ];

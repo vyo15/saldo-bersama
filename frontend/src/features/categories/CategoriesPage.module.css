@@ -5,8 +5,29 @@
 }
 
 .categoryPage :global(.page-header) {
+  position: relative;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  isolation: isolate;
+}
+
+.categoryPage :global(.page-header)::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  right: clamp(6.5rem, 14vw, 9rem);
+  bottom: -10px;
+  width: clamp(3.5rem, 7vw, 5.25rem);
+  height: clamp(3.5rem, 7vw, 5.25rem);
+  background: url("../../assets/allocation-ui/category-picker.avif") center / contain no-repeat;
+  filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--shadow-ink) 10%, transparent));
+  pointer-events: none;
+}
+
+.categoryPage :global(.page-header__copy),
+.categoryPage :global(.page-header__actions) {
+  position: relative;
+  z-index: 1;
 }
 
 .categoryPage :global(.page-header__actions) {
@@ -701,4 +722,21 @@
   .categoryItem,
   .categorySectionChevron,
   .iconOption { transition: none; }
+}
+
+
+@media (max-width: 460px) {
+  .categoryPage :global(.page-header)::after {
+    right: 6rem;
+    bottom: -6px;
+    width: 3.25rem;
+    height: 3.25rem;
+    opacity: .94;
+  }
+}
+
+@media (max-width: 340px) {
+  .categoryPage :global(.page-header)::after {
+    display: none;
+  }
 }

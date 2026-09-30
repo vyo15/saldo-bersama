@@ -17,9 +17,9 @@ import { ACCOUNT_AVAILABLE_BALANCE_HINT } from "../../../shared/presentation/acc
 import { scrollIntoViewWithMotionPreference } from "../../../shared/motion.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
-import familyHero from "../../../assets/dashboard/family-hero.webp";
-import foliageLeft from "../../../assets/dashboard/foliage-left.webp";
-import foliageRight from "../../../assets/dashboard/foliage-right.webp";
+import familyHero from "../../../assets/dashboard/family-hero.avif";
+import foliageLeft from "../../../assets/dashboard/foliage-left.avif";
+import foliageRight from "../../../assets/dashboard/foliage-right.avif";
 import { dashboardOwnershipBreakdown, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";

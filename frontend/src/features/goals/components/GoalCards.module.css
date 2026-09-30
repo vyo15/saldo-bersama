@@ -7,7 +7,21 @@
 .goal-grid > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
 .goal-grid > :nth-last-child(2):nth-child(3n + 1),
 .goal-grid > :last-child:nth-child(3n + 2) { grid-column: span 3; }
-.goal-grid__empty { grid-column: 1 / -1; }
+.goal-grid__empty {
+  position: relative;
+  grid-column: 1 / -1;
+  overflow: hidden;
+}
+.goal-grid__empty::before {
+  content: "";
+  width: min(12rem, 46vw);
+  height: min(9rem, 34vw);
+  margin-bottom: 2px;
+  background: url("../../../assets/allocation-ui/saving-female.avif") center / contain no-repeat;
+  filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--shadow-ink) 12%, transparent));
+  pointer-events: none;
+}
+.goal-grid__empty > svg { display: none; }
 
 .goal-summary {
   position: relative;
@@ -116,7 +130,11 @@
   .goal-summary__description { font-size: 12px; }
   .goal-summary__art { right: -1%; bottom: .2rem; width: min(8.5rem, 31%); max-height: 8.5rem; opacity: .42; }
 }
-@media (max-width: 580px) { .goal-grid { grid-template-columns: 1fr; } }
+@media (max-width: 580px) {
+  .goal-grid { grid-template-columns: 1fr; }
+  .goal-grid__empty { min-height: 18rem; }
+  .goal-grid__empty::before { width: min(10rem, 48vw); height: min(7.5rem, 36vw); }
+}
 @media (max-width: 420px) {
   .goal-summary__content { width: 68%; }
   .goal-summary__art { right: -3%; width: min(7.2rem, 29%); }

@@ -15,8 +15,9 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
   assert.doesNotMatch(planning, /role="tablist"|planning-tab-/);
   assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
   assert.match(overview, /Dana yang bisa dialokasikan/);
-  assert.match(overview, /Total dana bebas lintas rekening/);
-  assert.match(overview, /Setiap Alokasi tetap terikat ke satu rekening sumber/);
+  assert.match(overview, /Dana siap dialokasikan/);
+  assert.match(overview, /fundingAccountsForItems\(accounts, fundableItems\)/);
+  assert.match(overview, /Hanya dana bebas dari rekening sumber Alokasi aktif/);
   assert.match(overview, /Lihat \{sources\.length\} rekening sumber/);
   assert.doesNotMatch(overview, /wallet\.webp/);
 });

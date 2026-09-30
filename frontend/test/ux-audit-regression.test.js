@@ -104,11 +104,12 @@ test("dialog Investasi dimuat lazy agar route mempunyai headroom build budget", 
 });
 
 test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk", async () => {
-  const [allocations, allocationActions, members, transactions, login] = await Promise.all([
+  const [allocations, allocationActions, members, transactions, commitments, login] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/allocationActionRunners.js"),
     read("src/features/settings/MembersSettingsPage.jsx"),
     read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/commitments/CommitmentsPage.jsx"),
     read("src/features/auth/LoginPage.jsx"),
   ]);
   assert.doesNotMatch(allocations, /AllocationSetupLayer|setupCreated/);
@@ -128,6 +129,8 @@ test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk
   assert.match(transactions, /const TransactionLifecycleModals = lazy\(\(\) => import\("\.\/components\/TransactionLifecycleModals\.jsx"\)\)/);
   assert.doesNotMatch(transactions, /import TransactionFilters from/);
   assert.doesNotMatch(transactions, /import TransactionLifecycleModals from/);
+  assert.match(commitments, /const CommitmentDialogLayer = lazy\(\(\) => import\("\.\/CommitmentDialogLayer\.jsx"\)\)/);
+  assert.doesNotMatch(commitments, /import CommitmentDialogLayer from/);
   assert.match(login, /const DesktopLoginLayout = lazy\(\(\) => import\("\.\/components\/LoginDesktopLayout\.jsx"\)\)/);
   assert.match(login, /const MobileLoginLayout = lazy\(\(\) => import\("\.\/components\/LoginMobileLayout\.jsx"\)\)/);
   assert.doesNotMatch(login, /import DesktopLoginLayout from/);

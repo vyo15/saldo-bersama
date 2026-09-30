@@ -59,7 +59,7 @@ export const isCanonicalSourceFile = (file) => {
   if (rootSegment === "test") return [".js", ".mjs"].includes(extension);
   if (rootSegment === "frontend") {
     if (extension === ".json") return normalized === "frontend/package.json";
-    return [".js", ".jsx", ".css", ".html", ".txt", ".webmanifest", ".webp", ".png", ".ico", ".svg"].includes(extension);
+    return [".js", ".jsx", ".css", ".html", ".txt", ".webmanifest", ".webp", ".avif", ".png", ".ico", ".svg"].includes(extension);
   }
   return false;
 };

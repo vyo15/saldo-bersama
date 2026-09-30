@@ -239,7 +239,7 @@ const CreateEnvelopeTemplatePicker = ({ value, onSelect }) => <fieldset classNam
   <legend>Pilih kategori alokasi</legend>
   <div className={allocationClass("allocation-template-picker__grid")}>
     {allocationQuickTemplates.map((template) => <button key={template.key} type="button" className={allocationClass(`allocation-template-picker__item${value === template.key ? " is-active" : ""}`)} onClick={() => onSelect(template)}>
-      <span className={allocationClass("allocation-template-picker__art")}><img src={template.art} width="1448" height="1086" alt="" decoding="async" /></span>
+      <span className={allocationClass("allocation-template-picker__art")}><img src={template.art} width="512" height="384" alt="" decoding="async" /></span>
       <span className={allocationClass("allocation-template-picker__copy")}><strong>{template.label}</strong><small>{template.hint}</small></span>
     </button>)}
   </div>
@@ -320,8 +320,8 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
     discardGuard={guard}
     discardSubject="Alokasi Dana"
     dismissible={!createMutation.busy}
-    title="Buat Alokasi Baru"
-    description={step === 1 ? "Pilih kategori alokasi, tentukan nama, lalu pilih rekening sumber." : "Susun kebutuhan awal agar dana bisa langsung dipakai dengan rapi."}
+    title="Alokasi baru"
+    description={step === 1 ? "Langkah 1 dari 2 · Pilih kategori alokasi, tentukan nama, lalu pilih rekening sumber." : "Langkah 2 dari 2 · Susun kebutuhan awal agar dana bisa langsung dipakai dengan rapi."}
     headerBackAction={step === 2 ? { label: "Kembali ke informasi Alokasi", onClick: () => setStep(1), disabled: createMutation.busy } : null}
     footer={footer}
   >

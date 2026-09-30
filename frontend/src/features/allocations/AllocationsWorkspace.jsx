@@ -14,6 +14,7 @@ import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain
 import { filterByOwnership, hasSameAssignee } from "../../domain/ownership.js";
 import { allocationClass } from "./allocationStyles.js";
 import { createAllocationNeedDraft } from "./allocationNeedDraft.js";
+import { fundingAccountsForItems } from "./allocationFundingModel.js";
 import { useAllocationCommitmentPlanNavigation, useAllocationDashboardCreateWorkflow, useAllocationFundingNavigation } from "./allocationWorkflowNavigation.js";
 import AllocationNoticesLayer from "./AllocationNoticesLayer.jsx";
 import { scrollWindowToWithMotionPreference } from "../../shared/motion.js";
@@ -321,7 +322,7 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const allocationActor = allocationActorFor(bootstrap, user);
   const view = useAllocationViewData({ resource, budgetResource, recurringResource, commitmentResource, bootstrap, overview, usersResource, move, administratorMode, allocationActor });
   const canCreate = view.accounts.length > 0;
-  const canFund = view.activeItems.some((item) => item.can_adjust && item.source_account_id && view.accounts.some((account) => account.account_id === item.source_account_id && Number(account.available_balance ?? account.balance ?? 0) > 0));
+  const canFund = fundingAccountsForItems(view.accounts, view.activeItems.filter((item) => item.can_adjust && item.source_account_id)).length > 0;
   const detailItem = view.activeItems.find((item) => item.envelope_rule_id === detailRuleId) || null;
   const createMove = useAllocationCreateMove({ resource, commitmentResource, refreshOverview, invalidate, createMutation, moveMutation, createForm, createNeeds, setCreateForm, resetCreateNeeds: () => setCreateNeeds(defaultCreateNeeds()), move, setMove, lookup: view.lookup, notify, setMessage, period, onCreated: (created) => {
     setCreateOpen(false);

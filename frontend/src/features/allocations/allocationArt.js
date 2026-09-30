@@ -1,9 +1,9 @@
-import heroCouple from "../../assets/allocation-ui/hero-couple.png";
-import emptyState from "../../assets/allocation-ui/empty-state.png";
-import categoryPicker from "../../assets/allocation-ui/category-picker.png";
-import successState from "../../assets/allocation-ui/success-state.png";
-import planningMale from "../../assets/allocation-ui/planning-male.png";
-import savingFemale from "../../assets/allocation-ui/saving-female.png";
+import heroCouple from "../../assets/allocation-ui/hero-couple.avif";
+import emptyState from "../../assets/allocation-ui/empty-state.avif";
+import categoryPicker from "../../assets/allocation-ui/category-picker.avif";
+import successState from "../../assets/allocation-ui/success-state.avif";
+import planningMale from "../../assets/allocation-ui/planning-male.avif";
+import savingFemale from "../../assets/allocation-ui/saving-female.avif";
 
 export const allocationArt = Object.freeze({
   heroCouple,
