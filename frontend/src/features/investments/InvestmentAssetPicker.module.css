@@ -169,3 +169,13 @@
 @media (prefers-reduced-motion: reduce) {
   .option { transition: none; }
 }
+
+/* Instrument identity stays readable in mobile pickers. */
+@media (max-width: 820px) {
+  .copy > span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

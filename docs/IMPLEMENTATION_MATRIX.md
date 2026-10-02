@@ -72,6 +72,6 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 
 - DB: migration `023_shopping_lists.sql`, schema v25.
 - API: shopping detail/suggestion/item mutations/atomic checkout/by-transaction.
-- UI: entry point Kebutuhan, responsive list, item editor, shopping mode, checkout, success, transaction detail.
+- UI: capability opt-in per Kebutuhan melalui switch create/edit/batch; entry point hanya muncul saat aktif, responsive list, item editor, shopping mode, checkout, success, transaction detail.
 - Ops: cache/sync invalidation, backup/restore/reset/export, lifecycle dependency.
 - Governance: RFC-0020 dan dokumentasi kontrak terkait.

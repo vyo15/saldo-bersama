@@ -425,3 +425,14 @@
     transition: none;
   }
 }
+
+/* Mobile readability: selected financial/entity labels may grow instead of being silently truncated. */
+@media (max-width: 820px) {
+  .triggerValue,
+  .triggerMeta {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

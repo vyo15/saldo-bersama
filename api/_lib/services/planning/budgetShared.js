@@ -2,6 +2,8 @@ import { monthBounds } from "../core.js";
 
 export const BUDGET_IDENTITY_SQL = "period_key=? AND lower(trim(name))=lower(trim(?)) AND scope=? AND COALESCE(owner_user_id,'')=COALESCE(?,'') AND COALESCE(envelope_rule_id,'')=COALESCE(?,'')";
 
+export const BUDGET_SHOPPING_HISTORY_RETENTION_REASON = "PERIOD_CLOSED_SHOPPING_HISTORY";
+
 export const budgetIdentityArgs = ({ period_key, name, scope, owner_user_id, envelope_rule_id }) => [period_key, name, scope, owner_user_id, envelope_rule_id || null];
 
 const hasAmbiguousUnlinkedUsage = async (db, budget) => {

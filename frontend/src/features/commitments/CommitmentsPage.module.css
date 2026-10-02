@@ -261,3 +261,14 @@
     border-color: transparent;
   }
 }
+
+/* Kewajiban facts and progress are financial decision text, so narrow screens reflow them. */
+@media (max-width: 820px) {
+  .meta dd,
+  .progressMeta strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

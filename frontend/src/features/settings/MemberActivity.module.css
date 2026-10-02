@@ -130,3 +130,15 @@
   .memberActivityItem { grid-template-columns: 2.35rem minmax(0, 1fr); }
   .memberActivityItemValue { grid-column: 2; justify-items: start; }
 }
+
+/* Member activity identity can wrap on mobile instead of hiding names/details. */
+@media (max-width: 820px) {
+  .memberActivityItemCopy strong,
+  .memberActivityItemCopy small,
+  .memberActivityItemCopy span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

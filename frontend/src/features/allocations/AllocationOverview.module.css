@@ -923,3 +923,17 @@
     }
   }
 }
+
+/* Planning list identity and source metadata may reflow on mobile instead of becoming ambiguous ellipses. */
+@media (max-width: 820px) {
+  .allocation-funding-summary__source-row strong,
+  .planning-active-row__title,
+  .planning-active-row__meta,
+  .planning-active-row__sub,
+  .planning-create-option__copy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

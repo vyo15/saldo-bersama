@@ -160,3 +160,13 @@
     background: transparent;
   }
 }
+
+/* Target names are primary entities and may occupy multiple lines on mobile. */
+@media (max-width: 820px) {
+  .goal-card__heading h2 {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

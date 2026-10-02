@@ -549,3 +549,16 @@
   gap: 12px;
   background: color-mix(in srgb, var(--surface-soft) 54%, var(--surface));
 }
+
+/* Composer selections are part of the transaction decision; selected identity must stay readable. */
+@media (max-width: 820px) {
+  .typeSelector label > span > span:last-child,
+  .detailValue,
+  .detailMeta,
+  .needLocked strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

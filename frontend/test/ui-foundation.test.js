@@ -46,8 +46,8 @@ test("Card exposes semantic surface variants without removing the default outlin
   assert.match(card, /surface = "outlined"/);
   assert.match(card, /data-surface=\{resolvedSurface\}/);
   assert.match(css, /\.surfaceFlat[\s\S]*border-color:\s*transparent[\s\S]*background:\s*transparent/);
-  assert.match(css, /\.surfaceTonal[\s\S]*background:\s*var\(--ui-surface-soft\)/);
-  assert.match(css, /\.surfaceElevated[\s\S]*box-shadow:\s*var\(--shadow-surface\)/);
+  assert.match(css, /\.surfaceTonal[\s\S]*background:\s*var\(--ui-surface-section\)/);
+  assert.match(css, /\.surfaceElevated[\s\S]*box-shadow:\s*var\(--shadow-section\)/);
 });
 
 test("semantic primitives keep accessibility and avoid dynamic inline layout styling", async () => {
@@ -255,8 +255,15 @@ test("design tokens expose shared control, motion, and layer contracts", async (
     "--layer-modal",
     "--shadow-control",
     "--shadow-surface",
+    "--shadow-section",
+    "--shadow-navigation",
     "--shadow-hero",
     "--shadow-floating",
+    "--surface-section",
+    "--surface-section-strong",
+    "--surface-translucent",
+    "--divider-soft",
+    "--divider-strong",
     "--brand-teal-600",
     "--brand-emerald-600",
     "--brand-ocean-700",
@@ -266,6 +273,23 @@ test("design tokens expose shared control, motion, and layer contracts", async (
     "--radius-surface",
     "--radius-hero",
   ]) assert.match(tokens, new RegExp(`${token}:`));
+});
+
+test("editorial app theme keeps tonal depth and rule-based mobile hierarchy in both themes", async () => {
+  const [tokens, dashboard, responsive] = await Promise.all([
+    read("src/styles/tokens.css"),
+    read("src/features/dashboard/DashboardMobile.module.css"),
+    read("src/styles/responsive.css"),
+  ]);
+
+  assert.match(tokens, /--page:\s*#edf5f6;/);
+  assert.match(tokens, /--surface-soft:\s*#edf7f5;/);
+  assert.match(tokens, /:root\[data-theme="dark"\][\s\S]*--surface-section:/);
+  assert.match(dashboard, /\.mobile-family-hero[\s\S]*box-shadow:\s*var\(--shadow-hero\)/);
+  assert.match(dashboard, /\.mobile-quick-section > h2::after[\s\S]*background:\s*var\(--divider-soft\)/);
+  assert.match(dashboard, /\.mobile-finance-summary\.mobile-reference-summary[\s\S]*background:\s*var\(--surface-section-strong\)/);
+  assert.match(dashboard, /\.mobile-finance-section\.mobile-reference-panel[\s\S]*border:\s*0[\s\S]*background:\s*transparent/);
+  assert.match(responsive, /\.mobile-navigation \{[^}]*border-top:\s*1px solid var\(--divider-soft\);[^}]*box-shadow:\s*var\(--shadow-navigation\);/s);
 });
 
 test("halaman data utama memiliki representasi card mobile dan filter transaksi canonical", async () => {

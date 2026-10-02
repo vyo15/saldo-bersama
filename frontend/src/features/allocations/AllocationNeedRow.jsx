@@ -49,14 +49,13 @@ const BudgetNeedPrimaryAction = ({ budget, schedule, onRecord, onOpenSchedule })
   ><span className={allocationClass("allocation-limit-row__quick-action-icon")}><PrimaryIcon aria-hidden="true" /></span><span>{visibleLabel}</span></button>;
 };
 
-const BudgetNeedOverflowMenu = ({ budget, schedule, blockedByLimit, canManage, onOpenSchedule, onEdit, onOpenDetail, onOpenShopping }) => {
+const BudgetNeedOverflowMenu = ({ budget, schedule, blockedByLimit, canManage, onOpenSchedule, onEdit, onOpenDetail }) => {
   const showSchedule = blockedByLimit && Boolean(schedule);
-  const hasMenu = Boolean(onOpenDetail || onOpenShopping || canManage || showSchedule);
+  const hasMenu = Boolean(onOpenDetail || canManage || showSchedule);
   if (!hasMenu) return null;
   return <details className={allocationClass("allocation-limit-row__menu")}>
     <summary aria-label={`Pilihan kebutuhan ${budget.name}`} title="Pilihan kebutuhan"><FiMoreHorizontal aria-hidden="true" /></summary>
     <div className={allocationClass("allocation-limit-row__menu-items")}>
-      {onOpenShopping ? <Button icon={FiShoppingCart} onClick={(event) => { closeNeedMenu(event); onOpenShopping(budget); }}>Daftar belanja</Button> : null}
       {onOpenDetail ? <Button icon={FiInfo} onClick={(event) => { closeNeedMenu(event); onOpenDetail(); }}>Detail kebutuhan</Button> : null}
       {showSchedule ? <Button icon={FiCalendar} onClick={(event) => { closeNeedMenu(event); onOpenSchedule(schedule.item, false); }}>Lihat jadwal</Button> : null}
       {canManage ? <Button icon={FiEdit2} onClick={(event) => { closeNeedMenu(event); onEdit(budget); }}>Edit kebutuhan</Button> : null}
@@ -64,18 +63,18 @@ const BudgetNeedOverflowMenu = ({ budget, schedule, blockedByLimit, canManage, o
   </details>;
 };
 
-const BudgetLimitActions = ({ budget, schedule, status, canManage, onRecord, onOpenSchedule, onEdit, onOpenDetail, onOpenShopping }) => {
+const BudgetLimitActions = ({ budget, schedule, status, canManage, onRecord, onOpenSchedule, onEdit, onOpenDetail }) => {
   const blockedByLimit = ["completed", "empty", "danger"].includes(status.key);
   const depleted = status.key === "empty";
   const primarySchedule = blockedByLimit ? null : schedule;
   const primaryRecord = blockedByLimit ? null : onRecord;
   const hasPrimaryAction = Boolean(primarySchedule || primaryRecord);
-  const hasOverflowAction = Boolean(onOpenDetail || onOpenShopping || canManage || (blockedByLimit && schedule));
+  const hasOverflowAction = Boolean(onOpenDetail || canManage || (blockedByLimit && schedule));
   if (!hasPrimaryAction && !hasOverflowAction && !depleted) return null;
   return <div className={allocationClass(`allocation-limit-row__actions ${hasPrimaryAction ? "has-primary" : ""}`)}>
     <BudgetNeedPrimaryAction budget={budget} schedule={primarySchedule} onRecord={primaryRecord} onOpenSchedule={onOpenSchedule} />
     {depleted ? <span className={allocationClass("allocation-limit-row__depleted-stamp")} aria-label="Dana habis">Habis</span> : null}
-    <BudgetNeedOverflowMenu budget={budget} schedule={schedule} blockedByLimit={blockedByLimit} canManage={canManage} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} onOpenShopping={onOpenShopping} />
+    <BudgetNeedOverflowMenu budget={budget} schedule={schedule} blockedByLimit={blockedByLimit} canManage={canManage} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} />
   </div>;
 };
 
@@ -116,10 +115,10 @@ export const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canMana
         <strong>{budget.name}</strong>
         {completed ? <BudgetCompletedMeta amount={amount} /> : <span className={allocationClass(`allocation-limit-row__pattern ${status.attention && !depleted ? tone : ""}`)}>{depleted ? patternLabel : status.attention ? status.label : patternLabel}</span>}
       </div>
-      <BudgetLimitActions budget={budget} schedule={schedule} status={status} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} onOpenShopping={onOpenShopping} />
+      <BudgetLimitActions budget={budget} schedule={schedule} status={status} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} />
     </div>
     {completed ? null : <BudgetLimitUsage budget={budget} status={status} schedule={schedule} amount={amount} used={used} remaining={remaining} />}
-    {onOpenShopping && !completed ? <button type="button" className={allocationClass("allocation-limit-row__shopping-link")} onClick={() => onOpenShopping(budget)}><FiShoppingCart aria-hidden="true" /><span>Daftar belanja</span><FiArrowRight aria-hidden="true" /></button> : null}
+    {onOpenShopping && budget.shopping_enabled && !completed ? <button type="button" className={allocationClass("allocation-limit-row__shopping-link")} onClick={() => onOpenShopping(budget)}><FiShoppingCart aria-hidden="true" /><span>{Number(budget.shopping_item_count || 0) > 0 ? `Daftar belanja · ${Number(budget.shopping_item_count)} item` : "Buat daftar belanja"}</span><FiArrowRight aria-hidden="true" /></button> : null}
   </div>;
 };
 
@@ -146,6 +145,7 @@ export const BudgetNeedDetailModal = ({ target, onClose }) => {
         <div><dt>Terpakai</dt><dd><Money value={used} /></dd></div>
         <div><dt>Sisa</dt><dd><Money value={remaining} /></dd></div>
         <div><dt>Pola</dt><dd>{patternLabel}</dd></div>
+        <div><dt>Daftar belanja</dt><dd>{budget.shopping_enabled ? `Aktif${Number(budget.shopping_item_count || 0) > 0 ? ` · ${Number(budget.shopping_item_count)} item` : ""}` : "Tidak digunakan"}</dd></div>
         {completedAt ? <div><dt>Selesai pada</dt><dd>{completedAt}</dd></div> : null}
         {schedule?.label ? <div><dt>Jadwal</dt><dd>{schedule.label}</dd></div> : null}
       </dl>

@@ -131,3 +131,13 @@
     background: transparent;
   }
 }
+
+/* Notification entity names remain readable when they identify the action target. */
+@media (max-width: 820px) {
+  .entity {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

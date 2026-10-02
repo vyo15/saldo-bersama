@@ -664,3 +664,13 @@
     transition: none;
   }
 }
+
+/* The detail heading is app content, unlike the decorative physical-card facsimile labels above. */
+@media (max-width: 820px) {
+  .mobileDetailHeading h2 {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

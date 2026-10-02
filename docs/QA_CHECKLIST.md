@@ -39,8 +39,9 @@
 - [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
 - [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: kebutuhan aktif memuat ikon + nama + pola/status dan Sisa/total/persentase + progress; `fixed_once` tepat 100% berubah menjadi row ringkas `✓ Selesai` tanpa progress/quick-add; `flexible`/`recurring` tepat 100% menjadi `Dana habis` dengan warning tone dan tanpa aksi pencatatan baru; overspend tetap danger. `Terpakai`, waktu selesai, dan Jadwal tersedia di **Detail kebutuhan**; Edit/Lihat jadwal berada di overflow; target sentuh minimal 44px; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
+- [ ] **Daftar belanja** hanya tampil pada Kebutuhan yang mengaktifkan `Gunakan daftar belanja`; contoh Listrik default tidak memiliki CTA shopping, sedangkan Belanja bulanan yang opt-in memakai `Buat daftar belanja` atau `Daftar belanja · N item`. CTA tidak diduplikasi di overflow.
 - [ ] Detail Alokasi tidak memiliki section permanen `Kelola dana`; aksi administratif **Pindahkan dana / Pengingat / Hapus dari daftar** berada di menu overflow `•••`, sedangkan aksi transaksi/kebutuhan tetap berada dekat konteksnya.
-- [ ] Beranda mobile compact: **Saldo Keluarga** menjadi nominal utama, **Dana yang bisa kamu gunakan** tampil tepat di hero, panel **Saya / Pasangan / Bersama** tetap satu baris tiga kolom tanpa overflow, sementara Aman/hari dan Sisa di Alokasi tetap terlihat tanpa menambah card berlebihan.
+- [ ] Beranda mobile compact: **Saldo Keluarga** menjadi nominal utama, **Dana yang bisa kamu gunakan** tampil tepat di hero, **Saya / Pasangan / Bersama** tetap satu baris sebagai flat stats ber-divider lembut, sementara Aman/hari dan Sisa di Alokasi tetap terlihat dalam satu tonal band tanpa outer card.
 - [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
 - [ ] `Lainnya` hanya memakai empat kelompok canonical (Rencana & Insight, Keuangan, Keluarga & Akses, Aplikasi); owner-only tidak bocor ke Member.
 - [ ] Laporan tidak menggandakan KPI hero lewat summary strip kedua; Analisis lengkap tetap membuka planning/Kewajiban/rekening/pencatat.
@@ -55,7 +56,7 @@
 - [ ] Loading, empty, filtered-empty, error, offline, unauthorized, maintenance, dan conflict state relevan tersedia.
 - [ ] Partial-resource failure tidak boleh tampak sebagai data kosong yang sah: merged workspace **Atur Dana** menunggu read model Alokasi/Kebutuhan/Jadwal/Kewajiban pada initial load, sedangkan surface lain yang masih dapat dipakai menampilkan warning + retry untuk resource pendukung.
 - [ ] Complete/archive state tidak tertukar: Kewajiban dihentikan tidak disebut selesai, dan Target completed-only tidak menampilkan hero `0 target aktif`.
-- [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak.
+- [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak; light harus punya tonal depth yang cukup (canvas/surface/section terbedakan), sedangkan dark tetap memakai luminance bertingkat tanpa sekadar meng-invert light.
 - [ ] Mobile control penting ≥44×44px; termasuk toggle visibilitas saldo, filter Notifikasi, disclosure detail, dan link tindakan compact; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
 - [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
 - [ ] **Pastikan Saldo Sesuai** desktop tidak menyembunyikan kolom **Selisih/Status**; breakpoint dua-panel hanya aktif bila riwayat memiliki lebar yang cukup dan tidak ada overflow kritis tanpa affordance.
@@ -127,6 +128,7 @@
 - [ ] Create tidak memilih cara penggunaan otomatis; submit tanpa pilihan gagal dengan pesan yang jelas.
 - [ ] Edit hanya dapat mengubah cara penggunaan selama belum ada pemakaian; setelah terpakai field read-only dan backend menolak payload perubahan.
 - [ ] Picker kategori create memiliki **Tambah kategori baru** inline dan setelah kategori owner dibuat, pilihan kembali ke form/row aktif tanpa kehilangan draft.
+- [ ] Switch **Gunakan daftar belanja** default off, konsisten pada create/edit/batch, tetap jelas di light/dark, dan tidak dapat dimatikan selama masih ada item `pending/in_cart`; helper menjelaskan apa yang harus diselesaikan.
 - [ ] Aksi lifecycle memakai ikon trash yang jelas tetapi copy tetap honest-action (`Hapus dari daftar`) sampai preview menentukan hapus permanen vs arsip.
 
 ### Kebutuhan → transaksi (canonical)

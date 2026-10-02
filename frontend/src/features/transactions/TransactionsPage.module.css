@@ -379,3 +379,17 @@
 .shoppingDetail > div > div { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent); font-size:12px; }
 .shoppingDetail > div > div span { display:grid; gap:1px; min-width:0; }
 .shoppingDetail > div > div small,.shoppingMore { color:var(--text-soft); font-size: 12px; }
+
+/* Mobile transaction actions/history prioritize complete primary labels over one-line clipping. */
+@media (max-width: 820px) {
+  .quickActions button strong,
+  .categoryBreakdownCopy strong,
+  .repeatCopy strong,
+  .repeatCopy small,
+  .filterChip span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

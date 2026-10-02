@@ -893,3 +893,15 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Transaction form identity fields may grow vertically on mobile; never hide the selected target. */
+@media (max-width: 820px) {
+  .typeSelector label > span > span:last-child,
+  .lockedSelection strong,
+  .impactStatCopy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

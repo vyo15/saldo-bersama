@@ -96,6 +96,8 @@ Menyimpan atau menaikkan nominal Kebutuhan otomatis mendanai Alokasi dari **Dana
 
 Tidak ada surface Anggaran terpisah; `/anggaran` hanya compatibility redirect ke Alokasi Dana. Saat menutup periode, `Pakai lagi kebutuhan di periode berikutnya` tetap opt-in; copy rencana tidak boleh menyalin transaksi/histori pemakaian atau menciptakan saldo baru. Pendanaan periode tujuan mengikuti rule funding current saat Kebutuhan periode tersebut diaktifkan/disimpan.
 
+**Daftar belanja bersifat opt-in per Kebutuhan**, default nonaktif. Form Tambah/Edit Kebutuhan menyediakan switch **Gunakan daftar belanja**; CTA `Buat daftar belanja`/`Daftar belanja · N item` hanya tampil ketika preference aktif. Capability tidak boleh ditebak dari kategori: `Belanja bulanan` boleh mengaktifkannya, sedangkan `Listrik`, Internet, bensin, atau kebutuhan lain tidak mendapat CTA kecuali user memilih sendiri. Menonaktifkan preference wajib fail-closed bila masih ada barang `pending/in_cart`; histori item/checkout yang sudah terjadi tetap dipertahankan. Continuity periode membawa preference sebagai daftar kosong baru dan tidak menyalin item lama.
+
 **Batas saat ini:** Kebutuhan masih berupa record budget per periode, bukan rule multi-periode independen. Pola `recurring` menautkan Kebutuhan ke Jadwal Rutin, sedangkan continuity antarperiode tetap copy opt-in saat penutupan Alokasi Dana, bukan auto-renew tanpa konfirmasi. Level 90/100 diturunkan saat runtime tanpa kolom baru. Data budget legacy yang belum memiliki `envelope_rule_id` tetap dapat dibaca dan dapat dihubungkan ke Alokasi Dana tanpa migration.
 
 ### `REQ-PROD-06` Target tujuan — Partial

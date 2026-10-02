@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { DATABASE_SCHEMA_VERSION } from "../../api/_lib/db/schema.js";
 import { ACTION_POLICIES } from "../../api/_lib/actions/policy.js";
 import { normalizeShoppingItemInput, shoppingSummary } from "../../api/_lib/services/shopping/shared.js";
+import { syncDependenciesForAction } from "../../api/_lib/syncRevisions.js";
 
 const ACTIONS = [
   "shopping.detail", "shopping.suggestions", "shopping.byTransaction", "shopping.create",
@@ -47,4 +48,11 @@ test("shopping summary never counts removed rows", () => {
     in_cart_estimated_total: 18_000,
     purchased_total: 31_000,
   });
+});
+
+
+test("shopping mutations that change capability metadata invalidate budgets.list", () => {
+  for (const action of ["shopping.create", "shopping.itemCreate", "shopping.itemState", "shopping.itemRemove", "shopping.checkout"]) {
+    assert.ok(syncDependenciesForAction(action).includes("budgets.list"), `${action} must invalidate budgets.list`);
+  }
 });

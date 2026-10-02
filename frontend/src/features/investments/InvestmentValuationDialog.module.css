@@ -124,3 +124,16 @@
 
   .assetIdentity { grid-column: auto; }
 }
+
+/* Valuation identity/value text is financial content and must not be hidden on mobile. */
+@media (max-width: 820px) {
+  .assetIdentity strong,
+  .assetIdentity span,
+  .currentValue strong,
+  .currentValue span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

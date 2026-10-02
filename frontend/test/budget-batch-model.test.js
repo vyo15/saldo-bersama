@@ -12,7 +12,7 @@ const form = { envelope_rule_id: "rule-1", scope: "shared", owner_user_id: "" };
 
 test("model batch menghitung total dan membawa nama serta pola kebutuhan", () => {
   const rows = [
-    createBudgetBatchRow({ name: "Arisan PT", category_id: "arisan", amount: 1_000_000, recording_mode: "fixed_once" }),
+    createBudgetBatchRow({ name: "Arisan PT", category_id: "arisan", amount: 1_000_000, recording_mode: "fixed_once", shopping_enabled: true }),
     createBudgetBatchRow({ name: "Internet rumah", category_id: "bills", amount: 500_000, recording_mode: "recurring", schedule_due_day: 20 }),
   ];
   assert.equal(budgetBatchTotal(rows), 1_500_000);
@@ -20,6 +20,8 @@ test("model batch menghitung total dan membawa nama serta pola kebutuhan", () =>
   assert.equal(payload.items.length, 2);
   assert.equal(payload.items[0].name, "Arisan PT");
   assert.equal(payload.items[0].recording_mode, "fixed_once");
+  assert.equal(payload.items[0].shopping_enabled, true);
+  assert.equal(payload.items[1].shopping_enabled, false);
   assert.equal(payload.items[1].recording_mode, "recurring");
   assert.equal(payload.items[1].schedule_due_day, 20);
 });

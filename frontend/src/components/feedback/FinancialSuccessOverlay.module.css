@@ -268,3 +268,15 @@
   .subtle .content { min-height: 100dvh; padding-top: calc(max(3.25rem, env(safe-area-inset-top) + 2.5rem)); }
   .subtle .brandSuccess { margin-top: .35rem; }
 }
+
+/* Result summaries must keep the complete label/value readable on narrow screens. */
+@media (max-width: 820px) {
+  .summary dt,
+  .summary dd {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

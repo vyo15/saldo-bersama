@@ -83,7 +83,7 @@ test("batch Kebutuhan membuat beberapa budget dan jadwal dalam satu mutation ide
     const payload = {
       ...basePayload("batch-rule"),
       items: [
-        { name: "Belanja bulanan", category_id: "batch-food", amount: 900_000, recording_mode: "flexible" },
+        { name: "Belanja bulanan", category_id: "batch-food", amount: 900_000, recording_mode: "flexible", shopping_enabled: true },
         {
           name: "Listrik rumah",
           category_id: "batch-electric",
@@ -93,6 +93,7 @@ test("batch Kebutuhan membuat beberapa budget dan jadwal dalam satu mutation ide
           schedule_due_day: 20,
           schedule_start_date: todayJakarta(),
           schedule_payment_method: "transfer",
+          shopping_enabled: false,
         },
       ],
     };
@@ -105,6 +106,10 @@ test("batch Kebutuhan membuat beberapa budget dan jadwal dalam satu mutation ide
     assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM recurring_rules WHERE default_account_id='batch-shared-account'")).count), 1);
     assert.equal(Number((await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id='batch-rule'")).allocated_amount), 1_250_000);
     assert.equal(Number(first.funding?.amount || 0), 1_250_000);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM shopping_lists WHERE status<>'archived'")).count), 1);
+    const listed = (await dispatchNamed(db, "budgets.list", { period })).items;
+    assert.equal(listed.find((item) => item.name === "Belanja bulanan")?.shopping_enabled, true);
+    assert.equal(listed.find((item) => item.name === "Listrik rumah")?.shopping_enabled, false);
   } finally {
     db.close();
   }
@@ -127,8 +132,8 @@ test("buat Alokasi dan Kebutuhan dalam satu mutation tanpa meninggalkan Alokasi 
       decoration_key: "home",
       period_key: period,
       needs: [
-        { name: "Belanja bulanan", category_id: "batch-food", amount: 600_000, recording_mode: "flexible" },
-        { name: "Internet rumah", category_id: "batch-internet", amount: 250_000, recording_mode: "flexible" },
+        { name: "Belanja bulanan", category_id: "batch-food", amount: 600_000, recording_mode: "flexible", shopping_enabled: true },
+        { name: "Internet rumah", category_id: "batch-internet", amount: 250_000, recording_mode: "flexible", shopping_enabled: false },
       ],
     });
     assert.equal(result.rule.name, "Rumah Tangga");
@@ -138,6 +143,9 @@ test("buat Alokasi dan Kebutuhan dalam satu mutation tanpa meninggalkan Alokasi 
     assert.equal(Number(result.period.allocated_amount), 0);
     const storedPeriod = await db.one("SELECT allocated_amount FROM envelope_periods WHERE envelope_rule_id=?", [result.rule.envelope_rule_id]);
     assert.equal(Number(storedPeriod.allocated_amount), 850_000);
+    const createdNeeds = (await dispatchNamed(db, "budgets.list", { period })).items.filter((item) => item.envelope_rule_id === result.rule.envelope_rule_id);
+    assert.equal(createdNeeds.find((item) => item.name === "Belanja bulanan")?.shopping_enabled, true);
+    assert.equal(createdNeeds.find((item) => item.name === "Internet rumah")?.shopping_enabled, false);
 
     await assert.rejects(
       dispatchNamed(db, "envelopes.createWithNeeds", {

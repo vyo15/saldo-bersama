@@ -31,6 +31,7 @@ export const runCreateAllocation = async ({ createForm, createNeeds, resetForm, 
       schedule_due_day: Number(need.schedule_due_day || 20),
       schedule_start_date: need.schedule_start_date || undefined,
       schedule_payment_method: need.schedule_payment_method || "transfer",
+      shopping_enabled: Boolean(need.shopping_enabled),
     };
   });
   if (!needs.length) throw new Error("Tambahkan minimal satu kebutuhan.");

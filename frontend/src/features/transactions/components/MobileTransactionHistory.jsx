@@ -1,18 +1,17 @@
 import { useState } from "react";
-import { FiChevronLeft, FiChevronRight, FiFilter, FiSearch, FiX } from "react-icons/fi";
+import { FiArrowDown, FiArrowUp, FiChevronDown, FiChevronLeft, FiChevronRight, FiEdit3, FiMoreHorizontal, FiSearch, FiSliders, FiX } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
+import { BalanceIcon, RefundIcon, TransferIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { SelectionControl } from "../../../components/common/SelectionField.jsx";
 import { accountOptionVisual, categoryOptionVisual, memberOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import Modal from "../../../components/common/Modal.jsx";
+import TemporalInput from "../../../components/common/TemporalInput.jsx";
 import { currentMonthInJakarta, todayInJakarta } from "../../../domain/dates.js";
 import { formatCompactRupiah } from "../../../domain/money.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
-import { formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionDisplayTitle, transactionListMetadata, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
+import { categoryIcon, formatTransactionDate, TRANSACTION_LABELS, transactionCategoryIcon, transactionDisplayTitle, transactionListMetadata, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import styles from "./MobileTransactionHistory.module.css";
-
-
 const dateKeyInJakarta = (date) => new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Jakarta" }).format(date);
-
 const transactionDateGroupLabel = (value) => {
   const key = String(value || "").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return "Tanggal tidak tersedia";
@@ -24,7 +23,6 @@ const transactionDateGroupLabel = (value) => {
   if (Number.isNaN(parsed.getTime())) return formatTransactionDate(key);
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", ...(key.slice(0, 4) === today.slice(0, 4) ? {} : { year: "numeric" }), timeZone: "Asia/Jakarta" }).format(parsed);
 };
-
 const groupTransactionsByDate = (items) => {
   const groups = [];
   const byDate = new Map();
@@ -39,33 +37,28 @@ const groupTransactionsByDate = (items) => {
   }
   return groups;
 };
-
-const COMMON_TYPES = Object.freeze([
-  { value: "all", label: "Semua" },
-  { value: "expense", label: "Pengeluaran" },
-  { value: "income", label: "Pemasukan" },
-  { value: "transfer", label: "Transfer" },
+const QUICK_TYPES = Object.freeze([
+  { value: "all", label: "Semua", compactLabel: "Semua", Icon: BalanceIcon, tone: "all" },
+  { value: "expense", label: "Pengeluaran", compactLabel: "Keluar", Icon: FiArrowDown, tone: "expense" },
+  { value: "income", label: "Pemasukan", compactLabel: "Masuk", Icon: FiArrowUp, tone: "income" },
 ]);
-
-const ALL_TYPES = Object.freeze([
-  ...COMMON_TYPES,
-  { value: "refund", label: "Pengembalian" },
-  { value: "adjustment", label: "Penyesuaian" },
+const SECONDARY_TYPES = Object.freeze([
+  { value: "transfer", label: "Transfer", Icon: TransferIcon, tone: "transfer" },
+  { value: "refund", label: "Pengembalian", Icon: RefundIcon, tone: "refund" },
+  { value: "adjustment", label: "Penyesuaian", Icon: FiEdit3, tone: "adjustment" },
 ]);
-
+const CATEGORY_TILE_LIMIT = 6;
 const shiftPeriod = (period, offset) => {
   const [year, month] = String(period || "").split("-").map(Number);
   if (!Number.isInteger(year) || month < 1 || month > 12) return currentMonthInJakarta();
   const date = new Date(Date.UTC(year, month - 1 + offset, 1));
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 };
-
 const periodLabel = (period) => {
   const [year, month] = String(period || "").split("-").map(Number);
   if (!Number.isInteger(year) || month < 1 || month > 12) return "Periode";
   return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date(Date.UTC(year, month - 1, 1)));
 };
-
 const trendGeometry = (items) => {
   const width = 320;
   const top = 8;
@@ -84,7 +77,6 @@ const trendGeometry = (items) => {
   const area = `${points} ${width},${bottom} 0,${bottom}`;
   return { points, area };
 };
-
 const periodStateLabel = ({ period, periodLocked }) => {
   if (periodLocked) return "Periode dikunci";
   return period === currentMonthInJakarta() ? "Periode aktif" : "Periode historis";
@@ -116,70 +108,205 @@ export const MobileTransactionOverview = ({ period, periodLocked, onPeriodChange
     </div>
   </section>;
 };
-
-const advancedDraftFrom = (filters) => ({ type: filters.type, allocation: filters.allocation, account: filters.account, category: filters.category, creator: filters.creator });
+const advancedDraftFrom = (filters) => ({
+  period: filters.period,
+  type: filters.type,
+  allocation: filters.allocation,
+  account: filters.account,
+  category: filters.category,
+  creator: filters.creator,
+});
 const advancedCount = (filters) => [filters.allocation, filters.account, filters.category, filters.creator].filter((value) => value !== "all").length
-  + (COMMON_TYPES.some((item) => item.value === filters.type) ? 0 : 1);
+  + (QUICK_TYPES.some((item) => item.value === filters.type) ? 0 : 1);
+const periodDateRangeLabel = (period) => {
+  const [year, month] = String(period || "").split("-").map(Number);
+  if (!Number.isInteger(year) || month < 1 || month > 12) return "Periode aktif";
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+  const formatter = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+  return `${formatter.format(start)} – ${formatter.format(end)}`;
+};
+const TypeFilterButton = ({ item, active, onClick, compact = false }) => {
+  const Icon = item.Icon;
+  const className = compact
+    ? (active ? styles.secondaryTypeButtonActive : styles.secondaryTypeButton)
+    : (active ? styles.filterTypeButtonActive : styles.filterTypeButton);
+  return <button type="button" className={className} data-tone={item.tone} aria-pressed={active} onClick={onClick}>
+    <span className={styles.filterTypeIcon}><Icon aria-hidden="true" /></span>
+    <span>{item.label}</span>
+  </button>;
+};
+const CategoryFilterTile = ({ item, active, onClick, overflow = false }) => {
+  const Icon = overflow ? FiMoreHorizontal : item.value === "all" ? BalanceIcon : categoryIcon(item.icon, item.transaction_type);
+  const tone = overflow ? "other" : item.value === "all" ? "all" : item.transaction_type || "other";
+  return <button type="button" className={active ? styles.categoryTileActive : styles.categoryTile} data-tone={tone} aria-pressed={active} onClick={onClick}>
+    <span className={styles.categoryTileIcon}><Icon aria-hidden="true" /></span>
+    <span className={styles.categoryTileLabel}>{overflow ? "Lainnya" : item.label}</span>
+  </button>;
+};
+const FilterSelectSection = ({ label, children }) => <section className={styles.filterFieldSection}>
+  <strong>{label}</strong>
+  <div className={styles.filterSelect}>{children}</div>
+</section>;
+const QuickTransactionFilters = ({ filters, setFilters }) => <div className={styles.typeScroller}>
+  {QUICK_TYPES.map((item) => {
+    const Icon = item.Icon;
+    const active = filters.type === item.value;
+    return <button key={item.value} type="button" className={active ? styles.typeChipActive : styles.typeChip} data-tone={item.tone} aria-pressed={active} aria-label={`Filter ${item.label}`} onClick={() => setFilters((current) => ({ ...current, type: item.value, offset: 0 }))}>
+      <span className={styles.typeChipIcon}><Icon aria-hidden="true" /></span>
+      <span className={styles.typeChipLabelLong}>{item.label}</span>
+      <span className={styles.typeChipLabelShort}>{item.compactLabel}</span>
+    </button>;
+  })}
+</div>;
+const TransactionSearchModal = ({ open, onClose, draftQuery, setDraftQuery, filters, setFilters, submitSearch }) => {
+  const submitMobileSearch = (event) => {
+    submitSearch(event);
+    onClose();
+  };
+  const clearSearch = () => {
+    setDraftQuery("");
+    setFilters((current) => ({ ...current, query: "", offset: 0 }));
+    onClose();
+  };
+  return <Modal open={open} onClose={onClose} title="Cari transaksi" size="sm">
+    <form className={styles.searchForm} onSubmit={submitMobileSearch}>
+      <label className="search-field"><FiSearch aria-hidden="true" /><input autoFocus type="search" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari transaksi" /><span className="sr-only">Cari transaksi</span></label>
+      <div className={styles.modalActions}>{filters.query ? <Button type="button" onClick={clearSearch}>Hapus pencarian</Button> : null}<Button type="submit" variant="primary">Cari</Button></div>
+    </form>
+  </Modal>;
+};
+const CategoryFilterSection = ({
+  advancedDraft,
+  setAdvancedDraft,
+  categories,
+  visibleCategories,
+  hasOverflowCategories,
+  categoryPickerOpen,
+  setCategoryPickerOpen,
+  overflowCategoryActive,
+}) => <section className={styles.filterSection} aria-labelledby="mobile-transaction-category-filter">
+  <strong id="mobile-transaction-category-filter">Kategori</strong>
+  <div className={styles.categoryGrid}>
+    <CategoryFilterTile item={{ value: "all", label: "Semua" }} active={advancedDraft.category === "all"} onClick={() => { setAdvancedDraft((current) => ({ ...current, category: "all" })); setCategoryPickerOpen(false); }} />
+    {visibleCategories.map((item) => <CategoryFilterTile key={item.category_id} item={{ ...item, value: item.category_id, label: item.name }} active={advancedDraft.category === item.category_id} onClick={() => { setAdvancedDraft((current) => ({ ...current, category: item.category_id })); setCategoryPickerOpen(false); }} />)}
+    {hasOverflowCategories ? <CategoryFilterTile item={{ value: "more", label: "Lainnya" }} overflow active={overflowCategoryActive || categoryPickerOpen} onClick={() => setCategoryPickerOpen((open) => !open)} /> : null}
+  </div>
+  {hasOverflowCategories && (categoryPickerOpen || overflowCategoryActive) ? <div className={styles.categoryOverflowPicker}>
+    <SelectionControl compact value={advancedDraft.category} onChange={(category) => { setAdvancedDraft((current) => ({ ...current, category })); setCategoryPickerOpen(false); }} ariaLabel="Pilih kategori transaksi lainnya" searchable searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua kategori" }, ...categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))]} />
+  </div> : null}
+</section>;
+const MoreTransactionFilters = ({ open, setOpen, advancedDraft, setAdvancedDraft, filterOptions }) => <details className={styles.moreFilters} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+  <summary><span>Filter lainnya</span><FiChevronDown aria-hidden="true" /></summary>
+  <div className={styles.moreFiltersBody}>
+    <section className={styles.secondaryTypeSection} aria-labelledby="mobile-transaction-secondary-type-filter">
+      <strong id="mobile-transaction-secondary-type-filter">Jenis lainnya</strong>
+      <div className={styles.secondaryTypeGrid}>
+        {SECONDARY_TYPES.map((item) => <TypeFilterButton key={item.value} item={item} compact active={advancedDraft.type === item.value} onClick={() => setAdvancedDraft((current) => ({ ...current, type: item.value }))} />)}
+      </div>
+    </section>
+    <FilterSelectSection label="Alokasi Dana">
+      <SelectionControl compact value={advancedDraft.allocation} onChange={(allocation) => setAdvancedDraft((current) => ({ ...current, allocation }))} ariaLabel="Filter Alokasi Dana" options={[{ value: "all", label: "Semua Alokasi Dana" }, { value: "unallocated", label: "Belum dialokasikan" }, { value: "allocated", label: "Menggunakan alokasi" }]} />
+    </FilterSelectSection>
+    <FilterSelectSection label="Pencatat">
+      <SelectionControl compact value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} ariaLabel="Filter pencatat" searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua pencatat" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name, meta: item.email || "", ...memberOptionVisual(item) }))]} />
+    </FilterSelectSection>
+  </div>
+</details>;
+const AdvancedTransactionFilterModal = ({
+  open,
+  onClose,
+  advancedDraft,
+  setAdvancedDraft,
+  filterOptions,
+  categoryState,
+  moreFiltersOpen,
+  setMoreFiltersOpen,
+  onReset,
+  onApply,
+  onPeriodChange,
+}) => <Modal
+  open={open}
+  onClose={onClose}
+  title="Filter transaksi"
+  size="sm"
+  className={styles.filterModal}
+  footer={<div className={styles.filterFooterActions}><Button type="button" className={styles.filterResetButton} onClick={onReset}>Reset</Button><Button type="button" className={styles.filterApplyButton} variant="primary" onClick={onApply}>Terapkan</Button></div>}
+>
+  <section className={styles.filterSection} aria-labelledby="mobile-transaction-type-filter">
+    <strong id="mobile-transaction-type-filter">Jenis transaksi</strong>
+    <div className={styles.filterTypeGrid}>
+      {QUICK_TYPES.map((item) => <TypeFilterButton key={item.value} item={item} active={advancedDraft.type === item.value} onClick={() => setAdvancedDraft((current) => ({ ...current, type: item.value }))} />)}
+    </div>
+  </section>
+  <CategoryFilterSection advancedDraft={advancedDraft} setAdvancedDraft={setAdvancedDraft} categories={filterOptions.categories} {...categoryState} />
+  <FilterSelectSection label="Rekening">
+    <SelectionControl compact value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} ariaLabel="Filter rekening" searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua rekening" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), ...accountOptionVisual(item) }))]} />
+  </FilterSelectSection>
+  <section className={styles.filterFieldSection}>
+    <strong>Rentang tanggal</strong>
+    <div className={styles.periodFilterControl}>
+      <TemporalInput type="month" compact value={advancedDraft.period} max={currentMonthInJakarta()} onChange={(event) => onPeriodChange(event.target.value)} aria-label="Pilih periode transaksi" />
+      <small>{periodDateRangeLabel(advancedDraft.period)}</small>
+    </div>
+  </section>
+  <MoreTransactionFilters open={moreFiltersOpen} setOpen={setMoreFiltersOpen} advancedDraft={advancedDraft} setAdvancedDraft={setAdvancedDraft} filterOptions={filterOptions} />
+</Modal>;
 
 export const MobileTransactionFilters = ({ draftQuery, setDraftQuery, filters, setFilters, filterOptions, submitSearch }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedDraft, setAdvancedDraft] = useState(() => advancedDraftFrom(filters));
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const filterCount = advancedCount(filters);
-  const resetAdvancedDraft = () => setAdvancedDraft({ type: "all", allocation: "all", account: "all", category: "all", creator: "all" });
-  const openAdvanced = () => { setAdvancedDraft(advancedDraftFrom(filters)); setAdvancedOpen(true); };
-  const applyAdvanced = () => { setFilters((current) => ({ ...current, ...advancedDraft, offset: 0 })); setAdvancedOpen(false); };
-  const submitMobileSearch = (event) => { submitSearch(event); setSearchOpen(false); };
+  const visibleCategories = filterOptions.categories.length > CATEGORY_TILE_LIMIT + 1
+    ? filterOptions.categories.slice(0, CATEGORY_TILE_LIMIT)
+    : filterOptions.categories.slice(0, CATEGORY_TILE_LIMIT + 1);
+  const hasOverflowCategories = filterOptions.categories.length > visibleCategories.length;
+  const overflowCategoryActive = advancedDraft.category !== "all" && !visibleCategories.some((item) => item.category_id === advancedDraft.category);
+  const resetAdvancedDraft = () => {
+    setAdvancedDraft({ period: filters.period, type: "all", allocation: "all", account: "all", category: "all", creator: "all" });
+    setCategoryPickerOpen(false);
+    setMoreFiltersOpen(false);
+  };
+  const openAdvanced = () => {
+    setAdvancedDraft(advancedDraftFrom(filters));
+    setCategoryPickerOpen(false);
+    setMoreFiltersOpen(!QUICK_TYPES.some((item) => item.value === filters.type) || filters.allocation !== "all" || filters.creator !== "all");
+    setAdvancedOpen(true);
+  };
+  const applyAdvanced = () => {
+    setFilters((current) => ({ ...current, ...advancedDraft, offset: 0 }));
+    setAdvancedOpen(false);
+  };
+  const updateAdvancedPeriod = (period) => {
+    setAdvancedDraft((current) => ({ ...current, period, account: "all", category: "all", creator: "all" }));
+    setCategoryPickerOpen(false);
+  };
+  const categoryState = { visibleCategories, hasOverflowCategories, categoryPickerOpen, setCategoryPickerOpen, overflowCategoryActive };
   return <>
     <div className={styles.filterBar} aria-label="Filter cepat transaksi">
-      <div className={styles.typeScroller}>
-        {COMMON_TYPES.map((item) => <button key={item.value} type="button" className={filters.type === item.value ? styles.typeChipActive : styles.typeChip} onClick={() => setFilters((current) => ({ ...current, type: item.value, offset: 0 }))}>{item.label}</button>)}
-      </div>
+      <QuickTransactionFilters filters={filters} setFilters={setFilters} />
       <button type="button" className={`${styles.iconFilter}${filters.query ? ` ${styles.iconFilterActive}` : ""}`} onClick={() => setSearchOpen(true)} aria-label={filters.query ? `Cari transaksi, filter aktif: ${filters.query}` : "Cari transaksi"}><FiSearch aria-hidden="true" /></button>
-      <button type="button" className={`${styles.iconFilter}${filterCount ? ` ${styles.iconFilterActive}` : ""}`} onClick={openAdvanced} aria-label={filterCount ? `Filter lainnya, ${filterCount} aktif` : "Filter lainnya"}><FiFilter aria-hidden="true" />{filterCount ? <span>{filterCount}</span> : null}</button>
+      <button type="button" className={`${styles.iconFilter}${filterCount ? ` ${styles.iconFilterActive}` : ""}`} onClick={openAdvanced} aria-label={filterCount ? `Filter transaksi, ${filterCount} filter tambahan aktif` : "Filter transaksi"}><FiSliders aria-hidden="true" />{filterCount ? <span>{filterCount}</span> : null}</button>
     </div>
-    <Modal open={searchOpen} onClose={() => setSearchOpen(false)} title="Cari transaksi" size="sm">
-      <form className={styles.searchForm} onSubmit={submitMobileSearch}>
-        <label className="search-field"><FiSearch aria-hidden="true" /><input autoFocus type="search" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} placeholder="Cari transaksi" /><span className="sr-only">Cari transaksi</span></label>
-        <div className={styles.modalActions}>{filters.query ? <Button type="button" onClick={() => { setDraftQuery(""); setFilters((current) => ({ ...current, query: "", offset: 0 })); setSearchOpen(false); }}>Hapus pencarian</Button> : null}<Button type="submit" variant="primary">Cari</Button></div>
-      </form>
-    </Modal>
-    <Modal
+    <TransactionSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} draftQuery={draftQuery} setDraftQuery={setDraftQuery} filters={filters} setFilters={setFilters} submitSearch={submitSearch} />
+    <AdvancedTransactionFilterModal
       open={advancedOpen}
       onClose={() => setAdvancedOpen(false)}
-      title="Filter transaksi"
-      size="sm"
-      className={styles.filterModal}
-      footer={<div className={styles.filterFooterActions}><Button type="button" className={styles.filterResetButton} onClick={resetAdvancedDraft}>Reset</Button><Button type="button" className={styles.filterApplyButton} variant="primary" onClick={applyAdvanced}>Terapkan filter</Button></div>}
-    >
-      <section className={styles.filterTypeSection} aria-labelledby="mobile-transaction-type-filter">
-        <strong id="mobile-transaction-type-filter">Jenis transaksi</strong>
-        <div className={styles.filterTypeGrid}>
-          {ALL_TYPES.map((item) => <button key={item.value} type="button" className={advancedDraft.type === item.value ? styles.filterTypeButtonActive : styles.filterTypeButton} aria-pressed={advancedDraft.type === item.value} onClick={() => setAdvancedDraft((current) => ({ ...current, type: item.value }))}>{item.label}</button>)}
-        </div>
-      </section>
-      <div className={styles.filterSettings}>
-        <div className={styles.filterSetting}>
-          <span className={styles.filterSettingCopy}><strong>Alokasi Dana</strong><small>Sumber alokasi transaksi</small></span>
-          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.allocation} onChange={(allocation) => setAdvancedDraft((current) => ({ ...current, allocation }))} ariaLabel="Filter Alokasi Dana" options={[{ value: "all", label: "Semua" }, { value: "unallocated", label: "Belum dialokasikan" }, { value: "allocated", label: "Menggunakan alokasi" }]} /></span>
-        </div>
-        <div className={styles.filterSetting}>
-          <span className={styles.filterSettingCopy}><strong>Rekening</strong><small>Rekening yang digunakan</small></span>
-          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.account} onChange={(account) => setAdvancedDraft((current) => ({ ...current, account }))} ariaLabel="Filter rekening" searchable={filterOptions.accounts.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.accounts.map((item) => ({ value: item.account_id, label: accountDisplayLabel(item), ...accountOptionVisual(item) }))]} /></span>
-        </div>
-        <div className={styles.filterSetting}>
-          <span className={styles.filterSettingCopy}><strong>Kategori</strong><small>Kategori transaksi</small></span>
-          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.category} onChange={(category) => setAdvancedDraft((current) => ({ ...current, category }))} ariaLabel="Filter kategori" searchable={filterOptions.categories.length > 8} searchPlaceholder="Cari kategori…" options={[{ value: "all", label: "Semua" }, ...filterOptions.categories.map((item) => ({ value: item.category_id, label: item.name, ...categoryOptionVisual(item) }))]} /></span>
-        </div>
-        <div className={styles.filterSetting}>
-          <span className={styles.filterSettingCopy}><strong>Pencatat</strong><small>Siapa yang mencatat</small></span>
-          <span className={styles.filterSelect}><SelectionControl compact value={advancedDraft.creator} onChange={(creator) => setAdvancedDraft((current) => ({ ...current, creator }))} ariaLabel="Filter pencatat" searchable={filterOptions.creators.length > 8} options={[{ value: "all", label: "Semua" }, ...filterOptions.creators.map((item) => ({ value: item.user_id, label: item.name, meta: item.email || "", ...memberOptionVisual(item) }))]} /></span>
-        </div>
-      </div>
-    </Modal>
+      advancedDraft={advancedDraft}
+      setAdvancedDraft={setAdvancedDraft}
+      filterOptions={filterOptions}
+      categoryState={categoryState}
+      moreFiltersOpen={moreFiltersOpen}
+      setMoreFiltersOpen={setMoreFiltersOpen}
+      onReset={resetAdvancedDraft}
+      onApply={applyAdvanced}
+      onPeriodChange={updateAdvancedPeriod}
+    />
   </>;
 };
-
 const mobileFlag = (item) => {
   if (item.status === "cancelled") return { label: "Dibatalkan", tone: "negative" };
   if (item.managed_by === "recurring") return { label: "Jadwal rutin", tone: "primary" };
@@ -217,7 +344,7 @@ export const MobileTransactionPager = ({ resource, filters, setFilters, itemCoun
 export const MobileActiveFilterSummary = ({ filters, setFilters, setDraftQuery }) => {
   const labels = [];
   if (filters.query) labels.push({ key: "query", label: `Cari: ${filters.query}` });
-  if (!COMMON_TYPES.some((item) => item.value === filters.type)) labels.push({ key: "type", label: TRANSACTION_LABELS[filters.type] || filters.type });
+  if (!QUICK_TYPES.some((item) => item.value === filters.type)) labels.push({ key: "type", label: TRANSACTION_LABELS[filters.type] || filters.type });
   if (filters.allocation !== "all") labels.push({ key: "allocation", label: filters.allocation === "allocated" ? "Menggunakan Alokasi Dana" : "Belum masuk Alokasi Dana" });
   if (filters.account !== "all") labels.push({ key: "account", label: "Rekening terpilih" });
   if (filters.category !== "all") labels.push({ key: "category", label: "Kategori terpilih" });
@@ -229,7 +356,6 @@ export const MobileActiveFilterSummary = ({ filters, setFilters, setDraftQuery }
   };
   return <div className={styles.activeFilters} aria-label="Filter transaksi aktif">{labels.map((item) => <button key={item.key} type="button" onClick={() => clear(item.key)}><span>{item.label}</span><FiX aria-hidden="true" /></button>)}</div>;
 };
-
 
 const MobileTransactionHistory = ({
   period,

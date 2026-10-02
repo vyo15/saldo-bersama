@@ -17,6 +17,7 @@ export const createBudgetBatchRow = (overrides = {}) => ({
   schedule_due_day: 20,
   schedule_start_date: todayInJakarta(),
   schedule_payment_method: "transfer",
+  shopping_enabled: false,
   ...overrides,
 });
 
@@ -98,6 +99,7 @@ export const buildBudgetBatchPayload = ({ rows, form, period, items = [] }) => {
         schedule_due_day: Number(row.schedule_due_day),
         schedule_start_date: row.schedule_start_date,
         schedule_payment_method: row.schedule_payment_method,
+        shopping_enabled: Boolean(row.shopping_enabled),
       };
     }),
   };

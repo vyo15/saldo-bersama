@@ -338,3 +338,15 @@
   .note,
   .submitButton { transition: none; }
 }
+
+/* Transfer date/impact labels reflow rather than becoming ambiguous on mobile. */
+@media (max-width: 820px) {
+  .dateCopy strong,
+  .dateCopy small,
+  .impactStatCopy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

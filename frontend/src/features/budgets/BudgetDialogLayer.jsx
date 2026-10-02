@@ -15,6 +15,7 @@ import { userRoleLabel } from "../../shared/presentation/user.js";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 import BudgetBatchEditor from "./BudgetBatchEditor.jsx";
 import { BUDGET_RECORDING_OPTIONS } from "./budgetRecordingOptions.js";
+import BudgetShoppingPreferenceField from "./BudgetShoppingPreferenceField.jsx";
 import styles from "./BudgetDialogLayer.module.css";
 import { ExpenseCategoryCreateModal } from "../categories/ExpenseCategoryQuickCreate.jsx";
 import { useExpenseCategoryCreator } from "../categories/useExpenseCategoryCreator.js";
@@ -155,6 +156,11 @@ const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, 
       <BudgetFundingNotices funding={funding} />
       <BudgetRecordingModeField existingBudget={existingBudget} form={form} setForm={setForm} />
       {showSchedule ? <BudgetScheduleFields form={form} setForm={setForm} /> : null}
+      <BudgetShoppingPreferenceField
+        checked={Boolean(form.shopping_enabled)}
+        openItems={Number(existingBudget?.shopping_open_items || 0)}
+        onChange={(shopping_enabled) => setForm((current) => ({ ...current, shopping_enabled }))}
+      />
       <BudgetThresholdField lockedEnvelope={lockedEnvelope} form={form} setForm={setForm} />
       <ExistingBudgetActions existingBudget={existingBudget} canLifecycle={canLifecycle} onReminder={onReminder} onLifecycle={onLifecycle} />
       <BudgetSaveError saveState={saveState} />

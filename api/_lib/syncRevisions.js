@@ -50,7 +50,7 @@ const COMMITMENT_DEPENDENCIES = Object.freeze(unique(
 const BUDGET_DEPENDENCIES = Object.freeze(unique(
   CORE_OVERVIEW,
   AUDIT,
-  ["accounts.list", "accounts.previewLifecycle", "budgets.list", "budgets.previewLifecycle", "envelopes.list", "recurring.list", "reports.monthly", "archive.list"],
+  ["accounts.list", "accounts.previewLifecycle", "budgets.list", "budgets.previewLifecycle", "envelopes.list", "recurring.list", "reports.monthly", "shopping.detail", "archive.list"],
 ));
 
 const GOAL_DEPENDENCIES = Object.freeze(unique(
@@ -120,11 +120,11 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
   "transactions.cancel": TRANSACTION_DEPENDENCIES,
   "transactions.restore": TRANSACTION_DEPENDENCIES,
 
-  "shopping.create": unique(AUDIT, ["shopping.detail"]),
-  "shopping.itemCreate": unique(AUDIT, ["shopping.detail", "shopping.suggestions"]),
+  "shopping.create": unique(AUDIT, ["shopping.detail", "budgets.list"]),
+  "shopping.itemCreate": unique(AUDIT, ["shopping.detail", "shopping.suggestions", "budgets.list"]),
   "shopping.itemUpdate": unique(AUDIT, ["shopping.detail", "shopping.suggestions"]),
-  "shopping.itemState": unique(AUDIT, ["shopping.detail"]),
-  "shopping.itemRemove": unique(AUDIT, ["shopping.detail"]),
+  "shopping.itemState": unique(AUDIT, ["shopping.detail", "budgets.list"]),
+  "shopping.itemRemove": unique(AUDIT, ["shopping.detail", "budgets.list"]),
   "shopping.checkout": unique(TRANSACTION_DEPENDENCIES, ["shopping.detail", "shopping.byTransaction", "shopping.suggestions"]),
 
   "envelopes.create": ENVELOPE_DEPENDENCIES,

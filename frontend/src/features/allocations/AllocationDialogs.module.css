@@ -562,3 +562,15 @@
     padding: 9px;
   }
 }
+
+/* Locked/source identities are decision-critical in mobile forms and must remain fully readable. */
+@media (max-width: 820px) {
+  .allocation-advanced > summary small,
+  .allocation-funding-lock > strong,
+  .allocation-create-summary strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

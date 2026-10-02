@@ -1533,3 +1533,16 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
     background: transparent;
   }
 }
+
+/* Account/settings labels are navigation identity and remain complete on narrow screens. */
+@media (max-width: 820px) {
+  .settingsAccountCopy strong,
+  .settingsAccountCopy small,
+  .settingsAccountCopy span,
+  .settingsListCopy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

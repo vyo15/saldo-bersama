@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
-import { createShoppingItem, createShoppingList, setShoppingItemState, checkoutShoppingList } from "../../api/_lib/services/shopping/mutations.js";
+import { createShoppingItem, createShoppingList, removeShoppingItem, setShoppingItemState, checkoutShoppingList } from "../../api/_lib/services/shopping/mutations.js";
 import { shoppingDetail } from "../../api/_lib/services/shopping/queries.js";
+import { syncBudgetShoppingPreference } from "../../api/_lib/services/shopping/preferences.js";
+import { compactBudgetsForClosedPeriod, copyEnvelopeNeedsToPeriod, restoreCompactedBudgetsForPeriod } from "../../api/_lib/services/planning/budgets.js";
 
 const owner = { user_id: "shopping-owner", firebase_uid: "firebase-shopping-owner", email: "shopping@example.com", name: "Owner", role: "owner", status: "active" };
 const PERIOD = "2026-10";
@@ -74,5 +76,85 @@ test("shopping checklist tidak mengubah ledger dan partial checkout memakai tran
     const nextList = await createShoppingList(db, context("shopping.create", { budget_id: "budget-shopping", name: "Belanja Tambahan" }));
     assert.notEqual(nextList.shopping_list_id, list.shopping_list_id);
     assert.equal(nextList.status, "active");
+  } finally { db.close(); }
+});
+
+
+test("daftar belanja menjadi capability opt-in per Kebutuhan dan tidak dapat dimatikan saat barang masih terbuka", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedPlanning(db);
+    const budget = await db.one("SELECT * FROM budgets WHERE budget_id='budget-shopping'");
+    const list = await syncBudgetShoppingPreference(db, context("budgets.upsert"), budget, true);
+    assert.equal(list.status, "active");
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM shopping_lists WHERE budget_id='budget-shopping' AND status<>'archived'")).count), 1);
+
+    const created = await createShoppingItem(db, context("shopping.itemCreate", {
+      shopping_list_id: list.shopping_list_id,
+      list_row_version: list.row_version,
+      name: "Sabun",
+      quantity_milli: 1000,
+      unit_key: "pcs",
+      estimated_unit_price: 15_000,
+    }));
+    await assert.rejects(
+      syncBudgetShoppingPreference(db, context("budgets.upsert"), budget, false),
+      (error) => error?.code === "SHOPPING_DISABLE_OPEN_ITEMS",
+    );
+
+    await removeShoppingItem(db, context("shopping.itemRemove", {
+      shopping_item_id: created.item.shopping_item_id,
+      row_version: created.item.row_version,
+    }, created.item.row_version));
+    await syncBudgetShoppingPreference(db, context("budgets.upsert"), budget, false);
+    assert.equal((await db.one("SELECT status FROM shopping_lists WHERE shopping_list_id=?", [list.shopping_list_id])).status, "archived");
+
+    const replacement = await syncBudgetShoppingPreference(db, context("budgets.upsert"), budget, true);
+    assert.notEqual(replacement.shopping_list_id, list.shopping_list_id);
+    assert.equal(replacement.status, "active");
+  } finally { db.close(); }
+});
+
+
+test("periode tertutup mempertahankan histori daftar belanja tanpa memutus continuity Kebutuhan", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedPlanning(db);
+    const budget = await db.one("SELECT * FROM budgets WHERE budget_id='budget-shopping'");
+    const list = await syncBudgetShoppingPreference(db, context("budgets.upsert"), budget, true);
+    await createShoppingItem(db, context("shopping.itemCreate", {
+      shopping_list_id: list.shopping_list_id,
+      list_row_version: list.row_version,
+      name: "Beras",
+      quantity_milli: 1000,
+      unit_key: "kg",
+      estimated_unit_price: 18_000,
+    }));
+
+    const compacted = await compactBudgetsForClosedPeriod(db, context("periods.close"), PERIOD);
+    assert.equal(compacted.compacted, 1);
+    const retained = await db.one("SELECT status,ended_reason FROM budgets WHERE budget_id='budget-shopping'");
+    assert.equal(retained.status, "archived");
+    assert.equal(retained.ended_reason, "PERIOD_CLOSED_SHOPPING_HISTORY");
+    const history = await db.one("SELECT budget_id,final_status FROM budget_history WHERE budget_id='budget-shopping'");
+    assert.equal(history?.final_status, "closed", "snapshot laporan tetap dipadatkan ke budget_history");
+    assert.ok(await shoppingDetail(db, context("shopping.detail", { budget_id: "budget-shopping" })), "histori daftar belanja tetap readable saat periode ditutup");
+
+    const copied = await copyEnvelopeNeedsToPeriod(db, context("budgets.copyFromPreviousPeriod"), {
+      envelopeRuleId: "envelope-shopping",
+      sourcePeriodKey: PERIOD,
+      targetPeriodKey: "2026-11",
+    });
+    assert.equal(copied.copied, 1);
+    const nextBudget = await db.one("SELECT budget_id FROM budgets WHERE period_key='2026-11' AND name='Belanja Bulanan'");
+    assert.ok(nextBudget);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM shopping_lists WHERE budget_id=? AND status<>'archived'", [nextBudget.budget_id])).count), 1, "preference daftar belanja ikut continuity tanpa menyalin item lama");
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM shopping_items si JOIN shopping_lists sl ON sl.shopping_list_id=si.shopping_list_id WHERE sl.budget_id=?", [nextBudget.budget_id])).count), 0, "item belanja periode lama tidak disalin");
+
+    const restored = await restoreCompactedBudgetsForPeriod(db, context("periods.reopen"), PERIOD);
+    assert.equal(restored.restored, 1);
+    const reopened = await db.one("SELECT status,ended_reason FROM budgets WHERE budget_id='budget-shopping'");
+    assert.equal(reopened.status, "active");
+    assert.equal(reopened.ended_reason, "");
   } finally { db.close(); }
 });

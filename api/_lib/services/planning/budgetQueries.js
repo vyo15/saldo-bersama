@@ -33,7 +33,16 @@ export const budgetListStatement = (context) => {
       ),0) AS used_amount,
       bu.name AS owner_name,bu.role AS owner_role,
       er.name AS envelope_name,er.source_account_id AS envelope_source_account_id,
-      er.assignee_user_id AS envelope_assignee_user_id
+      er.assignee_user_id AS envelope_assignee_user_id,
+      EXISTS(SELECT 1 FROM shopping_lists sl WHERE sl.budget_id=b.budget_id AND sl.status<>'archived') AS shopping_enabled,
+      COALESCE((SELECT COUNT(*) FROM shopping_items si WHERE si.shopping_list_id=(
+        SELECT sl.shopping_list_id FROM shopping_lists sl WHERE sl.budget_id=b.budget_id AND sl.status<>'archived'
+        ORDER BY CASE sl.status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END,sl.updated_at DESC LIMIT 1
+      ) AND si.status<>'removed'),0) AS shopping_item_count,
+      COALESCE((SELECT COUNT(*) FROM shopping_items si WHERE si.shopping_list_id=(
+        SELECT sl.shopping_list_id FROM shopping_lists sl WHERE sl.budget_id=b.budget_id AND sl.status IN ('active','draft')
+        ORDER BY sl.updated_at DESC LIMIT 1
+      ) AND si.status IN ('pending','in_cart')),0) AS shopping_open_items
     FROM budgets b
     LEFT JOIN categories c ON c.category_id=b.category_id
     LEFT JOIN users bu ON bu.user_id=b.owner_user_id
@@ -59,6 +68,9 @@ export const mapBudgetListRows = (rows, context) => ({
     ...publicRow(row),
     name: row.name,
     category_name: row.category_name || "",
+    shopping_enabled: Boolean(Number(row.shopping_enabled || 0)),
+    shopping_item_count: Number(row.shopping_item_count || 0),
+    shopping_open_items: Number(row.shopping_open_items || 0),
     can_manage: canManageBudget(context?.actor, row),
   })),
 });
@@ -86,7 +98,7 @@ export const budgetReportStatement = (context) => {
               AND (b.envelope_rule_id IS NULL OR ep.envelope_rule_id=b.envelope_rule_id)))),0) AS used_amount,
         er.name AS envelope_name
       FROM budgets b LEFT JOIN categories c ON c.category_id=b.category_id LEFT JOIN envelope_rules er ON er.envelope_rule_id=b.envelope_rule_id
-      WHERE b.period_key=? AND ${access.sql}
+      WHERE b.period_key=? AND ${access.sql} AND NOT EXISTS (SELECT 1 FROM budget_history bh WHERE bh.budget_id=b.budget_id)
       UNION ALL
       SELECT h.budget_id,h.period_key,h.category_id,h.envelope_rule_id,h.name,h.amount,h.warning_threshold,h.recording_mode,h.final_status AS status,h.row_version,h.created_by,h.created_at,h.updated_by,h.updated_at,h.scope,h.owner_user_id,
         h.released_amount,h.ended_reason,h.ended_by,h.ended_at,h.category_name,h.name AS display_name,h.used_amount,h.envelope_name

@@ -838,3 +838,15 @@
   .categoryList { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .categoryItem { min-height: 60px; padding: 6px 46px 6px 0; }
 }
+
+/* Category identity is primary mobile content; allow the existing two-line contract on native rows. */
+@media (max-width: 820px) {
+  .categoryName { -webkit-line-clamp: 2; }
+  .categoryPreviewCopy strong,
+  .categoryPreviewCopy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

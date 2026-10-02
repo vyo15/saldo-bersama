@@ -253,3 +253,34 @@ test("Tambah Kebutuhan pada detail Alokasi memakai batch compact tanpa mengganda
   assert.match(backendRegistry, /"budgets\.batchCreate": createBudgetsBatch/);
   assert.match(backendPolicy, /"budgets\.batchCreate": write\(\)/);
 });
+
+test("Daftar belanja menjadi capability opt-in per Kebutuhan, bukan aksi universal", async () => {
+  const [row, preference, dialog, batchEditor, actions, model, controller, backendQueries, backendMutations] = await Promise.all([
+    read("src/features/allocations/AllocationNeedRow.jsx"),
+    read("src/features/budgets/BudgetShoppingPreferenceField.jsx"),
+    read("src/features/budgets/BudgetDialogLayer.jsx"),
+    read("src/features/budgets/BudgetBatchEditor.jsx"),
+    read("src/features/allocations/allocationActionRunners.js"),
+    read("src/features/budgets/budgetBatchModel.js"),
+    read("src/features/budgets/useBudgetActions.js"),
+    readFile(new URL("../../api/_lib/services/planning/budgetQueries.js", import.meta.url), "utf8"),
+    readFile(new URL("../../api/_lib/services/planning/budgetMutations.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(preference, /Gunakan daftar belanja/);
+  assert.match(preference, /role="switch"/);
+  assert.match(preference, /openItems/);
+  assert.match(dialog, /BudgetShoppingPreferenceField/);
+  assert.match(batchEditor, /BudgetShoppingPreferenceField/);
+  assert.match(actions, /shopping_enabled: Boolean\(need\.shopping_enabled\)/);
+  assert.match(model, /shopping_enabled: false/);
+  assert.match(model, /shopping_enabled: Boolean\(row\.shopping_enabled\)/);
+  assert.match(controller, /shopping_enabled: Boolean\(form\.shopping_enabled\)/);
+  assert.match(backendQueries, /shopping_enabled/);
+  assert.match(backendQueries, /shopping_open_items/);
+  assert.match(backendMutations, /syncBudgetShoppingPreference/);
+  assert.match(row, /onOpenShopping && budget\.shopping_enabled && !completed/);
+  assert.match(row, /Buat daftar belanja/);
+  assert.match(row, /Daftar belanja ·/);
+  assert.doesNotMatch(row, /<Button icon=\{FiShoppingCart\}[\s\S]*>Daftar belanja<\/Button>/, "Overflow tidak boleh menduplikasi CTA daftar belanja.");
+});

@@ -10,6 +10,7 @@ import { categoryOptionVisual } from "../../components/common/selectionOptionVis
 import Modal from "../../components/common/Modal.jsx";
 import { budgetBatchScheduleLabel } from "./budgetBatchModel.js";
 import { BUDGET_RECORDING_OPTIONS, budgetRecordingLabel } from "./budgetRecordingOptions.js";
+import BudgetShoppingPreferenceField from "./BudgetShoppingPreferenceField.jsx";
 import styles from "./BudgetBatchEditor.module.css";
 
 const SCHEDULE_FREQUENCY_OPTIONS = Object.freeze([
@@ -114,13 +115,14 @@ const BatchEditorRow = ({ row, index, categories, updateRow, removeRow, onCreate
     <div className={styles.usageBlock}>
       <RecordingMode row={row} update={update} />
       <ScheduleFields row={row} update={update} />
+      <BudgetShoppingPreferenceField compact checked={Boolean(row.shopping_enabled)} onChange={(shopping_enabled) => update({ shopping_enabled })} />
     </div>
   </div>;
 };
 
 const BatchCompactRow = ({ row, category, onEdit, onRemove }) => <div className={styles.compactRow}>
   <button type="button" className={styles.compactMain} onClick={onEdit}>
-    <span className={styles.compactCopy}><strong>{row.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(row.recording_mode) || "Pilih cara penggunaan"}{row.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(row)}` : ""}</small></span>
+    <span className={styles.compactCopy}><strong>{row.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(row.recording_mode) || "Pilih cara penggunaan"}{row.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(row)}` : ""}{row.shopping_enabled ? " · Daftar belanja" : ""}</small></span>
     <strong className={styles.compactAmount}>{formatRupiah(row.amount || 0)}</strong>
   </button>
   <button type="button" className={styles.compactRemove} onClick={onRemove} aria-label={`Hapus ${row.name || "kebutuhan"}`}><FiTrash2 aria-hidden="true" /></button>
@@ -182,6 +184,7 @@ const BudgetBatchEditor = ({ open, controller, categories, lockedEnvelope, sourc
       schedule_due_day: row.schedule_due_day,
       schedule_start_date: row.schedule_start_date,
       schedule_payment_method: row.schedule_payment_method,
+      shopping_enabled: Boolean(row.shopping_enabled),
     })),
   };
   const guard = useUnsavedChangesGuard({ open, value: guardValue, onClose: controller.closeBudgetForm, blocked: submitting });

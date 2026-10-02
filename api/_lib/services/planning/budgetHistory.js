@@ -1,6 +1,6 @@
 import { appError, nowIso, periodKey } from "../core.js";
 import { cancelScheduledManualRemindersForEntity } from "../reminders.js";
-import { budgetUsageAmount } from "./budgetShared.js";
+import { BUDGET_SHOPPING_HISTORY_RETENTION_REASON, budgetUsageAmount } from "./budgetShared.js";
 
 export const compactBudgetsForClosedPeriod = async (db, context, periodValue) => {
   const period = periodKey(periodValue);
@@ -20,18 +20,47 @@ export const compactBudgetsForClosedPeriod = async (db, context, periodValue) =>
       Number(budget.row_version || 1), budget.created_by, budget.created_at, budget.updated_by, budget.updated_at, budget.scope, budget.owner_user_id,
       context.actor.user_id, timestamp,
     ]);
+
+    const shoppingDependency = await db.one("SELECT 1 AS present FROM shopping_lists WHERE budget_id=? LIMIT 1", [budget.budget_id]);
+    if (shoppingDependency?.present && budget.status === "active") {
+      await db.execute(`UPDATE budgets SET status='archived',ended_reason=?,ended_by=?,ended_at=?,updated_by=?,updated_at=?
+        WHERE budget_id=?`, [BUDGET_SHOPPING_HISTORY_RETENTION_REASON, context.actor.user_id, timestamp, context.actor.user_id, timestamp, budget.budget_id]);
+    }
     await cancelScheduledManualRemindersForEntity(db, context, "budget", budget.budget_id, "PERIOD_CLOSED");
   }
-  if (rows.length) await db.execute("DELETE FROM budgets WHERE period_key=?", [period]);
+  if (rows.length) await db.execute(`DELETE FROM budgets WHERE period_key=? AND NOT EXISTS (
+    SELECT 1 FROM shopping_lists sl WHERE sl.budget_id=budgets.budget_id
+  )`, [period]);
   return { compacted: rows.length };
+};
+
+const restoreRetainedShoppingBudget = async (db, context, existing, history) => {
+  const hasShopping = await db.one("SELECT 1 AS present FROM shopping_lists WHERE budget_id=? LIMIT 1", [history.budget_id]);
+  if (!hasShopping?.present) return false;
+  if (history.final_status === "ended") {
+    if (existing.status !== "archived") return false;
+    return true;
+  }
+  if (existing.status !== "archived" || existing.ended_reason !== BUDGET_SHOPPING_HISTORY_RETENTION_REASON) return false;
+  await db.execute(`UPDATE budgets SET period_key=?,category_id=?,envelope_rule_id=?,name=?,amount=?,warning_threshold=?,recording_mode=?,status='active',row_version=?,created_by=?,created_at=?,updated_by=?,updated_at=?,scope=?,owner_user_id=?,released_amount=?,ended_reason='',ended_by=NULL,ended_at=NULL
+    WHERE budget_id=?`, [
+    history.period_key, history.category_id, history.envelope_rule_id, history.name, Number(history.amount), Number(history.warning_threshold || 80), history.recording_mode || "flexible",
+    Number(history.row_version || 1), history.created_by, history.created_at, history.updated_by, history.updated_at, history.scope, history.owner_user_id,
+    Number(history.released_amount || 0), history.budget_id,
+  ]);
+  return true;
 };
 
 export const restoreCompactedBudgetsForPeriod = async (db, context, periodValue) => {
   const period = periodKey(periodValue);
   const rows = await db.all("SELECT * FROM budget_history WHERE period_key=? ORDER BY budget_id", [period]);
   for (const history of rows) {
-    const existing = await db.one("SELECT budget_id FROM budgets WHERE budget_id=?", [history.budget_id]);
-    if (existing) throw appError("BUDGET_RESTORE_CONFLICT", "Kebutuhan histori sudah memiliki row operasional dan periode tidak aman dibuka kembali.", 409, { budgetId: history.budget_id });
+    const existing = await db.one("SELECT * FROM budgets WHERE budget_id=?", [history.budget_id]);
+    if (existing) {
+      const restored = await restoreRetainedShoppingBudget(db, context, existing, history);
+      if (!restored) throw appError("BUDGET_RESTORE_CONFLICT", "Kebutuhan histori sudah memiliki row operasional dan periode tidak aman dibuka kembali.", 409, { budgetId: history.budget_id });
+      continue;
+    }
     await db.execute(`INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,recording_mode,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id,released_amount,ended_reason,ended_by,ended_at)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
       history.budget_id, history.period_key, history.category_id, history.envelope_rule_id, history.name, Number(history.amount), Number(history.warning_threshold || 80), history.recording_mode || "flexible",

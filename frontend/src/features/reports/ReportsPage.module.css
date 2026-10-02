@@ -719,3 +719,18 @@
   .healthFooter { display: grid; gap: 7px; }
   .healthInsight { max-width: none; text-align: left; }
 }
+
+/* Reports keep primary allocation/category/budget/transaction identity readable on mobile. */
+@media (max-width: 820px) {
+  .allocationCopy strong,
+  .categoryIdentity strong,
+  .budgetRow > span:first-child strong,
+  .transactionRow strong,
+  .transactionRow small,
+  .breakdownPanel p span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

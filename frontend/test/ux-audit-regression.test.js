@@ -379,6 +379,25 @@ test("nominal finansial kritis tidak memakai ellipsis sebagai fallback responsiv
   }
 });
 
+test("teks entity utama mobile reflow tanpa dipaksa ellipsis satu baris", async () => {
+  const [allocation, selection, categories, goals, holdings, history] = await Promise.all([
+    read("src/features/allocations/AllocationDetail.module.css"),
+    read("src/components/common/SelectionField.module.css"),
+    read("src/features/categories/CategoriesPage.module.css"),
+    read("src/features/goals/components/GoalCards.module.css"),
+    read("src/features/investments/HoldingCard.module.css"),
+    read("src/features/transactions/components/MobileTransactionHistory.module.css"),
+  ]);
+
+  assert.match(allocation, /Mobile Kebutuhan rows[\s\S]*\.allocation-limit-row__title \{[\s\S]*flex-direction:\s*column;[\s\S]*\.allocation-limit-row__title > strong,[\s\S]*white-space:\s*normal;/);
+  assert.match(selection, /Mobile readability:[\s\S]*\.triggerValue,[\s\S]*\.triggerMeta \{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*anywhere;/);
+  assert.match(categories, /Category identity is primary mobile content[\s\S]*\.categoryName \{ -webkit-line-clamp:\s*2; \}/);
+  assert.match(goals, /Target names are primary entities[\s\S]*\.goal-card__heading h2 \{[\s\S]*white-space:\s*normal;/);
+  assert.match(holdings, /Asset identity must remain unambiguous[\s\S]*\.holdingNameRow h4,[\s\S]*white-space:\s*normal;/);
+  assert.match(history, /\.categoryTileLabel \{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/);
+  assert.match(history, /\.rowCopy > strong \{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/);
+});
+
 test("dashboard mobile menjaga hero compact tanpa nominal pecah dan chrome header berlebih", async () => {
   const [mobile, styles] = await Promise.all([
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),
@@ -391,7 +410,8 @@ test("dashboard mobile menjaga hero compact tanpa nominal pecah dan chrome heade
   assert.match(styles, /\.mobile-usable-funds \{[\s\S]*?display:\s*grid;/);
   assert.match(styles, /\.mobile-usable-funds :global\(\.money\),[\s\S]*?white-space:\s*nowrap;/);
   assert.doesNotMatch(styles, /\.mobile-usable-funds :global\(\.money\),[\s\S]*?overflow-wrap:\s*anywhere;/);
-  assert.match(styles, /\.mobile-ownership-summary\.mobile-reference-ownership \{[\s\S]*?border:\s*1px solid var\(--border\);[\s\S]*?gap:\s*0;/);
+  assert.match(styles, /\.mobile-ownership-summary\.mobile-reference-ownership \{[\s\S]*?border:\s*1px solid transparent;[\s\S]*?gap:\s*0;/);
+  assert.match(styles, /Editorial native surface hierarchy:[\s\S]*?\.mobile-ownership-summary\.mobile-reference-ownership \{[\s\S]*?border-color:\s*transparent;[\s\S]*?background:\s*transparent;/);
   assert.match(styles, /\.mobile-reference-ownership \.mobile-owner-card \{[\s\S]*?border:\s*0;[\s\S]*?box-shadow:\s*none;/);
 });
 

@@ -292,3 +292,13 @@ button.heroStatus {
   .heroValue { margin-top: 7px; font-size: clamp(1.6rem, 7.6vw, 2rem); }
   .heroArt { opacity: .32; width: min(6.2rem, 25%); max-height: 6.5rem; }
 }
+
+/* Hero metrics may reflow rather than hiding a financial value/label on mobile. */
+@media (max-width: 820px) {
+  .heroMetric > strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

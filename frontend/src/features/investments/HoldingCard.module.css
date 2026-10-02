@@ -233,3 +233,14 @@
     transition: none;
   }
 }
+
+/* Asset identity must remain unambiguous on mobile; values/actions keep their own columns. */
+@media (max-width: 820px) {
+  .holdingNameRow h4,
+  .holdingIdentity p {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

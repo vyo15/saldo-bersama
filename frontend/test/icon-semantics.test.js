@@ -84,3 +84,25 @@ test("trend icon hanya mewakili arah data sedangkan aksi dan status memakai sema
   assert.match(reports, /Keluar bulan ini/);
   assert.doesNotMatch(holdingDetail, /FiTrendingUp|FiTrendingDown|FiDollarSign/);
 });
+
+
+test("filter cepat transaksi mobile memakai segmented control, ikon arah yang jelas, dan filter slider", async () => {
+  const [source, styles] = await Promise.all([
+    read("src/features/transactions/components/MobileTransactionHistory.jsx"),
+    read("src/features/transactions/components/MobileTransactionHistory.module.css"),
+  ]);
+  assert.match(source, /FiArrowDown, FiArrowUp/);
+  assert.match(source, /value: "expense"[\s\S]*Icon: FiArrowDown/);
+  assert.match(source, /value: "income"[\s\S]*Icon: FiArrowUp/);
+  assert.doesNotMatch(source, /\bMoneyInIcon\b|\bMoneyOutIcon\b/);
+  assert.match(source, /FiSliders/);
+  assert.match(source, /compactLabel: "Keluar"/);
+  assert.match(source, /compactLabel: "Masuk"/);
+  assert.match(source, /categoryIcon\(item\.icon, item\.transaction_type\)/);
+  assert.match(source, /value: "transfer"[\s\S]*value: "refund"[\s\S]*value: "adjustment"/);
+  assert.match(source, /<TemporalInput type="month"/);
+  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) var\(--mobile-control-height\) var\(--mobile-control-height\)/);
+  assert.match(styles, /\.typeScroller \{[^}]*border: 1px solid var\(--border\);[^}]*border-radius: 15px;[^}]*overflow: hidden;/s);
+  assert.match(styles, /\.iconFilter \{[^}]*width: var\(--mobile-control-height\); height: var\(--mobile-control-height\)/);
+  assert.match(styles, /\.typeChip,[\s\S]*\.typeChipActive \{[^}]*min-height: var\(--mobile-control-height\);[^}]*border: 0;/);
+});

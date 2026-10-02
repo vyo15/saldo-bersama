@@ -1,0 +1,64 @@
+.field {
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--divider-soft, var(--border));
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-section, var(--surface-soft));
+  cursor: pointer;
+}
+.icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+.icon svg { width: 17px; height: 17px; }
+.copy { min-width: 0; display: grid; gap: 3px; }
+.copy strong { color: var(--text); font-size: 12px; line-height: 1.25; }
+.copy small { color: var(--text-soft); font-size: 12px; line-height: 1.4; }
+.switch { width: 46px; height: 28px; position: relative; flex: 0 0 46px; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.switch > span {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--divider-strong, var(--border-strong));
+  border-radius: 999px;
+  background: var(--surface-raised, var(--surface));
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+  pointer-events: none;
+}
+.switch > span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: var(--shadow-control);
+  transition: transform var(--motion-fast), background var(--motion-fast);
+}
+.switch input:checked + span { border-color: var(--primary); background: var(--primary-soft); }
+.switch input:checked + span::after { transform: translateX(18px); background: var(--primary); }
+.switch input:focus-visible + span { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.disabled { cursor: default; opacity: .78; }
+.disabled .switch input { cursor: not-allowed; }
+.compact { min-height: 54px; padding: 9px 10px; }
+.compact .icon { width: 32px; height: 32px; }
+@media (max-width: 420px) {
+  .field { grid-template-columns: 32px minmax(0,1fr) auto; padding-inline: 10px; }
+  .icon { width: 32px; height: 32px; }
+  .copy small { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch > span,.switch > span::after { transition: none; }
+}

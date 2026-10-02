@@ -17,6 +17,7 @@ Daftar Belanja adalah lapisan eksekusi untuk `Kebutuhan` di Atur Dana. Fitur ini
 7. Barang yang sudah `purchased` dipertahankan sebagai histori; pembatalan transaksi tidak diam-diam mengembalikan kondisi fisik barang.
 8. Hak mutasi mengikuti scope, owner/assignee, status Kebutuhan, kategori, dan Alokasi Dana canonical.
 9. Daftar belanja masuk backup, restore, reset, export, dan lifecycle dependency Kebutuhan.
+10. Capability Daftar Belanja adalah keputusan eksplisit per Kebutuhan, default nonaktif; kategori tidak menjadi authority untuk mengaktifkannya. Preference aktif diproyeksikan dari list non-archived, sedangkan item/checkouts tetap histori domain shopping.
 
 ## Model
 
@@ -29,4 +30,4 @@ State list: `draft|active|completed|archived`.
 
 ## UX
 
-Entry point tetap dari Atur Dana/Kebutuhan, bukan menu utama baru. Mobile menggunakan list minim wrapper dan sticky primary action. Desktop menambah summary rail. Rekening sumber dan Kebutuhan pada checkout ditampilkan sebagai locked context supaya user tidak mengulang keputusan yang sudah ditentukan Alokasi Dana.
+Entry point tetap dari Atur Dana/Kebutuhan, bukan menu utama baru. Form Kebutuhan menyediakan switch **Gunakan daftar belanja**; CTA shopping hanya tampil saat preference aktif dan tidak diduplikasi di overflow. Mobile menggunakan list minim wrapper dan sticky primary action. Desktop menambah summary rail. Rekening sumber dan Kebutuhan pada checkout ditampilkan sebagai locked context supaya user tidak mengulang keputusan yang sudah ditentukan Alokasi Dana.

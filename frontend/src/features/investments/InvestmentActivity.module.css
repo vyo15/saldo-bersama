@@ -157,3 +157,13 @@
     background: color-mix(in srgb, var(--primary-soft) 34%, transparent);
   }
 }
+
+/* Investment activity titles may reflow on narrow screens. */
+@media (max-width: 820px) {
+  .activityCopy strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

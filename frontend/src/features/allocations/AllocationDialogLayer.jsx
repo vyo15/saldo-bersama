@@ -23,6 +23,7 @@ import { allocationQuickTemplates } from "./allocationArt.js";
 import { ALLOCATION_CREATE_NEED_LIMIT, createAllocationNeedDraft } from "./allocationNeedDraft.js";
 import { budgetBatchScheduleLabel } from "../budgets/budgetBatchModel.js";
 import { BUDGET_RECORDING_OPTIONS, budgetRecordingLabel } from "../budgets/budgetRecordingOptions.js";
+import BudgetShoppingPreferenceField from "../budgets/BudgetShoppingPreferenceField.jsx";
 import { ExpenseCategoryCreateModal } from "../categories/ExpenseCategoryQuickCreate.jsx";
 import { useExpenseCategoryCreator } from "../categories/useExpenseCategoryCreator.js";
 import needStyles from "../budgets/BudgetBatchEditor.module.css";
@@ -87,7 +88,6 @@ const createNeedsTotal = (needs) => (needs || []).reduce((total, need) => {
   return total + (Number.isFinite(amount) ? amount : 0);
 }, 0);
 
-
 const NEED_FREQUENCY_OPTIONS = Object.freeze([
   { value: "weekly", label: "Mingguan" },
   { value: "biweekly", label: "Dua mingguan" },
@@ -144,6 +144,7 @@ const AllocationNeedUsageFields = ({ need, update }) => <div className={needStyl
     <label className="field"><span>Mulai *</span><TemporalInput type="date" value={need.schedule_start_date || ""} onChange={(event) => update({ schedule_start_date: event.target.value })} /></label>
     <SelectionField compact label="Metode" value={need.schedule_payment_method} onChange={(schedule_payment_method) => update({ schedule_payment_method })} options={NEED_PAYMENT_METHOD_OPTIONS} />
   </div> : null}
+  <BudgetShoppingPreferenceField compact checked={Boolean(need.shopping_enabled)} onChange={(shopping_enabled) => update({ shopping_enabled })} />
 </div>;
 
 const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNeed, onCreateCategory, categoryCreateLabel }) => {
@@ -176,7 +177,7 @@ const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNe
 
 const AllocationNeedCompactRow = ({ need, category, onEdit, onRemove }) => <div className={needStyles.compactRow}>
   <button type="button" className={needStyles.compactMain} onClick={onEdit}>
-    <span className={needStyles.compactCopy}><strong>{need.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(need.recording_mode) || "Pilih cara penggunaan"}{need.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(need)}` : ""}</small></span>
+    <span className={needStyles.compactCopy}><strong>{need.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(need.recording_mode) || "Pilih cara penggunaan"}{need.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(need)}` : ""}{need.shopping_enabled ? " · Daftar belanja" : ""}</small></span>
     <strong className={needStyles.compactAmount}>{formatRupiah(need.amount || 0)}</strong>
   </button>
   <button type="button" className={needStyles.compactRemove} onClick={onRemove} aria-label={`Hapus ${need.name || "kebutuhan"}`}><FiTrash2 aria-hidden="true" /></button>

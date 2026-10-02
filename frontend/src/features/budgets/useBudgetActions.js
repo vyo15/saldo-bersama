@@ -24,6 +24,7 @@ export const emptyBudgetForm = (overrides = {}) => ({
   schedule_due_day: 20,
   schedule_start_date: todayInJakarta(),
   schedule_payment_method: "transfer",
+  shopping_enabled: false,
   ...overrides,
 });
 
@@ -71,6 +72,7 @@ const formFromBudget = (item, envelopeRuleId = valueOr(item?.envelope_rule_id, "
     schedule_due_day: 20,
     schedule_start_date: todayInJakarta(),
     schedule_payment_method: "transfer",
+    shopping_enabled: Boolean(source.shopping_enabled),
   };
 };
 
@@ -92,6 +94,7 @@ const budgetSaveContext = async ({ form, period, existingBudget, pendingSchedule
       envelope_rule_id: form.envelope_rule_id || null,
       envelope_period_id: form.envelope_period_id || null,
       owner_user_id: form.scope === "personal" ? form.owner_user_id : null,
+      shopping_enabled: Boolean(form.shopping_enabled),
       row_version: existingBudget?.row_version,
     }, { rowVersion: existingBudget?.row_version });
   }

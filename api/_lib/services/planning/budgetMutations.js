@@ -1,10 +1,11 @@
 import { appendAudit } from "../audit.js";
-import { appError, assertVersion, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
+import { appError, assertVersion, normalizeOwnedScope, nowIso, periodKey, positiveInteger, publicRow, sanitizeText, strictBoolean, todayJakarta, uuid } from "../core.js";
 import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { createRecurringRule, retireRecurringRulesForBudget } from "./recurring.js";
 import { adjustEnvelopeForBudgetDelta } from "./budgetFunding.js";
 import { assertEnvelopeAssigneeAccess, assertPlanningManageScope } from "./shared.js";
 import { BUDGET_IDENTITY_SQL, budgetIdentityArgs, budgetUsageAmount } from "./budgetShared.js";
+import { syncBudgetShoppingPreference } from "../shopping/preferences.js";
 
 export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, sourcePeriodKey, targetPeriodKey }) => {
   const sourcePeriod = periodKey(sourcePeriodKey);
@@ -50,6 +51,8 @@ export const copyEnvelopeNeedsToPeriod = async (db, context, { envelopeRuleId, s
       recording_mode: current.recording_mode || "flexible",
     };
     await db.execute("INSERT INTO budgets(budget_id,period_key,category_id,envelope_rule_id,name,amount,warning_threshold,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id,recording_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [next.budget_id,next.period_key,next.category_id,next.envelope_rule_id,next.name,next.amount,next.warning_threshold,next.status,next.row_version,next.created_by,next.created_at,next.updated_by,next.updated_at,next.scope,next.owner_user_id,next.recording_mode]);
+    const shoppingPreference = await db.one("SELECT 1 AS enabled FROM shopping_lists WHERE budget_id=? AND status<>'archived' LIMIT 1", [current.budget_id]);
+    if (shoppingPreference?.enabled) await syncBudgetShoppingPreference(db, context, next, true);
     await appendAudit(db, context, {
       entityType: 'budget',
       entityId: next.budget_id,
@@ -147,6 +150,7 @@ const normalizeBudgetBatchItem = (rawItem, index, seenNames) => {
     schedule_due_day: item.schedule_due_day ?? 20,
     schedule_start_date: item.schedule_start_date || todayJakarta(),
     schedule_payment_method: sanitizeText(item.schedule_payment_method || "transfer", 40),
+    shopping_enabled: strictBoolean(item.shopping_enabled, false),
   };
 };
 
@@ -206,6 +210,7 @@ export const createBudgetsBatch = async (db, context) => {
         row_version: legacy?.row_version ?? null,
       },
     });
+    await syncBudgetShoppingPreference(db, context, budget, item.shopping_enabled);
     let schedule = null;
     if (item.recording_mode === "recurring") {
       schedule = await createRecurringRule(db, recurringContextForBudgetBatch(context, {
@@ -340,6 +345,7 @@ const persistBudgetUpsert = async (db, context, { current, period, category, own
 
 export const upsertBudget = async (db, context) => {
   const p = context.payload || {};
+  const shoppingEnabled = Object.prototype.hasOwnProperty.call(p, "shopping_enabled") ? strictBoolean(p.shopping_enabled, false) : undefined;
   const period = periodKey(p.period_key);
   const category = await db.one("SELECT * FROM categories WHERE category_id=? AND status='active' AND transaction_type='expense'", [p.category_id]);
   if (!category) throw appError("INVALID_CATEGORY", "Kategori pengeluaran tidak valid.", 400);
@@ -379,6 +385,7 @@ export const upsertBudget = async (db, context) => {
     previous: current ? publicRow(current) : null,
     next: publicRow(next)
   });
+  await syncBudgetShoppingPreference(db, context, next, shoppingEnabled);
   await context.enqueueMirror?.(db, "budget", next.budget_id);
   return publicRow(next);
 };
