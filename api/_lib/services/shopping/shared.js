@@ -118,4 +118,3 @@ export const newShoppingRow = (context, budgetId, name) => {
   const timestamp = nowIso();
   return { shopping_list_id: uuid(), budget_id: budgetId, name, status: "active", row_version: 1, created_by: context.actor.user_id, created_at: timestamp, updated_by: context.actor.user_id, updated_at: timestamp };
 };
-

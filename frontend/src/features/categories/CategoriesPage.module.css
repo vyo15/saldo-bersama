@@ -838,4 +838,3 @@
   .categoryList { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .categoryItem { min-height: 60px; padding: 6px 46px 6px 0; }
 }
-
