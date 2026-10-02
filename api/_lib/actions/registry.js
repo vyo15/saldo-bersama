@@ -30,13 +30,14 @@ import {
   archiveCommitment, createCommitment, listCommitments, recordCommitmentReceipt, updateCommitment,
 } from "../services/planning/index.js";
 import {
-  appInitialState, bootstrapData, closePeriod, createReconciliation, dashboardOverview, listPeriods,
+  appInitialState, bootstrapData, closePeriod, createReconciliation, dashboardOverview, diagnoseReconciliation, listPeriods,
   listReconciliations, monthlyReport, previewClosePeriod, reopenPeriod,
 } from "../services/reporting/index.js";
 import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../services/users.js";
 import { listTransferRequests, requestSharedToPersonalTransfer, reviewTransferRequest } from "../services/transferRequests.js";
 import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
 import { operationalHealthStatement, presentOperationalHealth, presentSchedulerHealth } from "../services/operationalHealth.js";
+import { shoppingByTransaction, shoppingDetail, shoppingSuggestions, createShoppingList, createShoppingItem, updateShoppingItem, setShoppingItemState, removeShoppingItem, checkoutShoppingList } from "../services/shopping.js";
 
 import { readSyncState } from "../syncRevisions.js";
 
@@ -136,6 +137,15 @@ const ACTION_HANDLERS = Object.freeze({
   "transactions.update": updateTransaction,
   "transactions.cancel": cancelTransaction,
   "transactions.restore": restoreTransaction,
+  "shopping.detail": shoppingDetail,
+  "shopping.suggestions": shoppingSuggestions,
+  "shopping.byTransaction": shoppingByTransaction,
+  "shopping.create": createShoppingList,
+  "shopping.itemCreate": createShoppingItem,
+  "shopping.itemUpdate": updateShoppingItem,
+  "shopping.itemState": setShoppingItemState,
+  "shopping.itemRemove": removeShoppingItem,
+  "shopping.checkout": checkoutShoppingList,
   "envelopes.list": listEnvelopes,
   "envelopes.create": createEnvelope,
   "envelopes.createWithNeeds": createEnvelopeWithNeeds,
@@ -184,6 +194,7 @@ const ACTION_HANDLERS = Object.freeze({
   "goals.restore": restoreGoal,
   "reports.monthly": monthlyReport,
   "reconciliations.list": listReconciliations,
+  "reconciliations.diagnose": diagnoseReconciliation,
   "reconciliations.create": createReconciliation,
   "periods.list": listPeriods,
   "periods.previewClose": previewClosePeriod,

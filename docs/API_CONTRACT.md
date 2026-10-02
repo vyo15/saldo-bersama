@@ -161,6 +161,15 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `budgets.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `budgets.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
+| `shopping.detail` | Ya | Ya | Read | Tidak | `api/_lib/services/shopping/` |
+| `shopping.suggestions` | Ya | Ya | Read | Tidak | `api/_lib/services/shopping/` |
+| `shopping.byTransaction` | Ya | Ya | Read | Tidak | `api/_lib/services/shopping/` |
+| `shopping.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
+| `shopping.itemCreate` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
+| `shopping.itemUpdate` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
+| `shopping.itemState` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
+| `shopping.itemRemove` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
+| `shopping.checkout` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
 | `goals.list` | Ya | Ya | Read | Tidak | `api/_lib/services/planning/` |
 | `goals.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `goals.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/planning/` |
@@ -174,6 +183,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `goals.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/planning/` |
 | `reports.monthly` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `reconciliations.list` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
+| `reconciliations.diagnose` | Ya | Ya | Read | Tidak | `api/_lib/services/reporting/` |
 | `reconciliations.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/reporting/` |
 | `periods.list` | Ya | Tidak | Read | Tidak | `api/_lib/services/reporting/` |
 | `periods.previewClose` | Ya | Tidak | Read | Tidak | `api/_lib/services/reporting/` |
@@ -293,7 +303,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - `accounts.list` mengembalikan seluruh rekening shared dan personal kepada dua pengguna aktif yang terotorisasi. Rekening personal membawa `owner_name`, `is_owned_by_actor`, `can_transact`, `can_reconcile`, `can_manage`, dan `read_only` yang dihitung backend.
 - Read model rekening juga mengembalikan `balance`, `allocated_remaining`, dan `available_balance`. `balance` tetap saldo ledger fisik. Untuk rekening non-investasi, `allocated_remaining` adalah bagian saldo yang masih terikat pada Alokasi Dana aktif dan `available_balance = balance - allocated_remaining`. Untuk RDN/investment, alokasi legacy diperlakukan non-operasional sehingga `allocated_remaining=0` dan Cash RDN tidak tertahan oleh Alokasi Dana lama. Nilai-nilai ini tidak disimpan sebagai angka bebas edit.
 - Nomor rekening lengkap hanya dikirim setelah authentication dan binding user berhasil. Transparansi baca kepada pasangan tidak memperluas write: member tetap tidak dapat bertransaksi atau merekonsiliasi rekening personal pasangan.
-- `transactions.list`, dashboard, laporan, serta `reconciliations.list` memakai ledger readable yang sama agar saldo dapat ditelusuri. Capability edit/cancel transaksi tetap memperhitungkan creator dan scope operable. Label rekening pada filter, breakdown, alert, dan rekonsiliasi menyertakan kepemilikan agar rekening personal pasangan tidak ambigu.
+- `transactions.list`, dashboard, laporan, `reconciliations.list`, serta `reconciliations.diagnose` memakai ledger readable yang sama agar saldo dapat ditelusuri. Capability edit/cancel transaksi tetap memperhitungkan creator dan scope operable. Label rekening pada filter, breakdown, alert, dan rekonsiliasi menyertakan kepemilikan agar rekening personal pasangan tidak ambigu.
 - `dashboard.overview.totalBalance` tetap backward-compatible sebagai jumlah saldo seluruh rekening readable, termasuk RDN. Field additive `nonInvestmentBalance` dan `nonInvestmentOpeningBalance` menjumlahkan rekening readable non-investasi dan menjadi sumber UI **Saldo rekening** sekunder. `safeToSpend` menjadi sumber angka utama **Dana Tersedia** Beranda, sedangkan `dailySafeToSpend` menjadi **Aman dipakai / hari**. `safeToSpend`, `dailySafeToSpend`, `unallocatedFunds`, `allocatedRemaining`, serta reserved recurring operasional hanya memakai rekening non-investasi yang dapat dioperasikan actor; Cash RDN tidak boleh menaikkan Dana Tersedia/Aman dipakai / hari atau dana belum dialokasikan. Jadwal Rutin yang sudah tertaut ke Kebutuhan di dalam Alokasi Dana tidak dicadangkan kedua kali pada `reservedBills`; hanya komitmen rutin di luar Alokasi yang mengurangi Dana Tersedia tambahan. `unallocatedCount` tetap menghitung transaksi expense tanpa Alokasi Dana sesuai ledger/scope operable existing.
 - Tren saldo harian/bulanan laporan menyediakan `totalBalance` (seluruh rekening, termasuk RDN) dan `nonInvestmentBalance` (Saldo utama/non-investasi). `totalBalance` tetap merekonsiliasi `investment_account_events` untuk compatibility, tetapi presentation Saldo utama wajib memakai `nonInvestmentBalance`. Snapshot **Total kekayaan tercatat · saat ini** dihitung sebagai `nonInvestmentBalance + investments.overview.summary.portfolio_value`; `totalBalance + portfolio_value` dilarang karena akan double-count RDN. Historical market-value/net-worth tidak disintesis sebelum tersedia histori valuasi authoritative.
 - Audit create/update hanya mencatat bentuk bertopeng empat digit terakhir. Nomor rekening tidak ditambahkan ke Sheets mirror atau export baca. Backup teknis tetap memuat kolom tersebut untuk recovery terjaga.
@@ -404,3 +414,12 @@ Perubahan action name, request/response shape, error code, permission, idempoten
 ### Realtime sync contract
 
 `sync.state` adalah read-only action Administrator/Member yang mengembalikan revision global dan revision per read-resource. Nilainya hanya sinyal cache invalidation; ia tidak memuat atau menggantikan saldo/ledger/domain state. Mutation publik, termasuk `budgets.batchCreate`, wajib dipetakan di `api/_lib/syncRevisions.js`; revision untuk mutation database dinaikkan di transaction yang sama. Client boleh memakai revision untuk menentukan resource yang perlu direload, tetapi hasil read canonical backend tetap sumber kebenaran.
+
+- `reconciliations.diagnose` menerima `reconciliation_id` checkpoint yang sudah tersimpan, menghitung ulang saldo sistem saat ini secara read-only, lalu meranking kandidat penyebab bounded (Jadwal Rutin belum tercatat, transaksi sangat mirip/duplikat, atau aktivitas terbaru yang patut diperiksa). Action ini tidak membuat transaksi, tidak mengubah checkpoint lama, dan tidak membuat adjustment otomatis.
+
+## Daftar Belanja
+
+Read actions: `shopping.detail`, `shopping.suggestions`, `shopping.byTransaction`.
+Write actions: `shopping.create`, `shopping.itemCreate`, `shopping.itemUpdate`, `shopping.itemState`, `shopping.itemRemove`, `shopping.checkout`.
+
+Semua write mengikuti kontrak idempotency gateway. `shopping.checkout` menerima `shopping_list_id`, `row_version`, `total_amount`, `checkout_date`, `leftover_action`, opsional `overspend_reason`, dan `confirm_duplicate`; hasilnya berisi checkout dan transaksi canonical. Checklist item tidak menciptakan transaksi.

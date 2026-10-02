@@ -48,6 +48,9 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `investment_corrections` | Event correction/opening-position append-only dengan share/cost-basis/cash delta, `cash_effect_enabled`, alasan, dan reference price. | Tinggi | Tidak rewrite trade history; ikut backup/restore |
 | `envelope_movements` | Realokasi atau mutasi Alokasi Dana yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `budgets` | Kebutuhan operasional per periode terbuka, termasuk metadata penghentian dan total dana yang sudah dilepas. | Sedang | User-facing remove memilih delete history-free atau ended/archive; row periode tertutup dipadatkan |
+| `shopping_lists` | Daftar belanja operasional yang terhubung ke satu Kebutuhan dan memakai optimistic concurrency. | Sedang | Service shopping; ikut backup/restore/export/reset |
+| `shopping_items` | Barang checklist dengan quantity milli-unit, estimasi/aktual, kelompok, dan status operasional. | Sedang | Bukan ledger/transaction line; purchased hanya melalui checkout |
+| `shopping_checkouts` | Snapshot checkout yang menautkan satu sesi belanja ke satu transaksi canonical. | Tinggi | Transaction ID unik; dibuat atomik bersama transaksi |
 | `budget_history` | Histori compact Kebutuhan periode tertutup: snapshot nama, nominal, pemakaian, dana dilepas, status akhir, ownership, dan metadata minimum untuk reopen. | Sedang | Dibuat saat period close, dibaca report, direhidrasi lalu dihapus saat reopen; ikut backup/restore |
 | `goal_movements` | Setoran/penarikan cash Target yang terhubung ke transaksi. | Sedang | Service/API; satu kejadian cash tidak boleh diduplikasi sebagai event investasi |
 | `goal_investment_events` | Event append-only yang mengaitkan sebagian holding atau Buy/Sell ke Target, menyimpan cost-basis delta, retained sale cash, dan realized P/L terkait Target. | Tinggi | Dibentuk service Target/Investasi; trade link unik; reversal/history dipertahankan; ikut backup/restore |
@@ -148,3 +151,16 @@ Compatibility penting yang tetap current:
 - Backup lama yang didukung dinormalisasi secara additive oleh restore service; exact support range mengikuti recovery/schema tests, bukan history paragraph di file ini.
 
 Detail migration/history berada di `database/migrations/` dan `CHANGELOG.md`; struktur/constraint current diringkas di `TURSO_SCHEMA.md`.
+
+## Shopping
+
+### shopping_lists
+Daftar belanja yang dimiliki satu Kebutuhan (`budget_id`). `row_version` dipakai untuk optimistic concurrency.
+
+### shopping_items
+Barang operasional pada daftar. `quantity_milli=1000` berarti 1 unit. Nilai estimasi/aktual adalah Rupiah integer. Status `purchased` hanya ditetapkan checkout dan menunjuk `purchased_checkout_id`.
+
+### shopping_checkouts
+Snapshot satu checkout belanja. Setiap row memiliki `transaction_id` unik sehingga satu checkout tidak dapat membuat dua transaksi.
+
+Schema shopping diperkenalkan oleh migration `023_shopping_lists.sql`.

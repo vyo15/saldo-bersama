@@ -127,7 +127,11 @@ test("route yang mendekati build budget memindahkan UI kondisional ke lazy chunk
   assert.doesNotMatch(transactions, /import TransferRequestsPanel from/);
   assert.match(transactions, /const TransactionFilters = lazy\(\(\) => import\("\.\/components\/TransactionFilters\.jsx"\)\)/);
   assert.match(transactions, /const TransactionLifecycleModals = lazy\(\(\) => import\("\.\/components\/TransactionLifecycleModals\.jsx"\)\)/);
+  assert.match(transactions, /const TransactionDesktopResults = lazy\(\(\) => import\("\.\/components\/TransactionDesktopResults\.jsx"\)\)/);
+  assert.match(transactions, /const TransactionDetailModal = lazy\(\(\) => import\("\.\/components\/TransactionDetailModal\.jsx"\)\)/);
+  assert.match(transactions, /const TransactionForm = lazy\(\(\) => import\("\.\/TransactionForm\.jsx"\)\)/);
   assert.doesNotMatch(transactions, /import TransactionFilters from/);
+  assert.doesNotMatch(transactions, /import TransactionForm from/);
   assert.doesNotMatch(transactions, /import TransactionLifecycleModals from/);
   assert.match(commitments, /const CommitmentDialogLayer = lazy\(\(\) => import\("\.\/CommitmentDialogLayer\.jsx"\)\)/);
   assert.doesNotMatch(commitments, /import CommitmentDialogLayer from/);
@@ -417,6 +421,7 @@ test("audit density menjaga desktop stabil, kontrol progresif, dan kolom finansi
     appCss,
     reconciliationCss,
     transactions,
+    transactionResults,
     transactionCss,
     approvals,
     commitments,
@@ -431,6 +436,7 @@ test("audit density menjaga desktop stabil, kontrol progresif, dan kolom finansi
     read("src/styles/app.css"),
     read("src/features/reconciliations/ReconciliationsPage.module.css"),
     read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/transactions/components/TransactionDesktopResults.jsx"),
     read("src/features/transactions/TransactionsPage.module.css"),
     read("src/features/approvals/ApprovalCenterPage.jsx"),
     read("src/features/commitments/CommitmentsPage.jsx"),
@@ -448,7 +454,7 @@ test("audit density menjaga desktop stabil, kontrol progresif, dan kolom finansi
   assert.match(appCss, /\.app-content \{[\s\S]*max-width:\s*1320px;[\s\S]*padding:\s*16px/);
 
   assert.match(reconciliationCss, /@media \(min-width: 1280px\)[\s\S]*grid-template-columns:\s*minmax\(300px, \.55fr\) minmax\(0, 1\.45fr\)/);
-  assert.match(transactions, /item\.status && item\.status !== "active" \? <StatusBadge/);
+  assert.match(transactionResults, /item\.status && item\.status !== "active" \? <StatusBadge/);
   assert.match(transactionCss, /\.ledgerOpen \{[\s\S]*min-height:\s*3\.5rem;/);
 
   assert.match(approvals, /if \(!pendingCount\) return <OwnerSettingsGuard[\s\S]*<EmptyState title="Tidak ada pengajuan yang menunggu"/);

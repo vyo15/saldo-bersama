@@ -67,7 +67,7 @@
   .content { padding: 0 var(--mobile-page-gutter) 24px; }
   .group { margin-top: 8px; }
   .group h2 { margin-bottom: 8px; }
-  .list { border-width: 1px 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .list { border-width: 0; border-radius: 0; box-shadow: none; background: transparent; }
   .swipeItem { touch-action: pan-y pinch-zoom; }
   .swipeAction { padding-inline: 14px; }
   .row { min-height: 82px; padding: 13px 2px; grid-template-columns: 42px minmax(0, 1fr) 24px; gap: 11px; touch-action: pan-y pinch-zoom; }
@@ -117,3 +117,18 @@
     padding-block: 14px;
   }
 }
+
+/* Native notification history uses row dividers only; the segmented filter remains a control surface. */
+@media (max-width: 820px) {
+  .list {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .swipeItem {
+    border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+    background: transparent;
+  }
+}
+

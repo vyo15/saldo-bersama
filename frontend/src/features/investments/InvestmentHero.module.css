@@ -153,6 +153,7 @@
   .hero {
     gap: var(--space-3);
     padding: var(--space-4);
+    border-color: transparent;
     border-radius: calc(var(--mobile-card-radius) + var(--space-1));
     box-shadow: none;
   }
@@ -168,6 +169,8 @@
 
   .heroMiniMetrics > div {
     padding: var(--space-2) var(--space-3);
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface-soft) 62%, transparent);
   }
 
 }

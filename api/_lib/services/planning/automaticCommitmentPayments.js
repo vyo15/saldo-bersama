@@ -86,7 +86,9 @@ const settleOne = async (db, row, today) => {
       row_version: row.occurrence_row_version,
       account_id: row.default_account_id,
       amount: plan.amount,
-      transaction_date: today,
+      // Catch-up keeps the same ledger date the automatic payment would have used if the scheduler had run on time.
+      // This also preserves the Kebutuhan/Alokasi period for month-boundary overdue occurrences.
+      transaction_date: row.due_date,
       envelope_period_id: plan.envelope.envelope_period_id,
     },
   });

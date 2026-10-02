@@ -1474,3 +1474,63 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   .settingsGroup { gap: 6px; }
   .settingsGroup > h2 { padding-inline: 3px; }
 }
+
+/* Mobile settings is a grouped native list: identity/status can be tonal, navigation rows stay on the canvas. */
+@media (max-width: 820px) {
+  .settingsAccountCard {
+    border-color: transparent;
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--primary-soft) 42%, var(--surface) 58%), var(--surface) 70%),
+      var(--surface);
+  }
+
+  .settingsList {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .settingsListRow {
+    border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+  }
+
+  .auditSystemStatus {
+    border-color: transparent;
+  }
+
+  .auditActivitySection {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .auditActivityHeader,
+  .auditFilters {
+    padding-inline: 0;
+    border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+  }
+
+  .notificationDeviceCard {
+    border-color: transparent;
+    background: var(--surface-soft);
+  }
+
+  .preferenceList,
+  .cadenceList {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .preferenceItem,
+  .cadenceItem {
+    padding-inline: 0;
+    border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+    background: transparent;
+  }
+}
+

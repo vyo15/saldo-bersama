@@ -34,6 +34,22 @@ test("shared UI primitives use colocated CSS Modules and preserve project compat
   assert.match(await read("src/components/common/Modal.jsx"), /modal-backdrop/);
 });
 
+test("Card exposes semantic surface variants without removing the default outlined contract", async () => {
+  const [card, css] = await Promise.all([
+    read("src/components/common/Card.jsx"),
+    read("src/components/common/Card.module.css"),
+  ]);
+
+  for (const surface of ["outlined", "flat", "tonal", "object", "elevated"]) {
+    assert.match(card, new RegExp(`${surface}: styles\\.surface`, "i"));
+  }
+  assert.match(card, /surface = "outlined"/);
+  assert.match(card, /data-surface=\{resolvedSurface\}/);
+  assert.match(css, /\.surfaceFlat[\s\S]*border-color:\s*transparent[\s\S]*background:\s*transparent/);
+  assert.match(css, /\.surfaceTonal[\s\S]*background:\s*var\(--ui-surface-soft\)/);
+  assert.match(css, /\.surfaceElevated[\s\S]*box-shadow:\s*var\(--shadow-surface\)/);
+});
+
 test("semantic primitives keep accessibility and avoid dynamic inline layout styling", async () => {
   const [modal, moneyInput, progress] = await Promise.all([
     read("src/components/common/Modal.jsx"),
@@ -257,6 +273,7 @@ test("halaman data utama memiliki representasi card mobile dan filter transaksi 
     Promise.all([
       read("src/features/transactions/TransactionsPage.jsx"),
       read("src/features/transactions/components/MobileTransactionHistory.jsx"),
+      read("src/features/transactions/components/TransactionDesktopResults.jsx"),
     ]).then((parts) => parts.join("\n")),
     read("src/features/reports/ReportsPage.jsx"),
     read("src/features/accounts/AccountsPage.jsx"),

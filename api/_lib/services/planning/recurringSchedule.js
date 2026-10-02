@@ -49,11 +49,14 @@ const datesForRule = (rule, startPeriod, endPeriod) => {
 };
 export const ensureRuleOccurrences = async (db, rule, {
   monthsAhead = 24,
+  monthsBehind = 0,
   basePeriod = periodKey(),
 } = {}) => {
   const current = periodKey(basePeriod);
+  const safeMonthsBehind = Math.max(0, Math.min(1, Number(monthsBehind) || 0));
+  const start = safeMonthsBehind ? addMonths(`${current}-01`, -safeMonthsBehind).slice(0, 7) : current;
   const end = addMonths(`${current}-01`, monthsAhead).slice(0, 7);
-  const dates = datesForRule(rule, current, end);
+  const dates = datesForRule(rule, start, end);
   const now = nowIso();
   for (const due of dates) {
     const existing = await db.one("SELECT occurrence_id FROM recurring_occurrences WHERE recurring_rule_id=? AND due_date=?", [rule.recurring_rule_id, due]);

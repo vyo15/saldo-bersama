@@ -51,7 +51,7 @@ const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, ca
       <Button className={allocationClass("allocation-funding-summary__mobile-create")} variant="primary" icon={FiPlus} disabled={!canCreate} onClick={onOpenCreateLauncher}>Buat alokasi</Button>
     </>;
 
-  return <Card className={allocationClass(`allocation-funding-summary${hasActiveItems ? " allocation-funding-summary--filled" : " allocation-funding-summary--empty"}`)} aria-labelledby="allocation-funding-summary-title">
+  return <Card surface="object" className={allocationClass(`allocation-funding-summary${hasActiveItems ? " allocation-funding-summary--filled" : " allocation-funding-summary--empty"}`)} aria-labelledby="allocation-funding-summary-title">
     <div className={allocationClass("allocation-funding-summary__content")}>
       <span className={allocationClass("allocation-funding-summary__count")}>{sources.length} rekening sumber</span>
       <div className={allocationClass("allocation-funding-summary__copy")}>

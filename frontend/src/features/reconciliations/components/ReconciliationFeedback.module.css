@@ -12,40 +12,9 @@
 .progressSteps .stepDone { color: var(--positive); }
 .stepDone i { background: var(--positive); }
 .stepQueued { color: var(--text-muted); }
-
-.resultModal { width: min(100%, 31rem); }
-.resultModal :global(.modal__body) { padding-top: var(--space-4); }
-.resultContent { display: grid; gap: var(--space-4); }
-.resultLead { display: grid; justify-items: center; gap: 7px; text-align: center; }
-.resultIcon { width: 4rem; height: 4rem; display: grid; place-items: center; border-radius: 50%; color: var(--warning); background: var(--warning-soft); box-shadow: 0 14px 38px color-mix(in srgb, var(--warning) 12%, transparent); }
-.resultIcon svg { width: 2rem; height: 2rem; stroke-width: 2.7; }
-.resultEyebrow { color: var(--warning); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .08em; text-transform: uppercase; }
-.resultAmount, .resultAmount :global(.money) { color: var(--text); font-size: clamp(1.8rem, 7vw, 2.35rem); font-weight: var(--font-weight-bold); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-.resultSummary { margin: 0; padding: 12px 14px; display: grid; gap: 8px; border: 1px solid var(--border); border-radius: 15px; background: color-mix(in srgb, var(--surface) 78%, transparent); }
-.resultSummary > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3); }
-.resultSummary dt { color: var(--text-muted); font-size: var(--font-size-sm); text-align: left; }
-.resultSummary dd { margin: 0; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); text-align: right; }
-.resultMatched, .resultMatched :global(.money) { color: var(--positive); }
-.resultDifference, .resultDifference :global(.money) { color: var(--warning); }
-.resultFooter { display: grid; gap: 8px; }
-.resultDone, .resultReview, .resultLater { width: 100%; min-height: 2.75rem; border-radius: 13px; font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
-.resultDone { min-height: 3rem; border: 0; background: var(--primary); color: var(--on-primary); font-weight: var(--font-weight-bold); }
-.resultReview { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); }
-.resultLater { border: 0; background: transparent; color: var(--text-muted); }
-.resultLater:hover { color: var(--text); }
-.resultDone:focus-visible, .resultReview:focus-visible, .resultLater:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.resultFooter small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; text-align: center; }
-
 @keyframes reconciliation-feedback-spin { to { transform: rotate(360deg); } }
-
 @media (max-width: 820px) {
   .progressCard { padding: 11px 12px; grid-template-columns: 2rem minmax(0, 1fr); border-radius: 13px; }
   .progressSpinner { width: 2rem; height: 2rem; border-radius: 10px; }
-  .resultModal :global(.modal__body) { padding-top: var(--space-3); }
-  .resultIcon { width: 3.75rem; height: 3.75rem; }
-  .resultIcon svg { width: 1.85rem; height: 1.85rem; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .progressSpinner svg { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) { .progressSpinner svg { animation: none; } }

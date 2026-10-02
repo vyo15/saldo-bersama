@@ -448,3 +448,17 @@
     transition: none;
   }
 }
+
+/* Portfolio stays an object; its supporting panels become tonal layers without extra outlines on mobile. */
+@media (max-width: 900px) {
+  .portfolioCard {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface-soft) 42%, var(--surface));
+  }
+
+  .rdnPanel,
+  .actionGuidance {
+    border-color: transparent;
+  }
+}
+

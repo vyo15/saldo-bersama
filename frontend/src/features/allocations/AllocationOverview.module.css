@@ -886,3 +886,41 @@
     background: color-mix(in srgb, var(--primary-soft) 22%, var(--surface));
   }
 }
+
+/* Mobile planning reads as one native list beneath a single hero instead of a stack of cards. */
+@media (max-width: 820px) {
+  .allocation-funding-summary {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .planning-active-list { gap: 0; }
+
+  .planning-active-row {
+    padding-inline: 2px;
+    border-width: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .planning-active-row:last-child { border-bottom: 0; }
+  .planning-active-row__icon { border-color: transparent; }
+
+  .planning-active-row--attention {
+    margin-block: 3px;
+    padding-inline: 10px;
+    border-bottom-color: transparent;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--primary-soft) 42%, transparent);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .planning-active-row:hover {
+      border-color: transparent;
+      border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+      background: color-mix(in srgb, var(--primary-soft) 24%, transparent);
+    }
+  }
+}
+

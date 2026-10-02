@@ -73,7 +73,7 @@ const ALL_BUSINESS_READS = Object.freeze(unique(
   [
     "users.list", "sessions.listOwn", "archive.list", "investments.overview", "investments.instruments.list",
     "accounts.list", "accounts.previewLifecycle", "categories.list", "categories.previewArchive", "masterDataRequests.list",
-    "transferRequests.list", "transactions.list", "envelopes.list", "envelopes.previewRuleLifecycle", "recurring.list",
+    "transferRequests.list", "transactions.list", "shopping.detail", "shopping.suggestions", "shopping.byTransaction", "envelopes.list", "envelopes.previewRuleLifecycle", "recurring.list",
     "recurring.previewRuleLifecycle", "commitments.list", "budgets.list", "budgets.previewLifecycle", "goals.list", "goals.previewLifecycle",
     "reports.monthly", "reconciliations.list", "periods.list", "periods.previewClose", "notifications.status",
     "notifications.preferences", "reminders.get", "integrations.status", "reset.preview", "reset.status", "fullReset.preview", "fullReset.status",
@@ -119,6 +119,13 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
   "transactions.update": TRANSACTION_DEPENDENCIES,
   "transactions.cancel": TRANSACTION_DEPENDENCIES,
   "transactions.restore": TRANSACTION_DEPENDENCIES,
+
+  "shopping.create": unique(AUDIT, ["shopping.detail"]),
+  "shopping.itemCreate": unique(AUDIT, ["shopping.detail", "shopping.suggestions"]),
+  "shopping.itemUpdate": unique(AUDIT, ["shopping.detail", "shopping.suggestions"]),
+  "shopping.itemState": unique(AUDIT, ["shopping.detail"]),
+  "shopping.itemRemove": unique(AUDIT, ["shopping.detail"]),
+  "shopping.checkout": unique(TRANSACTION_DEPENDENCIES, ["shopping.detail", "shopping.byTransaction", "shopping.suggestions"]),
 
   "envelopes.create": ENVELOPE_DEPENDENCIES,
   "envelopes.createWithNeeds": unique(ENVELOPE_DEPENDENCIES, BUDGET_DEPENDENCIES, RECURRING_DEPENDENCIES),

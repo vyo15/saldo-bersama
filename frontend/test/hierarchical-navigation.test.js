@@ -77,10 +77,10 @@ test("detail Alokasi masuk history URL dan Back menutup detail sebelum meninggal
 });
 
 test("overlay memakai Modal canonical: root ditutup ×, subview kembali ←, system Back dikoordinasikan satu tempat", async () => {
-  const [modal, memberActivity, reconciliationFeedback] = await Promise.all([
+  const [modal, memberActivity, reconciliationResolution] = await Promise.all([
     source("components/common/Modal.jsx"),
     source("features/settings/components/MemberActivityPanel.jsx"),
-    source("features/reconciliations/components/ReconciliationFeedback.jsx"),
+    source("features/reconciliations/components/ReconciliationResolution.jsx"),
   ]);
 
   assert.match(modal, /CloseIcon = FiX/);
@@ -89,9 +89,9 @@ test("overlay memakai Modal canonical: root ditutup ×, subview kembali ←, sys
   assert.match(memberActivity, /import Modal from/);
   assert.match(memberActivity, /<Modal[\s\S]*title="Aktivitas anggota"/);
   assert.doesNotMatch(memberActivity, /createPortal|useFocusTrap|popstate/);
-  assert.match(reconciliationFeedback, /import Modal from/);
-  assert.match(reconciliationFeedback, /<Modal[\s\S]*title="Ada selisih saldo"/);
-  assert.doesNotMatch(reconciliationFeedback, /createPortal|useFocusTrap|popstate/);
+  assert.match(reconciliationResolution, /import Modal from/);
+  assert.match(reconciliationResolution, /<Modal[\s\S]*title=\{props\.result\.matched \? "Saldo sudah sesuai" : "Ada selisih saldo"\}/);
+  assert.doesNotMatch(reconciliationResolution, /createPortal|useFocusTrap|popstate/);
 });
 
 test("scroll restoration membedakan parent active-state dan posisi tab utama", async () => {

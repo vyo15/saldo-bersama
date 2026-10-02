@@ -56,6 +56,8 @@ const budgetLifecycleDependencyStatement = (budgetId) => ({
             AND (b.envelope_rule_id IS NULL OR tep.envelope_rule_id=b.envelope_rule_id)))) AS used_amount,
       (SELECT COUNT(*) FROM period_closures pc,current b WHERE pc.period_key=b.period_key) AS period_closures,
       (SELECT COUNT(*) FROM recurring_rules rr,current b WHERE rr.budget_id=b.budget_id AND rr.status='active') AS recurring_rules,
+      (SELECT COUNT(*) FROM shopping_lists sl,current b WHERE sl.budget_id=b.budget_id) AS shopping_lists,
+      (SELECT COUNT(*) FROM shopping_checkouts sc JOIN shopping_lists sl ON sl.shopping_list_id=sc.shopping_list_id,current b WHERE sl.budget_id=b.budget_id) AS shopping_checkouts,
       (SELECT COUNT(*) FROM recurring_occurrences ro
         JOIN recurring_rules rr ON rr.recurring_rule_id=ro.recurring_rule_id,current b
         WHERE rr.budget_id=b.budget_id
@@ -101,6 +103,8 @@ const normalizedBudgetDependencies = (dependencies = {}) => ({
   period_closures: Number(dependencies.period_closures || 0),
   recurring_rules: Number(dependencies.recurring_rules || 0),
   recurring_history: Number(dependencies.recurring_history || 0),
+  shopping_lists: Number(dependencies.shopping_lists || 0),
+  shopping_checkouts: Number(dependencies.shopping_checkouts || 0),
 });
 
 const budgetLifecycleBlockers = (dependencies) => {
@@ -108,6 +112,7 @@ const budgetLifecycleBlockers = (dependencies) => {
   if (dependencies.transactions) blockers.push("Kebutuhan sudah memiliki histori transaksi.");
   if (dependencies.period_closures) blockers.push("Periode kebutuhan sudah pernah ditutup dan merupakan histori perencanaan.");
   if (dependencies.recurring_history) blockers.push("Kebutuhan sudah memiliki histori jadwal pembayaran.");
+  if (dependencies.shopping_lists) blockers.push("Kebutuhan sudah memiliki daftar belanja yang perlu dipertahankan sebagai histori.");
   return blockers;
 };
 
@@ -137,7 +142,8 @@ const budgetLifecycleResult = (current, dependencies = {}) => {
   const canDeleteUnused = current.status === "active"
     && normalizedDependencies.transactions === 0
     && normalizedDependencies.period_closures === 0
-    && normalizedDependencies.recurring_history === 0;
+    && normalizedDependencies.recurring_history === 0
+    && normalizedDependencies.shopping_lists === 0;
   return {
     budget_id: current.budget_id,
     status: current.status,

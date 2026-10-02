@@ -115,7 +115,8 @@ test("quick add memakai composer global dan invalidation transaksi mencakup reso
   assert.match(page, /useTransactionComposer/);
   assert.match(page, /onClick=\{openTransactionComposer\}>Catat transaksi/);
   assert.doesNotMatch(page, /formOpen|setFormOpen/, "halaman Transaksi tidak boleh memiliki composer create kedua");
-  assert.match(page, /<TransactionForm open=\{Boolean\(editingTransaction\)\} transaction=\{editingTransaction\}/, "form lokal hanya untuk edit transaksi");
+  assert.match(page, /const TransactionForm = lazy\(\(\) => import\("\.\/TransactionForm\.jsx"\)\)/, "editor transaksi lokal tetap lazy");
+  assert.match(page, /<TransactionEditOverlay transaction=\{editingTransaction\}/, "form lokal hanya dibuka untuk edit transaksi");
   assert.match(page, /"budgets\.list"/, "cancel/restore transaksi juga harus menginvalidasi pemakaian anggaran");
   assert.match(hook, /subscribeToInvalidation\(action/);
   assert.match(composer, /const TransactionForm = lazy\(\(\) => loadActionModule\("transaction"\)\)/, "composer global tetap memuat form transaksi sebagai action chunk lazy");
@@ -235,13 +236,15 @@ test("composer mobile memakai picker inline canonical untuk rekening, kategori, 
 
 
 test("Pakai lagi memakai composer canonical sebagai prefill aman dan tetap menunggu Simpan", async () => {
-  const [form, page, composer] = await Promise.all([
+  const [form, page, detail, actions, composer] = await Promise.all([
     source(),
     readFile(new URL("../src/features/transactions/TransactionsPage.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/components/TransactionDetailModal.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/components/TransactionActions.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/TransactionComposerContext.jsx", import.meta.url), "utf8"),
   ]);
-  assert.match(page, /Pakai lagi/);
-  assert.match(page, /canRepeatTransaction\(target\)/, "detail mobile tetap menampilkan footer Pakai lagi walau transaksi lama tidak editable");
+  assert.match(actions, /Pakai lagi/);
+  assert.match(detail, /canRepeatTransaction\(target\)/, "detail mobile tetap menampilkan footer Pakai lagi walau transaksi lama tidak editable");
   assert.match(page, /initialDraft: repeatDraftFromTransaction\(item\)/);
   assert.match(composer, /initialDraft/);
   assert.match(form, /initialTransactionForm/);

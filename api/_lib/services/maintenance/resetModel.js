@@ -11,6 +11,9 @@ export const TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES = "activity_and_balances";
 export const TRIAL_RESET_SCOPES = new Set([TRIAL_RESET_SCOPE_ACTIVITY, TRIAL_RESET_SCOPE_ACTIVITY_AND_BALANCES]);
 
 export const RESET_BUSINESS_TABLES = Object.freeze([
+  { table: "shopping_items", key: "shopping_item_id" },
+  { table: "shopping_checkouts", key: "shopping_checkout_id" },
+  { table: "shopping_lists", key: "shopping_list_id" },
   { table: "investment_reconciliations", key: "reconciliation_id" },
   { table: "investment_valuations", key: "valuation_id" },
   { table: "investment_corrections", key: "correction_id" },
@@ -196,6 +199,9 @@ export const resetSummary = (counts) => {
   const operationalRows = sumCounts(counts, RESET_OPERATIONAL_TABLES);
   return {
     transactions: countFor(counts, "transactions"),
+    shoppingLists: countFor(counts, "shopping_lists"),
+    shoppingItems: countFor(counts, "shopping_items"),
+    shoppingCheckouts: countFor(counts, "shopping_checkouts"),
     reconciliations: countFor(counts, "reconciliations"),
     investmentTrades: countFor(counts, "investment_trades"),
     goalInvestmentEvents: countFor(counts, "goal_investment_events"),

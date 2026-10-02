@@ -243,3 +243,22 @@
   .card { padding: 11px 12px; gap: 8px 10px; }
   .typeOption { min-height: 56px; padding-block: 8px; }
 }
+
+/* Mobile obligations use one tonal summary and soft object rows without outlined nesting. */
+@media (max-width: 820px) {
+  .summary {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--primary-soft) 30%, var(--surface));
+  }
+
+  .card {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface-soft) 56%, var(--surface));
+    box-shadow: none;
+  }
+
+  .mortgageProgress {
+    border-color: transparent;
+  }
+}
+

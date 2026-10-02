@@ -89,6 +89,7 @@ const AllocationNeedsPanel = ({
   recordExpense,
   openSchedule,
   editBudget,
+  openShopping,
 }) => {
   const [needFilter, setNeedFilter] = useState("all");
   const [detailTarget, setDetailTarget] = useState(null);
@@ -133,6 +134,7 @@ const AllocationNeedsPanel = ({
           onOpenSchedule={openSchedule}
           onEdit={editBudget}
           onOpenDetail={() => setDetailTarget({ budget, category, schedule, periodMeta })}
+          onOpenShopping={openShopping}
         />;
       })}</div> : <p className={allocationClass("allocation-needs-filter__empty")}>Tidak ada kebutuhan pada filter ini.</p>}
       {canManage ? <Button className={allocationClass("allocation-needs-add")} variant="secondary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
@@ -228,7 +230,9 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
       ...(duePeriod ? { period: duePeriod } : {}),
     });
   };
+  const openShopping = (budget) => navigate(`/perencanaan/belanja/${budget.budget_id}`);
   return {
+    openShopping,
     usage: allocationUsage(item),
     sourceLabel: allocationSourceLabel(item),
     assigneeLabel: allocationAssigneeLabel(item),
@@ -289,6 +293,7 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         recordExpense={state.recordNeedExpense}
         openSchedule={state.openSchedule}
         editBudget={state.editBudget}
+        openShopping={state.openShopping}
       />
     </Card>
   </div>

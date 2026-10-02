@@ -13,7 +13,7 @@ import { stableValue } from "./_lib/serialization.js";
 const COALESCED_READ_ACTIONS = new Set([
   "app.initialState", "system.health", "users.list", "audit.list", "dashboard.overview", "accounts.list",
   "categories.list", "transactions.list", "sessions.listOwn", "envelopes.list", "recurring.list", "commitments.list", "budgets.list", "goals.list",
-  "reports.monthly", "reconciliations.list", "periods.list", "integrations.status", "notifications.status",
+  "reports.monthly", "reconciliations.list", "reconciliations.diagnose", "periods.list", "integrations.status", "notifications.status", "shopping.detail", "shopping.suggestions", "shopping.byTransaction",
 ]);
 const inFlightReads = new Map();
 const coalescedReadKey = (session, action, payload) => crypto.createHash("sha256").update(JSON.stringify([session.uid, session.role, action, stableValue(payload || {})])).digest("hex");

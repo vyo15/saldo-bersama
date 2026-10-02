@@ -192,6 +192,7 @@ button.heroStatus {
 
 @media (max-width: 820px) {
   .heroCard {
+    border-color: transparent;
     box-shadow: none;
   }
 

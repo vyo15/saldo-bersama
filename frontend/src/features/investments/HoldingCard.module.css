@@ -162,8 +162,10 @@
 
 @media (max-width: 900px) {
   .assetListCard {
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--mobile-card-radius);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     box-shadow: none;
   }
 
@@ -175,7 +177,7 @@
 
 @media (max-width: 620px) {
   .assetListCard {
-    padding: var(--space-3);
+    padding: 0;
   }
 
   .assetFilters {

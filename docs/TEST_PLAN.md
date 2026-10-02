@@ -30,7 +30,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 24 sebelum runtime current menerima traffic.
+- Schema Production harus versi 25 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -169,6 +169,7 @@ Minimum contract:
 - Report monthly/trend tidak menghitung Transfer sebagai income/expense dan memakai snapshot/read transaction konsisten.
 - Rekonsiliasi non-investasi dan Investasi/RDN memakai service berbeda; generic reconciliation menolak RDN.
 - Reconciliation checkpoint menyimpan mismatch historis tanpa persistent active alert setelah user melakukan pencocokan eksplisit.
+- Mismatch rekonsiliasi memverifikasi **Cari penyebab** sebagai primary action; diagnosis read-only meranking Jadwal Rutin exact-match, duplikat yang matematis menjelaskan selisih, dan aktivitas terbaru tanpa mutation. Tanda selisih tidak boleh otomatis memilih Pemasukan/Pengeluaran; manual resolution wajib memilih Pengeluaran/Pemasukan/Transfer/Refund secara eksplisit. Setelah ledger berubah hingga cocok, penyimpanan ulang membuat checkpoint matched baru tanpa mengubah checkpoint mismatch lama.
 
 ## Notification dan Web Push
 
@@ -235,7 +236,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 24 sebelum deployment current menerima traffic.
+- Schema Production harus versi 25 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 

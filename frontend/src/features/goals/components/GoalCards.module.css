@@ -139,3 +139,25 @@
   .goal-summary__content { width: 68%; }
   .goal-summary__art { right: -3%; width: min(7.2rem, 29%); }
 }
+
+/* Target is a meaningful object, but nested outlines are removed on mobile. */
+@media (max-width: 820px) {
+  .goal-summary {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .goal-card {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface-soft) 58%, var(--surface));
+  }
+
+  .goal-card__details {
+    padding: 10px 0 0;
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    border-radius: 0;
+    background: transparent;
+  }
+}
+

@@ -615,3 +615,13 @@
     animation: none;
   }
 }
+
+/* Jadwal tetap terbaca sebagai object, tetapi tidak membutuhkan outline tambahan di mobile. */
+@media (max-width: 820px) {
+  .scheduleCard {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface-soft) 52%, var(--surface));
+    box-shadow: none;
+  }
+}
+

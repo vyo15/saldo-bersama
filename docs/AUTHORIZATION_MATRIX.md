@@ -113,6 +113,15 @@
 | `budgets.archive` | Ya | Tidak |
 | `budgets.deleteUnused` | Ya | Tidak |
 | `budgets.restore` | Ya | Tidak |
+| `shopping.detail` | Ya | Ya |
+| `shopping.suggestions` | Ya | Ya |
+| `shopping.byTransaction` | Ya | Ya |
+| `shopping.create` | Ya | Ya |
+| `shopping.itemCreate` | Ya | Ya |
+| `shopping.itemUpdate` | Ya | Ya |
+| `shopping.itemState` | Ya | Ya |
+| `shopping.itemRemove` | Ya | Ya |
+| `shopping.checkout` | Ya | Ya |
 | `goals.list` | Ya | Ya |
 | `goals.create` | Ya | Ya |
 | `goals.update` | Ya | Ya |
@@ -126,9 +135,10 @@
 | `goals.restore` | Ya | Tidak |
 | `reports.monthly` | Ya | Ya |
 | `reconciliations.list` | Ya | Ya |
+| `reconciliations.diagnose` | Ya | Ya |
 | `reconciliations.create` | Ya | Ya |
 
-Catatan rekonsiliasi: `reconciliations.create` tetap dapat dipanggil Administrator/Member untuk rekening non-Investasi yang operable. RDN/Investasi tidak memiliki capability generic tersebut dan wajib memakai `investments.reconciliations.create`, dengan ownership/capability portfolio diperiksa kembali di backend.
+Catatan rekonsiliasi: `reconciliations.diagnose` bersifat read-only tetapi tetap memakai capability rekening operable yang sama dengan `reconciliations.create`. `reconciliations.create` tetap dapat dipanggil Administrator/Member untuk rekening non-Investasi yang operable. RDN/Investasi tidak memiliki capability generic tersebut dan wajib memakai `investments.reconciliations.create`, dengan ownership/capability portfolio diperiksa kembali di backend.
 | `periods.list` | Ya | Tidak |
 | `periods.previewClose` | Ya | Tidak |
 | `periods.close` | Ya | Tidak |
@@ -211,3 +221,7 @@ UI menggunakan role **Administrator** dan **Member**. Untuk kompatibilitas data/
 - Filter dan laporan hanya boleh dibangun dari transaksi/rekening yang lolos scope backend.
 - `creatorExpenses` adalah aktivitas pencatatan keluarga, bukan kontribusi biaya. `costShareExpenses` tetap response compatibility untuk histori cost-share legacy dan tidak menjadi surface laporan canonical.
 - Kedua pengguna terotorisasi membaca seluruh data finansial keluarga. `personal` membatasi siapa yang dapat mengoperasikan rekening, bukan siapa yang dapat melihatnya. Mode balance-only/contribution-only/private tidak masuk roadmap; RFC-0015 berstatus Rejected.
+
+## Shopping
+
+Read mengikuti keterlihatan Kebutuhan. Mutasi personal hanya pemilik Kebutuhan. Mutasi shared mengikuti assignee Alokasi Dana; owner dapat mengelola. Kebutuhan harus aktif, memiliki kategori expense, dan terhubung ke Alokasi Dana/rekening sumber. Backend adalah authority; disabled control frontend hanya UX.

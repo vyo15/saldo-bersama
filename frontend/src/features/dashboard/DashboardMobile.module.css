@@ -592,3 +592,39 @@
   .mobile-attention-row__action { display: none; }
   .mobile-attention-row { grid-template-columns: 32px minmax(0, 1fr) 14px; }
 }
+
+/* Native mobile surface hierarchy: grouping comes from tone, spacing, and dividers instead of nested outlines. */
+@media (max-width: 820px) {
+  .mobile-family-hero {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-ownership-summary.mobile-reference-ownership {
+    overflow: visible;
+    border-color: transparent;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-reference-ownership .mobile-owner-card + .mobile-owner-card {
+    border-left-color: color-mix(in srgb, var(--border) 58%, transparent);
+  }
+
+  .mobile-finance-summary.mobile-reference-summary {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--primary-soft) 34%, var(--surface));
+  }
+
+  .mobile-finance-section.mobile-reference-panel {
+    padding-inline: 0;
+    border-color: transparent;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-reference-panel__heading { padding-inline: 1px; }
+}
+

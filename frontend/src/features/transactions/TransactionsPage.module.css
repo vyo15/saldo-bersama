@@ -369,3 +369,13 @@
   .repeatCard,
   .ledgerRow { transition: none; }
 }
+
+.shoppingDetail { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:grid; gap:10px; }
+.shoppingDetail header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.shoppingDetail header > div { display:grid; gap:2px; }
+.shoppingDetail header span { color:var(--text-soft); font-size: 12px; }
+.shoppingDetail header button { border:0; background:transparent; color:var(--primary); font:inherit; font-size: 12px; font-weight:700; cursor:pointer; }
+.shoppingDetail > div { display:grid; gap:5px; }
+.shoppingDetail > div > div { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent); font-size:12px; }
+.shoppingDetail > div > div span { display:grid; gap:1px; min-width:0; }
+.shoppingDetail > div > div small,.shoppingMore { color:var(--text-soft); font-size: 12px; }

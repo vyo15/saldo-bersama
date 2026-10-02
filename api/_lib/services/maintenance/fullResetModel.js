@@ -7,6 +7,9 @@ import { digest, quoted } from "./shared.js";
 export const FULL_RESET_CONFIRMATION = "RESET SEMUA DATA SALDO BERSAMA";
 
 export const FULL_RESET_DOMAIN_TABLES = Object.freeze([
+  { table: "shopping_items", orderBy: "shopping_item_id", key: "shoppingItems" },
+  { table: "shopping_checkouts", orderBy: "shopping_checkout_id", key: "shoppingCheckouts" },
+  { table: "shopping_lists", orderBy: "shopping_list_id", key: "shoppingLists" },
   { table: "investment_reconciliations", orderBy: "reconciliation_id", key: "investmentReconciliations" },
   { table: "investment_valuations", orderBy: "valuation_id", key: "investmentValuations" },
   { table: "investment_corrections", orderBy: "correction_id", key: "investmentCorrections" },
@@ -73,6 +76,9 @@ export const FULL_RESET_DELETE_ORDER = Object.freeze([
   "notification_queue",
   "integration_links",
   "integration_outbox",
+  "shopping_items",
+  "shopping_checkouts",
+  "shopping_lists",
   "investment_reconciliations",
   "investment_valuations",
   "investment_corrections",

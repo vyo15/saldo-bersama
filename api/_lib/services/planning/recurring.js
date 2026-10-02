@@ -122,7 +122,9 @@ export const createRecurringRule = async (db, context) => {
     owner_user_id: owned.owner_user_id
   };
   await db.execute(`INSERT INTO recurring_rules(recurring_rule_id,name,kind,category_id,budget_id,expected_amount,frequency,due_day,default_account_id,payment_method,auto_debit,start_date,end_date,priority,status,row_version,created_by,created_at,updated_by,updated_at,scope,owner_user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(rule));
-  await ensureRuleOccurrences(db, rule);
+  // Include only the immediately previous month when a newly-created schedule starts just before a month boundary.
+  // This lets overdue obligations exist on day one without inventing long historical occurrence chains.
+  await ensureRuleOccurrences(db, rule, { monthsBehind: 1 });
   await appendAudit(db, context, {
     entityType: "recurring_rule",
     entityId: rule.recurring_rule_id,

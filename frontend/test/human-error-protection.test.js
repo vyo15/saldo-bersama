@@ -67,6 +67,7 @@ test("kategori membedakan delete-unused dari archive, sedangkan transaksi tetap 
     read("src/features/categories/categories.api.js"),
     Promise.all([
       read("src/features/transactions/TransactionsPage.jsx"),
+      read("src/features/transactions/components/TransactionActions.jsx"),
       read("src/features/transactions/components/TransactionLifecycleModals.jsx"),
     ]).then((parts) => parts.join("\n")),
     read("src/features/transactions/transactions.api.js"),

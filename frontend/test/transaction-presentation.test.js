@@ -22,6 +22,8 @@ test("transaksi memakai icon kategori terkontrol dengan fallback jenis transaksi
     Promise.all([
       read("src/features/transactions/TransactionsPage.jsx"),
       read("src/features/transactions/components/MobileTransactionHistory.jsx"),
+      read("src/features/transactions/components/TransactionDesktopResults.jsx"),
+      read("src/features/transactions/components/TransactionDetailModal.jsx"),
     ]).then((parts) => parts.join("\n")),
     read("src/features/dashboard/DashboardPage.jsx"),
     read("src/features/dashboard/components/MobileFinanceDashboard.jsx"),

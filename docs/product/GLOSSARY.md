@@ -56,3 +56,9 @@
 - Definisi glossary adalah sumber makna product. UI boleh memendekkan kalimat, tetapi tidak boleh mengubah relasi finansialnya.
 - Untuk Rekening, copy canonical frontend berada di `frontend/src/shared/presentation/account.js`: `ACCOUNT_BALANCE_GUIDANCE`, `ACCOUNT_AVAILABLE_BALANCE_HINT`, dan `ACCOUNT_ALLOCATED_BALANCE_HINT`.
 - Page Info Atur Dana serta helper Rekening/Dashboard harus memakai makna yang sama: Alokasi Dana adalah bagian Saldo rekening non-investasi, Kebutuhan adalah nominal rencana kategori di dalam Alokasi Dana, tidak ada surface Anggaran terpisah pada UI, dan Saldo RDN tidak menjadi dana operasional.
+
+### Daftar Belanja
+Daftar barang operasional yang terhubung ke satu Kebutuhan. Menandai barang tidak memotong saldo; transaksi baru tercatat ketika user menyelesaikan checkout.
+
+### Checkout Belanja
+Konfirmasi satu sesi belanja yang mencatat total aktual sebagai satu transaksi canonical dan menandai barang di keranjang sebagai sudah dibeli.

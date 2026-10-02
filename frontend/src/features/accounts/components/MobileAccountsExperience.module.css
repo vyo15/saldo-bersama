@@ -341,10 +341,10 @@
     position: relative;
     z-index: 6;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
+    border: 1px solid transparent;
     border-radius: 1.2rem;
-    background: color-mix(in srgb, var(--primary-soft) 58%, var(--surface));
-    box-shadow: 0 .45rem 1.4rem color-mix(in srgb, var(--shadow-ink) 3%, transparent);
+    background: color-mix(in srgb, var(--primary-soft) 52%, var(--surface));
+    box-shadow: none;
     animation: mobileAccountSurfaceIn var(--motion-normal) var(--ease-enter) both;
   }
 
@@ -536,9 +536,9 @@
   .mobileQuickActionPlaceholder {
     min-width: 0;
     min-height: 3.7rem;
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
     border-radius: 1.05rem;
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    background: color-mix(in srgb, var(--surface-soft) 78%, transparent);
   }
 
   .mobileQuickAction {
@@ -580,7 +580,7 @@
 
   @media (hover: hover) and (pointer: fine) {
     .mobileQuickAction:hover {
-      border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+      border-color: transparent;
       background: var(--primary-soft);
       color: var(--primary);
     }
@@ -692,4 +692,3 @@
     transition: none;
   }
 }
-

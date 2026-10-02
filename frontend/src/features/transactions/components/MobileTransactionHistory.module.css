@@ -184,3 +184,15 @@
   .filterTypeButton:active,
   .filterResetButton:active:not(:disabled) { background: var(--surface-soft); }
 }
+
+/* Transaction history is a native list; the row divider provides enough grouping on mobile. */
+@media (max-width: 820px) {
+  .groupList {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+

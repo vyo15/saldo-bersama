@@ -34,3 +34,5 @@ export const createReconciliation = async (db, context) => {
   await appendAudit(db, context, { entityType: "reconciliation", entityId: record.reconciliation_id, next: publicRow(record) });
   return publicRow(record);
 };
+
+export { diagnoseReconciliation } from "./reconciliationDiagnosis.js";

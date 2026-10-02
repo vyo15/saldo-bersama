@@ -17,7 +17,7 @@ const GOAL_HERO_ART = "/login/assets/mobile/piggy-bank.webp";
 
 const GoalSummary = ({ items }) => {
   const summary = summarizeGoals(items);
-  return <Card className={goalClass("goal-summary")} aria-labelledby="goal-summary-title">
+  return <Card surface="object" className={goalClass("goal-summary")} aria-labelledby="goal-summary-title">
     <div className={goalClass("goal-summary__content")}>
       <p className={goalClass("goal-summary__eyebrow")} id="goal-summary-title">Progress target aktif</p>
       <div className={goalClass("goal-summary__amount")}><Money value={summary.current} /></div>
@@ -96,7 +96,7 @@ const GoalCard = ({ goal, actions }) => {
   const target = Math.max(0, Number(goal.target_amount || 0));
   const current = Math.max(0, Number(goal.current_amount || 0));
   const detailId = `goal-${goal.goal_id}-details`;
-  return <Card className={goalClass("goal-card")} data-native-enter>
+  return <Card surface="object" className={goalClass("goal-card")} data-native-enter>
     <div className={goalClass("goal-card__heading")}><div className={goalClass("goal-card__icon")}>{goal.goal_type === "emergency_fund" ? <FiShield /> : <FiTarget />}</div><div><p className="eyebrow">{goalTypeLabel(goal.goal_type)}</p><h2>{goal.name}</h2></div></div>
     <div className={goalClass("goal-card__amount-line")}><strong><Money value={current} /> <span>/ <Money value={target} /></span></strong></div>
     <ProgressBar value={current} max={target} label={goal.name} />

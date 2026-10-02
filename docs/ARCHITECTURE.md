@@ -152,3 +152,7 @@ Keputusan dan trade-off canonical dicatat di `docs/adr/`. Perubahan guarded/lint
 ## Allocation presentation metadata
 
 `envelope_rules.decoration_key` adalah metadata presentasi canonical untuk kartu Alokasi Dana. Field ini ikut read model dan backup/restore tetapi tidak menjadi financial authority; perubahan dekorasi tidak mengubah saldo, Dana Tersedia, ownership, rekonsiliasi, atau transaksi.
+
+## Shopping workflow
+
+`Atur Dana -> Kebutuhan -> Daftar Belanja` adalah contextual workflow. Backend `shopping` mengorkestrasi metadata belanja, sedangkan ledger tetap dimiliki finance service. Pada checkout, service memanggil `createTransactionInternal` dalam transaction action dispatcher yang sama, lalu mengikat `shopping_checkouts.transaction_id` dan mengubah item keranjang ke `purchased`. Karena itu tidak ada saldo shadow atau business rule keuangan duplikat di domain shopping.

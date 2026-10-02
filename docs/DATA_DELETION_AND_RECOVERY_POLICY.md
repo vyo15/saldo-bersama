@@ -146,3 +146,7 @@ Aksi berbahaya tidak boleh hanya berupa ikon tanpa label pada konteks mobile. To
 - Menghapus audit bersama entity.
 - Menghilangkan item secara optimistic sebelum respons sukses server.
 - Full database restore untuk kesalahan satu item yang dapat dipulihkan melalui lifecycle normal.
+
+## Daftar Belanja
+
+Shopping list/item/checkout ikut backup, restore, reset bisnis, full reset, dan export. Kebutuhan yang telah memiliki shopping list tidak lagi eligible untuk hard-delete sebagai “unused”; lifecycle mengarsipkan Kebutuhan agar foreign key dan histori checkout tetap dapat diaudit.

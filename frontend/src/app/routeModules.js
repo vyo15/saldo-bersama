@@ -3,6 +3,7 @@ const routeLoaders = Object.freeze({
   dashboard: () => import("../features/dashboard/DashboardPage.jsx"),
   transactions: () => import("../features/transactions/TransactionsPage.jsx"),
   planning: () => import("../features/planning/PlanningPage.jsx"),
+  shopping: () => import("../features/shopping/ShoppingPage.jsx"),
   goals: () => import("../features/goals/GoalsPage.jsx"),
   reports: () => import("../features/reports/ReportsPage.jsx"),
   accounts: () => import("../features/accounts/AccountsPage.jsx"),
@@ -34,6 +35,7 @@ export const {
   dashboard: loadDashboardPage,
   transactions: loadTransactionsPage,
   planning: loadPlanningPage,
+  shopping: loadShoppingPage,
   goals: loadGoalsPage,
   reports: loadReportsPage,
   accounts: loadAccountsPage,
@@ -68,6 +70,7 @@ const ROUTE_PREFETCH = new Map([
   ["/perencanaan/kantong", [routeLoaders.planning]],
   ["/perencanaan/jadwal", [routeLoaders.planning]],
   ["/perencanaan/komitmen", [routeLoaders.planning]],
+  ["/perencanaan/belanja", [routeLoaders.shopping]],
   ["/alokasi", [routeLoaders.planning]],
   ["/tagihan", [routeLoaders.planning]],
   ["/anggaran", [routeLoaders.planning]],
@@ -110,14 +113,15 @@ const normalizeRoutePath = (pathname) => {
 
 export const preloadRoute = async (pathname) => {
   const normalized = normalizeRoutePath(pathname);
-  const loaders = ROUTE_PREFETCH.get(normalized);
-  if (!loaders?.length || prefetchedPaths.has(normalized)) return false;
-  prefetchedPaths.add(normalized);
+  const routeKey = normalized.startsWith("/perencanaan/belanja/") ? "/perencanaan/belanja" : normalized;
+  const loaders = ROUTE_PREFETCH.get(routeKey);
+  if (!loaders?.length || prefetchedPaths.has(routeKey)) return false;
+  prefetchedPaths.add(routeKey);
   try {
     await Promise.all(loaders.map((loader) => loader()));
     return true;
   } catch {
-    prefetchedPaths.delete(normalized);
+    prefetchedPaths.delete(routeKey);
     return false;
   }
 };

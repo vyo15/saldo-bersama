@@ -1,0 +1,59 @@
+.desktopPanel { min-width: 0; padding: clamp(18px, 2vw, 24px); display: grid; gap: var(--space-4); box-shadow: var(--shadow-sm); }
+.desktopHeader { padding-bottom: var(--space-3); border-bottom: 1px solid var(--border); display: grid; gap: 3px; }
+.desktopHeader span { color: var(--text); font-size: var(--font-size-heading-sm); font-weight: var(--font-weight-bold); letter-spacing: -.02em; }
+.desktopHeader small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.mobileBody, .flow { min-width: 0; display: grid; gap: var(--space-4); }
+.hero { display: grid; justify-items: center; gap: 7px; text-align: center; }
+.hero p { max-width: 32rem; margin: 0; color: var(--text-muted); font-size: var(--font-size-sm); line-height: 1.55; }
+.heroIcon { width: 3.75rem; height: 3.75rem; display: grid; place-items: center; border-radius: 50%; }
+.heroIcon[data-tone="warning"] { color: var(--warning); background: var(--warning-soft); }
+.heroIcon[data-tone="success"] { color: var(--positive); background: var(--positive-soft); }
+.heroIcon svg { width: 1.8rem; height: 1.8rem; stroke-width: 2.5; }
+.eyebrow { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .07em; text-transform: uppercase; }
+.heroAmount, .heroAmount :global(.money) { color: var(--text); font-size: clamp(1.8rem, 6vw, 2.4rem); font-weight: var(--font-weight-bold); letter-spacing: -.04em; }
+.resolvedTitle { color: var(--text); font-size: clamp(1.35rem, 4vw, 1.8rem); letter-spacing: -.03em; }
+.summary { margin: 0; padding: 12px 14px; display: grid; gap: 8px; border: 1px solid var(--border); border-radius: 15px; background: color-mix(in srgb, var(--surface-soft) 72%, var(--surface)); }
+.summary > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3); }
+.summary dt { color: var(--text-muted); font-size: var(--font-size-sm); }
+.summary dd { margin: 0; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; text-align: right; }
+.summary dd[data-state="difference"] { color: var(--warning); }
+.summary dd[data-state="matched"] { color: var(--positive); }
+.actions, .secondaryActions { display: grid; gap: 8px; }
+.actions :global(.button), .secondaryActions :global(.button), .flow > :global(.button) { width: 100%; }
+.textAction, .retry { min-height: 44px; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.textAction:hover, .retry:hover { color: var(--text); }
+.textAction:focus-visible, .retry:focus-visible, .typeButton:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.retry { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.retry:disabled { opacity: .55; cursor: wait; }
+.sectionHeading { display: grid; gap: 3px; }
+.sectionHeading strong { color: var(--text); font-size: var(--font-size-body); }
+.sectionHeading small { color: var(--text-muted); font-size: var(--font-size-sm); line-height: 1.5; }
+.candidateList { display: grid; gap: 10px; }
+.candidate { min-width: 0; padding: 13px; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.candidate[data-confidence="strong"] { border-color: color-mix(in srgb, var(--primary) 32%, var(--border)); background: color-mix(in srgb, var(--primary-soft) 28%, var(--surface)); }
+.candidateIcon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: var(--surface-soft); color: var(--primary); }
+.candidateCopy { min-width: 0; display: grid; gap: 3px; }
+.candidateCopy strong, .candidateCopy small { overflow-wrap: anywhere; }
+.candidateCopy strong { color: var(--text); font-size: var(--font-size-body-sm); }
+.candidateCopy small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.confidence { width: fit-content; padding: 3px 7px; border-radius: var(--radius-pill); color: var(--primary-strong); background: var(--primary-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+.candidateAmount, .candidateAmount :global(.money) { margin-top: 3px; color: var(--text); font-size: 1.1rem; font-weight: var(--font-weight-bold); }
+.candidate ul { margin: 5px 0 0; padding-left: 1.1rem; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.candidateAction { grid-column: 2; width: fit-content; }
+.typeChooser { display: grid; gap: var(--space-3); }
+.typeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.typeButton { min-width: 0; min-height: 74px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: center; gap: 2px 8px; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; }
+.typeButton strong, .typeButton small { min-width: 0; overflow-wrap: anywhere; }
+.typeButton strong { font-size: var(--font-size-sm); }
+.typeButton small { grid-column: 1; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
+.typeButton svg { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--primary); }
+.safetyNote { margin: 0; padding-top: var(--space-2); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.5; }
+.error { padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--negative) 32%, var(--border)); border-radius: 12px; color: var(--negative); background: var(--negative-soft); font-size: var(--font-size-sm); }
+@media (max-width: 820px) {
+  .mobileBody { padding-top: var(--space-1); }
+  .typeGrid { grid-template-columns: minmax(0, 1fr); }
+  .candidate { grid-template-columns: 34px minmax(0, 1fr); padding: 12px; }
+  .candidateIcon { width: 34px; height: 34px; }
+  .candidateAction { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .typeButton { transition: none; } }

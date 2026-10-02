@@ -422,3 +422,13 @@
     background: radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 60%);
   }
 }
+
+/* Empty/first-investment guidance should feel embedded in the mobile canvas, not double wrapped. */
+@media (max-width: 820px) {
+  .firstInvestment {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--surface-soft) 48%, transparent);
+    box-shadow: none;
+  }
+}
+

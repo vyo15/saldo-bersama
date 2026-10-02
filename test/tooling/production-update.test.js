@@ -11,25 +11,28 @@ test("migration target memakai schema_version SQL dan tidak menganggap prefix 01
   assert.equal(migrationTargetSchemaVersion("UPDATE system_config SET value='21' WHERE key='schema_version';", "019_budget_recording_mode.sql"), 21);
   assert.equal(migrationTargetSchemaVersion("UPDATE system_config SET value='23' WHERE key='schema_version';", "021_notification_attention_state.sql"), 23);
   assert.equal(migrationTargetSchemaVersion("UPDATE system_config SET value='24' WHERE key='schema_version';", "022_goal_investment_funding.sql"), 24);
+  assert.equal(migrationTargetSchemaVersion("UPDATE system_config SET value='25' WHERE key='schema_version';", "023_shopping_lists.sql"), 25);
   assert.equal(migrationTargetSchemaVersion("INSERT INTO system_config(key,value) VALUES ('schema_version','3');", "001_initial_schema.sql"), 3);
 });
 
 test("seluruh migration chain memisahkan migration ID dari target schema secara monoton", async () => {
   const migrations = await loadMigrations();
-  assert.deepEqual(migrations.map((item) => item.migrationId), Array.from({ length: 22 }, (_, index) => index + 1));
-  assert.deepEqual(migrations.map((item) => item.targetSchemaVersion), Array.from({ length: 22 }, (_, index) => index + 3));
-  assert.equal(migrations.at(-6)?.file, "017_budget_lifecycle_history.sql");
-  assert.equal(migrations.at(-6)?.targetSchemaVersion, 19);
-  assert.equal(migrations.at(-5)?.file, "018_envelope_decoration.sql");
-  assert.equal(migrations.at(-5)?.targetSchemaVersion, 20);
-  assert.equal(migrations.at(-4)?.file, "019_budget_recording_mode.sql");
-  assert.equal(migrations.at(-4)?.targetSchemaVersion, 21);
-  assert.equal(migrations.at(-3)?.file, "020_commitments.sql");
-  assert.equal(migrations.at(-3)?.targetSchemaVersion, 22);
-  assert.equal(migrations.at(-2)?.file, "021_notification_attention_state.sql");
-  assert.equal(migrations.at(-2)?.targetSchemaVersion, 23);
-  assert.equal(migrations.at(-1)?.file, "022_goal_investment_funding.sql");
-  assert.equal(migrations.at(-1)?.targetSchemaVersion, 24);
+  assert.deepEqual(migrations.map((item) => item.migrationId), Array.from({ length: 23 }, (_, index) => index + 1));
+  assert.deepEqual(migrations.map((item) => item.targetSchemaVersion), Array.from({ length: 23 }, (_, index) => index + 3));
+  assert.equal(migrations.at(-7)?.file, "017_budget_lifecycle_history.sql");
+  assert.equal(migrations.at(-7)?.targetSchemaVersion, 19);
+  assert.equal(migrations.at(-6)?.file, "018_envelope_decoration.sql");
+  assert.equal(migrations.at(-6)?.targetSchemaVersion, 20);
+  assert.equal(migrations.at(-5)?.file, "019_budget_recording_mode.sql");
+  assert.equal(migrations.at(-5)?.targetSchemaVersion, 21);
+  assert.equal(migrations.at(-4)?.file, "020_commitments.sql");
+  assert.equal(migrations.at(-4)?.targetSchemaVersion, 22);
+  assert.equal(migrations.at(-3)?.file, "021_notification_attention_state.sql");
+  assert.equal(migrations.at(-3)?.targetSchemaVersion, 23);
+  assert.equal(migrations.at(-2)?.file, "022_goal_investment_funding.sql");
+  assert.equal(migrations.at(-2)?.targetSchemaVersion, 24);
+  assert.equal(migrations.at(-1)?.file, "023_shopping_lists.sql");
+  assert.equal(migrations.at(-1)?.targetSchemaVersion, 25);
 });
 
 

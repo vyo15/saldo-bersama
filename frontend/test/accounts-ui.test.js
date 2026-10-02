@@ -634,19 +634,21 @@ test("Pastikan Saldo Sesuai memakai feedback ringan dan jalur selisih yang actio
     ]).then((parts) => parts.join("\n")),
     read("src/features/reconciliations/ReconciliationsPage.module.css"),
     read("src/components/feedback/FeedbackProvider.jsx"),
-    read("src/features/reconciliations/components/ReconciliationFeedback.jsx"),
-    read("src/features/reconciliations/components/ReconciliationFeedback.module.css"),
+    read("src/features/reconciliations/components/ReconciliationResolution.jsx"),
+    read("src/features/reconciliations/components/ReconciliationResolution.module.css"),
     read("src/components/feedback/FinancialSuccessOverlay.jsx"),
     read("src/components/feedback/FinancialSuccessOverlay.module.css"),
   ]);
 
   assert.match(page, /ReconciliationSubmitProgress/);
-  assert.match(page, /ReconciliationResultOverlay/);
+  assert.match(page, /ReconciliationResolution/);
   assert.match(page, /status: "syncing"/);
   assert.match(page, /status: "completed"/);
   assert.match(page, /finishReconciliation = useCallback\(\(\) => navigate\(returnPathRef\.current/);
   assert.match(page, /reviewReconciliationTransactions/);
   assert.match(page, /onReviewTransactions/);
+  assert.match(page, /recordMissingTransaction = useCallback\(\(transactionType, suggestedAmount/);
+  assert.doesNotMatch(page, /isMissingExpense|difference < 0[^;]*TRANSACTION_TYPES/);
   assert.match(page, /refreshOutcomes = await Promise\.allSettled/);
   assert.match(page, /actual_balance: "", notes: ""/);
   assert.match(page, /setForm\(\{ account_id: requestedAccountId, actual_balance: "", notes: "" \}\)/);
@@ -671,13 +673,21 @@ test("Pastikan Saldo Sesuai memakai feedback ringan dan jalur selisih yang actio
   assert.match(localProcessActions, /"transactions\.create"/);
   assert.match(feedback, /LOCAL_PROCESS_ACTIONS\.has\(visible\.action\)/);
   assert.doesNotMatch(result, /FinancialSuccessOverlay/);
-  assert.match(result, /result\.matched\) return null/);
-  assert.match(result, /ReconciliationDifferenceOverlay/);
-  assert.match(result, /Catat transaksi yang tertinggal/);
-  assert.match(result, /Periksa aktivitas rekening/);
-  assert.match(result, /Selesaikan nanti/);
+  assert.match(result, /diagnoseReconciliation/);
+  assert.match(result, /Cari penyebab/);
+  assert.match(result, /Sistem tidak menebak dari tanda selisih/);
+  assert.match(result, /Pengeluaran/);
+  assert.match(result, /Pemasukan/);
+  assert.match(result, /Transfer/);
+  assert.match(result, /Refund/);
+  assert.match(result, /Periksa transaksi terbaru/);
+  assert.match(result, /Saldo tidak dikoreksi otomatis/);
+  assert.match(result, /Number\(diagnosis\.system_balance\) === Number\(currentSystemBalance/);
+  assert.match(result, /setDiagnosis\(null\)/, "Diagnosis lama harus dibuang ketika saldo aplikasi berubah setelah user memperbaiki ledger.");
+  assert.match(result, /Money value=\{Math\.abs\(currentDifference\)\}/, "Selisih yang ditampilkan harus mengikuti saldo terkini, bukan checkpoint lama.");
+  assert.match(result, /Simpan hasil pemeriksaan/);
+  assert.match(result, /Selisih sebelumnya/);
   assert.match(result, /onReviewTransactions/);
-  assert.match(result, /refreshIncomplete/);
   assert.match(successOverlay, /MONEY_COUNT = 10/);
   assert.match(successOverlay, /MoneyRainCelebration/);
   assert.match(successOverlay, /saldo-bersama-mark\.png/);

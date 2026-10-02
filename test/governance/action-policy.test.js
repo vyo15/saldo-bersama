@@ -79,7 +79,7 @@ test("frontend read transport tidak drift dari backend action policy", () => {
 
 
 test("snapshot read dipertahankan untuk read-model multi-query finansial dan preview guarded", () => {
-  for (const action of ["app.initialState", "bootstrap.get", "dashboard.overview", "archive.list", "transactions.list", "envelopes.list", "goals.list", "reports.monthly", "periods.previewClose", "reset.preview", "reset.status", "fullReset.preview", "fullReset.status"]) {
+  for (const action of ["app.initialState", "bootstrap.get", "dashboard.overview", "archive.list", "transactions.list", "envelopes.list", "goals.list", "reports.monthly", "reconciliations.diagnose", "periods.previewClose", "reset.preview", "reset.status", "fullReset.preview", "fullReset.status"]) {
     assert.equal(isSnapshotReadAction(action), true, `${action} wajib memakai snapshot konsisten`);
   }
   for (const action of ["accounts.list", "categories.list", "budgets.list", "recurring.list", "reconciliations.list", "periods.list"]) {

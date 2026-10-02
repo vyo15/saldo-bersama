@@ -26,6 +26,7 @@ const budgetRecordingModeMigrationUrl = new URL("019_budget_recording_mode.sql",
 const commitmentsMigrationUrl = new URL("020_commitments.sql", migrationDirectory);
 const notificationAttentionMigrationUrl = new URL("021_notification_attention_state.sql", migrationDirectory);
 const goalInvestmentFundingMigrationUrl = new URL("022_goal_investment_funding.sql", migrationDirectory);
+const shoppingListsMigrationUrl = new URL("023_shopping_lists.sql", migrationDirectory);
 
 const migrationSql = async () => {
   const files = (await readdir(migrationDirectory)).filter((name) => /^\d+_.+\.sql$/.test(name)).sort();
@@ -115,9 +116,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v24 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v25 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "24");
+  assert.equal(result.schema_version, "25");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -494,5 +495,17 @@ test("migration v24 menambahkan funding Target berbasis cash/investasi tanpa cas
   assert.match(sql, /event_type IN \('allocate','buy','sell_retain','sell_release','release','cash_release'\)/);
   assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS idx_goal_investment_events_trade/);
   assert.match(sql, /value='24'/);
+  assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+
+test("migration v25 menambahkan daftar belanja tanpa cascade delete dan menjaga checkout unik", async () => {
+  const sql = await readFile(shoppingListsMigrationUrl, "utf8");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS shopping_lists/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS shopping_items/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS shopping_checkouts/);
+  assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS ux_shopping_lists_open_budget/);
+  assert.match(sql, /transaction_id TEXT NOT NULL UNIQUE/);
+  assert.match(sql, /value='25'/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
 });

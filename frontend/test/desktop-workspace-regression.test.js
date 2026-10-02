@@ -5,17 +5,18 @@ import test from "node:test";
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("desktop transaksi meredam CTA per baris tanpa menghilangkan aksi detail", async () => {
-  const [page, css] = await Promise.all([
-    read("src/features/transactions/TransactionsPage.jsx"),
+  const [actions, results, css] = await Promise.all([
+    read("src/features/transactions/components/TransactionActions.jsx"),
+    read("src/features/transactions/components/TransactionDesktopResults.jsx"),
     read("src/features/transactions/TransactionsPage.module.css"),
   ]);
-  assert.match(page, /const TransactionActionMenu/);
-  assert.match(page, /menuOnly/);
-  assert.match(page, /<FiMoreHorizontal/);
-  assert.match(page, /Pakai lagi/);
-  assert.match(page, /Edit transaksi/);
-  assert.match(page, /Batalkan transaksi/);
-  assert.match(page, /<TransactionActions item=\{item\} linkedModule=\{managedModule\(item\)\} menuOnly/);
+  assert.match(actions, /const TransactionActionMenu/);
+  assert.match(actions, /menuOnly/);
+  assert.match(actions, /<FiMoreHorizontal/);
+  assert.match(actions, /Pakai lagi/);
+  assert.match(actions, /Edit transaksi/);
+  assert.match(actions, /Batalkan transaksi/);
+  assert.match(results, /<TransactionActions item=\{item\} linkedModule=\{managedTransactionModule\(item\)\} menuOnly/);
   assert.match(css, /\.actionMenuItems \{/);
   assert.match(css, /@media \(max-width: 820px\)[\s\S]*\.actionMenu \{ display: none; \}/);
 });
@@ -60,21 +61,23 @@ test("rekonsiliasi desktop menjadi workspace perbandingan dua panel tanpa mengub
     read("src/features/reconciliations/ReconciliationsPage.jsx"),
     read("src/features/reconciliations/ReconciliationsPage.module.css"),
   ]);
-  const layout = page.indexOf("<div className={styles.layout}>");
-  const input = page.indexOf("<ReconciliationInputPanel", layout);
-  const history = page.indexOf("<ReconciliationHistoryDisclosure", layout);
+  const workspace = page.indexOf("<div className={styles.workspace}>");
+  const input = page.indexOf("<ReconciliationInputPanel", workspace);
+  const resolution = page.indexOf("<ReconciliationResolution", input);
+  const history = page.indexOf("<ReconciliationHistoryDisclosure", workspace);
   assert.match(page, /className=\{styles\.historyDisclosure\}/);
-  assert.ok(layout >= 0 && input > layout && history > input);
-  assert.match(css, /@media \(min-width: 1280px\)[\s\S]*\.layout \{[\s\S]*grid-template-columns: minmax\(300px, \.55fr\) minmax\(0, 1\.45fr\);/);
-  assert.match(css, /\.formPanel \{[\s\S]*position: sticky;[\s\S]*top: 82px;/);
+  assert.ok(workspace >= 0 && input > workspace && resolution > input && history > resolution);
+  assert.match(css, /@media \(min-width: 1280px\)[\s\S]*\.workspace \{[\s\S]*grid-template-columns: minmax\(300px, \.55fr\) minmax\(0, 1\.45fr\);/);
+  assert.match(css, /\.workspace > \.formPanel \{ position: sticky; top: 82px; \}/);
   assert.match(css, /@media \(max-width: 820px\)[\s\S]*\.historyDisclosureButton \{[\s\S]*display: flex;/);
 });
 
 
 test("transaksi desktop memakai workspace analitik, ledger, dan drawer detail tanpa mengubah experience mobile", async () => {
-  const [page, workspace, css, presentation, backend] = await Promise.all([
+  const [page, workspace, results, css, presentation, backend] = await Promise.all([
     read("src/features/transactions/TransactionsPage.jsx"),
     read("src/features/transactions/components/DesktopTransactionWorkspace.jsx"),
+    read("src/features/transactions/components/TransactionDesktopResults.jsx"),
     read("src/features/transactions/TransactionsPage.module.css"),
     read("src/shared/presentation/transaction.js"),
     readFile(new URL("../../api/_lib/services/finance/transactionQueries.js", import.meta.url), "utf8"),
@@ -84,7 +87,7 @@ test("transaksi desktop memakai workspace analitik, ledger, dan drawer detail ta
   assert.match(page, /<DesktopTransactionWorkspace/);
   assert.match(page, /<MobileTransactionHistory/);
   assert.match(page, /desktop=\{!mobileLayout\}/);
-  assert.match(page, /desktop-data-table/);
+  assert.match(results, /desktop-data-table/);
   assert.match(workspace, /Aktivitas bulan ini/);
   assert.match(workspace, /Transaksi cepat/);
   assert.match(workspace, /Pengeluaran terbesar/);

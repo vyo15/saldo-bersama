@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `022_goal_investment_funding.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `023_shopping_lists.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -28,6 +28,9 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `commitments` — domain internal Kewajiban KPR/cicilan/pinjaman/Arisan; satu Kewajiban aktif memiliki satu Jadwal Rutin canonical.
 - `commitment_movements` — ledger progres pembayaran/penerimaan Kewajiban dan snapshot pokok/bunga.
 - `budgets` — Kebutuhan operasional periode terbuka.
+- `shopping_lists` — daftar belanja operasional yang terhubung ke satu Kebutuhan.
+- `shopping_items` — barang/checklist operasional; bukan transaction line item.
+- `shopping_checkouts` — link satu checkout belanja ke tepat satu transaksi canonical.
 - `budget_history` — representasi compact Kebutuhan setelah periode ditutup; dipakai report/reopen tanpa mempertahankan row operasional aktif.
 - `savings_goals` — Target tujuan dengan `funding_mode` `cash`, `investment`, atau `mixed`; status selesai tetap keputusan eksplisit user.
 - `goal_movements` — mutasi cash Target yang terhubung satu-ke-satu ke transaksi ledger.
@@ -122,9 +125,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `24`
+Versi aktif: `25`
 
-Latest migration: `022_goal_investment_funding.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `023_shopping_lists.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 

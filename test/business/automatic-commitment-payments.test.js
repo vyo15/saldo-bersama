@@ -240,6 +240,7 @@ test("Kewajiban overdue ikut dibayar otomatis saat Alokasi baru siap setelah jat
     assert.equal(result.settled, 1, "scheduler hari ini harus mengejar kewajiban overdue yang dananya sudah siap");
     const transaction = await db.one("SELECT * FROM transactions WHERE commitment_id=? AND status='active'", [created.commitment_id]);
     assert.equal(transaction?.amount, 3_750_000);
+    assert.equal(transaction?.transaction_date, overdueDate, "catch-up mempertahankan tanggal ledger jatuh tempo agar Kebutuhan/Alokasi periode lama tetap konsisten");
   } finally {
     db.close();
   }

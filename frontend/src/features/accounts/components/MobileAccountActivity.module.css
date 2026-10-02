@@ -11,11 +11,11 @@
 
   .mobileRecentActivity {
     min-width: 0;
-    padding: .95rem .95rem .25rem;
-    border: 1px solid var(--border);
-    border-radius: 1.2rem;
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
-    box-shadow: 0 .45rem 1.35rem color-mix(in srgb, var(--shadow-ink) 3%, transparent);
+    padding: .6rem 0 .15rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     animation: mobileAccountActivityIn var(--motion-normal) var(--ease-enter) both;
   }
 
@@ -85,7 +85,7 @@
     align-items: center;
     justify-content: space-between;
     gap: .6rem;
-    border: 1px solid var(--border);
+    border: 0;
     border-radius: .8rem;
     background: var(--surface-soft);
     color: var(--text-soft);

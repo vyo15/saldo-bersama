@@ -5,17 +5,55 @@
   box-shadow: none;
   transition:
     border-color var(--motion-normal) var(--motion-easing),
+    background-color var(--motion-normal) var(--motion-easing),
     box-shadow var(--motion-normal) var(--motion-easing),
     transform var(--motion-normal) var(--motion-easing);
 }
 
+.surfaceOutlined {
+  border-color: var(--ui-border);
+  background: var(--ui-surface);
+}
+
+.surfaceFlat {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.surfaceTonal {
+  border-color: transparent;
+  background: var(--ui-surface-soft);
+  box-shadow: none;
+}
+
+.surfaceObject {
+  border-color: transparent;
+  background: var(--ui-surface);
+  box-shadow: none;
+}
+
+.surfaceElevated {
+  border-color: transparent;
+  background: var(--ui-surface-raised);
+  box-shadow: var(--shadow-surface);
+}
+
 .card:focus-within {
-  border-color: color-mix(in srgb, var(--ui-primary) 42%, var(--ui-border));
+  border-color: color-mix(in srgb, var(--ui-primary) 42%, transparent);
+}
+
+.surfaceFlat:focus-within,
+.surfaceTonal:focus-within,
+.surfaceObject:focus-within,
+.surfaceElevated:focus-within {
+  border-color: transparent;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .card[data-interactive="true"]:hover {
-    border-color: color-mix(in srgb, var(--ui-primary) 34%, var(--ui-border));
+    border-color: color-mix(in srgb, var(--ui-primary) 34%, transparent);
     background: var(--ui-interactive-hover);
     box-shadow: var(--shadow-surface);
     transform: translateY(-1px);

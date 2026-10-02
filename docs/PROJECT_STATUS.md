@@ -7,7 +7,7 @@
 
 ## Runtime canonical
 
-- **Active schema contract:** v24
+- **Active schema contract:** v25
 - Node yang didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - Turso adalah source of truth; Google Sheets hanya mirror satu arah untuk data shared.
 - Development dan Production memakai database terpisah yang ditandai `DATABASE_ENVIRONMENT`; cross-binding ditolak fail-closed.
@@ -27,6 +27,7 @@
 | Target | Partial | Goal + movement + projection canonical; card default compact menampilkan progress, sisa/status, dan satu primary action + overflow, sedangkan tanggal/estimasi/breakdown sumber dana dipindahkan ke progressive detail. Setoran sukses memakai in-app achievement postcard berbasis hasil server dengan milestone 25/50/75/90/100%, finite/reduced-motion safe; stages/advanced contribution masih future RFC. |
 | Investasi/RDN | Implemented | Asset-centric manual tracking; RDN terpisah dari saldo operasional; compatibility histori tetap readable. |
 | Dashboard | Implemented | **Saldo Keluarga** (rekening operasional non-investasi) menjadi hero transparansi utama; **Dana yang bisa kamu gunakan** (`safeToSpend`) menjelaskan kemampuan operasional actor, dan breakdown compact **Saya · Pasangan · Bersama** memisahkan ownership tanpa tiga card besar. Mobile menaruh freshness di header, Aman/hari + Sisa di Alokasi sebagai dua metrik ringkas, hanya memunculkan attention mendesak, lalu shortcut/rencana/aktivitas secara decision-first; shortcut tidak menggandakan `Atur Dana` dan memakai **Rekening · Target · Investasi**. **Pastikan Saldo Sesuai** tetap aksi kontekstual Rekening. Bottom navigation memakai **Beranda · Atur Dana · CATAT · Transaksi · Lainnya**. Desktop tetap analytical workspace kaya data dengan read model canonical yang sama. |
+| Daftar Belanja | Implemented | Contextual workflow dari Kebutuhan: planning list, checklist, partial checkout, atomic transaction canonical, history detail, responsive mobile/desktop, backup/restore/export. |
 | Laporan | Partial | Monthly/trend/breakdown tersedia termasuk aktivitas Kewajiban (pokok, bunga/biaya, setoran/penerimaan Arisan). Default hierarchy memakai satu hero kondisi keuangan/tren + fakta compact tanpa summary KPI kedua yang mengulang angka; kategori, kondisi Alokasi, dan transaksi terbaru tetap langsung terlihat, sedangkan planning/Kewajiban/rekening/pencatat berada di Analisis lengkap. Context bar periode/scope/unduh tetap sticky dan curved sidebar canonical tidak diubah. Mobile memakai hierarchy data yang sama secara compact. Report document semester/tahunan masih future. |
 | Rekonsiliasi | Implemented | Ledger reconciliation + investment reconciliation terpisah; desktop lapang memakai workspace dua panel dengan porsi riwayat lebih besar dan kembali bertumpuk saat ruang tidak cukup agar kolom Selisih/Status tetap terlihat, sementara mobile mempertahankan disclosure riwayat. Pengingat stale configurable 0/14/30/60 hari (default 30) tanpa mengubah checkpoint reconciliation. |
 | Realtime | Implemented | `sync_revisions`, `sync.state`, dependency map, visible polling, foreground/reconnect/push/BroadcastChannel, pull-to-refresh tanpa hard reload yang hanya dirender pada viewport mobile. Multi-device Production smoke tetap wajib untuk release sync-critical. |
