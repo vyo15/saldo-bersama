@@ -195,6 +195,7 @@ export const createCleanArchive = async (args = [], { extraFiles = {} } = {}) =>
       "git",
       [
         "archive",
+        "-9",
         "--format=zip",
         `--prefix=${archivePrefix}`,
         `--output=${temporaryOutput}`,
