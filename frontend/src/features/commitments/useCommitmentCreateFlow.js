@@ -93,6 +93,11 @@ const useCommitmentCreateFlow = ({
   };
   const submit = (event) => {
     event.preventDefault();
+    if (form.planning_need_resolved === false) {
+      setStepError("Pilih Kebutuhan yang digunakan atau pilih Pembayaran mandiri.");
+      return undefined;
+    }
+    setStepError("");
     return mutation.run(async () => {
       const created = await createCommitment(commitmentCreatePayload(form));
       const name = form.name || "Kewajiban";

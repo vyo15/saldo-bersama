@@ -73,26 +73,23 @@ const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
   const mutualFund = isMutualFundInstrument(holding);
   const unrealized = Number(holding.unrealized_pl || 0);
   const returnPercent = investmentReturnPercent(unrealized, holding.cost_basis);
-  const openOnKeyboard = (event) => {
-    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenDetail(); }
-  };
   return (
-    <article data-native-enter className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`} role="button" tabIndex="0" onClick={onOpenDetail} onKeyDown={openOnKeyboard} aria-label={`Buka rincian ${holding.ticker || "aset"}`}>
-      <div className={holdingStyles.holdingIdentity}>
+    <button type="button" data-native-enter className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`} onClick={onOpenDetail} aria-label={`Buka rincian ${holding.ticker || "aset"}`}>
+      <span className={holdingStyles.holdingIdentity}>
         <InvestmentAssetLogo ticker={holding.ticker} className={holdingStyles.stockLogo} />
-        <div>
-          <div className={holdingStyles.holdingNameRow}><h4>{mutualFund ? holding.name || holding.ticker : holding.ticker || "Aset"}</h4></div>
-          <p>{mutualFund ? holding.ticker || "Reksa Dana" : holding.name || "Instrumen investasi"}</p>
-        </div>
-      </div>
-      <div className={holdingStyles.holdingValueBlock}>
+        <span>
+          <span className={holdingStyles.holdingNameRow}><strong>{mutualFund ? holding.name || holding.ticker : holding.ticker || "Aset"}</strong></span>
+          <span className={holdingStyles.holdingMeta}>{mutualFund ? holding.ticker || "Reksa Dana" : holding.name || "Instrumen investasi"}</span>
+        </span>
+      </span>
+      <span className={holdingStyles.holdingValueBlock}>
         <strong><Money value={holding.market_value} /></strong>
         <small className={tone(unrealized)}>
           <Money value={unrealized} />{returnPercent != null ? ` (${percentLabel(returnPercent)})` : ""}
         </small>
-      </div>
+      </span>
       {!portfolio.can_operate ? <span className="sr-only">Hanya dapat dilihat</span> : null}
-    </article>
+    </button>
   );
 };
 
@@ -139,25 +136,24 @@ const activityRowsForPortfolios = (portfolios = []) => portfolios
   .sort((left, right) => String(right.activity.activity_date || "").localeCompare(String(left.activity.activity_date || "")) || String(right.activity.created_at || "").localeCompare(String(left.activity.created_at || "")))
   .slice(0, 30);
 
+const ActivityRowContent = ({ row }) => <>
+  <span className={activityStyles.activityIcon} aria-hidden="true"><FiActivity /></span>
+  <span className={activityStyles.activityCopy}>
+    <strong>{investmentActivityLabel(row.activity)}</strong>
+    <small>{formatDateLongIndonesia(row.activity.activity_date) || row.activity.activity_date}{row.position?.is_closed ? " · Posisi selesai" : ""}</small>
+  </span>
+  <span className={activityStyles.activityValue}><ActivityValue activity={row.activity} /></span>
+</>;
+
 const InvestmentActivityPanel = ({ portfolios, onHolding }) => {
   const rows = useMemo(() => activityRowsForPortfolios(portfolios), [portfolios]);
-  const openFromKeyboard = (event, row) => {
-    if (!row.position || !["Enter", " "].includes(event.key)) return;
-    event.preventDefault();
-    onHolding(row.portfolio, row.position);
-  };
   return <Card className={activityStyles.activityCard}>
     <div className={sharedStyles.sectionHeading}>
       <div><h3>Aktivitas aset</h3><p>Pembelian, penjualan, nilai manual, posisi awal, dan koreksi aset. Catatan saldo lama tidak dicampurkan di sini.</p></div>
       <span>{rows.length.toLocaleString("id-ID")} terbaru</span>
     </div>
-    {rows.length ? <ul className={activityStyles.activityList}>{rows.map((row) => <li key={`${row.portfolio.portfolio_id}:${row.activity.activity_type}:${row.activity.activity_id || row.index}`} className={`${activityStyles.activityItem}${row.position ? ` ${activityStyles.activityItemInteractive}` : ""}`} data-native-enter={row.position ? "true" : undefined} role={row.position ? "button" : undefined} tabIndex={row.position ? 0 : undefined} onClick={() => row.position && onHolding(row.portfolio, row.position)} onKeyDown={(event) => openFromKeyboard(event, row)} aria-label={row.position ? `Buka riwayat ${row.activity.ticker || "aset"}` : undefined}>
-      <span className={activityStyles.activityIcon} aria-hidden="true"><FiActivity /></span>
-      <div className={activityStyles.activityCopy}>
-        <strong>{investmentActivityLabel(row.activity)}</strong>
-        <small>{formatDateLongIndonesia(row.activity.activity_date) || row.activity.activity_date}{row.position?.is_closed ? " · Posisi selesai" : ""}</small>
-      </div>
-      <div className={activityStyles.activityValue}><ActivityValue activity={row.activity} /></div>
+    {rows.length ? <ul className={activityStyles.activityList}>{rows.map((row) => <li key={`${row.portfolio.portfolio_id}:${row.activity.activity_type}:${row.activity.activity_id || row.index}`} className={activityStyles.activityItemShell}>
+      {row.position ? <button type="button" className={`${activityStyles.activityItem} ${activityStyles.activityItemInteractive}`} data-native-enter onClick={() => onHolding(row.portfolio, row.position)} aria-label={`Buka riwayat ${row.activity.ticker || "aset"}`}><ActivityRowContent row={row} /></button> : <div className={activityStyles.activityItem}><ActivityRowContent row={row} /></div>}
     </li>)}</ul> : <p className={sharedStyles.inlineEmpty}>Belum ada aktivitas investasi yang tercatat.</p>}
   </Card>;
 };

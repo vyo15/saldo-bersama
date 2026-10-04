@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { planningFundingAccounts } from "../src/features/allocations/allocationFundingModel.js";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -18,8 +19,10 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
   assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
   assert.match(overview, /Dana yang bisa dialokasikan/);
   assert.match(overview, /Dana siap dialokasikan/);
-  assert.match(overview, /fundingAccountsForItems\(accounts, fundableItems\)/);
-  assert.match(overview, /Hanya dana bebas dari rekening sumber Alokasi aktif/);
+  assert.match(overview, /Dana tersedia untuk direncanakan/);
+  assert.match(overview, /allocationSourceAccounts\(accounts\)/);
+  assert.match(overview, /planningFundingAccounts\(accounts, items\)/);
+  assert.match(overview, /Dana bebas dari rekening operasional dapat diarahkan ke Alokasi yang sudah ada atau Alokasi baru/);
   assert.match(overview, /Lihat \{sources\.length\} rekening sumber/);
   assert.match(overview, /icon=\{AllocationEmptyArt\}/);
   assert.doesNotMatch(overview, /<div className=\{allocationClass\("allocation-empty-state"\)\}>/);
@@ -29,7 +32,7 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
   assert.doesNotMatch(overview, /wallet\.webp/);
 });
 
-test("aksi funding generik memilih rekening dulu dan contextual tetap mengunci source plus target", async () => {
+test("aksi funding generik memilih tujuan lalu rekening, sementara contextual tetap mengunci source plus target", async () => {
   const [workspace, attention, funding] = await Promise.all([
     read("src/features/allocations/AllocationsWorkspace.jsx"),
     read("src/features/allocations/allocationAttentionNavigation.js"),
@@ -45,7 +48,16 @@ test("aksi funding generik memilih rekening dulu dan contextual tetap mengunci s
   assert.match(funding, /Sumber rekening mengikuti Alokasi ini dan tidak dapat diganti/);
   assert.match(funding, /Saldo rekening<\/span><strong>tidak berubah/);
   assert.match(funding, /if \(!impact\.valid\) return null/);
-  assert.match(funding, /Belum ada Alokasi yang memakai rekening ini/);
+  assert.match(funding, /Dana mau diarahkan ke mana\?/);
+  assert.match(funding, /Alokasi yang sudah ada/);
+  assert.match(funding, /Buat Alokasi baru/);
+  assert.match(funding, /Buat Alokasi dari rekening ini/);
+  assert.match(funding, /Kembali ke pilihan tujuan/);
+  assert.match(workspace, /chooseDestination:\s*fundingIntent\?\.chooseDestination === true/);
+  assert.match(workspace, /onCreateNew:\s*createFromFunding/);
+  assert.match(workspace, /openCreate\(\{ sourceAccountId \}\)/);
+  assert.match(workspace, /setCreateForm\(defaultCreateForm\(sourceAccount\)\)/);
+  assert.match(workspace, /setCreateNeeds\(defaultCreateNeeds\(\)\)/);
 });
 
 test("create Alokasi mengikuti ownership rekening dan menyimpan opsi lanjutan secara progresif", async () => {
@@ -78,11 +90,14 @@ test("overview menyatukan objek aktif dan hanya menampilkan filter ownership ket
   assert.match(overview, /ownership\.showFilter \? <div className=\{allocationClass\("allocation-filters"\)\}/);
   assert.match(overview, />Aktif<\/h2>/);
   assert.match(overview, /Alokasikan dana/);
-  assert.match(overview, />Tambah<\/Button>/);
-  assert.match(overview, /Tambah rencana/);
+  assert.match(overview, /onOpenFunding\?\.\(\{ chooseDestination: true \}\)/);
+  assert.match(overview, />Buat Alokasi<\/Button>/);
+  assert.match(overview, /allocation-planning-nav__create/);
+  assert.match(overview, /aria-label="Tambah rencana"/);
+  assert.doesNotMatch(overview, />Tambah lainnya<\/Button>/);
   assert.match(overview, /PlanningCreateLauncher/);
   assert.match(launcher, /Tambah di Atur Dana/);
-  assert.match(launcher, /title="Alokasi dana"/);
+  assert.match(launcher, /title="Buat Alokasi"/);
   assert.match(launcher, /title="Kewajiban"/);
   assert.match(launcher, /title="Jadwal rutin"/);
   assert.match(launcher, /value: "mortgage", label: "KPR"/);
@@ -95,4 +110,15 @@ test("attention kekurangan dana mengunci Alokasi yang sudah diketahui", async ()
   assert.match(attention, /sourceAccountId:\s*targetEnvelope\?\.source_account_id/);
   assert.match(attention, /envelopePeriodId:\s*targetEnvelope\?\.envelope_period_id/);
   assert.match(attention, /lockSelection:\s*Boolean\(targetEnvelope\)/);
+});
+
+
+test("true-empty planning menghitung dana rekening aktif sebelum Alokasi pertama dibuat", () => {
+  const accounts = [
+    { account_id: "bca", available_balance: 7_000_000 },
+    { account_id: "mandiri", available_balance: 3_000_000 },
+    { account_id: "empty", available_balance: 0 },
+  ];
+  assert.deepEqual(planningFundingAccounts(accounts, []).map((item) => item.account_id), ["bca", "mandiri"]);
+  assert.deepEqual(planningFundingAccounts(accounts, [{ source_account_id: "bca", can_adjust: true }]).map((item) => item.account_id), ["bca"]);
 });

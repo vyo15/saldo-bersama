@@ -28,7 +28,7 @@ const PlanningCreateLauncher = ({ open, onClose, onCreateAllocation, onCreateRec
   return <Modal open={open} onClose={onClose} size="sm" title={choosingCommitment ? "Pilih kewajiban" : "Tambah di Atur Dana"} description={choosingCommitment ? "Pilih jenis yang ingin dicatat." : "Pilih tujuan. Sistem akan membuka flow yang tepat."} headerBackAction={choosingCommitment ? { label: "Kembali", onClick: () => setView("root") } : null}>
     <div className={allocationClass("planning-create-list")}>
       {choosingCommitment ? COMMITMENT_TYPES.map((item) => <LauncherOption key={item.value} icon={item.icon} title={item.label} description={item.description} onClick={() => launch(onCreateCommitment, item.value)} />) : <>
-        <LauncherOption icon={FiPieChart} title="Alokasi dana" description="Pisahkan uang untuk kebutuhan" onClick={() => launch(onCreateAllocation)} />
+        <LauncherOption icon={FiPieChart} title="Buat Alokasi" description="Pisahkan uang untuk tujuan baru" onClick={() => launch(onCreateAllocation)} />
         <LauncherOption icon={FiHome} title="Kewajiban" description="KPR, cicilan, pinjaman, atau Arisan" onClick={() => setView("commitment")} />
         <LauncherOption icon={FiRepeat} title="Jadwal rutin" description="Pembayaran pengeluaran yang berulang" onClick={() => launch(onCreateRecurring)} />
       </>}

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   allocationAvailableBalance,
   allocationFundingImpact,
+  allocationSourceAccounts,
   allocationTargetsForAccount,
   fundingAccountsForItems,
   initialAllocationFundingForm,
@@ -20,6 +21,12 @@ const items = [
   { envelope_period_id: "cat", source_account_id: "bca-joint", remaining_amount: 90_000 },
   { envelope_period_id: "empty-target", source_account_id: "empty", remaining_amount: 10_000 },
 ];
+
+
+test("hero menghitung semua rekening operasional yang punya dana bebas walau belum punya Alokasi", () => {
+  const sources = allocationSourceAccounts(accounts);
+  assert.deepEqual(sources.map((item) => item.account_id), ["bni", "bca-joint", "partner"]);
+});
 
 test("flow alokasi generik meminta rekening ketika beberapa sumber valid tersedia", () => {
   const eligible = fundingAccountsForItems(accounts, items);
@@ -48,6 +55,19 @@ test("flow contextual tetap mempertahankan sumber Alokasi walau dana bebas sedan
   assert.equal(allocationAvailableBalance(eligible[0]), 0);
 });
 
+test("flow contextual tidak berpindah diam-diam ke Alokasi lain ketika target awal sudah hilang", () => {
+  const eligible = fundingAccountsForItems(accounts, items, { requestedAccountId: "bni", locked: true });
+  const initial = initialAllocationFundingForm({
+    accounts: eligible,
+    items,
+    requestedAccountId: "bni",
+    requestedEnvelopePeriodId: "target-yang-sudah-hilang",
+    locked: true,
+  });
+  assert.equal(initial.sourceAccountId, "bni");
+  assert.equal(initial.envelopePeriodId, "");
+});
+
 test("preview penambahan dana memindahkan dana bebas ke Alokasi tanpa mengubah saldo ledger", () => {
   const impact = allocationFundingImpact({ account: accounts[1], target: items[1], amount: 100_000 });
   assert.equal(impact.valid, true);
@@ -72,3 +92,12 @@ test("sumber yang dibawa dari pemasukan tidak diam-diam berpindah ke rekening la
   assert.equal(initial.envelopePeriodId, "");
   assert.equal(initial.amount, "500000");
 });
+
+test("sumber yang belum punya target tetap dipertahankan agar bisa membuat Alokasi dari rekening tersebut", () => {
+  const eligible = fundingAccountsForItems(accounts, items, { requestedAccountId: "partner" });
+  assert.equal(eligible.some((item) => item.account_id === "partner"), true);
+  const initial = initialAllocationFundingForm({ accounts: eligible, items, requestedAccountId: "partner" });
+  assert.equal(initial.sourceAccountId, "partner");
+  assert.equal(initial.envelopePeriodId, "");
+});
+

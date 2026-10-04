@@ -875,7 +875,7 @@
 }
 
 .feedbackAction {
-  min-height: 32px;
+  min-height: var(--mobile-control-height);
   margin-inline-start: .25rem;
   padding: 0;
   border: 0;

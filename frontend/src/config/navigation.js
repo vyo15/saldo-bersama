@@ -82,7 +82,7 @@ export const matchesNavigationPath = (pathname, item) => {
 export const isMobileSecondaryNavigationPath = (pathname) => MOBILE_SECONDARY_NAVIGATION.some((item) => matchesNavigationPath(pathname, item));
 
 export const CONTEXTUAL_NAVIGATION_PARENTS = Object.freeze({
-  "/notifikasi": Object.freeze({ to: "/", label: "Beranda", area: "home" }),
+  "/notifikasi": Object.freeze({ to: "/", label: "Beranda", area: "global" }),
   "/rekonsiliasi": Object.freeze({ to: "/rekening", label: "Rekening", area: "more" }),
 });
 
@@ -119,7 +119,8 @@ export const navigationLabelForPath = (pathname, fallback = "Beranda") => {
 
 export const mobileNavigationArea = (pathname) => {
   const current = normalizeNavigationPath(pathname);
-  if (current === "/" || current === "/notifikasi") return "home";
+  if (current === "/") return "home";
+  if (current === "/notifikasi") return "";
   if (current === "/perencanaan" || current.startsWith("/perencanaan/")) return "planning";
   if (current === "/transaksi" || current.startsWith("/transaksi/")) return "transactions";
   if (MOBILE_CONTEXTUAL_SECONDARY_PATHS.some((path) => current === path || current.startsWith(`${path}/`))) return "more";

@@ -90,7 +90,7 @@ const DesktopSettingsOverview = ({ user, backend, timezone, maintenanceMode }) =
         <dd>{timezone}</dd>
       </div>
       <div>
-        <dt>Backend</dt>
+        <dt>Status sistem</dt>
         <dd><span className={`status-badge status-badge--${backend.tone}`} role="status" aria-live="polite">{backend.label}</span></dd>
       </div>
       <div>

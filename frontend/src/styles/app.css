@@ -579,7 +579,7 @@
 
   .desktop-account-popover a,
   .desktop-account-popover button {
-    min-height: 42px;
+    min-height: var(--mobile-control-height);
     padding: 0 10px;
     border: 0;
     border-radius: 9px;

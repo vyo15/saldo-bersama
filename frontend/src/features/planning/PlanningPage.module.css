@@ -11,7 +11,7 @@
 }
 
 .detailBack {
-  min-height: 36px;
+  min-height: var(--mobile-control-height);
   display: flex;
   align-items: center;
 }
@@ -73,6 +73,6 @@
   }
 
   .detailBack {
-    min-height: 32px;
+    min-height: var(--mobile-control-height);
   }
 }

@@ -45,7 +45,7 @@
 .differencePreview dl > div { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: var(--font-size-xs); }
 .differencePreview dd { margin: 0; color: var(--text); font-weight: var(--font-weight-semibold); }
 .differencePreview dd :global(.money) { font-size: inherit; }
-.notesToggle { justify-self: start; min-height: 36px; padding: 0; border: 0; color: var(--primary); background: transparent; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); cursor: pointer; }
+.notesToggle { justify-self: start; min-height: var(--mobile-control-height); padding: 0; border: 0; color: var(--primary); background: transparent; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); cursor: pointer; }
 .notesLabel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .notesLabel small { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
 .notesField textarea { min-height: 4.5rem; resize: vertical; }

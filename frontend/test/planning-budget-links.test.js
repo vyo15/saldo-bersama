@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compatiblePlanningNeeds, planningNeedLinkState, planningNeedSelectionPatch } from "../src/shared/workflows/planningBudgetLinks.js";
+import { compatiblePlanningNeeds, planningNeedDecisionState, planningNeedLinkState, planningNeedSelectionPatch } from "../src/shared/workflows/planningBudgetLinks.js";
 
 const budgets = [
   { budget_id: "internet-home", name: "Internet Rumah", category_id: "internet", envelope_rule_id: "home", envelope_source_account_id: "bca", can_manage: true },
@@ -25,4 +25,12 @@ test("picker tidak menawarkan Kebutuhan yang tidak dapat dikelola", () => {
   const state = planningNeedLinkState({ budgets, categoryId: "internet", accountId: "bca" });
   assert.equal(state.candidates.length, 1);
   assert.equal(state.candidates[0].budget_id, "internet-home");
+});
+
+
+test("decision planning membedakan pasti, standalone, dan ambigu tanpa silent fallback", () => {
+  assert.equal(planningNeedDecisionState({ budgets, categoryId: "electricity", accountId: "bca" }).status, "linked");
+  assert.equal(planningNeedDecisionState({ budgets, categoryId: "unknown", accountId: "bca" }).status, "standalone");
+  assert.equal(planningNeedDecisionState({ budgets, categoryId: "internet" }).status, "ambiguous");
+  assert.equal(planningNeedDecisionState({ budgets, categoryId: "internet" }).resolved, false);
 });

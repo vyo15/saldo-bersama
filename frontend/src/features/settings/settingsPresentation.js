@@ -95,16 +95,41 @@ export const integrationProviderPresentation = (integration, provider) => {
 };
 
 export const backendPresentation = (resource) => {
-  if (resource.status === "error") return { label: "Tidak tersedia", tone: "danger", summary: "Status backend tidak dapat dimuat." };
-  if (resource.status !== "ready") return { label: "Memeriksa", tone: "info", summary: "Memeriksa database dan schema..." };
+  if (resource.status === "error") return {
+    label: "Tidak tersedia",
+    tone: "danger",
+    summary: "Status sistem belum dapat dimuat.",
+    technicalSummary: "Status backend tidak dapat dimuat.",
+  };
+  if (resource.status !== "ready") return {
+    label: "Memeriksa",
+    tone: "info",
+    summary: "Memeriksa kesiapan aplikasi...",
+    technicalSummary: "Memeriksa database dan schema...",
+  };
   const data = resource.data || {};
   if (data.maintenanceMode || data.status === "maintenance") {
-    return { label: "Maintenance", tone: "danger", summary: `Mode maintenance · schema v${data.schemaVersion || "-"}` };
+    return {
+      label: "Maintenance",
+      tone: "danger",
+      summary: "Sebagian perubahan sementara dibatasi sampai pemeliharaan selesai.",
+      technicalSummary: `Mode maintenance · schema v${data.schemaVersion || "-"}`,
+    };
   }
   if (data.status === "ok" && Number(data.schemaVersion || 0) > 0) {
-    return { label: "Siap", tone: "active", summary: `Database tersambung · schema v${data.schemaVersion}` };
+    return {
+      label: "Siap",
+      tone: "active",
+      summary: "Aplikasi berjalan normal.",
+      technicalSummary: `Database tersambung · schema v${data.schemaVersion}`,
+    };
   }
-  return { label: "Tidak terverifikasi", tone: "warning", summary: `Status backend tidak diketahui · schema v${data.schemaVersion || "-"}` };
+  return {
+    label: "Tidak terverifikasi",
+    tone: "warning",
+    summary: "Kondisi sistem belum dapat diverifikasi.",
+    technicalSummary: `Status backend tidak diketahui · schema v${data.schemaVersion || "-"}`,
+  };
 };
 
 export const pushFailurePresentation = (failure = {}) => {

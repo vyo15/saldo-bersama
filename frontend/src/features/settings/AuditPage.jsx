@@ -124,7 +124,7 @@ const SystemStatus = ({ healthResource, backend }) => {
       <span className={styles.auditSystemIcon} data-tone={maintenance ? "danger" : "active"}><FiDatabase aria-hidden="true" /></span>
       <div className={styles.auditSystemCopy}>
         <h3 id="audit-system-status-heading">{headline}</h3>
-        <p role="status" aria-live="polite">{backend.summary}</p>
+        <p role="status" aria-live="polite">{backend.technicalSummary || backend.summary}</p>
       </div>
       <span className={`status-badge status-badge--${backend.tone}`}>{verified ? "Terverifikasi" : backend.label}</span>
     </section>

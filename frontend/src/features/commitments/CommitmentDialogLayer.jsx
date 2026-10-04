@@ -8,12 +8,13 @@ import ProgressBar from "../../components/common/ProgressBar.jsx";
 import SelectionField from "../../components/common/SelectionField.jsx";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
+import PlanningNeedField from "../../components/common/PlanningNeedField.jsx";
 import { accountOptionVisual, categoryOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import { AccountIcon, BalanceIcon, MoneyOutIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
-import { planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
+import { planningNeedDecisionState, planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
 import { applyFlatEstimate, flatLoanEstimate, isDebtCommitment } from "./commitmentModel.js";
 import styles from "./CommitmentsPage.module.css";
 
@@ -34,7 +35,8 @@ const planningPatch = (current, budgets, next = {}) => {
   const categoryId = next.category_id ?? current.category_id;
   const accountId = next.default_account_id ?? current.default_account_id;
   const patch = planningNeedSelectionPatch({ budgets, categoryId, accountId, budgetId: current.budget_id || "" });
-  return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id };
+  const decision = planningNeedDecisionState({ budgets, categoryId, accountId: patch.account_id, budgetId: patch.budget_id });
+  return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id, planning_need_resolved: decision.resolved };
 };
 
 const FlatInterestField = ({ form, setForm }) => {
@@ -94,6 +96,15 @@ const CommitmentDueField = ({ form, setForm, editing, mortgage }) => mortgage &&
 const CommitmentPlanningFields = ({ form, setForm, accounts, categories, budgets }) => <>
   <AccountPicker value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => planningPatch(current, budgets, { default_account_id }))} />
   <CategoryPicker value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => planningPatch(current, budgets, { category_id }))} />
+  <PlanningNeedField
+    budgets={budgets}
+    categoryId={form.category_id}
+    accountId={form.default_account_id}
+    budgetId={form.budget_id}
+    resolved={form.planning_need_resolved !== false}
+    onResolve={(planning_need_resolved) => setForm((current) => ({ ...current, planning_need_resolved }))}
+    onSelect={(budget) => setForm((current) => ({ ...current, budget_id: budget?.budget_id || "", default_account_id: budget?.envelope_source_account_id || current.default_account_id, planning_need_resolved: true }))}
+  />
   {form.budget_id ? <CompactNotice className="form-grid__full" tone="success" title="Pencatatan otomatis siap">Saat jatuh tempo, pembayaran dicatat dari Kebutuhan/Alokasi hanya jika dana benar-benar mencukupi. Pembayaran ke bank atau penyedia tetap dilakukan di luar aplikasi.</CompactNotice> : null}
 </>;
 
@@ -159,7 +170,7 @@ const CommitmentCreateModal = ({ flow, mutation, accounts, categories, budgets }
   return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="kewajiban baru" dismissible={!mutation.busy && !retryOnly} title={title} description={description} headerBackAction={backAction} footer={footer}>
     <fieldset className="mutation-retry-lock" disabled={retryOnly}>{stage === "type" ? <CommitmentTypeChooser onSelect={selectType} /> : stage === "details"
       ? <form id="commitment-create-details-form" onSubmit={continueDetails}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} section="details" />{stepError ? <div className="notice notice--danger" role="alert">{stepError}</div> : null}</form>
-      : <form id="commitment-create-form" onSubmit={submit}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} error={mutation.error} section="payment" /></form>}</fieldset>
+      : <form id="commitment-create-form" onSubmit={submit}><CommitmentForm form={form} setForm={setForm} accounts={accounts} categories={categories} budgets={budgets} error={mutation.error} section="payment" />{stepError ? <div className="notice notice--danger" role="alert">{stepError}</div> : null}</form>}</fieldset>
   </Modal>;
 };
 

@@ -46,7 +46,7 @@
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-icon);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -139,7 +139,7 @@
   padding: 0;
   overflow: hidden;
   border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
-  border-radius: 24px;
+  border-radius: var(--radius-special);
   background:
     radial-gradient(circle at 78% 30%, color-mix(in srgb, var(--primary-soft) 75%, transparent), transparent 36%),
     linear-gradient(145deg, color-mix(in srgb, var(--surface-elevated) 90%, var(--primary-soft)), var(--surface));
@@ -286,7 +286,7 @@
 .allocation-funding-summary__source-list .allocation-funding-summary__source-row {
   padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: var(--surface-soft);
 }
 
@@ -328,22 +328,30 @@
   min-height: 44px;
 }
 
-.allocation-funding-summary__mobile-create {
-  display: none;
-}
 
 /* Reference hierarchy: the four planning destinations sit directly below the hero. */
 .allocation-planning-nav {
   min-width: 0;
   min-height: 46px;
   border-bottom: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
   align-items: stretch;
+  gap: 2px;
+}
+
+.allocation-planning-nav__label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px 0 2px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
 }
 
 .allocation-planning-nav__link {
   position: relative;
+  flex: 0 1 auto;
   min-width: 0;
   min-height: 44px;
   padding: 0 10px;
@@ -372,6 +380,57 @@
   color: var(--primary);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
+}
+
+
+.allocation-planning-nav__create {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+
+.allocation-planning-nav__create svg {
+  width: 16px;
+  height: 16px;
+}
+
+.allocation-planning-nav__create:active:not(:disabled) {
+  transform: scale(.98);
+}
+
+.allocation-planning-nav__create:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.allocation-planning-nav__create:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .allocation-planning-nav__create:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary-soft) 48%, transparent);
+  }
 }
 
 .allocation-planning-nav__link.is-active {
@@ -413,7 +472,7 @@
   min-height: 76px;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-surface);
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
@@ -456,7 +515,7 @@
   height: 44px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
-  border-radius: 14px;
+  border-radius: var(--radius-icon);
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--primary-soft) 62%, var(--surface-soft));
@@ -570,7 +629,7 @@
   min-height: 0;
   padding: 18px 16px 20px;
   border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
-  border-radius: 20px;
+  border-radius: var(--radius-hero);
   gap: 8px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, var(--primary-soft)), var(--surface));
 }
@@ -672,14 +731,6 @@
     display: grid;
   }
 
-  .allocation-funding-summary__secondary-action,
-  .allocation-funding-summary__desktop-create {
-    display: none;
-  }
-
-  .allocation-funding-summary__mobile-create {
-    display: inline-flex;
-  }
 
   .allocation-funding-summary__actions :global(.button) {
     width: 138px;
@@ -801,6 +852,14 @@
   .allocation-planning-nav__link {
     font-size: var(--font-size-xs);
   }
+
+  .allocation-planning-nav__create {
+    padding-inline: 8px;
+  }
+
+  .allocation-planning-nav__create span {
+    display: none;
+  }
 }
 
 /* Unified planning launcher keeps Atur Dana discoverable without adding domain tabs. */
@@ -842,7 +901,7 @@
 .planning-create-option__icon {
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   display: grid;
   place-items: center;
   background: var(--primary-soft);
@@ -911,7 +970,7 @@
     margin-block: 3px;
     padding-inline: 10px;
     border-bottom-color: transparent;
-    border-radius: 14px;
+    border-radius: var(--radius-icon);
     background: color-mix(in srgb, var(--primary-soft) 42%, transparent);
   }
 

@@ -332,8 +332,11 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
     read("src/features/allocations/AllocationOverview.module.css"),
   ]);
 
-  assert.match(overview, />Tambah<\/Button>/);
-  assert.match(overview, /Tambah rencana/);
+  assert.match(overview, />Buat Alokasi<\/Button>/);
+  assert.match(overview, /allocation-planning-nav__create/);
+  assert.match(overview, /aria-label="Tambah rencana"/);
+  assert.doesNotMatch(overview, />Tambah lainnya<\/Button>/);
+  assert.match(overview, /chooseDestination: true/);
   assert.match(overview, /PlanningCreateLauncher/);
   assert.match(overview, /allocation-funding-summary__actions/);
   assert.doesNotMatch(overview, /allocation-card__fund|allocation-card__expand|>Lihat detail|>Tambah kebutuhan<\/Button>/);
@@ -393,7 +396,7 @@ test("teks entity utama mobile reflow tanpa dipaksa ellipsis satu baris", async 
   assert.match(selection, /Mobile readability:[\s\S]*\.triggerValue,[\s\S]*\.triggerMeta \{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*anywhere;/);
   assert.match(categories, /Category identity is primary mobile content[\s\S]*\.categoryName \{ -webkit-line-clamp:\s*2; \}/);
   assert.match(goals, /Target names are primary entities[\s\S]*\.goal-card__heading h2 \{[\s\S]*white-space:\s*normal;/);
-  assert.match(holdings, /Asset identity must remain unambiguous[\s\S]*\.holdingNameRow h4,[\s\S]*white-space:\s*normal;/);
+  assert.match(holdings, /Asset identity must remain unambiguous[\s\S]*\.holdingNameRow strong,[\s\S]*white-space:\s*normal;/);
   assert.match(history, /\.categoryTileLabel \{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/);
   assert.match(history, /\.rowCopy > strong \{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/);
 });

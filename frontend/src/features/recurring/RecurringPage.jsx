@@ -11,6 +11,7 @@ import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { currentMonthInJakarta } from "../../domain/dates.js";
+import { planningNeedDecisionState, planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { filterByOwnership } from "../../domain/ownership.js";
@@ -134,20 +135,28 @@ const useRecurringEnvelopeSuggestion = ({ payment, setPayment, envelopeResource,
 
 const workflowPeriodFromState = (state) => /^\d{4}-\d{2}$/.test(String(state?.period || "")) ? String(state.period) : "";
 
-const applyCreateRecurringWorkflow = ({ workflow, bootstrap, overview, rules, setKind }) => {
+const applyCreateRecurringWorkflow = ({ workflow, bootstrap, overview, budgets, rules, setKind }) => {
   const categoryId = String(workflow.categoryId || "");
   const accountId = String(workflow.defaultAccountId || "");
   const categoryValid = activeCategories(bootstrap, "expense").some((item) => item.category_id === categoryId);
   const accountValid = activeAccounts(bootstrap, overview).some((item) => item.account_id === accountId && item.can_transact !== false);
-  rules.openCreate();
-  rules.setForm((current) => ({
-    ...current,
-    name: String(workflow.name || current.name || "").slice(0, 100),
-    kind: "expense",
-    expected_amount: workflow.expectedAmount ? String(workflow.expectedAmount) : current.expected_amount,
-    category_id: categoryValid ? categoryId : "",
-    default_account_id: accountValid ? accountId : "",
-  }));
+  rules.openCreate({ origin: workflow.workflowSource === "planning-overview" ? "planning" : "recurring" });
+  rules.setForm((current) => {
+    const nextCategoryId = categoryValid ? categoryId : "";
+    const nextAccountId = accountValid ? accountId : "";
+    const patch = planningNeedSelectionPatch({ budgets, categoryId: nextCategoryId, accountId: nextAccountId, budgetId: "" });
+    const decision = planningNeedDecisionState({ budgets, categoryId: nextCategoryId, accountId: patch.account_id, budgetId: patch.budget_id });
+    return {
+      ...current,
+      name: String(workflow.name || current.name || "").slice(0, 100),
+      kind: "expense",
+      expected_amount: workflow.expectedAmount ? String(workflow.expectedAmount) : current.expected_amount,
+      category_id: nextCategoryId,
+      default_account_id: patch.account_id,
+      budget_id: patch.budget_id,
+      planning_need_resolved: decision.resolved,
+    };
+  });
   setKind("expense");
 };
 
@@ -172,7 +181,7 @@ const recurringResourceGate = (resource) => {
   return null;
 };
 
-const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod, resource, bootstrap, overview, rules, setKind, setFilter, setExpandedId, openPayment, notify, expenseOnly = false }) => {
+const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod, resource, bootstrap, overview, budgets, rules, setKind, setFilter, setExpandedId, openPayment, notify, expenseOnly = false }) => {
   const workflowHandled = useRef("");
   const workflowPeriodSwitch = useRef("");
 
@@ -194,12 +203,12 @@ const useRecurringWorkflowNavigation = ({ location, navigate, period, setPeriod,
     workflowHandled.current = workflowKey;
 
     if (workflow.workflowAction === "create-recurring") {
-      applyCreateRecurringWorkflow({ workflow, bootstrap, overview, rules, setKind });
+      applyCreateRecurringWorkflow({ workflow, bootstrap, overview, budgets, rules, setKind });
     } else {
       applyOccurrenceWorkflow({ workflow, items: resource.data?.items, setKind, setFilter, setExpandedId, openPayment, notify, expenseOnly });
     }
     navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
-  }, [bootstrap, expenseOnly, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, period, resource.data?.items, resource.status, rules, setExpandedId, setFilter, setKind, setPeriod]);
+  }, [bootstrap, budgets, expenseOnly, location.hash, location.key, location.pathname, location.search, location.state, navigate, notify, openPayment, overview, period, resource.data?.items, resource.status, rules, setExpandedId, setFilter, setKind, setPeriod]);
 };
 
 const RecurringPage = ({ embedded = false, expenseOnly = false }) => {
@@ -215,7 +224,7 @@ const RecurringPage = ({ embedded = false, expenseOnly = false }) => {
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
   const { user } = useAuth();
   const { notify } = useFeedback();
-  const shared = { resource, refreshOverview, invalidate, notify };
+  const shared = { resource, refreshOverview, invalidate, notify, navigate };
   const rules = useRecurringRuleActions(shared);
   const payments = useRecurringPaymentActions(shared);
   const { openPayment, payment, setPayment } = payments;
@@ -241,6 +250,7 @@ const RecurringPage = ({ embedded = false, expenseOnly = false }) => {
     resource,
     bootstrap,
     overview,
+    budgets: view.budgets,
     rules,
     setKind,
     setFilter,

@@ -84,7 +84,7 @@
   position: absolute;
   inset: calc(100% + 8px) 0 auto auto;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-surface);
   display: grid;
   gap: 3px;
   background: var(--surface);
@@ -118,7 +118,7 @@
   min-width: 0;
   padding: 18px;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--radius-hero);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
@@ -293,7 +293,7 @@
 .allocationArt {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -307,7 +307,7 @@
 .allocationCopy em { color: var(--text-muted); font-size: var(--font-size-xs); font-style: normal; }
 .allocationCopy > span:nth-child(2) { justify-content: flex-start; color: var(--text); font-size: var(--font-size-xs); }
 .allocationCopy small { color: var(--text-muted); }
-.allocationCopy i { height: 5px; border-radius: 999px; overflow: hidden; background: var(--surface-soft); }
+.allocationCopy i { height: 5px; border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-soft); }
 .allocationCopy i b { height: 100%; display: block; border-radius: inherit; background: var(--primary); }
 .allocationRemaining { display: grid; gap: 2px; text-align: right; }
 .allocationRemaining small { color: var(--text-muted); font-size: var(--font-size-xs); }
@@ -355,7 +355,7 @@
 .categoryValue small { color: var(--text-muted); font-size: var(--font-size-xs); }
 .categoryValue { text-align: right; }
 .categoryValue strong { font-size: var(--font-size-sm); }
-.categoryProgress { grid-column: 1 / -1; height: 5px; border-radius: 999px; overflow: hidden; background: var(--surface-soft); }
+.categoryProgress { grid-column: 1 / -1; height: 5px; border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-soft); }
 .categoryProgress i { height: 100%; display: block; border-radius: inherit; background: var(--primary); }
 
 .categoryRowSimple {
@@ -395,7 +395,7 @@
 .budgetRow > span:first-child strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .budgetRow strong { font-size: var(--font-size-sm); }
 .budgetRow small { color: var(--text-muted); font-size: var(--font-size-xs); }
-.budgetRow em { justify-self: end; padding: 4px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-style: normal; font-weight: var(--font-weight-semibold); white-space: nowrap; }
+.budgetRow em { justify-self: end; padding: 4px 8px; border-radius: var(--radius-pill); font-size: var(--font-size-xs); font-style: normal; font-weight: var(--font-weight-semibold); white-space: nowrap; }
 .budgetRow em[data-tone="safe"], .budgetRow em[data-tone="done"] { background: color-mix(in srgb, var(--positive) 12%, transparent); color: var(--positive); }
 .budgetRow em[data-tone="warning"] { background: color-mix(in srgb, var(--warning) 13%, transparent); color: var(--warning); }
 .budgetRow em[data-tone="danger"] { background: color-mix(in srgb, var(--negative) 12%, transparent); color: var(--negative); }
@@ -441,7 +441,7 @@
   min-width: 0;
   padding: 13px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-icon);
   background: var(--surface-soft);
 }
 
@@ -491,14 +491,14 @@
   .inlineTrend { width: 126px; }
   .allocationRow { grid-template-columns: 34px minmax(0, 1fr) 64px; gap: 8px; padding: 9px 0; }
   .allocationRow > svg { display: none; }
-  .allocationArt { width: 32px; height: 32px; border-radius: 10px; }
+  .allocationArt { width: 32px; height: 32px; border-radius: var(--radius-sm); }
   .allocationCopy > span:nth-child(2) { font-size: var(--font-size-xs); }
   .allocationRemaining strong { font-size: var(--font-size-xs); }
   .trendChart { height: 150px; padding-top: 7px; gap: 5px; }
   .trendColumn { min-width: 29px; flex-basis: 29px; grid-template-rows: 16px minmax(0, 1fr) 20px; }
   .trendColumn > span, .trendColumn small { font-size: var(--font-size-xs); }
   .categoryRow { padding: 6px 0 7px; }
-  .categoryIdentity > i { width: 26px; height: 26px; flex-basis: 26px; border-radius: 8px; }
+  .categoryIdentity > i { width: 26px; height: 26px; flex-basis: 26px; border-radius: var(--radius-xs); }
   .categoryIdentity strong, .categoryValue strong { font-size: var(--font-size-xs); }
   .categoryProgress { height: 4px; }
   .categoryRowSimple { min-height: 43px; padding: 6px 0; }
@@ -542,7 +542,7 @@
 /* Progressive disclosure keeps the default report useful without turning it into a BI dashboard. */
 .analysisDetails {
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-surface);
   background: var(--surface);
   overflow: clip;
 }
@@ -559,7 +559,7 @@
 .analysisDetails > summary::-webkit-details-marker { display: none; }
 .analysisDetails > summary > span { min-width: 0; display: grid; gap: 2px; }
 .analysisDetails > summary strong { font-size: 14px; }
-.analysisDetails > summary small { color: var(--text-muted); font-size: 12px; font-weight: var(--font-weight-medium); }
+.analysisDetails > summary small { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
 .analysisDetails > summary > svg { flex: 0 0 auto; color: var(--text-muted); transition: transform var(--motion-control) var(--ease-standard); }
 .analysisDetails[open] > summary > svg { transform: rotate(90deg); }
 .analysisContent { padding: 0 14px 14px; display: grid; gap: 14px; }
@@ -568,7 +568,7 @@
   min-height: 48px;
   padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -583,7 +583,7 @@
   min-width: 0;
   padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-surface);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
@@ -631,7 +631,7 @@
   width: 100%;
   height: 9px;
   margin: 12px 0 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   display: flex;
   overflow: hidden;
   background: var(--surface-soft);

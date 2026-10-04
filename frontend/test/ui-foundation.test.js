@@ -664,8 +664,13 @@ test("pengaturan memakai kontrak system.health aktual dan status notifikasi akse
   ]);
   assert.match(overview, /backendPresentation\(healthResource\)/);
   assert.match(overview, /role="status" aria-live="polite"/);
+  assert.match(overview, /<dt>Status sistem<\/dt>/);
+  assert.doesNotMatch(overview, /<dt>Backend<\/dt>|Database tersambung|schema v/i);
   assert.match(presentation, /data\.status === "ok"/);
   assert.match(presentation, /data\.schemaVersion/);
+  assert.match(presentation, /summary: "Aplikasi berjalan normal\."/);
+  assert.match(presentation, /technicalSummary: `Database tersambung · schema v\$\{data\.schemaVersion\}`/);
+  assert.match(audit, /backend\.technicalSummary \|\| backend\.summary/);
   assert.doesNotMatch(overview + presentation, /healthResource\.data\?\.database|schema\?\.ready/);
   assert.match(notifications, /<h3 id="notification-device-title">Notifikasi di perangkat ini<\/h3>[\s\S]*role="status" aria-live="polite"/);
   assert.match(notifications, /className="sr-only">\{meta\.description\}<\/small>/);

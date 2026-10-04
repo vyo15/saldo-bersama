@@ -37,19 +37,6 @@ const matchesAccount = (transaction, accountId) => (
   transaction.source_account_id === accountId || transaction.destination_account_id === accountId
 );
 
-export const compactDate = (value) => {
-  if (!value) return "Tanggal belum tersedia";
-  const parsed = new Date(`${String(value).slice(0, 10)}T00:00:00+07:00`);
-  return Number.isNaN(parsed.getTime())
-    ? String(value)
-    : new Intl.DateTimeFormat("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone: "Asia/Jakarta",
-    }).format(parsed);
-};
-
 const filterAccountTransactions = ({ transactions, categoryFilter, typeFilter, searchTerm, categoryLookup }) => {
   const query = searchTerm.trim().toLocaleLowerCase("id-ID");
   return transactions.filter((item) => {

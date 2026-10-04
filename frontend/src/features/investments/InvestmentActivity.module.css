@@ -23,21 +23,31 @@
   list-style: none;
 }
 
+.activityItemShell {
+  list-style: none;
+}
+
 .activityItem {
   display: grid;
+  width: 100%;
   grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto);
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-3) 0;
+  border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
 }
 
 .activityItem:has(.activityIcon) {
   grid-template-columns: auto minmax(0, 1fr) minmax(7.5rem, auto);
 }
 
-.activityItem:last-child {
+.activityItemShell:last-child .activityItem {
   border-bottom: 0;
 }
 

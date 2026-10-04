@@ -10,8 +10,7 @@ export const runAllocationDashboardWorkflow = ({
   envelopeRuleId,
   canCreate,
   activeItems,
-  setMessage,
-  setCreateOpen,
+  openCreate,
   setAllocationFilter,
   setLegacyBudgetAttention,
   setDetailAction,
@@ -20,8 +19,7 @@ export const runAllocationDashboardWorkflow = ({
 }) => {
   if (workflowAction === "create-allocation") {
     if (canCreate) {
-      setMessage(null);
-      setCreateOpen(true);
+      openCreate?.();
     } else {
       notify({ message: "Siapkan rekening yang dapat digunakan sebelum membuat Alokasi Dana.", tone: "warning", dedupeKey: "allocation:dashboard-create-unavailable" });
     }

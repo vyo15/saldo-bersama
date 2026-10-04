@@ -36,13 +36,16 @@
 ## 4. Planning dan realtime
 
 - [ ] Alokasi baru tidak meminta budget awal sebagai flow utama; Kebutuhan mengatur funding dari Dana Tersedia sesuai contract.
+- [ ] Root **Atur Dana**: bila Alokasi sudah ada, **Alokasikan dana** menawarkan **Alokasi yang sudah ada / Buat Alokasi baru**; bila belum ada Alokasi, primary langsung **Buat alokasi**. Membuat Alokasi baru tetap tersedia walau rekening source sudah dipakai Alokasi lain.
+- [ ] Funding dengan source tertentu tanpa target menampilkan **Buat Alokasi dari rekening ini** dan source tetap terpilih di create; detail/attention yang sudah tahu source+target tidak menampilkan decision generik.
+- [ ] Jika target contextual sudah hilang/stale, flow **Tambah dana** berhenti dengan pesan recovery dan tidak pernah memilih Alokasi lain dari rekening yang sama secara otomatis.
 - [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
 - [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: kebutuhan aktif memuat ikon + nama + pola/status dan Sisa/total/persentase + progress; `fixed_once` tepat 100% berubah menjadi row ringkas `✓ Selesai` tanpa progress/quick-add; `flexible`/`recurring` tepat 100% menjadi `Dana habis` dengan warning tone dan tanpa aksi pencatatan baru; overspend tetap danger. `Terpakai`, waktu selesai, dan Jadwal tersedia di **Detail kebutuhan**; Edit/Lihat jadwal berada di overflow; target sentuh minimal 44px; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
 - [ ] **Daftar belanja** hanya tampil pada Kebutuhan yang mengaktifkan `Gunakan daftar belanja`; contoh Listrik default tidak memiliki CTA shopping, sedangkan Belanja bulanan yang opt-in memakai `Buat daftar belanja` atau `Daftar belanja · N item`. CTA tidak diduplikasi di overflow.
 - [ ] Detail Alokasi tidak memiliki section permanen `Kelola dana`; aksi administratif **Pindahkan dana / Pengingat / Hapus dari daftar** berada di menu overflow `•••`, sedangkan aksi transaksi/kebutuhan tetap berada dekat konteksnya.
 - [ ] Beranda mobile compact: **Saldo Keluarga** menjadi nominal utama, **Dana yang bisa kamu gunakan** tampil tepat di hero, **Saya / Pasangan / Bersama** tetap satu baris sebagai flat stats ber-divider lembut, sementara Aman/hari dan Sisa di Alokasi tetap terlihat dalam satu tonal band tanpa outer card.
-- [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
+- [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif. **Notifikasi** adalah utility global: tidak memaksa Beranda/Lainnya aktif, tetapi contextual Back tetap kembali ke origin aman/fallback Beranda.
 - [ ] `Lainnya` hanya memakai empat kelompok canonical (Rencana & Insight, Keuangan, Keluarga & Akses, Aplikasi); owner-only tidak bocor ke Member.
 - [ ] Laporan tidak menggandakan KPI hero lewat summary strip kedua; Analisis lengkap tetap membuka planning/Kewajiban/rekening/pencatat.
 - [ ] Target card default tetap compact; rincian tanggal/estimasi/sumber dana dapat dibuka dari overflow dan target sentuh primary/overflow tetap ≥44px.
@@ -57,7 +60,7 @@
 - [ ] Partial-resource failure tidak boleh tampak sebagai data kosong yang sah: merged workspace **Atur Dana** menunggu read model Alokasi/Kebutuhan/Jadwal/Kewajiban pada initial load, sedangkan surface lain yang masih dapat dipakai menampilkan warning + retry untuk resource pendukung.
 - [ ] Complete/archive state tidak tertukar: Kewajiban dihentikan tidak disebut selesai, dan Target completed-only tidak menampilkan hero `0 target aktif`.
 - [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak; light harus punya tonal depth yang cukup (canvas/surface/section terbedakan), sedangkan dark tetap memakai luminance bertingkat tanpa sekadar meng-invert light.
-- [ ] Mobile control penting ≥44×44px; termasuk toggle visibilitas saldo, filter Notifikasi, disclosure detail, dan link tindakan compact; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
+- [ ] Mobile control penting ≥44×44px; termasuk Shopping (check/add/menu/search), tab Anggota, filter Investasi, approval/recurring tabs, notes/recovery action, toggle visibilitas saldo, filter Notifikasi, disclosure detail, dan link tindakan compact; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
 - [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
 - [ ] **Pastikan Saldo Sesuai** desktop tidak menyembunyikan kolom **Selisih/Status**; breakpoint dua-panel hanya aktif bila riwayat memiliki lebar yang cukup dan tidak ada overflow kritis tanpa affordance.
 - [ ] Collection kecil tidak mempertahankan kontrol yang tidak berguna: ringkasan satu-item, search/filter dataset kecil, atau tab jenis bernilai nol disembunyikan secara progresif.

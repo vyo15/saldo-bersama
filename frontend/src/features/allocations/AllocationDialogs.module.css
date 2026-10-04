@@ -284,6 +284,122 @@
   line-height: 1.45;
 }
 
+.allocation-funding-empty {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
+  border-radius: 14px;
+  display: grid;
+  gap: 10px;
+  background: color-mix(in srgb, var(--primary-soft) 24%, var(--surface-soft));
+}
+
+.allocation-funding-empty > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.allocation-funding-empty strong {
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+}
+
+.allocation-funding-empty p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.allocation-funding-empty :global(.button) {
+  min-height: 44px;
+  justify-self: start;
+}
+
+.allocation-funding-choice-list {
+  display: grid;
+  gap: 10px;
+}
+
+.allocation-funding-choice {
+  width: 100%;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  background: var(--surface-soft);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
+}
+
+.allocation-funding-choice:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.allocation-funding-choice:disabled {
+  cursor: not-allowed;
+  opacity: .56;
+}
+
+.allocation-funding-choice:active:not(:disabled) {
+  background: color-mix(in srgb, var(--primary-soft) 32%, var(--surface-soft));
+  transform: translateY(0);
+}
+
+.allocation-funding-choice__icon {
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--primary-soft) 48%, var(--surface));
+  color: var(--primary);
+}
+
+.allocation-funding-choice__icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.allocation-funding-choice__copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.allocation-funding-choice__copy strong {
+  font-size: var(--font-size-body-sm);
+}
+
+.allocation-funding-choice__copy small {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.allocation-funding-choice__arrow {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .allocation-funding-choice:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+    background: color-mix(in srgb, var(--primary-soft) 22%, var(--surface-soft));
+    transform: translateY(-1px);
+  }
+}
+
 .allocation-funding-impact {
   padding: 11px 12px;
   border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));

@@ -1,3 +1,14 @@
+## 2026-10-04 — UI/UX audit hardening & consistency lock
+- Menguatkan hierarchy **Atur Dana** menjadi satu focal hero action: existing memakai **Alokasikan dana → existing / Buat Alokasi baru**, true-empty langsung **Buat Alokasi**, sedangkan Kewajiban/Jadwal tetap discoverable melalui launcher compact **Kelola → Tambah** tanpa CTA hero yang bersaing.
+- Menutup audit accessibility pada Shopping, Anggota, Investasi, Persetujuan, Jadwal, Rekonsiliasi, recovery transaksi, request panel, dan shell: interactive target sekunder kembali minimal 44px; light-mode `--text-muted` diperkuat agar memenuhi WCAG AA di soft/strong/tint surfaces.
+- Mengganti row Investasi custom `role=button` menjadi native `<button>`, menjadikan Notifikasi utility global tanpa bottom-nav active state palsu, dan memindahkan jargon database/schema dari Settings utama ke Audit/diagnostik.
+- Mengurangi design-system drift dengan memakai token typography/radius canonical pada Dashboard, Laporan, Riwayat Transaksi, Shopping, dan Alokasi; regression baru mengunci touch target, contrast, navigation, semantics Investasi, serta hierarchy Atur Dana.
+
+## 2026-10-04 — Atur Dana allocation flow lock
+- Mengunci flow canonical **Alokasikan dana**: ketika Alokasi aktif sudah ada, hero kini memberi decision **Alokasi yang sudah ada / Buat Alokasi baru**; ketika belum ada Alokasi, primary langsung membuka **Buat alokasi** tanpa langkah pilihan yang tidak perlu.
+- Menghapus dead-end rekening tanpa target melalui **Buat Alokasi dari rekening ini** dengan source dipertahankan, memastikan satu rekening sumber tetap boleh mendukung beberapa Alokasi tanpa membuat pool dana virtual, dan mencegah contextual target yang sudah stale berpindah diam-diam ke Alokasi lain dari rekening yang sama.
+- Menyamakan launcher menjadi **Buat Alokasi / Kewajiban / Jadwal rutin**, mempertahankan contextual **Tambah dana** dengan source+target terkunci, menambah regression flow/model, dan menyelaraskan requirement, design system, test plan, implementation matrix, glossary, project status, serta QA checklist.
+
 ## 2026-09-28 — Audit activity human-centered redesign
 - Merombak `/pengaturan/audit` dari raw developer log menjadi riwayat aktivitas yang manusiawi: action/entity diterjemahkan ke vocabulary produk, actor memakai nama anggota bila tersedia, waktu memakai Asia/Jakarta, dan mobile dikelompokkan per Hari ini/Kemarin/tanggal.
 - Menyederhanakan status backend menjadi strip sistem compact yang memisahkan mode operasi dari verifikasi backend, sehingga `Operasi normal` tidak lagi terlihat bertentangan dengan status `Tidak terverifikasi`.

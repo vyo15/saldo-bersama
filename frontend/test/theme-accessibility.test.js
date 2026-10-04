@@ -113,6 +113,9 @@ test("semantic color contracts memenuhi WCAG AA pada light dan dark termasuk sof
     for (const foreground of ["--text", "--text-soft", "--text-muted", "--primary", "--positive", "--negative", "--warning", "--info"]) {
       assert.ok(contrastPair(values, foreground, "--surface") >= 4.5, `Kontras ${name} gagal: ${foreground}`);
     }
+    for (const tintedSurface of ["--surface-soft", "--surface-strong", "--surface-tint"]) {
+      assert.ok(contrastPair(values, "--text-muted", tintedSurface) >= 4.5, `Muted ${name} gagal pada ${tintedSurface}`);
+    }
     for (const [foreground, soft] of statusPairs) {
       for (const host of ["--surface", "--surface-elevated"]) {
         assert.ok(contrastPair(values, foreground, soft, host) >= 4.5, `Kontras ${name} gagal: ${foreground} pada ${soft}/${host}`);
@@ -348,6 +351,41 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
     .map((match) => Number(match[1]))
     .filter((value) => value < 12);
   assert.deepEqual(tooSmall, []);
+});
+
+test("audit touch target menjaga kontrol sekunder tetap minimal 44px", async () => {
+  const [shopping, members, holding, activity, requestPanel, planning, reconciliation, approvals, recurring, transaction, mobileTransfer, mobileTransaction] = await Promise.all([
+    readFile(new URL("../src/features/shopping/ShoppingPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/settings/MembersSettings.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/investments/HoldingCard.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/investments/InvestmentActivity.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/RequestPanel.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/planning/PlanningPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/reconciliations/ReconciliationsPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/approvals/ApprovalCenterPage.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/recurring/RecurringSchedule.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionForm.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransferFields.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransactionFields.module.css", import.meta.url), "utf8"),
+  ]);
+
+  for (const selector of ["addSquare", "checkButton", "itemBody"]) {
+    assert.match(shopping, new RegExp(`\\.${selector} \\{[^}]*?(?:width|min-height):var\\(--mobile-control-height\\)`, "s"));
+  }
+  assert.match(shopping, /\.itemMenu summary \{[^}]*width:var\(--mobile-control-height\);[^}]*height:var\(--mobile-control-height\);/s);
+  assert.match(shopping, /\.suggestionSearch button \{[^}]*width:var\(--mobile-control-height\);[^}]*height:var\(--mobile-control-height\);/s);
+  assert.match(members, /@media \(max-width: 820px\)[\s\S]*?\.familyTab,\s*\.familyTabActive \{[^}]*min-height: var\(--mobile-control-height\);/s);
+  assert.match(members, /\.detailSectionHeading :global\(\.button\) \{[^}]*min-height: var\(--mobile-control-height\);/s);
+  assert.match(holding, /\.assetFilters button \{[^}]*min-height: var\(--mobile-control-height\);/s);
+  assert.match(activity, /\.activityItem \{[^}]*width: 100%;/s);
+  assert.match(requestPanel, /\.actions > \* \{ width: auto;[^}]*min-height: var\(--mobile-control-height\);/s);
+  assert.doesNotMatch(planning, /\.detailBack \{[^}]*min-height:\s*(?:32|36)px;/s);
+  assert.match(reconciliation, /\.notesToggle \{[^}]*min-height: var\(--mobile-control-height\);/s);
+  assert.doesNotMatch(approvals, /\.tab, \.tabActive \{[^}]*min-height:\s*36px;/s);
+  assert.match(recurring, /\.kindTab \{[^}]*min-height: var\(--mobile-control-height\);/s);
+  for (const source of [transaction, mobileTransfer, mobileTransaction]) {
+    assert.match(source, /\.feedbackAction \{[^}]*min-height:\s*var\(--mobile-control-height\);/s);
+  }
 });
 
 test("microtext di bawah 12px hanya tersisa pada facsimile atau dekorasi yang disetujui", async () => {

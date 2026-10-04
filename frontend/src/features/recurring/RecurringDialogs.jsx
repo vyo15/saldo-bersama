@@ -14,7 +14,7 @@ import { accountOptionVisual, allocationOptionVisual, categoryOptionVisual } fro
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
-import { planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
+import { planningNeedDecisionState, planningNeedSelectionPatch } from "../../shared/workflows/planningBudgetLinks.js";
 
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 const FrequencyField = ({ value, onChange }) => <SelectionField label="Frekuensi" value={value} onChange={onChange} options={[{ value: "daily", label: "Harian" }, { value: "weekly", label: "Mingguan" }, { value: "biweekly", label: "Dua mingguan" }, { value: "monthly", label: "Bulanan" }, { value: "bimonthly", label: "Dua bulanan" }, { value: "quarterly", label: "Tiga bulanan" }, { value: "semiannual", label: "Semester" }, { value: "annual", label: "Tahunan" }]} />;
@@ -35,7 +35,10 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
     const patch = current.kind === "expense"
       ? planningNeedSelectionPatch({ budgets, categoryId, accountId, budgetId: current.budget_id })
       : { budget_id: "", account_id: accountId };
-    return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id };
+    const decision = current.kind === "expense"
+      ? planningNeedDecisionState({ budgets, categoryId, accountId: patch.account_id, budgetId: patch.budget_id })
+      : { resolved: true };
+    return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id, planning_need_resolved: decision.resolved };
   };
   return <>
   <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="pembayaran rutin baru" dismissible={!createMutation.busy && !retryOnly} title="Tambah pembayaran rutin" footer={<><Button type="button" disabled={createMutation.busy || retryOnly} onClick={guard.discardAndClose}>Batal</Button><Button variant="primary" icon={FiPlus} type="submit" form="create-recurring-form" loading={createMutation.busy}>{retryOnly ? "Coba lagi data yang sama" : "Simpan jadwal"}</Button></>}>
@@ -48,7 +51,7 @@ export const CreateRuleModal = ({ open, close, form, setForm, categories, accoun
       <label className="field"><span>Tanggal tiap periode *</span><input required type="number" min="1" max="31" value={form.due_day ?? ""} onChange={(event) => setForm((current) => ({ ...current, due_day: event.target.value }))} /></label>
       <CategoryField value={form.category_id} categories={categories} onChange={(category_id) => setForm((current) => patchPlanning(current, { category_id }))} />
       <AccountField value={form.default_account_id} accounts={accounts} onChange={(default_account_id) => setForm((current) => patchPlanning(current, { default_account_id }))} />
-      {form.kind === "expense" ? <PlanningNeedField budgets={budgets} categoryId={form.category_id} accountId={form.default_account_id} budgetId={form.budget_id} onSelect={(budget) => setForm((current) => ({ ...current, budget_id: budget?.budget_id || "", default_account_id: budget?.envelope_source_account_id || current.default_account_id }))} /> : null}
+      {form.kind === "expense" ? <PlanningNeedField budgets={budgets} categoryId={form.category_id} accountId={form.default_account_id} budgetId={form.budget_id} resolved={form.planning_need_resolved !== false} onResolve={(planning_need_resolved) => setForm((current) => ({ ...current, planning_need_resolved }))} onSelect={(budget) => setForm((current) => ({ ...current, budget_id: budget?.budget_id || "", default_account_id: budget?.envelope_source_account_id || current.default_account_id, planning_need_resolved: true }))} /> : null}
       <details className="form-grid__full"><summary>Detail tambahan</summary><div className="form-grid">
         <PaymentMethodField value={form.payment_method} onChange={(payment_method) => setForm((current) => ({ ...current, payment_method }))} />
         <label className="field"><span>Tanggal mulai *</span><TemporalInput required type="date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} /></label>
@@ -166,12 +169,15 @@ const EditRulePlanningFields = ({ editRule, setEditRule, editCategories, account
     const patch = current?.kind === "expense"
       ? planningNeedSelectionPatch({ budgets, categoryId, accountId, budgetId: current?.budget_id || "" })
       : { budget_id: "", account_id: accountId };
-    return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id };
+    const decision = current?.kind === "expense"
+      ? planningNeedDecisionState({ budgets, categoryId, accountId: patch.account_id, budgetId: patch.budget_id })
+      : { resolved: true };
+    return { ...current, ...next, category_id: categoryId, default_account_id: patch.account_id, budget_id: patch.budget_id, planning_need_resolved: decision.resolved };
   };
   return <>
     <CategoryField value={editRule?.category_id || ""} categories={editCategories} onChange={(category_id) => setEditRule((current) => patchPlanning(current, { category_id }))} />
     <AccountField value={editRule?.default_account_id || ""} accounts={accounts} onChange={(default_account_id) => setEditRule((current) => patchPlanning(current, { default_account_id }))} />
-    {editRule?.kind === "expense" ? <PlanningNeedField budgets={budgets} categoryId={editRule?.category_id || ""} accountId={editRule?.default_account_id || ""} budgetId={editRule?.budget_id || ""} onSelect={(budget) => setEditRule((current) => ({ ...current, budget_id: budget?.budget_id || "", default_account_id: budget?.envelope_source_account_id || current.default_account_id }))} /> : null}
+    {editRule?.kind === "expense" ? <PlanningNeedField budgets={budgets} categoryId={editRule?.category_id || ""} accountId={editRule?.default_account_id || ""} budgetId={editRule?.budget_id || ""} resolved={editRule?.planning_need_resolved !== false} onResolve={(planning_need_resolved) => setEditRule((current) => ({ ...current, planning_need_resolved }))} onSelect={(budget) => setEditRule((current) => ({ ...current, budget_id: budget?.budget_id || "", default_account_id: budget?.envelope_source_account_id || current.default_account_id, planning_need_resolved: true }))} /> : null}
   </>;
 };
 

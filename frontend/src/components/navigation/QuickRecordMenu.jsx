@@ -112,12 +112,13 @@ const CommitmentList = ({ resource, onBack, onPay }) => {
         const arisan = item.commitment_type === "arisan";
         const installmentLabel = commitmentInstallmentLabel(item);
         const amount = Math.max(0, Number(item.next_due_remaining || item.installment_amount || 0));
-        return <button key={item.commitment_id} type="button" className={styles.commitmentRow} disabled={!payment} onClick={() => payment && onPay(payment)}>
+        const navigation = payment || { to: "/perencanaan/komitmen", state: { planningCommitmentId: item.commitment_id || "" } };
+        return <button key={item.commitment_id} type="button" className={styles.commitmentRow} onClick={() => onPay(navigation)}>
           <span className={styles.commitmentIcon} aria-hidden="true">{arisan ? <FiUsers /> : <FiHome />}</span>
           <span className={styles.commitmentCopy}>
             <span className={styles.commitmentHeading}><strong>{item.name}</strong><b>{formatRupiah(amount)}</b></span>
             <small>{[item.provider, installmentLabel].filter(Boolean).join(" · ") || (arisan ? "Setoran rutin" : "Kewajiban rutin")}</small>
-            <small>{commitmentDueLabel(item)}{item.budget_id ? " · Alokasi terhubung" : ""}</small>
+            <small>{payment ? `${commitmentDueLabel(item)}${item.budget_id ? " · Alokasi terhubung" : ""}` : "Jadwal pembayaran belum siap · Buka kewajiban"}</small>
           </span>
           <FiChevronRight className={styles.chevron} aria-hidden="true" />
         </button>;

@@ -43,7 +43,9 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
   assert.doesNotMatch(commitments, /const ProgressBar =/);
 
   assert.match(investmentOverview, /aria-label=\{`Buka rincian \$\{holding\.ticker \|\| "aset"\}`\}/);
-  assert.match(investmentOverview, /role="button"/);
+  assert.match(investmentOverview, /<button type="button" data-native-enter className=\{`\$\{holdingStyles\.holdingCard\}/);
+  assert.match(investmentOverview, /className=\{`\$\{activityStyles\.activityItem\}/);
+  assert.doesNotMatch(investmentOverview, /role="button"|tabIndex=\{0\}[\s\S]*onKeyDown=\{openOnKeyboard\}/);
   assert.doesNotMatch(investmentOverview, /desktopMaintenanceAction|>Lainnya<\/span>|Kelola investasi/);
   assert.match(investmentHoldingDetail, />Perbarui nilai<\/Button>/);
   assert.match(investmentHoldingDetail, />Beli<\/Button>/);

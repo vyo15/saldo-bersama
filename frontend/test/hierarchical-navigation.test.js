@@ -28,7 +28,8 @@ test("hierarki navigasi mobile punya parent deterministic tanpa membuat Back uni
   assert.match(navigation, /CONTEXTUAL_NAVIGATION_PARENTS[\s\S]*"\/notifikasi"[\s\S]*to: "\/"[\s\S]*label: "Beranda"/);
   assert.match(navigation, /CONTEXTUAL_NAVIGATION_PARENTS[\s\S]*"\/rekonsiliasi"[\s\S]*to: "\/rekening"[\s\S]*label: "Rekening"/);
   assert.match(navigation, /export const contextualNavigationParent/);
-  assert.match(navigation, /current === "\/" \|\| current === "\/notifikasi"/);
+  assert.match(navigation, /"\/notifikasi"[\s\S]*area: "global"/);
+  assert.match(navigation, /if \(current === "\/notifikasi"\) return "";/);
   assert.match(navigation, /id: "application", label: "Aplikasi", items: pickNavigation\("\/notifikasi", "\/pengaturan"\)/);
   assert.match(navigation, /current === "\/perencanaan" \|\| current\.startsWith\("\/perencanaan\/"\)/);
   assert.match(navigation, /current === "\/transaksi" \|\| current\.startsWith\("\/transaksi\/"\)/);
@@ -61,16 +62,17 @@ test("Notifikasi dan Pastikan Saldo Sesuai memakai contextual return yang aman",
 });
 
 test("detail Alokasi masuk history URL dan Back menutup detail sebelum meninggalkan Atur Dana", async () => {
-  const [workspace, detail, attention] = await Promise.all([
+  const [workspace, routeState, detail, attention] = await Promise.all([
     source("features/allocations/AllocationsWorkspace.jsx"),
+    source("features/allocations/allocationWorkspaceUiState.js"),
     source("features/allocations/AllocationPlanningDetail.jsx"),
     source("features/allocations/allocationAttentionNavigation.js"),
   ]);
 
-  assert.match(workspace, /new URLSearchParams\(location\.search\)\.get\("allocation"\)/);
-  assert.match(workspace, /params\.set\("allocation", String\(ruleId\)\)/);
-  assert.match(workspace, /params\.delete\("allocation"\)/);
-  assert.match(workspace, /const search = params\.toString\(\);[\s\S]*navigate\(\{ pathname: location\.pathname, search: search \? `\?\$\{search\}` : "", hash: location\.hash \}, \{ replace, state: null \}\)/);
+  assert.match(routeState, /new URLSearchParams\(location\.search\)\.get\("allocation"\)/);
+  assert.match(routeState, /params\.set\("allocation", String\(ruleId\)\)/);
+  assert.match(routeState, /params\.delete\("allocation"\)/);
+  assert.match(routeState, /const search = params\.toString\(\);[\s\S]*navigate\(\{ pathname: location\.pathname, search: search \? `\?\$\{search\}` : "", hash: location\.hash \}, \{ replace, state: null \}\)/);
   assert.match(workspace, /setDetailRuleId\("", \{ replace: true \}\)/);
   assert.match(detail, /<ContextBack[\s\S]*onClick=\{onBack\}[\s\S]*label="Alokasi Dana"/);
   assert.match(attention, /consumeAttention\(\);[\s\S]*applyAttentionDetail\(\{/);

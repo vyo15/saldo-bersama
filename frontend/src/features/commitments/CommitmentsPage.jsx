@@ -13,7 +13,8 @@ import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { assertPositiveRupiah, formatRupiah } from "../../domain/money.js";
-import { currentMonthBoundsInJakarta, currentMonthInJakarta, formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
+import { currentMonthBoundsInJakarta, currentMonthInJakarta } from "../../domain/dates.js";
+import { planningDueState } from "../../shared/presentation/dueDate.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 import { archiveCommitment, updateCommitment } from "./commitments.api.js";
 import { commitmentCollectionState, inferFlatAnnualRate } from "./commitmentModel.js";
@@ -23,7 +24,7 @@ import styles from "./CommitmentsPage.module.css";
 const CommitmentDialogLayer = lazy(() => import("./CommitmentDialogLayer.jsx"));
 
 const TYPE_LABELS = Object.freeze({ mortgage: "KPR", installment: "Cicilan", loan: "Pinjaman", arisan: "Arisan", other: "Lainnya" });
-const emptyForm = () => ({ commitment_type: "mortgage", name: "", provider: "", original_amount: "", current_balance: "", installment_amount: "", total_installments: "", installments_paid: "", next_installment: "", flat_interest_rate: "0", default_account_id: "", category_id: "", budget_id: "", due_day: "10", start_date: "", end_date: "" });
+const emptyForm = () => ({ commitment_type: "mortgage", name: "", provider: "", original_amount: "", current_balance: "", installment_amount: "", total_installments: "", installments_paid: "", next_installment: "", flat_interest_rate: "0", default_account_id: "", category_id: "", budget_id: "", planning_need_resolved: true, due_day: "10", start_date: "", end_date: "" });
 const refreshKeys = ["commitments.list", "recurring.list", "transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "app.initialState"];
 const typeLabel = (type) => TYPE_LABELS[type] || "Kewajiban";
 
@@ -43,10 +44,7 @@ const installmentProgress = (item) => {
 
 const nextDueLabel = (item) => {
   if (!item.next_due_date) return item.status === "completed" ? "Selesai" : `Tanggal ${item.due_day}`;
-  const today = todayInJakarta();
-  if (item.next_due_date < today) return `Terlambat · ${formatDateLongIndonesia(item.next_due_date)}`;
-  if (item.next_due_date === today) return "Jatuh tempo hari ini";
-  return formatDateLongIndonesia(item.next_due_date);
+  return planningDueState(item.next_due_date, { completed: item.status === "completed" }).label;
 };
 
 const CommitmentSummary = ({ items }) => {
@@ -179,10 +177,10 @@ const CommitmentsPage = () => {
   const openEdit = (item) => {
     mutation.reset();
     const inferredRate = item.commitment_type === "mortgage" ? 0 : inferFlatAnnualRate({ originalAmount: item.original_amount, totalInstallments: item.total_installments, installmentAmount: item.installment_amount });
-    setEdit({ ...item, budget_id: item.budget_id || "", installment_amount: String(item.installment_amount || ""), total_installments: String(item.total_installments || ""), installments_paid: String(item.installments_paid || 0), next_installment: String(Math.max(1, Number(item.installments_paid || 0) + 1)), due_day: String(item.due_day || 1), original_amount: String(item.original_amount || ""), current_balance: String(item.current_balance || ""), flat_interest_rate: String(Number(inferredRate.toFixed(4))), start_date: item.start_date || "", end_date: item.end_date || "" });
+    setEdit({ ...item, budget_id: item.budget_id || "", planning_need_resolved: true, installment_amount: String(item.installment_amount || ""), total_installments: String(item.total_installments || ""), installments_paid: String(item.installments_paid || 0), next_installment: String(Math.max(1, Number(item.installments_paid || 0) + 1)), due_day: String(item.due_day || 1), original_amount: String(item.original_amount || ""), current_balance: String(item.current_balance || ""), flat_interest_rate: String(Number(inferredRate.toFixed(4))), start_date: item.start_date || "", end_date: item.end_date || "" });
   };
 
-  const submitEdit = (event) => { event.preventDefault(); if (!edit) return; return mutation.run(async () => {
+  const submitEdit = (event) => { event.preventDefault(); if (!edit) return; if (edit.planning_need_resolved === false) { notify({ message: "Pilih Kebutuhan yang digunakan atau pilih Pembayaran mandiri.", tone: "warning", dedupeKey: "commitments:planning-unresolved" }); return; } return mutation.run(async () => {
     await updateCommitment({ commitment_id: edit.commitment_id, row_version: edit.row_version, name: edit.name, provider: edit.provider, installment_amount: assertPositiveRupiah(edit.installment_amount), total_installments: Number(edit.total_installments), default_account_id: edit.default_account_id, category_id: edit.category_id, budget_id: edit.budget_id || null, frequency: "monthly", due_day: Number(edit.due_day), start_date: edit.start_date || undefined, end_date: edit.end_date || null, payment_method: "transfer" }, { rowVersion: edit.row_version });
     const name = edit.name || "Kewajiban";
     setEdit(null); notify({ message: `${name} diperbarui. Jadwal berikutnya ikut menyesuaikan.`, tone: "success", dedupeKey: "commitments:update" }); await reloadAll();

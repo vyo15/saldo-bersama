@@ -420,7 +420,7 @@
 
 .feedbackAction {
   display: block;
-  min-height: 32px;
+  min-height: var(--mobile-control-height);
   margin-top: .35rem;
   padding: 0;
   border: 0;
