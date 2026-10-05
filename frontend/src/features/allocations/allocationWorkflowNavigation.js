@@ -18,7 +18,7 @@ const useMountedRef = () => {
   return mountedRef;
 };
 
-export const useAllocationDashboardCreateWorkflow = ({ canCreate, location, navigate, notify, resourceStatus, activeItems, setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId }) => {
+export const useAllocationDashboardCreateWorkflow = ({ canCreate, location, navigate, notify, resourceStatus, activeItems, openCreate, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId }) => {
   const workflowHandled = useRef("");
   const mountedRef = useMountedRef();
   useEffect(() => {
@@ -32,13 +32,13 @@ export const useAllocationDashboardCreateWorkflow = ({ canCreate, location, navi
       if (!mountedRef.current) return;
       runAllocationDashboardWorkflow({
         workflowAction, envelopeRuleId, canCreate, activeItems,
-        setMessage, setCreateOpen, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId, notify,
+        openCreate, setAllocationFilter, setLegacyBudgetAttention, setDetailAction, setDetailRuleId, notify,
       });
     }).catch(() => {
       if (!mountedRef.current) return;
       notify({ message: "Aksi Alokasi Dana belum dapat dimuat. Coba lagi.", tone: "warning", dedupeKey: "allocation:workflow-load-failed" });
     });
-  }, [activeItems, canCreate, location, mountedRef, navigate, notify, resourceStatus, setAllocationFilter, setCreateOpen, setDetailAction, setDetailRuleId, setLegacyBudgetAttention, setMessage]);
+  }, [activeItems, canCreate, location, mountedRef, navigate, notify, openCreate, resourceStatus, setAllocationFilter, setDetailAction, setDetailRuleId, setLegacyBudgetAttention]);
 };
 
 export const useAllocationCommitmentPlanNavigation = ({ resourceStatus, budgetStatus, location, navigate, notify, activeItems, budgets, setLegacyBudgetAttention, setDetailAction, setDetailRuleId }) => {

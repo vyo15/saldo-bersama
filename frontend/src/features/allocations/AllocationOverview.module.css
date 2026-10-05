@@ -328,22 +328,30 @@
   min-height: 44px;
 }
 
-.allocation-funding-summary__mobile-create {
-  display: none;
-}
 
 /* Reference hierarchy: the four planning destinations sit directly below the hero. */
 .allocation-planning-nav {
   min-width: 0;
   min-height: 46px;
   border-bottom: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
   align-items: stretch;
+  gap: 2px;
+}
+
+.allocation-planning-nav__label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px 0 2px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
 }
 
 .allocation-planning-nav__link {
   position: relative;
+  flex: 0 1 auto;
   min-width: 0;
   min-height: 44px;
   padding: 0 10px;
@@ -672,13 +680,8 @@
     display: grid;
   }
 
-  .allocation-funding-summary__secondary-action,
-  .allocation-funding-summary__desktop-create {
+  .allocation-funding-summary__secondary-action {
     display: none;
-  }
-
-  .allocation-funding-summary__mobile-create {
-    display: inline-flex;
   }
 
   .allocation-funding-summary__actions :global(.button) {

@@ -332,8 +332,12 @@ test("hierarki aksi Alokasi membedakan create, Kebutuhan, adjustment, dan FAB gl
     read("src/features/allocations/AllocationOverview.module.css"),
   ]);
 
-  assert.match(overview, />Tambah<\/Button>/);
-  assert.match(overview, /Tambah rencana/);
+  assert.match(overview, />Tambah lainnya<\/Button>/);
+  assert.match(overview, /onClick=\{onCreateAllocation\}>Buat Alokasi<\/Button>/);
+  assert.equal((overview.match(/>Buat Alokasi<\/Button>/g) || []).length, 1);
+  assert.doesNotMatch(overview, /Tambah rencana/);
+  assert.match(overview, /rows\.length \? <PlanningToolbar/);
+  assert.match(overview, /chooseDestination: true/);
   assert.match(overview, /PlanningCreateLauncher/);
   assert.match(overview, /allocation-funding-summary__actions/);
   assert.doesNotMatch(overview, /allocation-card__fund|allocation-card__expand|>Lihat detail|>Tambah kebutuhan<\/Button>/);

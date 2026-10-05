@@ -151,7 +151,7 @@ Keputusan dan trade-off canonical dicatat di `docs/adr/`. Perubahan guarded/lint
 
 ## Allocation presentation metadata
 
-`envelope_rules.decoration_key` adalah metadata presentasi canonical untuk kartu Alokasi Dana. Field ini ikut read model dan backup/restore tetapi tidak menjadi financial authority; perubahan dekorasi tidak mengubah saldo, Dana Tersedia, ownership, rekonsiliasi, atau transaksi.
+`envelope_rules.decoration_key` adalah metadata presentasi canonical untuk kartu Alokasi Dana. Create UI normal memakai `auto` dan tidak mengekspos picker dekorasi; nilai explicit lama tetap ikut read model dan backup/restore untuk kompatibilitas. Field ini bukan financial authority; perubahan dekorasi tidak mengubah saldo, Dana Tersedia, ownership, rekonsiliasi, atau transaksi.
 
 ## Shopping workflow
 

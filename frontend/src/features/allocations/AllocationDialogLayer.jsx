@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FiArrowLeft, FiArrowRight, FiGrid, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
@@ -18,8 +18,6 @@ import { formatRupiah, parseRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { userRoleLabel } from "../../shared/presentation/user.js";
 import { allocationClass } from "./allocationStyles.js";
-import { ALLOCATION_DECORATIONS, allocationDecoration } from "./allocationDecorations.js";
-import { allocationQuickTemplates } from "./allocationArt.js";
 import { ALLOCATION_CREATE_NEED_LIMIT, createAllocationNeedDraft } from "./allocationNeedDraft.js";
 import { budgetBatchScheduleLabel } from "../budgets/budgetBatchModel.js";
 import { BUDGET_RECORDING_OPTIONS, budgetRecordingLabel } from "../budgets/budgetRecordingOptions.js";
@@ -66,23 +64,6 @@ const buildAssigneeOptions = (assigneeState) => [
   })),
 ];
 
-const AllocationDecorationPicker = ({ name, value, onChange }) => {
-  const automatic = allocationDecoration({ decorationKey: "auto", name, id: name });
-  return <fieldset className={allocationClass("allocation-decoration form-grid__full")}>
-    <legend>Pemanis kartu</legend>
-    <div className={allocationClass("allocation-decoration__grid")}>
-      {ALLOCATION_DECORATIONS.map((option) => {
-        const selected = value === option.key;
-        const asset = option.key === "auto" ? automatic.asset : option.asset;
-        return <button key={option.key} type="button" className={allocationClass(`allocation-decoration__choice${selected ? " is-active" : ""}`)} aria-pressed={selected} onClick={() => onChange(option.key)}>
-          <span className={allocationClass("allocation-decoration__visual")}>{asset ? <img src={asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /> : <FiGrid aria-hidden="true" />}</span>
-          <span>{option.label}</span>
-        </button>;
-      })}
-    </div>
-  </fieldset>;
-};
-
 const createNeedsTotal = (needs) => (needs || []).reduce((total, need) => {
   const amount = Number(String(need.amount || "").replace(/\D/g, ""));
   return total + (Number.isFinite(amount) ? amount : 0);
@@ -108,9 +89,16 @@ const NEED_PAYMENT_METHOD_OPTIONS = Object.freeze([
 const AllocationNeedAmountInput = ({ need, update }) => {
   const numeric = need.amount === "" ? "" : Number(need.amount || 0);
   const value = numeric === "" ? "" : String(numeric).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const amountClass = value.length > 15
+    ? "allocation-need-amount allocation-need-amount--tight"
+    : value.length > 12
+      ? "allocation-need-amount allocation-need-amount--compact"
+      : value.length > 9
+        ? "allocation-need-amount allocation-need-amount--reduced"
+        : "allocation-need-amount";
   return <label className={needStyles.fieldBlock}>
     <span>Nominal</span>
-    <span className={needStyles.amountField}>
+    <span className={`${needStyles.amountField} ${allocationClass(amountClass)}`}>
       <span className={needStyles.currency} aria-hidden="true">Rp</span>
       <input
         inputMode="numeric"
@@ -151,7 +139,7 @@ const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNe
   const update = (updates) => updateNeed(need.id, updates);
   return <div className={needStyles.editor} data-allocation-create-need={need.id}>
     <div className={needStyles.editorTopline}><span>Kebutuhan {index + 1}</span><button type="button" className={needStyles.trashButton} onClick={() => removeNeed(need.id)} aria-label={`Hapus kebutuhan ${index + 1}`}><FiTrash2 aria-hidden="true" /></button></div>
-    <div className={needStyles.primaryFields}>
+    <div className={`${needStyles.primaryFields} ${allocationClass("allocation-create-need-primary-fields")}`}>
       <label className={needStyles.fieldBlock}>
         <span>Nama kebutuhan</span>
         <input className={needStyles.nameInput} required maxLength="100" value={need.name || ""} placeholder="Contoh: Arisan PT" autoComplete="off" onChange={(event) => update({ name: event.target.value })} />
@@ -232,36 +220,14 @@ const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) =
   </section>;
 };
 
-const createTemplateMatcher = (name = "") => {
-  const haystack = String(name || "").trim().toLocaleLowerCase("id-ID");
-  return allocationQuickTemplates.find((template) => template.keywords.some((keyword) => haystack.includes(keyword)))?.key || "";
-};
-
-const CreateEnvelopeTemplatePicker = ({ value, onSelect }) => <fieldset className={allocationClass("allocation-template-picker form-grid__full")}>
-  <legend>Pilih kategori alokasi</legend>
-  <div className={allocationClass("allocation-template-picker__grid")}>
-    {allocationQuickTemplates.map((template) => <button key={template.key} type="button" className={allocationClass(`allocation-template-picker__item${value === template.key ? " is-active" : ""}`)} onClick={() => onSelect(template)}>
-      <span className={allocationClass("allocation-template-picker__art")}><img src={template.art} width="512" height="384" alt="" decoding="async" /></span>
-      <span className={allocationClass("allocation-template-picker__copy")}><strong>{template.label}</strong><small>{template.hint}</small></span>
-    </button>)}
-  </div>
-</fieldset>;
-
 const CreateStepDots = ({ step }) => <div className={allocationClass("allocation-create-steps form-grid__full")} aria-label="Progres pembuatan alokasi">
   {[1, 2].map((value) => <span key={value} className={allocationClass(`allocation-create-steps__item${step === value ? " is-active" : ""}`)} aria-current={step === value ? "step" : undefined}>{value}</span>)}
 </div>;
 
 const CreateEnvelopeBasics = ({ createForm, setCreateForm, accounts, usersStatus, assigneeState, assigneeOptions, onChangeSource, onNext }) => {
   const sourceAccount = accounts.find((account) => account.account_id === createForm.source_account_id) || null;
-  const activeTemplate = createTemplateMatcher(createForm.name);
-  const applyTemplate = (template) => setCreateForm((current) => ({
-    ...current,
-    name: current.name?.trim() ? current.name : template.label,
-    decoration_key: current.decoration_key === "auto" || !current.decoration_key ? template.decorationKey : current.decoration_key,
-  }));
   return <form id="create-envelope-basics-form" className={allocationClass("form-grid")} onSubmit={(event) => { event.preventDefault(); onNext(); }}>
     <CreateStepDots step={1} />
-    <CreateEnvelopeTemplatePicker value={activeTemplate} onSelect={applyTemplate} />
     <label className="field form-grid__full"><span>Nama alokasi *</span><input autoFocus required maxLength="100" value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="Contoh: Kebutuhan Rumah Tangga" /></label>
     <InlineSelectionPicker className="form-grid__full" label="Dari rekening" required value={createForm.source_account_id} onChange={onChangeSource} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} />
     {assigneeState.locked ? <div className={allocationClass("allocation-owner-lock form-grid__full")}><span>Digunakan oleh</span><strong>{assigneeOptions[0]?.label || sourceAccount?.owner_name || "Pemilik rekening"}</strong><small>Mengikuti pemilik rekening sumber pribadi.</small></div> : <InlineOwnershipPicker className="form-grid__full" legend="Digunakan oleh" required value={createForm.assignee_user_id} onChange={(assignee_user_id) => setCreateForm((current) => ({ ...current, assignee_user_id }))} options={assigneeOptions} disabled={usersStatus === "loading"} helper={usersStatus === "loading" ? "Memuat pengguna aktif..." : "Rekening Bersama dapat dialokasikan untuk Bersama atau anggota tertentu."} />}
@@ -277,13 +243,7 @@ const CreateEnvelopePlan = ({ createForm, setCreateForm, createNeeds, setCreateN
       <small>Langkah terakhir: susun kebutuhan awal.</small>
     </div>
     <AllocationCreateNeeds needs={createNeeds} setNeeds={setCreateNeeds} categories={categories} sourceAccount={sourceAccount} />
-    <details className={allocationClass("allocation-create-options form-grid__full")}>
-      <summary><span>Tampilan & periode</span><small>Pemanis kartu dan aturan sisa</small></summary>
-      <div className={allocationClass("allocation-create-options__content")}>
-        <AllocationDecorationPicker name={createForm.name} value={createForm.decoration_key} onChange={(decoration_key) => setCreateForm((current) => ({ ...current, decoration_key }))} />
-        <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
-      </div>
-    </details>
+    <VisualChoiceGroup className="form-grid__full" legend="Sisa saat periode berakhir" name="allocation-rollover" value={createForm.rollover_policy} onChange={(rollover_policy) => setCreateForm((current) => ({ ...current, rollover_policy }))} options={rolloverOptions} columns={2} compact />
     {message ? <div className={`notice notice--${message.type} form-grid__full`} role="alert">{message.text}</div> : null}
   </form>;
 };
@@ -330,7 +290,7 @@ const CreateEnvelopeModal = ({ open, close, createForm, setCreateForm, createNee
     discardSubject="Alokasi Dana"
     dismissible={!createMutation.busy && !retryOnly}
     title="Alokasi baru"
-    description={step === 1 ? "Langkah 1 dari 2 · Pilih kategori alokasi, tentukan nama, lalu pilih rekening sumber." : "Langkah 2 dari 2 · Susun kebutuhan awal agar dana bisa langsung dipakai dengan rapi."}
+    description={step === 1 ? "Isi nama dan pilih rekening sumber." : "Susun kebutuhan awal agar dana siap dipakai."}
     headerBackAction={headerBackAction}
     footer={footer}
   >

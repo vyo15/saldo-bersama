@@ -5,23 +5,32 @@ const safeAmount = (value) => {
 
 export const allocationAvailableBalance = (account) => safeAmount(account?.available_balance ?? account?.balance ?? 0);
 
+export const allocationSourceAccounts = (accounts = []) => accounts.filter((account) => allocationAvailableBalance(account) > 0);
+
 export const fundingAccountsForItems = (accounts = [], items = [], { requestedAccountId = "", locked = false } = {}) => accounts.filter((account) => {
   const matchesTarget = items.some((item) => item.source_account_id === account.account_id);
   const isRequested = Boolean(requestedAccountId) && account.account_id === requestedAccountId;
   if (locked) return isRequested && matchesTarget;
-  return allocationAvailableBalance(account) > 0 && (matchesTarget || isRequested);
+  if (isRequested) return true;
+  return allocationAvailableBalance(account) > 0 && matchesTarget;
 });
+
+export const planningFundingAccounts = (accounts = [], items = []) => {
+  if (!(items || []).length) return (accounts || []).filter((account) => allocationAvailableBalance(account) > 0);
+  const fundableItems = items.filter((item) => item?.can_adjust && item?.source_account_id);
+  return fundingAccountsForItems(accounts, fundableItems);
+};
 
 export const allocationTargetsForAccount = (items = [], sourceAccountId = "") => items.filter((item) => item.source_account_id === sourceAccountId);
 
-export const initialAllocationFundingForm = ({ accounts = [], items = [], requestedAccountId = "", requestedEnvelopePeriodId = "", suggestedAmount = 0 } = {}) => {
+export const initialAllocationFundingForm = ({ accounts = [], items = [], requestedAccountId = "", requestedEnvelopePeriodId = "", suggestedAmount = 0, locked = false } = {}) => {
   const requested = accounts.find((item) => item.account_id === requestedAccountId)?.account_id || "";
   const sourceAccountId = requested || (accounts.length === 1 ? accounts[0].account_id : "");
   const envelopes = allocationTargetsForAccount(items, sourceAccountId);
   const requestedEnvelope = envelopes.find((item) => item.envelope_period_id === requestedEnvelopePeriodId)?.envelope_period_id || "";
   return {
     sourceAccountId,
-    envelopePeriodId: requestedEnvelope || (envelopes.length === 1 ? envelopes[0].envelope_period_id : ""),
+    envelopePeriodId: requestedEnvelope || (!locked && envelopes.length === 1 ? envelopes[0].envelope_period_id : ""),
     amount: suggestedAmount > 0 ? String(suggestedAmount) : "",
     reason: suggestedAmount > 0 ? "Menyesuaikan dana dengan total Kebutuhan" : "",
   };

@@ -1,3 +1,14 @@
+## 2026-10-05 — Alokasi create flow compact
+- Mengunci true-empty **Atur Dana** menjadi satu CTA **Buat Alokasi** yang langsung membuka create canonical; duplicate `Tambah rencana` desktop/mobile di hero dihapus, empty state tidak memiliki create CTA kedua, dan toolbar search/filter Aktif tidak dirender sebelum ada item. Contract requirement, design system, test plan, QA, implementation matrix, project status, dan regression diselaraskan.
+- Menyederhanakan **Alokasi baru** menjadi dua langkah fokus tanpa kategori Alokasi/preset visual: langkah 1 hanya nama + rekening sumber + pengguna, dengan helper header singkat dan step dots sebagai satu-satunya indikator progres.
+- Menghapus picker **Pemanis kartu** dari create; `decoration_key` tetap presentation-only dengan default `auto` dan nilai historis explicit tetap kompatibel. Pilihan **Sisa saat periode berakhir** sekarang tampil langsung pada langkah Kebutuhan awal.
+- Memperkuat input nominal Kebutuhan agar nilai panjang tidak terpotong: ruang nominal diperbesar, typography turun secara terbatas hanya saat perlu, dan layar sangat sempit menumpuk nama/nominal menjadi satu kolom. Asset/template create yang tidak lagi punya consumer dibersihkan dan regression/docs diselaraskan.
+
+## 2026-10-04 — Atur Dana allocation flow lock
+- Mengunci flow canonical **Alokasikan dana**: ketika Alokasi aktif sudah ada, hero kini memberi decision **Alokasi yang sudah ada / Buat Alokasi baru**; ketika belum ada Alokasi, primary langsung membuka **Buat alokasi** tanpa langkah pilihan yang tidak perlu.
+- Menghapus dead-end rekening tanpa target melalui **Buat Alokasi dari rekening ini** dengan source dipertahankan, memastikan satu rekening sumber tetap boleh mendukung beberapa Alokasi tanpa membuat pool dana virtual, dan mencegah contextual target yang sudah stale berpindah diam-diam ke Alokasi lain dari rekening yang sama.
+- Menyamakan launcher menjadi **Buat Alokasi / Kewajiban / Jadwal rutin**, mempertahankan contextual **Tambah dana** dengan source+target terkunci, menambah regression flow/model, dan menyelaraskan requirement, design system, test plan, implementation matrix, glossary, project status, serta QA checklist.
+
 ## 2026-09-28 — Audit activity human-centered redesign
 - Merombak `/pengaturan/audit` dari raw developer log menjadi riwayat aktivitas yang manusiawi: action/entity diterjemahkan ke vocabulary produk, actor memakai nama anggota bila tersedia, waktu memakai Asia/Jakarta, dan mobile dikelompokkan per Hari ini/Kemarin/tanggal.
 - Menyederhanakan status backend menjadi strip sistem compact yang memisahkan mode operasi dari verifikasi backend, sehingga `Operasi normal` tidak lagi terlihat bertentangan dengan status `Tidak terverifikasi`.

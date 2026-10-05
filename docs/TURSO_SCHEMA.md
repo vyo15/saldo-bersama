@@ -78,7 +78,7 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - Tabel bisnis memakai `STRICT`.
 - Foreign key diaktifkan pada setiap koneksi dan diverifikasi oleh integrity check.
 - `system_config.timezone` wajib tetap `Asia/Jakarta` dan `system_config.currency` wajib tetap `IDR`; business integrity melaporkan drift kedua nilai canonical tersebut.
-- Ownership ledger shared wajib tanpa `owner_user_id`; personal wajib memiliki `owner_user_id`. `envelope_rules.assignee_user_id` adalah penerima jatah dan terpisah dari ownership ledger. `envelope_rules.decoration_key` hanya metadata presentasi kartu dan tidak memengaruhi nominal, ownership, status, atau ledger.
+- Ownership ledger shared wajib tanpa `owner_user_id`; personal wajib memiliki `owner_user_id`. `envelope_rules.assignee_user_id` adalah penerima jatah dan terpisah dari ownership ledger. `envelope_rules.decoration_key` hanya metadata presentasi kartu (default/create normal `auto`) dan tidak memengaruhi nominal, ownership, status, atau ledger.
 - Bentuk transaksi ditegakkan database: income/refund hanya rekening tujuan, expense hanya rekening sumber, transfer sumber/tujuan berbeda, adjustment hanya rekening sumber; link envelope/goal dibatasi pada tipe yang benar.
 - Metadata cancellation harus konsisten dengan status transaksi.
 - Saldo awal negatif hanya diizinkan ketika `allow_negative=1`.
@@ -131,7 +131,7 @@ Latest migration: `023_shopping_lists.sql`. Runtime version ditentukan oleh `api
 
 Current additive capabilities yang perlu diketahui reader schema:
 
-- `envelope_rules.decoration_key` adalah metadata presentation-only dengan default `auto`; tidak mengubah saldo/ownership/ledger.
+- `envelope_rules.decoration_key` adalah metadata presentation-only dengan default `auto`; create UI normal tidak meminta pilihan dekorasi dan nilai explicit lama tetap kompatibel. Tidak mengubah saldo/ownership/ledger.
 - `budget_history` menyimpan representasi compact Kebutuhan setelah period close dan memungkinkan report/reopen tanpa mempertahankan row operasional aktif.
 - `transactions.budget_id` dan `recurring_rules.budget_id` menautkan event/jadwal ke Kebutuhan tanpa mengharuskan row operasional tetap hidup selamanya.
 - `commitments` + `commitment_movements` menyimpan perjalanan KPR/cicilan/pinjaman/Arisan; `recurring_rules.commitment_id` membuat satu jadwal canonical dan `transactions.commitment_id`/`commitment_flow` menautkan cash event aktual. Opening `current_balance` menjadi truth saat mulai memakai fitur sehingga pembayaran lampau tidak perlu dibuat ulang.

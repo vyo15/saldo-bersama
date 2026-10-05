@@ -140,11 +140,12 @@ test("Alokasi baru dibuat bersama Kebutuhan dan mendanai sebanyak Dana Tersedia"
   assert.match(dialogs, /Cara penggunaan/);
   assert.match(dialogs, /fixed_once/);
   assert.match(dialogs, /recurring/);
-  assert.match(dialogs, /Pemanis kartu/);
+  assert.doesNotMatch(dialogs, /Pilih kategori alokasi|Pemanis kartu|Tampilan & periode/);
   assert.match(dialogs, /Kembalikan ke dana tersedia/);
   assert.match(dialogs, /Tetap di alokasi berikutnya/);
+  assert.match(dialogs, /Sisa saat periode berakhir/);
   assert.match(dialogs, /Buat & alokasikan/);
-  assert.match(dialogs, /Tampilan & periode/);
+  assert.match(dialogs, /allocation-need-amount--tight/);
   assert.doesNotMatch(dialogs, /Periode alokasi|Mulai periode|Akhir periode/);
   assert.match(runner, /createEnvelopeWithNeeds/);
   assert.match(runner, /recording_mode: recordingMode/);

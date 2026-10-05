@@ -29,3 +29,13 @@ export const planningNeedLinkState = ({ budgets = [], categoryId = "", accountId
   const selected = categoryCandidates.find((budget) => budget.budget_id === budgetId) || null;
   return { categoryCandidates, candidates, selected };
 };
+export const planningNeedDecisionState = ({ budgets = [], categoryId = "", accountId = "", budgetId = "" } = {}) => {
+  if (!categoryId) return { status: "idle", candidates: [], selected: null, resolved: true };
+  const { candidates, selected } = planningNeedLinkState({ budgets, categoryId, accountId, budgetId });
+  const selectedInCandidates = selected && candidates.some((budget) => budget.budget_id === selected.budget_id) ? selected : null;
+  if (selectedInCandidates) return { status: "linked", candidates, selected: selectedInCandidates, resolved: true };
+  if (candidates.length === 0) return { status: "standalone", candidates, selected: null, resolved: true };
+  if (candidates.length === 1) return { status: "linked", candidates, selected: candidates[0], resolved: true };
+  return { status: "ambiguous", candidates, selected: null, resolved: false };
+};
+

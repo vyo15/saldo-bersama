@@ -28,7 +28,8 @@ test("form Kewajiban hanya menampilkan data penting dan tidak menghidupkan lagi 
   assert.match(api, /archiveCommitment[\s\S]*commitments\.archive/);
   assert.doesNotMatch(api, /deleteCommitment/);
   assert.doesNotMatch(ui, /Detail tambahan/);
-  assert.doesNotMatch(ui, /PlanningNeedField/);
+  assert.match(ui, /PlanningNeedField/);
+  assert.match(createFlow, /planning_need_resolved === false/);
   assert.match(ui, /Cicilan berikutnya/);
   assert.match(ui, /selesai · .*tersisa/);
   assert.doesNotMatch(ui, /Hapus kewajiban|>Hapus<|Dihapus dari daftar Kewajiban/);

@@ -36,6 +36,11 @@
 ## 4. Planning dan realtime
 
 - [ ] Alokasi baru tidak meminta budget awal sebagai flow utama; Kebutuhan mengatur funding dari Dana Tersedia sesuai contract.
+- [ ] Create **Alokasi baru** tidak menampilkan kategori Alokasi atau picker pemanis kartu; langkah 1 hanya nama + rekening sumber + pengguna, header helper tetap satu baris singkat, dan step dots menjadi indikator progres.
+- [ ] Langkah Kebutuhan awal menampilkan **Sisa saat periode berakhir** secara langsung (return/carry), sementara nominal Kebutuhan tidak pernah ellipsis/terpotong: kolom nominal mendapat ruang cukup, font hanya mengecil terbatas, dan viewport sangat sempit menumpuk nama + nominal.
+- [ ] Root **Atur Dana**: bila Alokasi sudah ada, **Alokasikan dana** menawarkan **Alokasi yang sudah ada / Buat Alokasi baru**; bila belum ada Alokasi, hanya ada satu primary **Buat Alokasi** dan aksi langsung membuka create canonical tanpa launcher/decision point. Empty state tidak menduplikasi create CTA dan search/filter Aktif tidak tampil pada true-empty. Membuat Alokasi baru tetap tersedia walau rekening source sudah dipakai Alokasi lain.
+- [ ] Funding dengan source tertentu tanpa target menampilkan **Buat Alokasi dari rekening ini** dan source tetap terpilih di create; detail/attention yang sudah tahu source+target tidak menampilkan decision generik.
+- [ ] Jika target contextual sudah hilang/stale, flow **Tambah dana** berhenti dengan pesan recovery dan tidak pernah memilih Alokasi lain dari rekening yang sama secara otomatis.
 - [ ] Shortage Kebutuhan menjelaskan total, dana tersedia, dan kekurangan; mutation gagal atomic dan draft tidak hilang.
 - [ ] Archive/delete/edit Kebutuhan tidak melepas dana terpakai/dipesan, kebutuhan lain, atau buffer sengaja.
 - [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: kebutuhan aktif memuat ikon + nama + pola/status dan Sisa/total/persentase + progress; `fixed_once` tepat 100% berubah menjadi row ringkas `✓ Selesai` tanpa progress/quick-add; `flexible`/`recurring` tepat 100% menjadi `Dana habis` dengan warning tone dan tanpa aksi pencatatan baru; overspend tetap danger. `Terpakai`, waktu selesai, dan Jadwal tersedia di **Detail kebutuhan**; Edit/Lihat jadwal berada di overflow; target sentuh minimal 44px; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.

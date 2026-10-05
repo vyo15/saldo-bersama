@@ -115,6 +115,8 @@ test("Catat cepat context-aware hanya mengotomasi pilihan yang pasti dan tetap m
   assert.match(menu, /isEmpty=\{!items\.length\}/);
   assert.match(menu, /isEmpty=\{!portfolios\.length\}/);
   assert.match(menu, /quickRecordInvestmentNavigation/);
+  assert.match(menu, /Jadwal pembayaran belum siap · Buka kewajiban/);
+  assert.doesNotMatch(menu, /disabled=\{!payment\}/);
   assert.match(menu, /step === "goals"/);
   assert.match(menu, /step === "investments"/);
   assert.match(menu, /Tambah dana/);

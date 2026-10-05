@@ -61,16 +61,17 @@ test("Notifikasi dan Pastikan Saldo Sesuai memakai contextual return yang aman",
 });
 
 test("detail Alokasi masuk history URL dan Back menutup detail sebelum meninggalkan Atur Dana", async () => {
-  const [workspace, detail, attention] = await Promise.all([
+  const [workspace, routeState, detail, attention] = await Promise.all([
     source("features/allocations/AllocationsWorkspace.jsx"),
+    source("features/allocations/allocationWorkspaceUiState.js"),
     source("features/allocations/AllocationPlanningDetail.jsx"),
     source("features/allocations/allocationAttentionNavigation.js"),
   ]);
 
-  assert.match(workspace, /new URLSearchParams\(location\.search\)\.get\("allocation"\)/);
-  assert.match(workspace, /params\.set\("allocation", String\(ruleId\)\)/);
-  assert.match(workspace, /params\.delete\("allocation"\)/);
-  assert.match(workspace, /const search = params\.toString\(\);[\s\S]*navigate\(\{ pathname: location\.pathname, search: search \? `\?\$\{search\}` : "", hash: location\.hash \}, \{ replace, state: null \}\)/);
+  assert.match(routeState, /new URLSearchParams\(location\.search\)\.get\("allocation"\)/);
+  assert.match(routeState, /params\.set\("allocation", String\(ruleId\)\)/);
+  assert.match(routeState, /params\.delete\("allocation"\)/);
+  assert.match(routeState, /const search = params\.toString\(\);[\s\S]*navigate\(\{ pathname: location\.pathname, search: search \? `\?\$\{search\}` : "", hash: location\.hash \}, \{ replace, state: null \}\)/);
   assert.match(workspace, /setDetailRuleId\("", \{ replace: true \}\)/);
   assert.match(detail, /<ContextBack[\s\S]*onClick=\{onBack\}[\s\S]*label="Alokasi Dana"/);
   assert.match(attention, /consumeAttention\(\);[\s\S]*applyAttentionDetail\(\{/);
