@@ -9,11 +9,14 @@ const BudgetShoppingPreferenceField = ({ checked = false, onChange, disabled = f
   const lockDisable = checked && openItems > 0;
   const inputDisabled = disabled || lockDisable;
   const helper = disabledHelper(openItems);
+  const description = helper || (compact
+    ? "Aktifkan jika Kebutuhan berisi beberapa barang."
+    : "Cocok untuk kebutuhan yang terdiri dari beberapa barang, seperti belanja bulanan atau perlengkapan rumah.");
   return <label className={`${styles.field} ${compact ? styles.compact : ""} ${inputDisabled ? styles.disabled : ""}`}>
     <span className={styles.icon}><FiShoppingCart aria-hidden="true" /></span>
     <span className={styles.copy}>
       <strong>Gunakan daftar belanja</strong>
-      <small>{helper || "Cocok untuk kebutuhan yang terdiri dari beberapa barang, seperti belanja bulanan atau perlengkapan rumah."}</small>
+      <small>{description}</small>
     </span>
     <span className={styles.switch}>
       <input

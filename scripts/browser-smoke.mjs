@@ -77,7 +77,10 @@ class Cdp {
   }
   async evaluate(expression) {
     const result = await this.send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
-    if (result.exceptionDetails) throw new Error(result.exceptionDetails.text || "Runtime evaluation failed");
+    if (result.exceptionDetails) {
+      const detail = result.exceptionDetails.exception?.description || result.exceptionDetails.text || "Runtime evaluation failed";
+      throw new Error(detail);
+    }
     return result.result?.value;
   }
 }
@@ -204,11 +207,23 @@ const main = async () => {
         });
         const loginButton = visible.find((el) => /google|masuk/i.test(el.textContent || el.getAttribute('aria-label') || ''));
         const rect = loginButton?.getBoundingClientRect();
-        return { overflow: root.scrollWidth - root.clientWidth, controls: visible.length, loginBottom: rect?.bottom ?? null, scrollHeight: root.scrollHeight, clientHeight: root.clientHeight };
+        const mobileViewport = ${width <= 820 ? "true" : "false"};
+        const smallTargets = mobileViewport ? [...document.querySelectorAll('button,input:not([type="hidden"]),select,textarea')]
+          .filter((el) => {
+            const r = el.getBoundingClientRect(); const style = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && style.display !== 'none' && !el.disabled
+              && (r.width < 44 || r.height < 44);
+          })
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return { tag: el.tagName, label: (el.getAttribute('aria-label') || el.textContent || el.getAttribute('name') || '').trim().slice(0, 80), width: Math.round(r.width), height: Math.round(r.height) };
+          }) : [];
+        return { overflow: root.scrollWidth - root.clientWidth, controls: visible.length, loginBottom: rect?.bottom ?? null, scrollHeight: root.scrollHeight, clientHeight: root.clientHeight, smallTargets };
       })()`);
       assert(geometry.overflow <= 1, `Page-level overflow ${geometry.overflow}px pada ${width}x${height}.`);
       assert(geometry.controls > 0, `Tidak ada interactive control visible pada ${width}x${height}.`);
       assert(geometry.loginBottom === null || geometry.loginBottom <= geometry.scrollHeight + 1, `Login CTA tidak reachable pada ${width}x${height}.`);
+      assert(!geometry.smallTargets.length, `Touch target di bawah 44px pada ${width}x${height}: ${JSON.stringify(geometry.smallTargets)}`);
     }
 
     await cdp.send("Emulation.setDeviceMetricsOverride", { width: 320, height: 568, deviceScaleFactor: 1, mobile: true });
@@ -270,11 +285,26 @@ const main = async () => {
     })()`);
     assert(spacing.overflow <= 1, `Text-spacing menyebabkan page overflow ${spacing.overflow}px.`);
 
+    const themeParity = await cdp.evaluate(`(() => {
+      const root = document.documentElement;
+      const before = root.dataset.theme || 'light';
+      const sample = (theme) => {
+        root.dataset.theme = theme;
+        const style = getComputedStyle(root);
+        return { theme, page: style.getPropertyValue('--page').trim(), text: style.getPropertyValue('--text').trim(), overflow: root.scrollWidth-root.clientWidth };
+      };
+      const result = [sample('light'), sample('dark')];
+      root.dataset.theme = before;
+      return result;
+    })()`);
+    assert(themeParity.every((entry) => entry.overflow <= 1), `Pergantian light/dark menyebabkan overflow: ${JSON.stringify(themeParity)}`);
+    assert(themeParity[0].page !== themeParity[1].page && themeParity[0].text !== themeParity[1].text, "Token light/dark tidak berubah pada rendered browser smoke.");
+
     await cdp.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
     const reduced = await cdp.evaluate(`matchMedia('(prefers-reduced-motion: reduce)').matches`);
     assert(reduced === true, "Browser smoke gagal mengaktifkan prefers-reduced-motion.");
 
-    console.log(`Browser smoke PASS: ${viewportMatrix.length} viewport, focus, text-spacing, reduced-motion.`);
+    console.log(`Browser smoke PASS: ${viewportMatrix.length} viewport, touch-target, focus, text-spacing, theme parity, reduced-motion.`);
   } finally {
     try { socket?.close(); } catch {}
     child.kill("SIGTERM");

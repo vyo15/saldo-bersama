@@ -8,6 +8,8 @@ Perubahan dianggap selesai bila:
 - `npm run lint` PASS pada tree final; bila lint sempat gagal, root cause diperbaiki dan lint diulang sampai PASS tanpa menonaktifkan rule sebagai shortcut;
 - targeted regression PASS, lalu `npm run verify` benar-benar dijalankan pada tree final yang sama; bila source/test/docs berubah setelah PASS, lint/gate relevan diulang;
 - security, privacy, data integrity, accessibility, compatibility, dan performance diperiksa sesuai scope;
+- untuk perubahan UI/responsive/accessibility, `npm run test:browser` PASS pada production build dan tidak ada known mobile native touch target <44px, critical horizontal overflow, focus-visible regression, contrast-AA token regression, atau reduced-motion regression pada scope terdampak;
+- status UX **10/10** tidak boleh diklaim hanya dari static/source audit: full axe scan serta real-device Administrator/Member pada browser target tetap evidence release yang harus dicatat bila target penilaian meminta coverage tersebut;
 - authority docs/contract/runbook terdampak diperbarui sesuai `docs/INDEX.md`; snapshot tetap current-state, history tetap di CHANGELOG/Git/archive, dan tidak ada instruction lama yang menyamar sebagai aturan aktif;
 - tidak ada secret, data finansial nyata, raw stack trace, dependency, build/generated artifact, atau file lokal dalam commit/ZIP;
 - bila user meminta delivery Git, perubahan sudah di-commit pada `main` dan `git push origin main` hanya berhasil setelah managed pre-push memverifikasi ref/SHA aktual + full `npm run verify` + Production gate sesuai scope: DB schema/binding read-only untuk diff database-compatibility atau core Vercel health untuk diff non-schema; workflow **Quality** server-side tetap dipantau;

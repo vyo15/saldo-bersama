@@ -196,7 +196,7 @@ button.selected:focus-visible,
 .search input {
   width: 100%;
   min-width: 0;
-  min-height: 42px;
+  min-height: var(--mobile-hit-target);
   padding: 0;
   border: 0;
   outline: 0;

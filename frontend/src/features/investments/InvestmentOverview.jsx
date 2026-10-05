@@ -73,11 +73,9 @@ const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
   const mutualFund = isMutualFundInstrument(holding);
   const unrealized = Number(holding.unrealized_pl || 0);
   const returnPercent = investmentReturnPercent(unrealized, holding.cost_basis);
-  const openOnKeyboard = (event) => {
-    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpenDetail(); }
-  };
   return (
-    <article data-native-enter className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`} role="button" tabIndex="0" onClick={onOpenDetail} onKeyDown={openOnKeyboard} aria-label={`Buka rincian ${holding.ticker || "aset"}`}>
+    <article className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`}>
+      <button type="button" className={holdingStyles.holdingCardAction} onClick={onOpenDetail} aria-label={`Buka rincian ${holding.ticker || "aset"}`} />
       <div className={holdingStyles.holdingIdentity}>
         <InvestmentAssetLogo ticker={holding.ticker} className={holdingStyles.stockLogo} />
         <div>

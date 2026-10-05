@@ -90,7 +90,7 @@
 .mortgageProgressInputs input,
 .mortgageProgressInputs > span {
   width: 48px;
-  height: 36px;
+  height: var(--mobile-hit-target);
   padding: 0 5px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -113,7 +113,7 @@
 @media (max-width: 520px) {
   .progressMeta { align-items: flex-start; flex-direction: column; gap: 2px; }
   .mortgageProgress { grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
-  .mortgageProgressInputs input,.mortgageProgressInputs > span { width: 43px; }
+  .mortgageProgressInputs input,.mortgageProgressInputs > span { width: var(--mobile-hit-target); }
 }
 
 /* Compact obligation cards: balance, progress, installment, due date, then primary action. */

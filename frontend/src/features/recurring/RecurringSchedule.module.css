@@ -107,7 +107,7 @@
 }
 
 .kindTab {
-  min-height: 36px;
+  min-height: var(--mobile-hit-target);
   padding: 0 10px;
   border: 0;
   border-radius: var(--radius-pill);

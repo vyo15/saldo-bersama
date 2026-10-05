@@ -76,6 +76,9 @@ test("browser smoke memeriksa rendered login tanpa auth bypass atau dependency t
   assert.match(browser, /chrome-error:\/\//);
   assert.match(browser, /candidate\.matches\(':focus-visible'\)/);
   assert.match(browser, /Rendered keyboard focus indicator/);
+  assert.match(browser, /exceptionDetails\.exception\?\.description/);
+  assert.match(browser, /const mobileViewport = \$\{width <= 820 \? "true" : "false"\}/);
+  assert.doesNotMatch(browser, /const smallTargets = width <= 820/);
   assert.doesNotMatch(browser, /candidate\?\.focus\(\)/);
   assert.doesNotMatch(browser, /19000 \+ Math\.floor/);
   assert.doesNotMatch(browser, /firebaseIdToken|mock(?:ed)?User|testSessionCookie/i);

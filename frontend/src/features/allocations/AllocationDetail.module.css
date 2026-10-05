@@ -236,7 +236,7 @@
 
 .allocation-needs-filter__button {
   min-width: 0;
-  min-height: 40px;
+  min-height: var(--mobile-hit-target);
   padding: 6px 8px;
   border: 0;
   border-radius: 10px;
@@ -724,8 +724,8 @@
 }
 
 .allocation-limit-row__actions.has-primary .allocation-limit-row__menu > summary {
-  width: 36px;
-  min-width: 36px;
+  width: var(--mobile-hit-target);
+  min-width: var(--mobile-hit-target);
   border-radius: 0 10px 10px 0;
 }
 
@@ -765,7 +765,7 @@
 
 .allocation-limit-row__menu-items :global(.button) {
   width: 100%;
-  min-height: 40px;
+  min-height: var(--mobile-hit-target);
   padding-inline: 10px;
   justify-content: flex-start;
   gap: 8px;
@@ -906,7 +906,7 @@
 
 .allocation-limit-row__shopping-link {
   margin: 7px 0 0 43px;
-  min-height: 36px;
+  min-height: var(--mobile-hit-target);
   padding: 0 9px;
   border: 0;
   border-radius: 9px;

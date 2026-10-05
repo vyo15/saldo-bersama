@@ -99,9 +99,9 @@
   --interactive-hover: #eef8f6;
   --input: #fbfdfc;
   --text: #192733;
-  --text-soft: #566979;
-  --text-muted: #647786;
-  --muted: #647786;
+  --text-soft: #4f6270;
+  --text-muted: #566979;
+  --muted: #566979;
   --border: #d4e4e6;
   --border-strong: #8296a5;
   --primary: #087c80;
@@ -262,6 +262,7 @@
   --mobile-card-padding: 16px;
   --mobile-card-radius: 16px;
   --mobile-control-height: 44px;
+  --mobile-hit-target: 44px;
   --keyboard-inset: 0px;
   --mobile-native-control-font-size: 16px;
   --mobile-financial-meta-size: 12px;

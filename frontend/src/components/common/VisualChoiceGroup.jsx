@@ -9,9 +9,9 @@ const toneClass = (tone) => tone === "expense"
       ? styles.refund
       : "";
 
-const groupClassName = ({ className, compact, denseTiles, descriptive, plainIcons, wrapLabels }) => [
+const groupClassName = ({ className, compact, denseTiles, descriptive, plainIcons, segmented, wrapLabels }) => [
   styles.group,
-  ...Object.entries({ compact, denseTiles, wrapLabels, plainIcons, descriptive })
+  ...Object.entries({ compact, denseTiles, segmented, wrapLabels, plainIcons, descriptive })
     .filter(([, enabled]) => Boolean(enabled))
     .map(([variant]) => styles[variant]),
   className,
@@ -51,6 +51,7 @@ const VisualChoiceGroup = ({
   mobileColumns,
   compact = false,
   denseTiles = false,
+  segmented = false,
   disabled = false,
   required = false,
   helper = "",
@@ -62,7 +63,7 @@ const VisualChoiceGroup = ({
 }) => {
   const safeColumns = Math.max(1, Math.min(Number(columns) || 1, 4));
   const safeMobileColumns = Math.max(1, Math.min(Number(mobileColumns) || Math.min(safeColumns, 2), 4));
-  const rootClassName = groupClassName({ className, compact, denseTiles, descriptive, plainIcons, wrapLabels });
+  const rootClassName = groupClassName({ className, compact, denseTiles, descriptive, plainIcons, segmented, wrapLabels });
   return (
     <fieldset
       className={rootClassName}

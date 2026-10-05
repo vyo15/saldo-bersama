@@ -326,7 +326,7 @@
 }
 
 .compact .trigger {
-  min-height: 40px;
+  min-height: var(--mobile-hit-target);
   padding-block: var(--space-2);
 }
 
@@ -336,7 +336,7 @@
 }
 
 .embedded .trigger {
-  min-height: 42px;
+  min-height: var(--mobile-hit-target);
   padding: 0;
   border: 0;
   border-radius: 0;

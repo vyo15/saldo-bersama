@@ -51,6 +51,7 @@
 - [ ] `Lainnya` hanya memakai empat kelompok canonical (Rencana & Insight, Keuangan, Keluarga & Akses, Aplikasi); owner-only tidak bocor ke Member.
 - [ ] Laporan tidak menggandakan KPI hero lewat summary strip kedua; Analisis lengkap tetap membuka planning/Kewajiban/rekening/pencatat.
 - [ ] Target card default tetap compact; rincian tanggal/estimasi/sumber dana dapat dibuka dari overflow dan target sentuh primary/overflow tetap ≥44px.
+- [ ] Modal **Buat/Edit Target** menjaga tiga pilihan fixed (`Jenis target`, `Cara menabung`, `Prioritas`) sebagai segmented row 3 kolom pada mobile tanpa grid 2+1/wrap; label pendek tetap satu baris, selected/focus state jelas, nominal tidak terjepit, dan picker sumber tetap progressive sesuai funding mode.
 - [ ] Pengaturan mobile menampilkan description singkat satu baris tanpa clipping label utama.
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
 - [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, tidak menghapus draft/form, dan node gesture hanya dirender pada viewport mobile (`<=820px`), bukan disembunyikan belakangan di desktop.
@@ -62,7 +63,10 @@
 - [ ] Partial-resource failure tidak boleh tampak sebagai data kosong yang sah: merged workspace **Atur Dana** menunggu read model Alokasi/Kebutuhan/Jadwal/Kewajiban pada initial load, sedangkan surface lain yang masih dapat dipakai menampilkan warning + retry untuk resource pendukung.
 - [ ] Complete/archive state tidak tertukar: Kewajiban dihentikan tidak disebut selesai, dan Target completed-only tidak menampilkan hero `0 target aktif`.
 - [ ] Keyboard/focus/label/contrast/reduced-motion/tap target diperiksa pada light dan dark bila terdampak; light harus punya tonal depth yang cukup (canvas/surface/section terbedakan), sedangkan dark tetap memakai luminance bertingkat tanpa sekadar meng-invert light.
-- [ ] Mobile control penting ≥44×44px; termasuk toggle visibilitas saldo, filter Notifikasi, disclosure detail, dan link tindakan compact; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
+- [ ] Mobile control penting ≥44×44px melalui `--mobile-hit-target`; glyph visual boleh lebih kecil tetapi hit area tidak. Cakup toggle, filter/tab compact, checkbox, clear-search, pagination, disclosure/detail, dan link/action compact; input text efektif 16px; safe-area, keyboard virtual, dan overflow diperiksa.
+- [ ] Light theme meaningful `text-soft`/`text-muted` pada surface white/soft/strong/tint memenuhi contrast normal text ≥4.5:1; status/focus/non-color cue tetap terbaca di light dan dark.
+- [ ] Card/row interaktif memakai native button/link atau explicit action control; pseudo-button (`role="button" + tabIndex`) direview dan tidak dipakai bila native semantic tersedia.
+- [ ] `npm run test:browser` PASS untuk overflow, 44px rendered touch target, keyboard focus, text-spacing, light/dark parity, dan reduced-motion sebelum UI-responsive release.
 - [ ] Nominal utama tidak ellipsis dan hierarchy informasi dapat dipindai tanpa card/panel berulang yang tidak perlu.
 - [ ] **Pastikan Saldo Sesuai** desktop tidak menyembunyikan kolom **Selisih/Status**; breakpoint dua-panel hanya aktif bila riwayat memiliki lebar yang cukup dan tidak ada overflow kritis tanpa affordance.
 - [ ] Collection kecil tidak mempertahankan kontrol yang tidak berguna: ringkasan satu-item, search/filter dataset kecil, atau tab jenis bernilai nol disembunyikan secara progresif.
@@ -129,6 +133,7 @@
 - [ ] Delivery Git tidak memakai `--no-verify`/force push dan GitHub **Quality** dipantau setelah push.
 
 ### Form Kebutuhan (canonical)
+- [ ] Batch **Atur kebutuhan** memakai summary-first/edit-on-demand: hanya row aktif berupa form, draft lain berupa summary compact; nominal tidak ellipsis, font mengecil terbatas, dan `<=360px` menumpuk nama + nominal. Semua tombol row/hapus/tambah/kategori memiliki hit target minimal 44px.
 - [ ] Tambah/Edit kebutuhan tetap compact; **Cara penggunaan** memakai inline picker canonical seperti rekening/ATM dengan ikon kecil, bukan card/choice besar yang mendominasi form.
 - [ ] Create tidak memilih cara penggunaan otomatis; submit tanpa pilihan gagal dengan pesan yang jelas.
 - [ ] Edit hanya dapat mengubah cara penggunaan selama belum ada pemakaian; setelah terpakai field read-only dan backend menolak payload perubahan.

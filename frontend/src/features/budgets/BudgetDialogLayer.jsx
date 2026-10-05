@@ -157,6 +157,7 @@ const BudgetModal = ({ open, close, existingBudget, saveState, pendingSchedule, 
       <BudgetRecordingModeField existingBudget={existingBudget} form={form} setForm={setForm} />
       {showSchedule ? <BudgetScheduleFields form={form} setForm={setForm} /> : null}
       <BudgetShoppingPreferenceField
+        compact
         checked={Boolean(form.shopping_enabled)}
         openItems={Number(existingBudget?.shopping_open_items || 0)}
         onChange={(shopping_enabled) => setForm((current) => ({ ...current, shopping_enabled }))}

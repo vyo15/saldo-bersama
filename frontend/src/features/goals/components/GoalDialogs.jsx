@@ -15,10 +15,16 @@ import { canRepresentAccountTransfer } from "../../../domain/ownership.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import TemporalInput from "../../../components/common/TemporalInput.jsx";
 
+const goalTypeOptions = [
+  { value: "savings", label: "Tabungan", icon: TargetIcon },
+  { value: "emergency_fund", label: "Darurat", icon: EmergencyFundIcon },
+  { value: "sinking_fund", label: "Berkala", icon: SinkingFundIcon },
+];
+
 const fundingOptions = [
-  { value: "cash", label: "Rekening", icon: CashIcon, description: "Tabungan tunai biasa" },
-  { value: "investment", label: "Investasi", icon: InvestmentIcon, description: "Saham atau reksa dana" },
-  { value: "mixed", label: "Campuran", icon: TargetIcon, description: "Tunai + investasi" },
+  { value: "cash", label: "Rekening", icon: CashIcon },
+  { value: "investment", label: "Investasi", icon: InvestmentIcon },
+  { value: "mixed", label: "Campuran", icon: TargetIcon },
 ];
 
 const investmentSourceOptions = (portfolios = []) => portfolios.map((portfolio) => ({
@@ -47,10 +53,10 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, investmentPortf
     <form id="goal-create-form" className="form-grid" onSubmit={createGoal}>
       <fieldset className="mutation-retry-lock" disabled={retryOnly}>
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
-      <VisualChoiceGroup className="form-grid__full" legend="Jenis target" name="goal-type" value={form.goal_type} onChange={(goal_type) => setForm((current) => ({ ...current, goal_type }))} options={[{ value: "savings", label: "Tabungan tujuan", icon: TargetIcon, description: "Target nominal" }, { value: "emergency_fund", label: "Dana darurat", icon: EmergencyFundIcon, description: "Cadangan kebutuhan mendadak" }, { value: "sinking_fund", label: "Dana berkala", icon: SinkingFundIcon, description: "Kebutuhan periodik" }]} columns={3} />
+      <VisualChoiceGroup className="form-grid__full" legend="Jenis target" name="goal-type" value={form.goal_type} onChange={(goal_type) => setForm((current) => ({ ...current, goal_type }))} options={goalTypeOptions} columns={3} mobileColumns={3} segmented />
       <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
       <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
-      <VisualChoiceGroup className="form-grid__full" legend="Cara menabung" name="goal-funding-mode" value={form.funding_mode} onChange={(funding_mode) => setForm((current) => ({ ...current, funding_mode, account_id: funding_mode === "investment" ? "" : current.account_id, portfolio_id: funding_mode === "investment" ? current.portfolio_id : "" }))} options={fundingOptions} columns={3} compact />
+      <VisualChoiceGroup className="form-grid__full" legend="Cara menabung" name="goal-funding-mode" value={form.funding_mode} onChange={(funding_mode) => setForm((current) => ({ ...current, funding_mode, account_id: funding_mode === "investment" ? "" : current.account_id, portfolio_id: funding_mode === "investment" ? current.portfolio_id : "" }))} options={fundingOptions} columns={3} mobileColumns={3} segmented />
       {cashFunding ? <InlineSelectionPicker className="form-grid__full" label="Rekening tabungan" required value={form.account_id} onChange={(account_id) => setForm((current) => ({ ...current, account_id }))} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} /> : null}
       {investmentFunding ? <InlineSelectionPicker className="form-grid__full" label="Sumber investasi" required value={form.portfolio_id} onChange={(portfolio_id) => setForm((current) => ({ ...current, portfolio_id }))} placeholder="Pilih sumber investasi" placeholderOption={{ icon: InvestmentIcon }} options={investmentSourceOptions(investmentPortfolios)} /> : null}
       {form.funding_mode === "mixed" ? <CompactNotice className="form-grid__full" tone="info" title="Satu Target, dua sumber">Dana tunai memakai rekening di atas. Saham atau reksa dana dapat dihubungkan dari tombol Tambah dana setelah Target dibuat.</CompactNotice> : null}
@@ -71,7 +77,7 @@ const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => {
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={editGoal?.name || ""} onChange={(event) => setEditGoal((current) => ({ ...current, name: event.target.value }))} /></label>
       <MoneyInput id="goal-edit-target" label="Target nominal" value={editGoal?.target_amount || ""} onChange={(value) => setEditGoal((current) => ({ ...current, target_amount: value }))} />
       <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={editGoal?.target_date || ""} onChange={(event) => setEditGoal((current) => ({ ...current, target_date: event.target.value }))} /></label>
-      <VisualChoiceGroup className="form-grid__full" legend="Prioritas" name="goal-priority" value={editGoal?.priority || "normal"} onChange={(priority) => setEditGoal((current) => ({ ...current, priority }))} options={[{ value: "low", label: "Rendah", icon: PriorityLowIcon }, { value: "normal", label: "Normal", icon: PriorityNormalIcon }, { value: "high", label: "Tinggi", icon: PriorityHighIcon }]} columns={3} compact />
+      <VisualChoiceGroup className="form-grid__full" legend="Prioritas" name="goal-priority" value={editGoal?.priority || "normal"} onChange={(priority) => setEditGoal((current) => ({ ...current, priority }))} options={[{ value: "low", label: "Rendah", icon: PriorityLowIcon }, { value: "normal", label: "Normal", icon: PriorityNormalIcon }, { value: "high", label: "Tinggi", icon: PriorityHighIcon }]} columns={3} mobileColumns={3} segmented />
       <CompactNotice className="form-grid__full" tone="neutral" title="Cara menabung tetap">Cara menabung ditetapkan saat Target dibuat. Setelah ada riwayat dana, mode tidak diubah dari Edit agar catatan tunai dan investasi tetap konsisten.</CompactNotice>
       {editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}
     </form>

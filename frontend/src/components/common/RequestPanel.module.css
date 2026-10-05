@@ -34,7 +34,7 @@
   .top small, .meta { font-size: var(--font-size-xs); line-height: 1.45; }
   .status { flex: 0 0 auto; min-height: 27px; padding: 4px 8px; display: inline-flex; align-items: center; font-size: var(--font-size-xs); }
   .actions { justify-content: flex-end; gap: 7px; margin-top: 2px; }
-  .actions > * { width: auto; min-width: 5.25rem; min-height: 38px; padding-inline: 12px; }
+  .actions > * { width: auto; min-width: 5.25rem; min-height: var(--mobile-hit-target); padding-inline: 12px; }
   .reviewDisclosure > summary { min-height: var(--mobile-control-height); }
 }
 
