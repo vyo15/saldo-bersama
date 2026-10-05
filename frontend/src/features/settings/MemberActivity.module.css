@@ -90,7 +90,7 @@
   .memberActivityPeriod :global(input) { min-height: var(--mobile-control-height); }
   .memberActivityTypeFilters { margin-inline: calc(var(--mobile-page-gutter) * -1); padding: 0 var(--mobile-page-gutter) 2px; gap: 6px; }
   .memberActivityType,
-  .memberActivityTypeActive { min-height: 36px; padding-inline: 12px; border-color: transparent; background: var(--surface-soft); }
+  .memberActivityTypeActive { min-height: var(--mobile-hit-target); padding-inline: 12px; border-color: transparent; background: var(--surface-soft); }
   .memberActivityTypeActive { background: var(--primary-soft); color: var(--primary-strong); }
 
   .memberActivityMetrics {
@@ -119,7 +119,7 @@
   }
   .memberActivityItemIcon { width: 2.35rem; height: 2.35rem; border-radius: 50%; }
   .memberActivityItemValue :global(.status-badge) { display: none; }
-  .memberActivityOpenAll { width: auto; margin: 14px 0 0 auto; min-height: 40px; }
+  .memberActivityOpenAll { width: auto; margin: 14px 0 0 auto; min-height: var(--mobile-hit-target); }
   .memberActivityLoading,
   .memberActivityEmpty { min-height: 7rem; border: 0; border-radius: 0; background: var(--surface-soft); }
 }

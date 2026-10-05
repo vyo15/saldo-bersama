@@ -73,6 +73,6 @@
   }
 
   .detailBack {
-    min-height: 32px;
+    min-height: var(--mobile-hit-target);
   }
 }

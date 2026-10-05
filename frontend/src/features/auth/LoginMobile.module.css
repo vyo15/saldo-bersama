@@ -320,8 +320,8 @@
 }
 
 .login-mobile-dot {
-  width: 28px;
-  height: 44px;
+  width: var(--mobile-hit-target);
+  height: var(--mobile-hit-target);
   padding: 0;
   border: 0;
   border-radius: var(--radius-pill);

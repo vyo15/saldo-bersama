@@ -232,6 +232,7 @@ test("Tambah Kebutuhan pada detail Alokasi memakai batch compact tanpa mengganda
   assert.match(controller, /setFormMode\("edit-single"\)/);
   assert.match(dialog, /BudgetBatchEditor/);
   assert.match(dialog, /formController\.formMode === "create-batch"/);
+  assert.match(batchEditor, /title="Atur kebutuhan"/);
   assert.match(batchEditor, /Tambah kebutuhan lain/);
   assert.match(batchEditor, /budget-batch-form/);
   assert.match(batchEditor, /Cara penggunaan/);
@@ -244,9 +245,13 @@ test("Tambah Kebutuhan pada detail Alokasi memakai batch compact tanpa mengganda
   assert.doesNotMatch(batchEditor, /availableCategoryCount/);
   assert.match(batchEditor, /disabled=\{addDisabled\}/);
   assert.match(batchEditor, /Alokasi Dana ·/);
-  assert.match(batchStyles, /grid-template-columns: minmax\(0,1fr\) 2\.6rem/);
+  assert.match(batchStyles, /grid-template-columns: minmax\(0,1fr\) var\(--mobile-hit-target\)/);
   assert.match(batchStyles, /border-bottom: 1px solid var\(--border\)/);
   assert.match(batchStyles, /shadow-control/);
+  assert.match(batchStyles, /amountValueTight/);
+  assert.match(batchStyles, /amountValueCompact/);
+  assert.match(batchStyles, /@media \(max-width:360px\)[\s\S]*grid-template-columns: 1fr/);
+  assert.match(batchStyles, /var\(--mobile-hit-target\)/);
   assert.match(model, /validateBudgetBatchRows/);
   assert.match(model, /Nama kebutuhan yang sama tidak dapat ditambahkan dua kali/);
   assert.doesNotMatch(model, /Kategori yang sama tidak dapat ditambahkan dua kali/);

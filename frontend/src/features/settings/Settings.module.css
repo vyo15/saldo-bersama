@@ -719,7 +719,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 }
 .auditFilters::-webkit-scrollbar { display: none; }
 .auditFilter {
-  min-height: 2.35rem;
+  min-height: var(--mobile-hit-target);
   padding: .45rem .8rem;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -736,12 +736,14 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 
 .auditDesktopTable { min-width: 0; overflow-x: auto; }
 .auditDesktopTable table { margin: 0; }
-.auditDesktopTable tbody tr { cursor: pointer; }
-.auditDesktopTable tbody tr:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
 .auditDesktopTable td { vertical-align: middle; }
 .auditDesktopTable td:nth-child(2), .auditDesktopTable td:nth-child(3) { min-width: 10rem; }
 .auditDesktopTable td strong, .auditDesktopTable td small { display: block; }
 .auditDesktopTable td small { margin-top: .15rem; color: var(--text-muted); font-size: var(--font-size-xs); }
+.auditDetailCell { width: 1%; text-align: end; white-space: nowrap; }
+.auditDetailButton { width: var(--mobile-hit-target); min-width: var(--mobile-hit-target); height: var(--mobile-hit-target); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-control); display: inline-grid; place-items: center; background: var(--surface); color: var(--primary); cursor: pointer; }
+.auditDetailButton:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .auditDetailButton:hover { border-color: var(--primary); background: var(--primary-soft); } }
 
 .auditTimeline { display: none; }
 .auditDayGroup { min-width: 0; }

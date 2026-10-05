@@ -19,8 +19,7 @@ import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { createReconciliation } from "./reconciliations.api.js";
 import styles from "./ReconciliationsPage.module.css";
 import ReconciliationInputPanel from "./components/ReconciliationForm.jsx";
-import ReconciliationHistory from "./components/ReconciliationHistory.jsx";
-
+const ReconciliationHistory = lazy(() => import("./components/ReconciliationHistory.jsx"));
 const ReconciliationResolution = lazy(() => import("./components/ReconciliationResolution.jsx"));
 
 const INITIAL_FORM = Object.freeze({ account_id: "", actual_balance: "", notes: "" });
@@ -234,7 +233,9 @@ const ReconciliationHistoryDisclosure = ({ expanded, setExpanded, data }) => <se
     <FiChevronDown className={styles.historyDisclosureChevron} data-expanded={expanded ? "true" : "false"} aria-hidden="true" />
   </button>
   <div id="reconciliation-history-content" className={`${styles.historyDisclosureContent}${expanded ? ` ${styles.isExpanded}` : ""}`}>
-    <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
+    <Suspense fallback={<div className={styles.historyLoading} role="status">Memuat riwayat pemeriksaan…</div>}>
+      <ReconciliationHistory formatReconciledAt={formatReconciledAt} accounts={data.accounts} items={data.historyItems} accountLookup={data.accountLookup} historyAccountId={data.historyAccountId} setHistoryAccountId={data.setHistoryAccountId} />
+    </Suspense>
   </div>
 </section>;
 

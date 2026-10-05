@@ -110,6 +110,7 @@ Minimum contract:
 ### Auto-funding Kebutuhan
 
 - `budgets.batchCreate` mendukung maksimal 20 item dan atomic. Identitas item memakai **nama kebutuhan** pada periode/ownership/Alokasi, sehingga beberapa kebutuhan boleh memakai kategori yang sama; nama kebutuhan duplikat pada Alokasi yang sama ditolak. Pola `recurring` dapat membuat Jadwal Rutin dalam transaction yang sama.
+- Editor batch **Atur kebutuhan** wajib summary-first/edit-on-demand: satu row aktif dapat diedit penuh, row lain tetap summary compact dan dapat dipilih kembali. Nominal memakai tabular-nums tanpa ellipsis, typography hanya turun terbatas untuk angka panjang, viewport `<=360px` menumpuk nama + nominal, dan seluruh control tindakan mobile menjaga hit target 44px.
 - Menambah Kebutuhan otomatis menaikkan dana Alokasi sebesar delta dari Dana Tersedia tanpa mengubah saldo fisik.
 - Edit nominal hanya menyesuaikan delta; nominal tidak boleh turun di bawah usage aktual.
 - Bila Dana Tersedia kurang, Kebutuhan tetap tersimpan dan funding hanya mengikat jumlah yang tersedia. Response wajib menjelaskan `requestedAmount`, `amount`, `availableAmount`, dan `shortageAmount`; saldo fisik tidak berubah dan tidak boleh ada ledger fiktif.
@@ -165,6 +166,7 @@ Minimum contract:
 - Menu `Lainnya` mobile menguji empat grouping canonical **Rencana & Insight / Keuangan / Keluarga & Akses / Aplikasi**, filtering owner-only tetap capability-aware, dan row Pengaturan mobile menampilkan description satu baris tanpa menurunkan target sentuh 44px.
 - Laporan tidak boleh merender `SummaryStrip`/KPI kedua setelah hero; global memverifikasi Selisih + fakta Masuk/Keluar/Saldo akhir, scope Alokasi memverifikasi Sisa + fakta Dialokasikan/Terpakai/Penggunaan. Scope global juga memverifikasi **Kondisi Alokasi** sebagai segmented health bar Aman/Perhatian/Melewati + interpretasi otomatis; `Tinjau` membuka bagian Penggunaan Alokasi pada **Analisis lengkap**. Analisis lengkap tetap memuat Saldo awal periode/planning/Kewajiban/rekening/pencatat dalam satu disclosure, tanpa disclosure kedua `Rincian lainnya`.
 - Card Target default menguji jenis/nama, current/target, progress, sisa + pace, primary action + overflow. Tanggal target, estimasi/bulan, breakdown sumber progress, completion explanation, reminder/edit/lifecycle harus tersedia melalui progressive detail/overflow dan tidak memenuhi card default.
+- Modal create/edit Target menguji tiga pilihan fixed sebagai `VisualChoiceGroup` mode segmented dengan `mobileColumns={3}` agar 320–430px tetap satu baris tanpa 2+1/wrap. Label create canonical: `Tabungan / Darurat / Berkala` dan `Rekening / Investasi / Campuran`; Prioritas edit `Rendah / Normal / Tinggi`. Opsi tidak membawa description sekunder di tile; radio semantics, focus-visible, reduced-motion, dan target sentuh tetap canonical.
 - Prioritas alert mengutamakan tindakan manusia: investment mismatch > recurring overdue > budget/envelope overspend > recurring due > funding gap > unallocated expense > goal behind > stale reconciliation. Reconciliation non-investasi yang sudah dicocokkan tetap checkpoint dan tidak membangkitkan persistent historical-difference alert.
 - Status Kebutuhan menguji `fixed_once` tepat 100% = **Selesai** (bukan attention dan tanpa alert/notifikasi threshold 100%), `flexible`/`recurring` tepat 100% = **Dana habis**, dan `>100%` = **Melebihi rencana**. Laporan memakai semantik yang sama; row selesai compact dan metadata historis hanya muncul di Detail kebutuhan.
 - Report monthly/trend tidak menghitung Transfer sebagai income/expense dan memakai snapshot/read transaction konsisten.
@@ -203,6 +205,9 @@ Minimum contract:
 
 - Loading, empty, filtered-empty, error, offline, unauthorized, maintenance, conflict tersedia sesuai surface.
 - Tap target mobile ≥44×44px; text input efektif 16px; safe area, keyboard virtual, overflow, scroll restoration, dark/light, reduced-motion diuji.
+- Token `--mobile-hit-target: 44px` diuji pada compact shared/feature controls; rendered browser smoke menolak native control visible <44px pada viewport mobile public/login. Visual icon boleh lebih kecil selama hit area memenuhi contract.
+- Light token `text-soft`/`text-muted` diuji secara numerik terhadap surface white/soft/strong/tint dan harus ≥4.5:1; theme parity browser memastikan light/dark benar-benar mengganti page/text token tanpa overflow.
+- Investment holding dan Audit desktop diuji memakai native explicit button action, bukan pseudo-button row/card.
 - Nominal utama tidak ellipsis dan tabular/financial hierarchy tetap dapat dipindai.
 - Modal: buka → tutup/batal → buka lagi serta modal A → B → kembali tidak meninggalkan overlay/history/body-lock/focus stale.
 - Browser Back menutup modal lebih dulu bila contract modal berlaku.

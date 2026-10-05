@@ -17,6 +17,7 @@ test("shared visual choice control keeps radio semantics and balanced responsive
   assert.match(source, /safeMobileColumns/);
   assert.match(source, /descriptive/);
   assert.match(source, /denseTiles/);
+  assert.match(source, /segmented/);
   assert.match(source, /helperPanel/);
   assert.match(source, /Icon \? <span className=\{styles\.iconWrap\}/);
   assert.match(css, /--visual-choice-columns/);
@@ -30,6 +31,7 @@ test("shared visual choice control keeps radio semantics and balanced responsive
   assert.match(css, /\.helperPanel/);
   assert.match(css, /\.compact \.card\.noIcon/);
   assert.match(css, /\.denseTiles \.card/);
+  assert.match(css, /\.segmented \.card/);
   assert.match(css, /\.card\.refund/);
 });
 
@@ -63,7 +65,9 @@ test("fixed-option finance forms use visual choices and dynamic app-owned lists 
   assert.match(sources[2], /label="Kategori"/);
   assert.match(sources[3], /<InlineSelectionPicker[\s\S]*label="Dari rekening"/);
   assert.match(sources[4], /label = "Rekening default"/);
-  assert.match(sources[5], /legend="Cara menabung"/);
+  assert.match(sources[5], /legend="Jenis target"[\s\S]*mobileColumns=\{3\}[\s\S]*segmented/);
+  assert.match(sources[5], /legend="Cara menabung"[\s\S]*mobileColumns=\{3\}[\s\S]*segmented/);
+  assert.match(sources[5], /legend="Prioritas"[\s\S]*mobileColumns=\{3\}[\s\S]*segmented/);
   assert.match(sources[5], /label="Rekening tabungan"/);
   assert.match(sources[5], /label="Dari rekening"/);
   assert.match(sources[6], /SelectionField/);

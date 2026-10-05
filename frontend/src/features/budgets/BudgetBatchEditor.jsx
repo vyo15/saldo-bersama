@@ -39,6 +39,8 @@ const buildCategoryOptions = (categories) => categories.map((category) => ({
 const CompactAmountInput = ({ row, onChange }) => {
   const numeric = row.amount === "" ? "" : Number(row.amount || 0);
   const value = numeric === "" ? "" : String(numeric).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const digitCount = value.replace(/\D/g, "").length;
+  const amountClassName = digitCount > 12 ? styles.amountValueCompact : digitCount > 9 ? styles.amountValueTight : undefined;
   return <label className={styles.fieldBlock}>
     <span>Nominal</span>
     <span className={styles.amountField}>
@@ -49,6 +51,7 @@ const CompactAmountInput = ({ row, onChange }) => {
         value={value}
         placeholder="0"
         aria-label="Nominal kebutuhan"
+        className={amountClassName}
         onChange={(event) => {
           const raw = event.target.value;
           if (!raw) return onChange("");
@@ -194,7 +197,7 @@ const BudgetBatchEditor = ({ open, controller, categories, lockedEnvelope, sourc
     discardGuard={guard}
     discardSubject="Kebutuhan"
     dismissible={!submitting}
-    title="Apa saja kebutuhannya?"
+    title="Atur kebutuhan"
     description={lockedEnvelope?.name ? `Alokasi Dana · ${lockedEnvelope.name}` : undefined}
     footer={<BatchFooter controller={controller} close={guard.discardAndClose} funding={funding} />}
   >
