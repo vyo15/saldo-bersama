@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertCanonicalMainPush, parsePrePushUpdates } from "../../scripts/pre-push-verify.mjs";
+import { assertCanonicalMainPush, parsePrePushUpdates, runPrePushGuard } from "../../scripts/pre-push-verify.mjs";
 
 const update = ({
   localRef = "refs/heads/main",
@@ -60,4 +60,19 @@ test("pre-push parser membaca payload Git empat kolom secara fail-closed", () =>
   assert.equal(parsed.length, 1);
   assert.equal(parsed[0].localRef, "refs/heads/main");
   assert.throws(() => parsePrePushUpdates("invalid payload"), (error) => error?.code === "PRE_PUSH_INPUT_INVALID");
+});
+
+
+test("pre-push tanpa ref update menyerahkan non-fast-forward/no-op kembali ke Git tanpa quality run palsu", async () => {
+  let verifyCalls = 0;
+  let inspectCalls = 0;
+  const result = await runPrePushGuard({
+    stdinSource: "",
+    verify: async () => { verifyCalls += 1; },
+    gitInspector: () => { inspectCalls += 1; return {}; },
+  });
+
+  assert.deepEqual(result, { skipped: true, reason: "NO_REF_UPDATES" });
+  assert.equal(verifyCalls, 0);
+  assert.equal(inspectCalls, 0);
 });

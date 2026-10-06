@@ -21,6 +21,9 @@ test("quality workflow menjalankan verify canonical dan verifikasi clean archive
   assert.match(workflow, /actions\/setup-node@v5/);
   assert.match(workflow, /node-version-file:\s*["']?\.node-version["']?/);
   assert.match(workflow, /Check changed whitespace/);
+  assert.match(workflow, /git cat-file -e .*\^\{commit\}/, "CI harus memvalidasi bahwa SHA event masih tersedia setelah history rewrite");
+  assert.match(workflow, /Base commit tidak tersedia/, "CI harus punya fallback eksplisit untuk SHA orphan setelah amend\/force-push");
+  assert.match(workflow, /git diff --check HEAD\^ HEAD/);
   assert.match(workflow, /git diff --check/);
   assert.match(workflow, /npm ci/);
   assert.match(workflow, /npm run verify/);

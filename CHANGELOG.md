@@ -1,3 +1,8 @@
+## 6 Oktober 2026 - CI history-rewrite recovery dan pre-push diagnostic
+- Memperbaiki GitHub **Quality / Check changed whitespace** agar tidak gagal palsu dengan `fatal: bad object` ketika `github.event.before` atau base SHA sudah orphan setelah amend/force-push. CI sekarang memverifikasi object commit dengan `git cat-file -e` sebelum `git diff --check`, lalu fallback eksplisit ke `HEAD^..HEAD` bila base tidak lagi tersedia.
+- Memperbaiki managed pre-push pada kasus Git tidak mengirim ref update (mis. push non-fast-forward sudah tidak eligible): hook tidak lagi menampilkan error misleading **Push harus mengubah tepat satu ref**, tidak menjalankan verification palsu, dan menyerahkan diagnosis akhir ke Git. Push yang benar-benar mengirim ref tetap fail-closed untuk branch/ref/SHA/dirty tree/non-fast-forward.
+- Menambah regression governance/tooling untuk contract history-rewrite CI dan no-ref pre-push; workflow harian tetap `git push origin main` tanpa mengubah gate canonical.
+
 ## 5 Oktober 2026 - Atur Kebutuhan compact + browser smoke recovery
 - Refine modal Target mobile: `Jenis target`, `Cara menabung`, dan `Prioritas` memakai segmented 3-option row satu baris dengan label pendek, tanpa grid 2+1/wrap; radio/focus/reduced-motion semantics tetap canonical.
 - Memadatkan batch **Atur kebutuhan** di detail Alokasi tanpa mengubah business flow: satu row aktif tetap editable penuh, draft lain summary-first, spacing dipadatkan, helper Daftar Belanja dibuat lebih singkat pada mode compact, dan modal memakai judul langsung `Atur kebutuhan`.

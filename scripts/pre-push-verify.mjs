@@ -104,6 +104,10 @@ export const runPrePushGuard = async ({
 } = {}) => {
   const source = stdinSource ?? await readStdin();
   const updates = parsePrePushUpdates(source);
+  if (updates.length === 0) {
+    console.log("\nPre-push: Git tidak mengirim ref untuk diverifikasi; lanjutkan agar Git menampilkan status push canonical.");
+    return { skipped: true, reason: "NO_REF_UPDATES" };
+  }
   const gitState = gitInspector({ updates });
   const update = assertCanonicalMainPush({ updates, ...gitState });
   const changedPaths = changedPathsInspector({ remoteSha: update.remoteSha, localSha: update.localSha });
