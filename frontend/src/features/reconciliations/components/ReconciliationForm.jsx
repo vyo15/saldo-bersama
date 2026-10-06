@@ -87,7 +87,7 @@ const DifferencePreview = ({ preview, selectedAccount }) => {
   );
 };
 
-const ActualBalanceField = ({ selectedAccount, form, setForm, setSubmitState, disabled }) => {
+const ActualBalanceField = ({ selectedAccount, form, setForm, setSubmitState, disabled, error }) => {
   if (!selectedAccount) return null;
   const copy = balanceCopy(selectedAccount);
   const handleChange = (value) => {
@@ -96,32 +96,34 @@ const ActualBalanceField = ({ selectedAccount, form, setForm, setSubmitState, di
   };
   if (!selectedAccount.allow_negative) {
     return <>
-      <MoneyInput id="reconciliation-actual-balance" label={copy.input} required disabled={disabled} value={form.actual_balance} onChange={handleChange} />
+      <MoneyInput id="reconciliation-actual-balance" label={copy.input} required disabled={disabled} value={form.actual_balance} error={error || ""} onChange={handleChange} />
       <small className={styles.balanceHint}>{copy.hint}</small>
     </>;
   }
   return (
     <label className="field" htmlFor="reconciliation-actual-balance">
       <span>{copy.input} *</span>
-      <input id="reconciliation-actual-balance" inputMode="numeric" required disabled={disabled} value={form.actual_balance} onChange={(event) => handleChange(event.target.value.replace(/[^0-9-]/g, "").replace(/(?!^)-/g, ""))} aria-describedby="reconciliation-negative-help" />
+      <input id="reconciliation-actual-balance" inputMode="numeric" required disabled={disabled} value={form.actual_balance} onChange={(event) => handleChange(event.target.value.replace(/[^0-9-]/g, "").replace(/(?!^)-/g, ""))} aria-invalid={Boolean(error) || undefined} aria-describedby={error ? "reconciliation-actual-balance-error reconciliation-negative-help" : "reconciliation-negative-help"} />
+      {error ? <small id="reconciliation-actual-balance-error" className="field__error">{error}</small> : null}
       <small id="reconciliation-negative-help">Rekening ini mengizinkan saldo negatif; gunakan tanda minus bila diperlukan.</small>
     </label>
   );
 };
 
 const BalanceComparisonFlow = ({ selectedAccount, form, setForm, submitState, setSubmitState, onSubmit, preview }) => {
+  const balanceError = submitState.error && /saldo|nominal|angka|negatif/i.test(submitState.error.message || "") ? submitState.error.message : "";
   const [notesOpen, setNotesOpen] = useState(false);
   const progressing = ["submitting", "syncing"].includes(submitState.status);
   const busy = progressing || submitState.status === "completed";
   const buttonLabel = submitState.status === "completed" ? "Pemeriksaan tersimpan" : submitState.status === "syncing" ? "Memperbarui..." : submitState.status === "submitting" ? "Membandingkan..." : "Bandingkan saldo";
   return (
     <form className={styles.differenceFlow} onSubmit={onSubmit} noValidate>
-      <ActualBalanceField selectedAccount={selectedAccount} form={form} setForm={setForm} setSubmitState={setSubmitState} disabled={busy} />
+      <ActualBalanceField selectedAccount={selectedAccount} form={form} setForm={setForm} setSubmitState={setSubmitState} disabled={busy} error={balanceError} />
       <DifferencePreview preview={preview} selectedAccount={selectedAccount} />
       <button type="button" className={styles.notesToggle} onClick={() => setNotesOpen((current) => !current)} aria-expanded={notesOpen}>{notesOpen ? "Sembunyikan catatan" : "+ Tambahkan catatan"}</button>
       {notesOpen ? <label className={`field ${styles.notesField}`} htmlFor="reconciliation-notes"><span className={styles.notesLabel}><span>Catatan</span><small>{form.notes.length}/250</small></span><textarea id="reconciliation-notes" rows="2" maxLength="250" value={form.notes} disabled={busy} placeholder="Opsional" onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label> : null}
       <div className={styles.guardLine}><FiShield aria-hidden="true" /><span>Pemeriksaan hanya membandingkan angka. <strong>Saldo tidak diubah otomatis.</strong></span></div>
-      {submitState.error ? <div className="notice notice--danger" role="alert">{submitState.error.message}</div> : null}
+      {submitState.error && !balanceError ? <div className="notice notice--danger" role="alert">{submitState.error.message}</div> : null}
       <Button variant="primary" icon={FiCheckCircle} type="submit" loading={progressing} disabled={busy || !selectedAccount || form.actual_balance === ""}>{buttonLabel}</Button>
       {progressing ? <ReconciliationSubmitProgress phase={submitState.status} /> : null}
     </form>

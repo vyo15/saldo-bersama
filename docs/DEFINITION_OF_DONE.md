@@ -23,3 +23,9 @@ Untuk guarded/high-risk, Done juga mensyaratkan approval eksplisit dan evidence 
 - Structural refactor menjaga public facade/API dan tidak menambah business-rule implementation kedua. Circular dependency tetap nol.
 - File besar direview berdasarkan responsibility/cognitive load; line count sendiri bukan alasan refactor.
 
+
+### Human-error safety
+- Financial mutation tidak memungkinkan double-submit atau changed-payload retry setelah outcome unknown.
+- Field error yang dapat diketahui client tampil inline dan dapat ditemukan keyboard/screen reader.
+- Reversible low-risk action menyediakan recovery/Undo bila contract backend mendukung.
+- Perubahan privilege existing user memiliki review acknowledgement eksplisit.

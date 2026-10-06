@@ -275,3 +275,9 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 - Kewajiban tidak boleh membuat track/fill progress lokal; kartu dan form memakai `components/common/ProgressBar.jsx`.
 - `ProgressBar` yang sudah menampilkan persentase tidak boleh ditemani persentase kedua pada surface yang sama.
 - Viewport 320/360/390/430px diuji untuk nama panjang, nominal besar, 0/100%, empty state, overflow menu, dan focus/keyboard target.
+
+### Human-error regression
+- Shopping checkout: duplicate confirmation reset ketika payload berubah; outcome unknown mengunci field dan retry data sama.
+- Shopping item: quantity invalid ditolak sebelum mutation; remove menyediakan Undo selama item belum purchased.
+- Allocation/Target/Reconciliation: nominal/saldo invalid tampil inline dan preview dampak tetap terlihat sebelum mutation.
+- Perubahan role anggota memerlukan acknowledgement saat role existing berubah.

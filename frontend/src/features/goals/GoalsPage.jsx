@@ -42,11 +42,13 @@ const useGoalCreation = ({ resource, investmentResource, refreshOverview, invali
   const createGoal = (event) => {
     event.preventDefault();
     setMessage(null);
-    if (!form.target_date) return setMessage({ type: "danger", text: "Tanggal target wajib dipilih." });
+    let targetAmount = 0;
+    try { targetAmount = assertPositiveRupiah(form.target_amount); } catch { return setMessage({ type: "danger", field: "target_amount", text: "Target nominal harus lebih dari Rp0." }); }
+    if (!form.target_date) return setMessage({ type: "danger", field: "target_date", text: "Tanggal target wajib dipilih." });
     if (["cash", "mixed"].includes(form.funding_mode) && !form.account_id) return setMessage({ type: "danger", text: "Pilih rekening tabungan Target." });
     if (form.funding_mode === "investment" && !form.portfolio_id) return setMessage({ type: "danger", text: "Pilih sumber investasi untuk Target." });
     return createMutation.run(async () => {
-      const payload = { ...form, target_amount: assertPositiveRupiah(form.target_amount) };
+      const payload = { ...form, target_amount: targetAmount };
       if (payload.funding_mode !== "investment") delete payload.portfolio_id;
       const result = await requestCreateGoal(payload, {});
       setForm(emptyGoalForm());
@@ -72,9 +74,11 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
   const saveGoal = async (event) => {
     event.preventDefault();
     if (!editGoal) return;
+    let targetAmount;
+    try { targetAmount = assertPositiveRupiah(editGoal.target_amount); } catch { setEditState({ status: "error", error: Object.assign(new Error("Target nominal harus lebih dari Rp0."), { field: "target_amount" }) }); return; }
     setEditState({ status: "submitting", error: null });
     try {
-      await requestUpdateGoal({ goal_id: editGoal.goal_id, row_version: editGoal.row_version, name: editGoal.name, target_amount: assertPositiveRupiah(editGoal.target_amount), target_date: editGoal.target_date, priority: editGoal.priority || "normal" }, { rowVersion: editGoal.row_version });
+      await requestUpdateGoal({ goal_id: editGoal.goal_id, row_version: editGoal.row_version, name: editGoal.name, target_amount: targetAmount, target_date: editGoal.target_date, priority: editGoal.priority || "normal" }, { rowVersion: editGoal.row_version });
       setEditGoal(null);
       setEditState({ status: "idle", error: null });
       notify({ message: "Target berhasil diperbarui.", tone: "success", dedupeKey: "goals:update" });

@@ -558,3 +558,10 @@ Adopsi Mantine harus dilakukan bertahap:
 ## Pola Daftar Belanja
 
 Daftar Belanja mewarisi token, primitive, typography Manrope, sidebar, dan bottom navigation existing. Capability ini **opt-in per Kebutuhan**, bukan aksi universal dan bukan hasil tebakan kategori. Tambah/Edit Kebutuhan memakai switch `Gunakan daftar belanja` dengan default off; bila masih ada barang `pending/in_cart`, switch aktif menjadi nonaktif untuk dimatikan dan helper menjelaskan langkah pemulihannya. Pada row Kebutuhan, CTA shopping hanya tampil saat `shopping_enabled=true`: tanpa item memakai `Buat daftar belanja`, sedangkan daftar berisi item memakai `Daftar belanja · N item`. Jangan menduplikasi CTA yang sama di overflow `•••`; overflow tetap untuk Detail/Edit/Jadwal. Kebutuhan yang tidak memakai capability (contoh umum: Listrik) dibiarkan memiliki whitespace normal tanpa placeholder/action pengganti. Mobile mengutamakan satu kolom, item row tanpa nested-card berlebih, touch target minimal 44px, serta sticky action yang menghormati safe area. Desktop boleh memakai summary rail dan modal mode belanja. State offline/read-only harus menjelaskan alasan; checklist tidak boleh memberi kesan saldo telah berubah sebelum checkout.
+
+### Human-error prevention
+- Aksi reversible berisiko rendah memakai **Undo**, bukan confirmation berulang.
+- Financial write dengan outcome tidak pasti wajib mengunci intent dan hanya menawarkan retry data yang sama.
+- Konfirmasi duplikat hanya berlaku untuk payload yang sama; perubahan nominal/tanggal/opsi membatalkan konfirmasi sebelumnya.
+- Error input yang dapat diketahui sebelum request ditampilkan inline pada field terkait.
+- Perubahan privilege/role wajib memiliki review acknowledgement yang eksplisit tanpa membuat nested modal.

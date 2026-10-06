@@ -73,3 +73,5 @@ Detail evidence dan remaining gap berada di `IMPLEMENTATION_MATRIX.md`; behavior
 - Real Administrator/Member smoke pada device/browser target tetap diperlukan untuk auth, accessibility, PWA/Push, dan perubahan responsive yang relevan.
 - Restore drill nyata dan external alert delivery tetap operational evidence terpisah dari source implementation.
 - RFC/roadmap Planned tidak boleh dianggap runtime hanya karena dokumennya tersedia.
+
+- Human-error hardening: Shopping duplicate/unknown-outcome, reversible remove Undo, quantity validation, Target/Alokasi inline financial guardrails, Rekonsiliasi field error, dan review perubahan role sudah dikunci source + regression.

@@ -58,7 +58,7 @@ const FundingFields = ({ accounts, envelopes, selectedAccount, target, form, set
         {selectedWithoutTarget ? <FundingNoTargetNotice sourceAccountId={selectedAccount.account_id} onCreateNew={onCreateNew} /> : null}
       </>}
     {!selectedWithoutTarget && !lockedWithoutTarget ? <>
-      <MoneyInput id="funding-flow-amount" label="Nominal" required value={form.amount} onChange={(amount) => setForm((current) => ({ ...current, amount }))} />
+      <MoneyInput id="funding-flow-amount" label="Nominal" required value={form.amount} error={amountNumber <= 0 && form.amount ? "Masukkan nominal lebih dari Rp0." : selectedAccount && amountNumber > available ? `Maksimal ${formatRupiah(available)} sesuai dana tersedia.` : ""} onChange={(amount) => setForm((current) => ({ ...current, amount }))} />
       {selectedAccount && invalidAmount && amountNumber > available ? <div className="notice notice--warning form-grid__full" role="status">Dana tersedia kurang {formatRupiah(amountNumber - available)}. Pilih nominal yang tidak melebihi dana bebas rekening ini.</div> : null}
       <label className="field form-grid__full"><span>Catatan</span><input maxLength="180" value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} placeholder="Contoh: alokasi pemasukan bulan ini" /></label>
     </> : null}

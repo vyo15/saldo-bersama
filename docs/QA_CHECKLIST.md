@@ -147,3 +147,12 @@
 - Jangan menyediakan pemilih **Alokasi manual** terpisah di composer. Surface canonical adalah **Penggunaan dana**: satu Kebutuhan cocok boleh auto-link namun tetap editable, beberapa kandidat wajib dipilih, dan nol kandidat/pilihan eksplisit **Dana Tersedia** harus dapat disimpan tanpa konfirmasi unallocated kedua.
 - `+ Catat` memakai prinsip context-aware: histori hanya meranking opsi dan tidak auto-select rekening/kategori/sumber; satu Kewajiban/Target/sumber investasi yang benar-benar menjadi satu-satunya pilihan valid boleh dilanjutkan otomatis, sedangkan banyak pilihan tetap meminta user; UI normal tidak boleh meminta user memilih broker/portfolio legacy. Picker canonical existing tetap dipakai; jangan membuat picker quick-record kedua.
 - Aksi yang dapat berujung delete/archive tidak boleh diberi label samar pada form edit. Gunakan label outcome-oriented seperti `Hapus / arsipkan`, lalu preview server menentukan tindakan final.
+
+## Human-error prevention
+- [ ] Ubah nominal/tanggal checkout setelah warning duplikat: konfirmasi lama harus gugur.
+- [ ] Simulasikan outcome write tidak pasti: field terkunci dan hanya retry data sama yang ditawarkan.
+- [ ] Hapus item Shopping lalu gunakan Urungkan sebelum timeout.
+- [ ] Coba quantity 0/kosong/tidak valid: mutation tidak terkirim dan error inline terlihat.
+- [ ] Coba setoran Target melebihi dana rekening/sisa Target: submit diblokir dengan error inline.
+- [ ] Ubah role anggota existing: review acknowledgement wajib sebelum Simpan.
+- [ ] Masukkan saldo rekonsiliasi invalid/negatif pada rekening non-negatif: error berada di field saldo.

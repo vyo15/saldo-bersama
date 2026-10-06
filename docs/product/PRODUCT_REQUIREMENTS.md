@@ -205,3 +205,9 @@ Fitur planned tidak boleh memengaruhi saldo sampai model, migration, authorizati
 
 ### Pemanis visual Alokasi
 Dekorasi kartu Alokasi Dana diturunkan otomatis dari `decoration_key=auto`; flow create user-facing tidak menyediakan kategori Alokasi atau picker dekorasi. Nilai explicit lama tetap readable untuk kompatibilitas histori/backup. Metadata ini murni presentasi dan tidak boleh mengubah perhitungan finansial.
+
+### Human-error prevention contract
+- Konfirmasi duplicate finansial hanya sah untuk payload yang sama; perubahan field membatalkan acknowledgement lama.
+- Write dengan outcome tidak pasti harus mempertahankan intent/idempotency dan UI tidak boleh menawarkan payload baru sebelum hasil dipastikan atau retry intent yang sama.
+- Aksi reversible berisiko rendah diprioritaskan memakai Undo; destructive/privilege change memakai review/confirmation eksplisit.
+- Validasi yang dapat dihitung client (nominal >0, dana tersedia, batas Target, saldo aktual) harus muncul sebelum request tanpa menggantikan validasi backend.

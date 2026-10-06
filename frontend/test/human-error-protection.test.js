@@ -270,10 +270,11 @@ test("Tambah dana Target memakai satu jalur tutup dan workflow tidak reopen sete
     read("src/features/goals/GoalsPage.jsx"),
   ]);
 
-  assert.match(goalModal, /const \[busy, setBusy\] = useState\(false\)/);
-  assert.match(goalModal, /const requestClose = \(\) => \{[\s\S]*if \(busy\) return false;[\s\S]*onClose\?\.\(\);[\s\S]*return true;/);
+  assert.match(goalModal, /const mutation = useGuardedMutation\(\)/);
+  assert.match(goalModal, /const requestClose = \(\) => \{[\s\S]*if \(busy \|\| mutation\.outcomeUnknown\) return false;[\s\S]*onClose\?\.\(\);[\s\S]*return true;/);
   assert.match(goalModal, /onClose=\{requestClose\}/);
-  assert.match(goalModal, /dismissible=\{!busy\}/);
+  assert.match(goalModal, /dismissible=\{!busy && !mutation\.outcomeUnknown\}/);
+  assert.match(goalModal, /Coba lagi data yang sama/);
   assert.match(goalsPage, /const workflowHandled = useRef\(""\)/);
   assert.match(goalsPage, /workflowHandled\.current === workflowKey/);
   assert.match(goalsPage, /clearWorkflowState\(\);[\s\S]{0,500}openFunding/);

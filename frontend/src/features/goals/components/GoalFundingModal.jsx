@@ -12,6 +12,7 @@ import { AccountIcon, CashIcon, InvestmentIcon } from "../../../components/commo
 import { accountOptionVisual, instrumentOptionVisual } from "../../../components/common/selectionOptionVisuals.js";
 import { assertPositiveRupiah, formatRupiah } from "../../../domain/money.js";
 import { todayInJakarta } from "../../../domain/dates.js";
+import { useGuardedMutation } from "../../../hooks/useGuardedMutation.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import { isMutualFundInstrument } from "../../../shared/presentation/investmentAssets.js";
 import { allocateGoalInvestment, moveGoal, releaseGoalInvestment } from "../goals.api.js";
@@ -92,6 +93,9 @@ const CashFundingForm = ({ goal, accounts, transferRoutes, initialSourceAccountI
     try { value = assertPositiveRupiah(amount); }
     catch { nextErrors.amount = "Masukkan nominal tabungan yang valid."; }
     if (!nextErrors.amount && value > Number(goal.remaining_amount || 0)) nextErrors.amount = `Maksimal ${formatRupiah(goal.remaining_amount || 0)} sesuai sisa Target.`;
+    const sourceAccount = compatibleAccounts.find((account) => account.account_id === sourceAccountId) || null;
+    const sourceAvailable = Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0);
+    if (!nextErrors.amount && sourceAccount && value > sourceAvailable) nextErrors.amount = `Dana rekening hanya ${formatRupiah(sourceAvailable)}.`;
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       if (nextErrors.amount) amountRef.current?.focus({ preventScroll: false });
@@ -114,6 +118,7 @@ const CashFundingForm = ({ goal, accounts, transferRoutes, initialSourceAccountI
     <MoneyInput ref={amountRef} id="goal-funding-amount" label="Nominal ditabung" required value={amount} error={fieldErrors.amount || ""} onChange={(value) => { setAmount(value); setFieldErrors((current) => ({ ...current, amount: "" })); }} />
     <label className="field"><span>Tanggal *</span><TemporalInput required type="date" max={todayInJakarta()} value={date} onChange={(event) => setDate(event.target.value)} /></label>
     <label className="field form-grid__full"><span>Catatan</span><input maxLength="180" value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+    {sourceAccountId && amount ? (() => { const source = compatibleAccounts.find((account) => account.account_id === sourceAccountId); const current = Number(source?.available_balance ?? source?.balance ?? 0); const value = Number(amount || 0); return source && value > 0 && value <= current && value <= Number(goal.remaining_amount || 0) ? <div className="notice notice--neutral form-grid__full">Rekening {formatRupiah(current)} → {formatRupiah(current - value)} · Target {formatRupiah(goal.current_amount || 0)} → {formatRupiah(Number(goal.current_amount || 0) + value)}</div> : null; })() : null}
     <div className="notice notice--neutral form-grid__full">Sisa Target <Money value={goal.remaining_amount || 0} />.</div>
     {!compatibleAccounts.length ? <CompactNotice className="form-grid__full" tone="warning" title="Belum ada rekening sumber">Tambahkan rekening Bersama lain yang dapat mentransfer ke rekening Target.</CompactNotice> : null}
     {error ? <div className="notice notice--danger form-grid__full" role="alert">{error.message}</div> : null}
@@ -240,46 +245,59 @@ const InvestmentFundingForm = ({ goal, investmentOverview, initialAction = "buy"
 const GoalFundingModal = ({ goal, accounts, transferRoutes, investmentOverview, initialSourceAccountId = "", suggestedAmount = 0, manualAmount = false, onClose, onChanged, onBuyInvestment }) => {
   const options = goalFundingOptions(goal);
   const [mode, setMode] = useState(options[0]?.value || "cash");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const mutation = useGuardedMutation();
+  const retryIntentRef = useRef(null);
+  const busy = mutation.busy;
+  const error = mutation.error;
+  const outcomeUnknown = mutation.outcomeUnknown;
+  const resetMutation = mutation.reset;
 
   useEffect(() => {
     const nextOptions = goalFundingOptions(goal);
     if (!nextOptions.some((item) => item.value === mode)) setMode(nextOptions[0]?.value || "cash");
-    setError(null);
-  }, [goal, mode]);
+    if (!outcomeUnknown) resetMutation();
+  }, [goal, mode, outcomeUnknown, resetMutation]);
+
+  const executeIntent = async (intent) => mutation.run(async () => {
+    const result = await intent.request(intent.payload, {});
+    await onChanged?.({ result, goal, amount: intent.amount });
+    retryIntentRef.current = null;
+    return result;
+  });
 
   const run = async (request, payload, amount = 0) => {
-    setError(null);
-    setBusy(true);
-    try {
-      const result = await request(payload, {});
-      await onChanged?.({ result, goal, amount });
-      return result;
-    } catch (caught) {
-      setError(caught);
-      return null;
-    } finally {
-      setBusy(false);
-    }
+    const intent = { request, payload, amount };
+    retryIntentRef.current = intent;
+    try { return await executeIntent(intent); }
+    catch { return null; }
+  };
+
+  const retrySameIntent = async () => {
+    const intent = retryIntentRef.current;
+    if (!intent || mutation.busy) return;
+    try { await executeIntent(intent); } catch { /* error is exposed by guarded mutation */ }
   };
 
   const requestClose = () => {
-    if (busy) return false;
-    setError(null);
+    if (busy || mutation.outcomeUnknown) return false;
+    mutation.reset();
+    retryIntentRef.current = null;
     onClose?.();
     return true;
   };
 
   if (!goal) return null;
-  return <Modal open title="Tambah dana Target" description={goal.name} onClose={requestClose} dismissible={!busy}>
+  return <Modal open title="Tambah dana Target" description={goal.name} onClose={requestClose} dismissible={!busy && !mutation.outcomeUnknown}>
     <div className="page-stack page-stack--compact">
-      <div className="notice notice--neutral"><strong><Money value={goal.current_amount || 0} /></strong> dari <Money value={goal.target_amount || 0} /> · sisa <Money value={goal.remaining_amount || 0} /></div>
-      {options.length > 1 ? <VisualChoiceGroup legend="Simpan sebagai" name={`goal-funding-mode-${goal.goal_id}`} value={mode} onChange={(value) => { setMode(value); setError(null); }} options={options} columns={2} compact /> : null}
-      {mode === "cash" ? <CashFundingForm goal={goal} accounts={accounts} transferRoutes={transferRoutes} initialSourceAccountId={initialSourceAccountId} suggestedAmount={suggestedAmount} manualAmount={manualAmount} busy={busy} error={error} onSubmit={(payload, amount) => run(moveGoal, payload, amount)} /> : null}
-      {mode === "investment" ? <InvestmentFundingForm goal={goal} investmentOverview={investmentOverview} busy={busy} error={error} onBuy={(portfolioId) => onBuyInvestment?.(goal, portfolioId)} onAllocate={(payload) => run(allocateGoalInvestment, payload)} onRelease={(payload) => run(releaseGoalInvestment, payload)} /> : null}
+      {mutation.outcomeUnknown ? <CompactNotice tone="warning" title="Status belum dapat dipastikan">Jangan ubah data dulu. Coba lagi dengan data yang sama agar setoran tidak tercatat ganda.</CompactNotice> : null}
+      <fieldset className="mutation-retry-lock" disabled={mutation.outcomeUnknown}>
+        <div className="notice notice--neutral"><strong><Money value={goal.current_amount || 0} /></strong> dari <Money value={goal.target_amount || 0} /> · sisa <Money value={goal.remaining_amount || 0} /></div>
+        {options.length > 1 ? <VisualChoiceGroup legend="Simpan sebagai" name={`goal-funding-mode-${goal.goal_id}`} value={mode} onChange={(value) => { setMode(value); mutation.reset(); }} options={options} columns={2} compact /> : null}
+        {mode === "cash" ? <CashFundingForm goal={goal} accounts={accounts} transferRoutes={transferRoutes} initialSourceAccountId={initialSourceAccountId} suggestedAmount={suggestedAmount} manualAmount={manualAmount} busy={busy} error={error} onSubmit={(payload, amount) => run(moveGoal, payload, amount)} /> : null}
+        {mode === "investment" ? <InvestmentFundingForm goal={goal} investmentOverview={investmentOverview} busy={busy} error={error} onBuy={(portfolioId) => onBuyInvestment?.(goal, portfolioId)} onAllocate={(payload) => run(allocateGoalInvestment, payload)} onRelease={(payload) => run(releaseGoalInvestment, payload)} /> : null}
+      </fieldset>
+      {mutation.outcomeUnknown ? <div className="form-actions"><Button type="button" variant="primary" loading={mutation.busy} onClick={retrySameIntent}>Coba lagi data yang sama</Button></div> : null}
     </div>
   </Modal>;
 };
-
 export default GoalFundingModal;

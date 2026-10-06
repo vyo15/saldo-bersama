@@ -1146,3 +1146,7 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 - Turso HTTP transaction routing menggunakan `base_url` pipeline apa adanya dan menserialkan operasi dalam baton yang sama.
 - Service worker menghindari clone response setelah body digunakan; API finansial tetap tidak dicache.
 - Browser Fullscreen API tidak ditambahkan; PWA tetap menggunakan mode `standalone`.
+
+## 2026-10-06 — Human-error prevention hardening
+- Mengunci checkout Shopping saat outcome mutation tidak pasti, membatalkan konfirmasi duplikat ketika payload berubah, menambah Undo untuk remove reversible, dan memvalidasi quantity sebelum request.
+- Menambah guardrail nominal inline + preview pada funding Target/Alokasi, error saldo inline pada Rekonsiliasi, serta acknowledgement eksplisit saat role anggota existing berubah.

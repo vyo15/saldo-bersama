@@ -75,3 +75,5 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 - UI: capability opt-in per Kebutuhan melalui switch create/edit/batch; entry point hanya muncul saat aktif, responsive list, item editor, shopping mode, checkout, success, transaction detail.
 - Ops: cache/sync invalidation, backup/restore/reset/export, lifecycle dependency.
 - Governance: RFC-0020 dan dokumentasi kontrak terkait.
+
+- Human-error safeguards lintas fitur: implemented pada Shopping checkout/remove/editor, funding Target/Alokasi, Rekonsiliasi, dan perubahan role anggota; real-device smoke tetap diperlukan sebelum klaim UX final.

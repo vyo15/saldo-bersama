@@ -13,8 +13,8 @@ export const MOBILE_ONBOARDING = Object.freeze([
     description: "Pemasukan dan pengeluaran dalam satu tempat, mudah dipantau setiap hari.",
     asset: {
       src: `${MOBILE_ASSET_BASE}/onboarding-catat-keuangan.webp`,
-      width: 1240,
-      height: 1209,
+      width: 788,
+      height: 800,
       priority: true,
       parallax: "soft",
     },
@@ -27,8 +27,8 @@ export const MOBILE_ONBOARDING = Object.freeze([
     description: "Tetapkan batas belanja dan target agar setiap rencana keuangan lebih mudah dijaga.",
     asset: {
       src: `${MOBILE_ASSET_BASE}/onboarding-atur-anggaran.webp`,
-      width: 1269,
-      height: 1232,
+      width: 800,
+      height: 714,
       parallax: "soft",
     },
   },
@@ -40,8 +40,8 @@ export const MOBILE_ONBOARDING = Object.freeze([
     description: "Catatan pribadi dan bersama tetap transparan, sinkron, dan mudah dipahami.",
     asset: {
       src: `${MOBILE_ASSET_BASE}/onboarding-keuangan-bersama.webp`,
-      width: 1232,
-      height: 1244,
+      width: 800,
+      height: 784,
       parallax: "soft",
     },
   },

@@ -92,8 +92,9 @@ test("Goal achievement tampil setelah penambahan dana Target sukses di server, f
     source("src/components/feedback/FeedbackProvider.jsx"),
   ]);
 
-  assert.match(funding, /const result = await request\(payload, \{\}\)/);
-  assert.match(funding, /await onChanged\?\.\(\{ result, goal, amount \}\)/);
+  assert.match(funding, /const result = await intent\.request\(intent\.payload, \{\}\)/);
+  assert.match(funding, /await onChanged\?\.\(\{ result, goal, amount: intent\.amount \}\)/);
+  assert.match(funding, /Coba lagi data yang sama/);
   assert.match(page, /const onFundingChanged = async/);
   assert.match(page, /const nextGoal =/);
   assert.match(page, /setAchievement\(\{ goalBefore: goal, goalAfter: nextGoal, amount \}\)/);

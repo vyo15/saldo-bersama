@@ -14,6 +14,7 @@ import ContextBack from "../../components/navigation/ContextBack.jsx";
 import { todayInJakarta } from "../../domain/dates.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
+import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import {
   checkoutShoppingList, createShoppingList, invalidateShopping, removeShoppingItem, setShoppingItemState,
 } from "./shopping.api.js";
@@ -86,19 +87,20 @@ const CheckoutSummary = ({ estimated, total, difference }) => <dl className={sty
   {difference !== 0 ? <div data-tone={difference > 0 ? "positive" : "danger"}><dt>{difference > 0 ? "Lebih hemat" : "Lebih besar"}</dt><dd>{difference > 0 ? "↓" : "↑"} <Money value={Math.abs(difference)} tone={difference > 0 ? "positive" : "negative"} /></dd></div> : null}
 </dl>;
 
-const CheckoutOverspendReason = ({ total, available, value, onChange }) => Number(total || 0) > Number(available || 0)
-  ? <label className="field"><span>Alasan melebihi rencana</span><input value={value} onChange={(event) => onChange(event.target.value)} maxLength={180} placeholder="Contoh: harga kebutuhan naik" /></label>
+const CheckoutOverspendReason = ({ total, available, value, onChange, disabled = false }) => Number(total || 0) > Number(available || 0)
+  ? <label className="field"><span>Alasan melebihi rencana</span><input value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} maxLength={180} placeholder="Contoh: harga kebutuhan naik" /></label>
   : null;
 
-const CheckoutPendingItems = ({ pending, leftover, onChange }) => pending ? <fieldset className={styles.leftover}>
+const CheckoutPendingItems = ({ pending, leftover, onChange, disabled = false }) => pending ? <fieldset className={styles.leftover}>
   <legend>{pending} barang belum dibeli</legend>
-  <label><input type="radio" name="leftover" value="keep" checked={leftover === "keep"} onChange={() => onChange("keep")} />Simpan di daftar ini</label>
-  <label><input type="radio" name="leftover" value="remove" checked={leftover === "remove"} onChange={() => onChange("remove")} />Hapus dari daftar</label>
+  <label><input type="radio" name="leftover" value="keep" checked={leftover === "keep"} disabled={disabled} onChange={() => onChange("keep")} />Simpan di daftar ini</label>
+  <label><input type="radio" name="leftover" value="remove" checked={leftover === "remove"} disabled={disabled} onChange={() => onChange("remove")} />Hapus dari daftar</label>
 </fieldset> : null;
 
-const CheckoutFeedback = ({ online, error, confirmDuplicate }) => <>
+const CheckoutFeedback = ({ online, error, confirmDuplicate, outcomeUnknown }) => <>
   {!online ? <p className={styles.inlineWarning}>Kamu sedang offline. Sambungkan internet untuk mencatat transaksi.</p> : null}
-  {error ? <div className={styles.inlineError} role="alert">{mutationMessage(error)}{confirmDuplicate ? <><br /><small>Jika ini memang belanja baru dengan nominal yang sama, tekan tombol catat sekali lagi untuk mengonfirmasi.</small></> : null}</div> : null}
+  {outcomeUnknown ? <div className={styles.inlineError} role="alert"><strong>Status pencatatan belum dapat dipastikan.</strong><br /><small>Jangan ubah data dulu. Coba lagi dengan data yang sama agar transaksi tidak tercatat ganda.</small></div> : null}
+  {!outcomeUnknown && error ? <div className={styles.inlineError} role="alert">{mutationMessage(error)}{confirmDuplicate ? <><br /><small>Jika ini memang belanja baru dengan nominal yang sama, tekan tombol catat sekali lagi untuk mengonfirmasi.</small></> : null}</div> : null}
 </>;
 
 const CheckoutView = ({ data, onBack, onDone, online }) => {
@@ -108,38 +110,40 @@ const CheckoutView = ({ data, onBack, onDone, online }) => {
   const [date, setDate] = useState(todayInJakarta());
   const [leftover, setLeftover] = useState("keep");
   const [overspendReason, setOverspendReason] = useState("");
-  const [state, setState] = useState({ status: "idle", error: null });
+  const mutation = useGuardedMutation();
   const [confirmDuplicate, setConfirmDuplicate] = useState(false);
   const pending = data.items.filter((item) => item.status === "pending").length;
   const estimated = inCart.reduce((sum, item) => sum + Number(item.estimated_amount || 0), 0);
   const difference = estimated - Number(total || 0);
   const available = data.budget.remaining_amount ?? data.budget.amount ?? 0;
+  const resetConfirmation = () => { setConfirmDuplicate(false); mutation.reset(); };
   const submit = async () => {
-    if (!online || !Number(total || 0)) return;
-    setState({ status: "submitting", error: null });
+    if (!online || !Number(total || 0) || mutation.busy) return;
     try {
-      const result = await checkoutShoppingList({ shopping_list_id: data.list.shopping_list_id, row_version: data.list.row_version, total_amount: Number(total), checkout_date: date, leftover_action: leftover, overspend_reason: overspendReason, description: data.list.name, confirm_duplicate: confirmDuplicate }, { rowVersion: data.list.row_version });
-      invalidateShopping();
-      await onDone(result);
+      await mutation.run(async () => {
+        const result = await checkoutShoppingList({ shopping_list_id: data.list.shopping_list_id, row_version: data.list.row_version, total_amount: Number(total), checkout_date: date, leftover_action: leftover, overspend_reason: overspendReason, description: data.list.name, confirm_duplicate: confirmDuplicate }, { rowVersion: data.list.row_version });
+        invalidateShopping();
+        await onDone(result);
+        return result;
+      });
     } catch (error) {
       if (error?.code === "POSSIBLE_DUPLICATE") setConfirmDuplicate(true);
-      setState({ status: "error", error });
     }
   };
   return <div className={styles.checkoutPage}>
-    <header className={styles.mobileSubHeader}><button type="button" onClick={onBack} aria-label="Kembali ke mode belanja"><FiArrowLeft aria-hidden="true" /></button><div><h1>Selesai belanja</h1><p>Cek total aktual sebelum dicatat.</p></div></header>
+    <header className={styles.mobileSubHeader}><button type="button" disabled={mutation.busy || mutation.outcomeUnknown} onClick={onBack} aria-label="Kembali ke mode belanja"><FiArrowLeft aria-hidden="true" /></button><div><h1>Selesai belanja</h1><p>Cek total aktual sebelum dicatat.</p></div></header>
     <Card className={styles.checkoutCard}>
       <div className={styles.checkoutIntro}><span className={styles.shoppingIcon}><FiShoppingCart aria-hidden="true" /></span><div><strong>{inCart.length} barang dibeli</strong><span>{pending} belum dibeli</span></div></div>
       <CheckoutSummary estimated={estimated} total={total} difference={difference} />
-      <MoneyInput id="shopping-checkout-total" label="Total aktual *" value={total} onChange={setTotal} required />
+      <MoneyInput id="shopping-checkout-total" label="Total aktual *" value={total} onChange={(value) => { setTotal(value); resetConfirmation(); }} required disabled={mutation.outcomeUnknown} />
       <div className={styles.lockedField}><span>Bayar dari</span><strong>{data.budget.source_account_name || "Rekening Alokasi Dana"}</strong><small>Terkunci dari Alokasi Dana</small></div>
       <div className={styles.lockedField}><span>Untuk</span><strong>{data.budget.name}</strong><small>Kebutuhan yang dipilih</small></div>
-      <label className={styles.temporalLabel}><span>Tanggal</span><TemporalInput type="date" value={date} onChange={(event) => setDate(event.target.value)} min={`${data.budget.period_key}-01`} max={periodLastDate(data.budget.period_key)} /></label>
-      <CheckoutOverspendReason total={total} available={available} value={overspendReason} onChange={setOverspendReason} />
-      <CheckoutPendingItems pending={pending} leftover={leftover} onChange={setLeftover} />
-      <CheckoutFeedback online={online} error={state.error} confirmDuplicate={confirmDuplicate} />
+      <label className={styles.temporalLabel}><span>Tanggal</span><TemporalInput type="date" value={date} disabled={mutation.outcomeUnknown} onChange={(event) => { setDate(event.target.value); resetConfirmation(); }} min={`${data.budget.period_key}-01`} max={periodLastDate(data.budget.period_key)} /></label>
+      <CheckoutOverspendReason total={total} available={available} value={overspendReason} disabled={mutation.outcomeUnknown} onChange={(value) => { setOverspendReason(value); resetConfirmation(); }} />
+      <CheckoutPendingItems pending={pending} leftover={leftover} disabled={mutation.outcomeUnknown} onChange={(value) => { setLeftover(value); resetConfirmation(); }} />
+      <CheckoutFeedback online={online} error={mutation.error} confirmDuplicate={confirmDuplicate} outcomeUnknown={mutation.outcomeUnknown} />
     </Card>
-    <div className={styles.stickyAction}><Button variant="primary" loading={state.status === "submitting"} disabled={!online || !Number(total || 0)} onClick={submit}>Catat <Money value={Number(total || 0)} /></Button></div>
+    <div className={styles.stickyAction}><Button variant="primary" loading={mutation.busy} disabled={!online || !Number(total || 0)} onClick={submit}>{mutation.outcomeUnknown ? "Coba lagi data yang sama" : <>Catat <Money value={Number(total || 0)} /></>}</Button></div>
   </div>;
 };
 
@@ -228,6 +232,12 @@ const ShoppingPage = () => {
   const [mutationError, setMutationError] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [success, setSuccess] = useState(null);
+  const [undoRemove, setUndoRemove] = useState(null);
+  useEffect(() => {
+    if (!undoRemove) return undefined;
+    const timer = window.setTimeout(() => setUndoRemove(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [undoRemove]);
   const data = resource.data;
   const canManage = Boolean(data?.can_manage);
   const collections = useMemo(() => collectShoppingItems(data, shoppingFilter), [data, shoppingFilter]);
@@ -250,8 +260,20 @@ const ShoppingPage = () => {
   const remove = async (item) => {
     if (!online || !canManage || busyId) return;
     setBusyId(item.shopping_item_id); setMutationError(null);
-    try { await removeShoppingItem({ shopping_item_id: item.shopping_item_id, row_version: item.row_version }, { rowVersion: item.row_version }); invalidateShopping(); await reload(); }
-    catch (error) { setMutationError(error); } finally { setBusyId(""); }
+    try {
+      await removeShoppingItem({ shopping_item_id: item.shopping_item_id, row_version: item.row_version }, { rowVersion: item.row_version });
+      setUndoRemove({ ...item, row_version: Number(item.row_version || 0) + 1 });
+      invalidateShopping(); await reload();
+    } catch (error) { setMutationError(error); } finally { setBusyId(""); }
+  };
+  const restoreRemoved = async () => {
+    if (!undoRemove || !online || busyId) return;
+    const item = undoRemove;
+    setBusyId(item.shopping_item_id); setMutationError(null);
+    try {
+      await setShoppingItemState({ shopping_item_id: item.shopping_item_id, row_version: item.row_version, status: "pending", actual_amount: item.actual_amount || 0 }, { rowVersion: item.row_version });
+      setUndoRemove(null); invalidateShopping(); await reload();
+    } catch (error) { setMutationError(error); } finally { setBusyId(""); }
   };
   const completeCheckout = async (result) => { setSuccess(result); setMode("success"); await Promise.allSettled([finance.refreshOverview(), resource.reload()]); };
   const backToList = async () => { setSuccess(null); setMode("planning"); await reload(); };
@@ -266,6 +288,7 @@ const ShoppingPage = () => {
   if (data.list.status === "completed") return <CompletedListView data={data} canManage={canManage} online={online} onCreate={createList} navigate={navigate} />;
 
   return <>
+    {undoRemove ? <div className={styles.undoNotice} role="status"><span><strong>{undoRemove.name}</strong> dihapus dari daftar.</span><button type="button" onClick={restoreRemoved} disabled={Boolean(busyId)}>Urungkan</button></div> : null}
     <ShoppingActiveView data={data} mode={mode} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} mutationError={mutationError} resource={resource} collections={collections} onMode={setMode} onFilter={setShoppingFilter} onAdd={() => openEditor()} onToggle={toggle} onEdit={openEditor} onRemove={remove} onDismissError={() => setMutationError(null)} />
     {editor.open ? <Suspense fallback={<div className={styles.editorLoading} role="status">Menyiapkan form barang…</div>}><ShoppingItemEditor open onClose={() => setEditor({ open: false, item: null })} data={data} list={data.list} item={editor.item} onSaved={reload} online={online && canManage} /></Suspense> : null}
   </>;
