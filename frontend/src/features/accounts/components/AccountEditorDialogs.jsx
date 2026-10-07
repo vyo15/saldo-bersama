@@ -151,13 +151,13 @@ const CreateAccountForm = (props) => {
   );
 };
 
-const CreateAccountModal = ({ open, onClose, submitting, formProps }) => {
+const CreateAccountModal = ({ open, onClose, submitting, retryOnly, formProps }) => {
   const duplicateInvestment = selectedInvestmentDuplicate(formProps.accountForm, formProps.existingAccounts, formProps.defaultOwnerUserId);
-  const guard = useUnsavedChangesGuard({ open, value: formProps.accountForm, onClose, blocked: submitting });
+  const guard = useUnsavedChangesGuard({ open, value: formProps.accountForm, onClose, blocked: submitting || retryOnly });
   return <>
-    <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="form rekening" dismissible={!submitting} title="Tambah rekening" description="Pilih jenis rekening dan pemegangnya. Rekening pribadi hanya dapat dibuat untuk diri sendiri." size="md" footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting} disabled={submitting || Boolean(duplicateInvestment)}>Simpan rekening</Button></>}>
+    <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="form rekening" dismissible={!submitting && !retryOnly} title="Tambah rekening" description="Pilih jenis rekening dan pemegangnya. Rekening pribadi hanya dapat dibuat untuk diri sendiri." size="md" footer={<><Button onClick={guard.discardAndClose} disabled={submitting || retryOnly}>Batal</Button><Button variant="primary" type="submit" form="create-account-form" loading={submitting} disabled={submitting || Boolean(duplicateInvestment)}>{retryOnly ? "Coba lagi data yang sama" : "Simpan rekening"}</Button></>}>
       <div className={styles.createAccountLayout}>
-        <CreateAccountForm {...formProps} />
+        <fieldset className="mutation-retry-lock" disabled={retryOnly}><CreateAccountForm {...formProps} /></fieldset>
       </div>
     </Modal>
   </>;
@@ -192,14 +192,14 @@ const EditAccountFields = ({ editAccount, updateEditAccount, activeUsers, defaul
   </>
 );
 
-const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitting, dialogState, fieldProps }) => {
+const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitting, retryOnly, dialogState, fieldProps }) => {
   const close = () => setEditAccount(null);
-  const guard = useUnsavedChangesGuard({ open: Boolean(editAccount), value: editAccount, onClose: close, blocked: submitting });
+  const guard = useUnsavedChangesGuard({ open: Boolean(editAccount), value: editAccount, onClose: close, blocked: submitting || retryOnly });
   return <>
-    <Modal open={Boolean(editAccount)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan rekening" dismissible={!submitting} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={guard.discardAndClose} disabled={submitting}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={submitting}>{submitting ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
+    <Modal open={Boolean(editAccount)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan rekening" dismissible={!submitting && !retryOnly} title="Edit rekening" description="Saldo awal dan jenis rekening tidak dapat diubah melalui form ini." footer={<><Button onClick={guard.discardAndClose} disabled={submitting || retryOnly}>Batal</Button><Button variant="primary" type="submit" form="edit-account-form" disabled={submitting}>{submitting ? "Menyimpan..." : retryOnly ? "Coba lagi data yang sama" : "Simpan perubahan"}</Button></>}>
       <form id="edit-account-form" className="form-grid" onSubmit={onSaveAccount}>
-        <EditAccountFields {...fieldProps} />
-        {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{dialogState.error.message}</div> : null}
+        <fieldset className="mutation-retry-lock" disabled={retryOnly}><EditAccountFields {...fieldProps} /></fieldset>
+        {dialogState.error ? <div className="notice notice--danger form-grid__full" role="alert">{retryOnly ? "Status perubahan belum dapat dipastikan. Coba lagi data yang sama." : dialogState.error.message}</div> : null}
       </form>
     </Modal>
   </>;
@@ -207,11 +207,12 @@ const EditAccountModal = ({ editAccount, setEditAccount, onSaveAccount, submitti
 
 const AccountEditorDialogs = ({ createDialogOpen, onCloseCreate, accountForm, setAccountForm, onCreateAccount, editAccount, setEditAccount, onSaveAccount, dialogState, activeUsers, currentDatabaseUser, currentOwnerLabel, existingAccounts = [] }) => {
   const submitting = dialogState.status === "submitting";
+  const retryOnly = dialogState.status === "unknown";
   const defaultOwnerUserId = currentDatabaseUser?.user_id || "";
   const updateAccountForm = (updates) => setAccountForm((current) => ({ ...current, ...updates }));
   const updateEditAccount = (updates) => setEditAccount((current) => current ? ({ ...current, ...updates }) : current);
   const shared = { activeUsers, defaultOwnerUserId, currentOwnerLabel };
-  return <><CreateAccountModal open={createDialogOpen} onClose={onCloseCreate} submitting={submitting} formProps={{ accountForm, setAccountForm, updateAccountForm, onCreateAccount, dialogState, existingAccounts, ...shared }} /><EditAccountModal editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={onSaveAccount} submitting={submitting} dialogState={dialogState} fieldProps={{ editAccount, setEditAccount, updateEditAccount, ...shared }} /></>;
+  return <><CreateAccountModal open={createDialogOpen} onClose={onCloseCreate} submitting={submitting} retryOnly={retryOnly} formProps={{ accountForm, setAccountForm, updateAccountForm, onCreateAccount, dialogState, existingAccounts, ...shared }} /><EditAccountModal editAccount={editAccount} setEditAccount={setEditAccount} onSaveAccount={onSaveAccount} submitting={submitting} retryOnly={retryOnly} dialogState={dialogState} fieldProps={{ editAccount, setEditAccount, updateEditAccount, ...shared }} /></>;
 };
 
 export default AccountEditorDialogs;

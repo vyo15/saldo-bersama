@@ -16,7 +16,8 @@ import { parseRupiah } from "../../domain/money.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
-import { createReconciliation } from "./reconciliations.api.js";
+import { createReconciliation, isReconciliationOutcomeUnknownError } from "./reconciliations.api.js";
+
 import styles from "./ReconciliationsPage.module.css";
 import ReconciliationInputPanel from "./components/ReconciliationForm.jsx";
 const ReconciliationHistory = lazy(() => import("./components/ReconciliationHistory.jsx"));
@@ -100,7 +101,7 @@ const useReconciliationSubmission = ({ selectedAccount, form, setForm, data, ref
       });
       setSubmitState({ status: "completed", error: null });
     } catch (error) {
-      setSubmitState({ status: "error", error });
+      setSubmitState({ status: isReconciliationOutcomeUnknownError(error) ? "unknown" : "error", error });
     }
   }, [data.historyResource, invalidate, refreshAll, selectedAccount, setForm, submitState.status]);
 

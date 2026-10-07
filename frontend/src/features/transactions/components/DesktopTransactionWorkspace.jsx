@@ -44,7 +44,6 @@ const DesktopActivityPanel = ({ report, period, total, categoryLookup, onQuickCr
     <section className={styles.cashFlowHero} aria-label="Ringkasan arus kas">
       <span>Arus kas bersih</span>
       <strong className={`money--${netTone}`}>{cashFlow.net > 0 ? "+" : ""}<Money value={cashFlow.net} tone={netTone} /></strong>
-      <small>{cashFlow.net >= 0 ? "Pemasukan masih lebih besar dari pengeluaran." : "Pengeluaran lebih besar dari pemasukan pada periode ini."}</small>
       <div className={styles.cashFlowMiniGrid}>
         <div><span>Masuk</span><strong><Money value={cashFlow.income} tone="positive" /></strong></div>
         <div><span>Keluar</span><strong><Money value={cashFlow.expense} tone="negative" /></strong></div>
@@ -54,7 +53,7 @@ const DesktopActivityPanel = ({ report, period, total, categoryLookup, onQuickCr
     <ActivityReportState report={report} />
 
     <section className={styles.quickSection} aria-labelledby="desktop-transaction-quick-title">
-      <div className={styles.sideSectionHeading}><h3 id="desktop-transaction-quick-title">Transaksi cepat</h3><span>Satu composer, langsung terarah</span></div>
+      <div className={styles.sideSectionHeading}><h3 id="desktop-transaction-quick-title">Transaksi cepat</h3></div>
       <div className={styles.quickActions}>
         <button type="button" onClick={() => onQuickCreate("expense")}><span data-type="expense"><FiArrowUpRight aria-hidden="true" /></span><strong>Pengeluaran</strong></button>
         <button type="button" onClick={() => onQuickCreate("income")}><span data-type="income"><FiArrowDownLeft aria-hidden="true" /></span><strong>Pemasukan</strong></button>
@@ -63,7 +62,7 @@ const DesktopActivityPanel = ({ report, period, total, categoryLookup, onQuickCr
     </section>
 
     <section className={styles.categorySection} aria-labelledby="desktop-transaction-category-title">
-      <div className={styles.sideSectionHeading}><h3 id="desktop-transaction-category-title">Pengeluaran terbesar</h3><span>Dari seluruh transaksi periode ini</span></div>
+      <div className={styles.sideSectionHeading}><h3 id="desktop-transaction-category-title">Pengeluaran terbesar</h3></div>
       {categories.length ? <div className={styles.categoryBreakdown}>{categories.map((item) => {
         const Icon = transactionCategoryIcon(categoryLookup[item.category_id] || item, "expense");
         const percentage = categoryPercentage(item.amount, cashFlow.expense);
@@ -89,7 +88,7 @@ const RepeatStrip = ({ items, categoryLookup, accountLabel, onRepeat }) => {
   const repeatItems = repeatableTransactions(items);
   if (!repeatItems.length) return null;
   return <section className={styles.repeatSection} aria-labelledby="desktop-repeat-transaction-title">
-    <div className={styles.repeatHeading}><div><h2 id="desktop-repeat-transaction-title">Transaksi yang baru digunakan</h2></div><span>Pilih untuk membuat draft baru</span></div>
+    <div className={styles.repeatHeading}><div><h2 id="desktop-repeat-transaction-title">Transaksi yang baru digunakan</h2></div></div>
     <div className={styles.repeatGrid}>{repeatItems.map((item) => <RepeatCard key={item.transaction_id} item={item} categoryLookup={categoryLookup} accountLabel={accountLabel} onRepeat={onRepeat} />)}</div>
   </section>;
 };
@@ -98,12 +97,12 @@ const DesktopTransactionWorkspace = ({ report, period, total, items, categoryLoo
   <div className={styles.desktopWorkspace}>
     <DesktopActivityPanel report={report} period={period} total={total} categoryLookup={categoryLookup} onQuickCreate={onQuickCreate} />
     <section className={styles.historyPanel} aria-labelledby="desktop-transaction-history-title">
-      <RepeatStrip items={items} categoryLookup={categoryLookup} accountLabel={accountLabel} onRepeat={onRepeat} />
       {attentionNotice}
-      <div className={styles.historyHeading}><div><h2 id="desktop-transaction-history-title">Semua pergerakan uang</h2></div><span>Gunakan pencarian dan filter untuk mempersempit daftar.</span></div>
+      <div className={styles.historyHeading}><div><h2 id="desktop-transaction-history-title">Riwayat transaksi</h2></div></div>
       {filters}
       {resourceStates}
       {results}
+      <RepeatStrip items={items} categoryLookup={categoryLookup} accountLabel={accountLabel} onRepeat={onRepeat} />
     </section>
   </div>
 );

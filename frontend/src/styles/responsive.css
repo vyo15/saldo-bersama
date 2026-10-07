@@ -173,8 +173,8 @@
   .metric-card .money { max-width: 100%; overflow-wrap: anywhere; white-space: normal; font-size: clamp(19px, 5.4vw, 24px); }
 
   .desktop-data-table { display: none; }
-  .mobile-data-list { display: grid; gap: 10px; }
-  .mobile-data-card { padding: var(--mobile-card-padding); border: 1px solid var(--border); border-radius: var(--mobile-card-radius); background: var(--surface); }
+  .mobile-data-list { display: grid; gap: 0; border-top: 1px solid var(--mobile-divider); }
+  .mobile-data-card { padding: 14px 0; border: 0; border-bottom: 1px solid var(--mobile-divider); border-radius: 0; background: transparent; box-shadow: none; }
 
   .pagination-bar { align-items: stretch; }
   .pagination-bar > span { width: 100%; }

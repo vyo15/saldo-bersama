@@ -234,10 +234,10 @@ const ShoppingPage = () => {
   const [success, setSuccess] = useState(null);
   const [undoRemove, setUndoRemove] = useState(null);
   useEffect(() => {
-    if (!undoRemove) return undefined;
+    if (!undoRemove || busyId === undoRemove.shopping_item_id) return undefined;
     const timer = window.setTimeout(() => setUndoRemove(null), 8000);
     return () => window.clearTimeout(timer);
-  }, [undoRemove]);
+  }, [busyId, undoRemove]);
   const data = resource.data;
   const canManage = Boolean(data?.can_manage);
   const collections = useMemo(() => collectShoppingItems(data, shoppingFilter), [data, shoppingFilter]);
@@ -271,7 +271,7 @@ const ShoppingPage = () => {
     const item = undoRemove;
     setBusyId(item.shopping_item_id); setMutationError(null);
     try {
-      await setShoppingItemState({ shopping_item_id: item.shopping_item_id, row_version: item.row_version, status: "pending", actual_amount: item.actual_amount || 0 }, { rowVersion: item.row_version });
+      await setShoppingItemState({ shopping_item_id: item.shopping_item_id, row_version: item.row_version, status: ["pending", "in_cart"].includes(item.status) ? item.status : "pending", actual_amount: item.actual_amount || 0 }, { rowVersion: item.row_version });
       setUndoRemove(null); invalidateShopping(); await reload();
     } catch (error) { setMutationError(error); } finally { setBusyId(""); }
   };

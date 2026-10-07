@@ -73,8 +73,7 @@ const MobileSettingsOverview = ({ user, backend, timezone, maintenanceMode }) =>
 const DesktopSettingsOverview = ({ user, backend, timezone, maintenanceMode }) => (
   <section className={styles.settingsDesktopOverview} aria-labelledby="settings-desktop-overview-title">
     <div className={styles.settingsDesktopOverviewIntro}>
-      <h2 id="settings-desktop-overview-title">Ringkasan pengaturan</h2>
-      <p>Pilih kategori di kiri lalu submenu yang ingin dikelola. Panel ini hanya merangkum akun dan kondisi aplikasi agar desktop tetap lapang tanpa mengulang seluruh menu mobile.</p>
+      <h2 id="settings-desktop-overview-title">Ringkasan</h2>
     </div>
     <dl className={styles.settingsDesktopFacts}>
       <div>
@@ -98,7 +97,7 @@ const DesktopSettingsOverview = ({ user, backend, timezone, maintenanceMode }) =
         <dd>{maintenanceMode ? "Maintenance" : "Normal"}</dd>
       </div>
     </dl>
-    <p className={styles.settingsDesktopBackendSummary}>{backend.summary}</p>
+    {backend.tone === "danger" || maintenanceMode ? <p className={styles.settingsDesktopBackendSummary}>{backend.summary}</p> : null}
   </section>
 );
 

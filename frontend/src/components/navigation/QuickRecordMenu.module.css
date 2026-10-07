@@ -130,7 +130,7 @@
   .primaryGrid,
   .futureGrid { gap: 7px; }
   .actionMenu { gap: 9px; }
-  .actionCard { min-height: 62px; padding: 8px 9px; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; border-radius: 13px; }
+  .actionCard { min-height: 62px; padding: 8px 9px; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; border-radius: var(--mobile-radius-control); }
   .actionCardSecondary { min-height: 52px; }
   .actionIcon,
   .commitmentIcon { width: 32px; height: 32px; border-radius: 10px; }

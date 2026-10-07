@@ -211,3 +211,6 @@ Dekorasi kartu Alokasi Dana diturunkan otomatis dari `decoration_key=auto`; flow
 - Write dengan outcome tidak pasti harus mempertahankan intent/idempotency dan UI tidak boleh menawarkan payload baru sebelum hasil dipastikan atau retry intent yang sama.
 - Aksi reversible berisiko rendah diprioritaskan memakai Undo; destructive/privilege change memakai review/confirmation eksplisit.
 - Validasi yang dapat dihitung client (nominal >0, dana tersedia, batas Target, saldo aktual) harus muncul sebelum request tanpa menggantikan validasi backend.
+
+
+- Human-error hardening final: create anggota dengan email aktif harus berhenti tanpa silent update; privilege Administrator baru/perubahan role wajib direview; Shopping Undo mengembalikan status sebelum dihapus dan tidak kedaluwarsa saat restore; editor Shopping, Rekening, Kategori, Target, Rekonsiliasi, lifecycle Transaksi, Anggota, dan Jadwal Rutin mempertahankan exact-retry saat outcome mutation belum pasti; Target baru/edit tidak menerima tanggal masa lalu.

@@ -69,6 +69,7 @@
   .surfaceFlat,
   .surfaceTonal,
   .surfaceObject { box-shadow: none; }
+  .surfaceOutlined { border-color: transparent; }
   .surfaceElevated { box-shadow: var(--shadow-section); }
   .card[data-interactive="true"]:active { transform: scale(.995); }
 }

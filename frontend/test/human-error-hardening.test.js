@@ -18,7 +18,7 @@ test("shopping reversible removal exposes undo and item quantity validates befor
   const page = read("src/features/shopping/ShoppingPage.jsx");
   const editor = read("src/features/shopping/ShoppingItemEditor.jsx");
   assert.match(page, /Urungkan/);
-  assert.match(page, /status: "pending"/);
+  assert.match(page, /\["pending", "in_cart"\]\.includes\(item\.status\) \? item\.status : "pending"/);
   assert.match(editor, /quantityValid/);
   assert.match(editor, /Jumlah harus lebih dari 0/);
 });

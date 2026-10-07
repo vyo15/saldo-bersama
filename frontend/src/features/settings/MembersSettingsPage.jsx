@@ -18,7 +18,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { invalidationActionsFor } from "../../services/api/invalidation.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { deactivateUser, reactivateUser, runSettingsAction } from "./settings.api.js";
+import { deactivateUser, reactivateUser, runSettingsAction, isSettingsOutcomeUnknownError } from "./settings.api.js";
 import OwnerSettingsGuard from "./OwnerSettingsGuard.jsx";
 import SettingsNotice from "./SettingsNotice.jsx";
 import { roleLabel, userStatusLabel } from "./settingsPresentation.js";
@@ -26,6 +26,7 @@ import styles from "./Settings.module.css";
 import memberStyles from "./MembersSettings.module.css";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
 import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
+
 
 const MemberActivityPanel = lazy(() => import("./components/MemberActivityPanel.jsx"));
 const ApprovalCenterPage = lazy(() => import("../approvals/ApprovalCenterPage.jsx"));
@@ -44,6 +45,26 @@ const MemberToolbar = ({ searchQuery, setSearchQuery, roleFilter, setRoleFilter 
 const MemberMenu = ({ member, menuOpen, activeMenuRef, menuTriggerRefs, setOpenMenuId, openAction }) => <div className={memberStyles.memberMenuWrap} ref={menuOpen ? activeMenuRef : undefined}><button ref={(node) => { if (node) menuTriggerRefs.current.set(member.user_id, node); else menuTriggerRefs.current.delete(member.user_id); }} type="button" className={memberStyles.memberMenuTrigger} aria-label={`Aksi untuk ${member.name || member.email}`} aria-haspopup="true" aria-expanded={menuOpen} onClick={(event) => { event.stopPropagation(); setOpenMenuId((current) => current === member.user_id ? "" : member.user_id); }}><FiMoreHorizontal aria-hidden="true" /></button>{menuOpen ? <div className={memberStyles.memberMenu}>{member.status === "active" ? <button type="button" onClick={() => openAction("edit", member)}><FiEdit2 aria-hidden="true" />Ubah akses</button> : null}{member.status === "active" && !member.is_current ? <button className={memberStyles.memberMenuDanger} type="button" onClick={() => openAction("deactivate", member)}><FiUserMinus aria-hidden="true" />Nonaktifkan</button> : null}{member.status === "inactive" ? <button type="button" onClick={() => openAction("reactivate", member)}><FiRotateCcw aria-hidden="true" />Aktifkan kembali</button> : null}</div> : null}</div>;
 
 const MemberStatusBadges = ({ member }) => <div className={memberStyles.memberMeta}><span className={`status-badge status-badge--${member.status === "active" ? "active" : "warning"}`}>{userStatusLabel(member.status)}</span>{member.status === "active" && member.identity_status === "pending" ? <span className="status-badge status-badge--warning">Menunggu login</span> : null}{member.is_current ? <span className="status-badge">Akun ini</span> : null}</div>;
+
+
+const memberSaveValidation = ({ editingMember, matchedMember, memberForm, roleAcknowledged }) => {
+  if (!editingMember && matchedMember?.status === "active") {
+    return "Email tersebut sudah menjadi anggota aktif. Buka anggota itu lalu gunakan Ubah akses jika ingin mengubah nama atau role.";
+  }
+  const requiresRoleReview = memberForm.role === "owner" && (!editingMember || editingMember.role !== "owner") || Boolean(editingMember && editingMember.role !== memberForm.role);
+  if (requiresRoleReview && !roleAcknowledged) {
+    return "Periksa perubahan role lalu centang konfirmasi akses sebelum menyimpan.";
+  }
+  const existing = editingMember || matchedMember || null;
+  if (existing?.status === "inactive") {
+    return "Email tersebut adalah pengguna nonaktif. Gunakan Aktifkan kembali agar reaktivasi tercatat secara eksplisit.";
+  }
+  return "";
+};
+
+const memberMutationResult = (editing) => editing
+  ? "Akses anggota berhasil diperbarui."
+  : "Akses anggota berhasil dibuat. Anggota dapat login Google memakai email tersebut.";
 
 const memberFinance = (member, accounts, envelopes) => ({
   accounts: accounts.filter((item) => item.owner_scope === "personal" && String(item.owner_user_id || "") === String(member.user_id)),
@@ -75,11 +96,13 @@ const MembersContent = ({ resource, membersCount, filteredMembers, toolbarProps,
 };
 
 const MemberFormModal = ({ open, close, editingMember, memberForm, setMemberForm, saveMember, saving, result, roleAcknowledged, setRoleAcknowledged }) => {
-  const guard = useUnsavedChangesGuard({ open, value: memberForm, onClose: close, blocked: saving });
-  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="akses anggota" dismissible={!saving} title={editingMember ? "Ubah akses anggota" : "Tambah anggota"} size="sm" footer={<><Button type="button" onClick={guard.discardAndClose} disabled={saving}>Batal</Button><Button variant="primary" type="submit" form="member-access-form" loading={saving} disabled={saving || Boolean(editingMember && editingMember.role !== memberForm.role && !roleAcknowledged)}>Simpan akses</Button></>}><SettingsNotice result={result} /><form id="member-access-form" className="form-grid" onSubmit={saveMember}><label className="field form-grid__full"><span>Email Gmail *</span><input required type="email" disabled={Boolean(editingMember)} value={memberForm.email} onChange={(event) => setMemberForm((current) => ({ ...current, email: event.target.value }))} /><small>{editingMember ? "Email tidak dapat diubah." : "Setelah disimpan, email ini langsung diizinkan untuk login Google."}</small></label><label className="field form-grid__full"><span>Nama</span><input maxLength="120" value={memberForm.name} onChange={(event) => setMemberForm((current) => ({ ...current, name: event.target.value }))} /></label><VisualChoiceGroup className="form-grid__full" legend="Role" name="member-role" value={memberForm.role} onChange={(role) => { setMemberForm((current) => ({ ...current, role })); setRoleAcknowledged(false); }} options={[{ value: "member", label: "Member", icon: PersonIcon, description: "Akses pencatatan sehari-hari" }, { value: "owner", label: "Administrator", icon: AdminIcon, description: "Kelola rekening, kategori, anggota, dan pengaturan" }]} columns={2} compact disabled={Boolean(editingMember?.is_current)} helper={editingMember?.is_current ? "Role akun sendiri tidak dapat diubah. Gunakan Administrator lain." : ""} />{editingMember && editingMember.role !== memberForm.role ? <div className="notice notice--warning form-grid__full"><strong>{memberForm.role === "owner" ? "Akses Administrator akan diberikan." : "Akses Administrator akan dicabut."}</strong><p>{memberForm.role === "owner" ? "Administrator dapat mengelola anggota, rekening, kategori, persetujuan, dan pengaturan keluarga." : "Member tetap dapat memakai fitur sesuai capability, tetapi tidak lagi dapat mengelola area Administrator."}</p><label className="checkbox-field"><input type="checkbox" checked={roleAcknowledged} onChange={(event) => setRoleAcknowledged(event.target.checked)} /><span>Saya sudah memeriksa perubahan akses ini.</span></label></div> : null}</form></Modal>;
+  const retryOnly = result?.status === "unknown";
+  const requiresRoleReview = memberForm.role === "owner" && (!editingMember || editingMember.role !== "owner") || Boolean(editingMember && editingMember.role !== memberForm.role);
+  const guard = useUnsavedChangesGuard({ open, value: memberForm, onClose: close, blocked: saving || retryOnly });
+  return <Modal open={open} onClose={guard.requestClose} discardGuard={guard} discardSubject="akses anggota" dismissible={!saving && !retryOnly} title={editingMember ? "Ubah akses anggota" : "Tambah anggota"} size="sm" footer={<><Button type="button" onClick={guard.discardAndClose} disabled={saving || retryOnly}>Batal</Button><Button variant="primary" type="submit" form="member-access-form" loading={saving} disabled={saving || Boolean(requiresRoleReview && !roleAcknowledged)}>{retryOnly ? "Coba lagi data yang sama" : "Simpan akses"}</Button></>}><SettingsNotice result={result} /><form id="member-access-form" className="form-grid" onSubmit={saveMember}><fieldset className="mutation-retry-lock" disabled={retryOnly}><label className="field form-grid__full"><span>Email Gmail *</span><input required type="email" disabled={Boolean(editingMember)} value={memberForm.email} onChange={(event) => setMemberForm((current) => ({ ...current, email: event.target.value }))} /><small>{editingMember ? "Email tidak dapat diubah." : "Setelah disimpan, email ini langsung diizinkan untuk login Google."}</small></label><label className="field form-grid__full"><span>Nama</span><input maxLength="120" value={memberForm.name} onChange={(event) => setMemberForm((current) => ({ ...current, name: event.target.value }))} /></label><VisualChoiceGroup className="form-grid__full" legend="Role" name="member-role" value={memberForm.role} onChange={(role) => { setMemberForm((current) => ({ ...current, role })); setRoleAcknowledged(false); }} options={[{ value: "member", label: "Member", icon: PersonIcon, description: "Akses pencatatan sehari-hari" }, { value: "owner", label: "Administrator", icon: AdminIcon, description: "Kelola rekening, kategori, anggota, dan pengaturan" }]} columns={2} compact disabled={Boolean(editingMember?.is_current)} helper={editingMember?.is_current ? "Role akun sendiri tidak dapat diubah. Gunakan Administrator lain." : ""} />{requiresRoleReview ? <div className="notice notice--warning form-grid__full"><strong>{memberForm.role === "owner" ? "Akses Administrator akan diberikan." : "Akses Administrator akan dicabut."}</strong><p>{memberForm.role === "owner" ? "Administrator dapat mengelola anggota, rekening, kategori, persetujuan, dan pengaturan keluarga." : "Member tetap dapat memakai fitur sesuai capability, tetapi tidak lagi dapat mengelola area Administrator."}</p><label className="checkbox-field"><input type="checkbox" checked={roleAcknowledged} onChange={(event) => setRoleAcknowledged(event.target.checked)} /><span>Saya sudah memeriksa perubahan akses ini.</span></label></div> : null}</fieldset></form></Modal>;
 };
 
-const MemberActionModals = ({ target, actionState, setTarget, confirmUserAction }) => <><ConfirmationModal open={target?.action === "deactivate"} title="Nonaktifkan anggota?" description={target ? `${target.member.email} tidak lagi dapat memakai aplikasi. Data keuangan dan audit tidak dihapus.` : ""} confirmLabel="Nonaktifkan anggota" reasonLabel="Alasan penonaktifan" requireReason acknowledgementLabel="Saya sudah memastikan anggota ini tidak memiliki data personal aktif yang perlu dipindahkan." busy={actionState.status === "submitting"} error={actionState.error} onCancel={() => actionState.status !== "submitting" && setTarget(null)} onConfirm={confirmUserAction} /><ConfirmationModal open={target?.action === "reactivate"} title="Aktifkan kembali anggota?" description={target ? `${target.member.email} akan memperoleh akses kembali dan dapat login dengan akun Google yang memakai email tersebut.` : ""} confirmLabel="Aktifkan kembali" reasonLabel="Alasan reaktivasi" requireReason tone="primary" busy={actionState.status === "submitting"} error={actionState.error} onCancel={() => actionState.status !== "submitting" && setTarget(null)} onConfirm={confirmUserAction} /></>;
+const MemberActionModals = ({ target, actionState, setTarget, confirmUserAction }) => <><ConfirmationModal open={target?.action === "deactivate"} title="Nonaktifkan anggota?" description={target ? `${target.member.email} tidak lagi dapat memakai aplikasi. Data keuangan dan audit tidak dihapus.` : ""} confirmLabel="Nonaktifkan anggota" reasonLabel="Alasan penonaktifan" requireReason acknowledgementLabel="Saya sudah memastikan anggota ini tidak memiliki data personal aktif yang perlu dipindahkan." busy={actionState.status === "submitting"} retryOnly={actionState.status === "unknown"} error={actionState.error} onCancel={() => !["submitting", "unknown"].includes(actionState.status) && setTarget(null)} onConfirm={confirmUserAction} /><ConfirmationModal open={target?.action === "reactivate"} title="Aktifkan kembali anggota?" description={target ? `${target.member.email} akan memperoleh akses kembali dan dapat login dengan akun Google yang memakai email tersebut.` : ""} confirmLabel="Aktifkan kembali" reasonLabel="Alasan reaktivasi" requireReason tone="primary" busy={actionState.status === "submitting"} retryOnly={actionState.status === "unknown"} error={actionState.error} onCancel={() => !["submitting", "unknown"].includes(actionState.status) && setTarget(null)} onConfirm={confirmUserAction} /></>;
 
 const useMemberMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId }) => {
   useEffect(() => {
@@ -175,20 +198,30 @@ const MembersSettingsPage = () => {
   const saveMember = async (event) => {
     event.preventDefault();
     const email = memberForm.email.trim().toLowerCase();
-    const existing = editingMember || members.find((item) => item.email.toLowerCase() === email) || null;
-    if (editingMember && editingMember.role !== memberForm.role && !roleAcknowledged) { setResult({ status: "warning", text: "Periksa perubahan role lalu centang konfirmasi akses sebelum menyimpan." }); return; }
-    if (existing?.status === "inactive") { setResult({ status: "warning", text: "Email tersebut adalah pengguna nonaktif. Gunakan Aktifkan kembali agar reaktivasi tercatat secara eksplisit." }); return; }
+    const matchedMember = members.find((item) => item.email.toLowerCase() === email) || null;
+    const existing = editingMember || matchedMember || null;
+    const validationMessage = memberSaveValidation({ editingMember, matchedMember, memberForm, roleAcknowledged });
+    if (validationMessage) { setResult({ status: "warning", text: validationMessage }); return; }
     if (saving) return;
     setSaving(true); setResult({ status: "loading", text: "Menyimpan akses..." });
-    try { await runSettingsAction("users.upsert", { ...memberForm, email, row_version: existing?.row_version }, { rowVersion: existing?.row_version }); setMemberForm({ ...EMPTY_MEMBER_FORM }); setEditingMember(null); setMemberFormOpen(false); setResult({ status: "success", text: existing ? "Akses anggota berhasil diperbarui." : "Akses anggota berhasil dibuat. Anggota dapat login Google memakai email tersebut." }); invalidate(invalidationActionsFor("users")); await Promise.allSettled([resource.reload(), refreshAll()]); }
-    catch (error) { setResult({ status: "danger", text: error.message }); }
-    finally { setSaving(false); }
+    try {
+      await runSettingsAction("users.upsert", { ...memberForm, email, row_version: existing?.row_version }, { rowVersion: existing?.row_version });
+      setMemberForm({ ...EMPTY_MEMBER_FORM }); setEditingMember(null); setMemberFormOpen(false);
+      setResult({ status: "success", text: memberMutationResult(Boolean(existing)) });
+      invalidate(invalidationActionsFor("users"));
+      await Promise.allSettled([resource.reload(), refreshAll()]);
+    } catch (error) {
+      const unknownOutcome = isSettingsOutcomeUnknownError(error);
+      setResult({ status: unknownOutcome ? "unknown" : "danger", text: unknownOutcome ? "Status perubahan belum dapat dipastikan. Jangan ubah data; coba lagi dengan data yang sama." : error.message });
+    } finally {
+      setSaving(false);
+    }
   };
   const confirmUserAction = async (reason) => {
     if (!target) return;
     setActionState({ status: "submitting", error: null });
     try { const payload = { user_id: target.member.user_id, row_version: target.member.row_version, reason }; const options = { rowVersion: target.member.row_version }; if (target.action === "deactivate") await deactivateUser(payload, options); else await reactivateUser(payload, options); setResult({ status: "success", text: target.action === "deactivate" ? "Anggota berhasil dinonaktifkan." : "Anggota berhasil diaktifkan kembali." }); setTarget(null); setActionState({ status: "idle", error: null }); invalidate(invalidationActionsFor("users")); await Promise.allSettled([resource.reload(), refreshAll()]); }
-    catch (error) { setActionState({ status: "error", error }); }
+    catch (error) { setActionState({ status: isSettingsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openAction = (action, member) => { setOpenMenuId(""); if (action === "edit") { openMemberForm(member); return; } setTarget({ action, member }); setActionState({ status: "idle", error: null }); };
 

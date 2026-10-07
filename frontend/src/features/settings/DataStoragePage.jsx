@@ -7,28 +7,28 @@ const DATA_ACTIONS = Object.freeze([
   {
     to: "/pengaturan/export",
     label: "Export data",
-    description: "Buat salinan data untuk dibaca atau dianalisis tanpa mengubah dataset aktif.",
+    description: "Salinan data untuk dibaca atau dianalisis.",
     meta: "Buka export",
     icon: FiDownload,
   },
   {
     to: "/pengaturan/import",
     label: "Import transaksi",
-    description: "Tinjau JSON atau CSV terlebih dahulu sebelum transaksi ditambahkan.",
+    description: "Tambahkan transaksi dari JSON atau CSV.",
     meta: "Buka import",
     icon: FiUploadCloud,
   },
   {
     to: "/pengaturan/backup",
     label: "Backup data",
-    description: "Buat safety backup teknis terverifikasi ke Google Drive.",
+    description: "Simpan backup terverifikasi ke Google Drive.",
     meta: "Buat backup",
     icon: FiDownloadCloud,
   },
   {
     to: "/pengaturan/pemulihan",
     label: "Pulihkan data",
-    description: "Pulihkan item arsip atau jalankan full restore melalui preview terverifikasi.",
+    description: "Pulihkan arsip atau backup yang sudah diverifikasi.",
     meta: "Buka pemulihan",
     icon: FiArchive,
   },
@@ -39,7 +39,7 @@ const DataStoragePage = () => (
     <section className={`${styles.pageContent} ${styles.dataStorageHub}`} aria-labelledby="data-storage-title">
       <div className={styles.pageHeading}>
         <h2 id="data-storage-title">Data & cadangan</h2>
-        <p>Export, import, backup, dan pemulihan tersedia di satu tempat dengan langkah pengaman masing-masing.</p>
+        <p>Pilih tindakan data yang dibutuhkan.</p>
       </div>
       <div className={styles.dataStorageGrid}>
         {DATA_ACTIONS.map(({ to, label, description, meta, icon: Icon }) => (

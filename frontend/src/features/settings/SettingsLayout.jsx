@@ -173,7 +173,6 @@ const SettingsDesktopNavigation = ({ pathname, role }) => {
                     <span className={styles.settingsDesktopSubmenuIcon}><Icon aria-hidden="true" /></span>
                     <span className={styles.settingsDesktopSubmenuCopy}>
                       <strong>{item.label}</strong>
-                      <small>{item.description}</small>
                     </span>
                     <FiChevronRight aria-hidden="true" />
                   </NavLink>
@@ -189,12 +188,9 @@ const SettingsDesktopNavigation = ({ pathname, role }) => {
 
 const SettingsDesktopHeader = ({ meta }) => (
   <header className={styles.settingsDesktopDetailHeader}>
-    <div>
-      <div className={styles.settingsDesktopTitleLine}>
-        <h1>{meta.title}</h1>
-        <PageInfoButton title={meta.help.title}>{meta.help.content}</PageInfoButton>
-      </div>
-      <p>{meta.summary || meta.description}</p>
+    <div className={styles.settingsDesktopTitleLine}>
+      <h1>{meta.title}</h1>
+      <PageInfoButton title={meta.help.title}>{meta.help.content}</PageInfoButton>
     </div>
   </header>
 );

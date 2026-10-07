@@ -565,3 +565,6 @@ Daftar Belanja mewarisi token, primitive, typography Manrope, sidebar, dan botto
 - Konfirmasi duplikat hanya berlaku untuk payload yang sama; perubahan nominal/tanggal/opsi membatalkan konfirmasi sebelumnya.
 - Error input yang dapat diketahui sebelum request ditampilkan inline pada field terkait.
 - Perubahan privilege/role wajib memiliki review acknowledgement yang eksplisit tanpa membuat nested modal.
+
+
+- Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.

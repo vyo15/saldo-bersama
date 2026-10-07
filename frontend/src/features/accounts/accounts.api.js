@@ -1,4 +1,4 @@
-import { apiClient } from "../../services/api/client.js";
+import { apiClient, isOutcomeUnknownError } from "../../services/api/client.js";
 
 export const createAccount = (payload, options) => apiClient.request("accounts.create", payload, options);
 export const requestAccountCreation = (payload, options) => apiClient.request("accounts.requestCreate", payload, options);
@@ -6,3 +6,5 @@ export const updateAccount = (payload, options) => apiClient.request("accounts.u
 export const previewAccountLifecycle = (payload, options) => apiClient.request("accounts.previewLifecycle", payload, options);
 export const archiveAccount = (payload, options) => apiClient.request("accounts.archive", payload, options);
 export const deleteUnusedAccount = (payload, options) => apiClient.request("accounts.deleteUnused", payload, options);
+
+export const isAccountsOutcomeUnknownError = (error) => isOutcomeUnknownError(error);

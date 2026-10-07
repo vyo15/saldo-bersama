@@ -77,3 +77,6 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 - Governance: RFC-0020 dan dokumentasi kontrak terkait.
 
 - Human-error safeguards lintas fitur: implemented pada Shopping checkout/remove/editor, funding Target/Alokasi, Rekonsiliasi, dan perubahan role anggota; real-device smoke tetap diperlukan sebelum klaim UX final.
+
+
+- Human-error hardening final: create anggota dengan email aktif harus berhenti tanpa silent update; privilege Administrator baru/perubahan role wajib direview; Shopping Undo mengembalikan status sebelum dihapus dan tidak kedaluwarsa saat restore; editor Shopping, Rekening, Kategori, Target, Rekonsiliasi, lifecycle Transaksi, Anggota, dan Jadwal Rutin mempertahankan exact-retry saat outcome mutation belum pasti; Target baru/edit tidak menerima tanggal masa lalu.

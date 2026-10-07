@@ -1,4 +1,4 @@
-import { apiClient, hasUnresolvedMutationIntent } from "../../services/api/client.js";
+import { apiClient, hasUnresolvedMutationIntent, isOutcomeUnknownError } from "../../services/api/client.js";
 
 export const createTransaction = (payload, options) => apiClient.request("transactions.create", payload, options);
 export const updateTransaction = (payload, options) => apiClient.request("transactions.update", payload, options);
@@ -6,3 +6,5 @@ export const cancelTransaction = (payload, options) => apiClient.request("transa
 export const restoreTransaction = (payload, options) => apiClient.request("transactions.restore", payload, options);
 
 export const hasUnresolvedTransactionIntent = (editing = false) => hasUnresolvedMutationIntent(editing ? "transactions.update" : "transactions.create");
+
+export const isTransactionsOutcomeUnknownError = (error) => isOutcomeUnknownError(error);

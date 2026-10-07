@@ -1787,3 +1787,112 @@
 :root[data-theme="dark"] .desktop-quick-action--account {
   background: linear-gradient(180deg, rgba(139, 98, 220, .08), var(--surface));
 }
+
+/* Layout-density audit 2026-10: fewer card-shaped objects, clearer primary/secondary hierarchy. */
+@media (min-width: 821px) {
+  .desktop-reference-dashboard { gap: 14px; }
+
+  .desktop-reference-actions-section {
+    gap: .35rem;
+  }
+
+  .desktop-reference-actions-section > h2 {
+    margin: 0 2px;
+    font-size: 14px;
+  }
+
+  .desktop-quick-actions {
+    overflow: hidden;
+    border-top: 1px solid var(--divider-soft);
+    border-bottom: 1px solid var(--divider-soft);
+    gap: 0;
+  }
+
+  .desktop-quick-action {
+    min-height: 3.75rem;
+    padding: .55rem .7rem;
+    border: 0;
+    border-radius: 0;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: .65rem;
+    background: transparent;
+    box-shadow: none;
+    text-align: left;
+  }
+
+  .desktop-quick-action + .desktop-quick-action {
+    border-left: 1px solid var(--divider-soft);
+  }
+
+  .desktop-quick-action > span:first-child {
+    width: 2.2rem;
+    height: 2.2rem;
+    flex-basis: 2.2rem;
+    border-radius: .7rem;
+  }
+
+  .desktop-quick-action > span:first-child svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .desktop-quick-action > span:last-child { justify-items: start; }
+  .desktop-quick-action--record,
+  .desktop-quick-action--transfer,
+  .desktop-quick-action--planning,
+  .desktop-quick-action--goal,
+  .desktop-quick-action--account,
+  .desktop-quick-action--investment { background: transparent; }
+
+  .desktop-owner-card,
+  .desktop-reference-metric,
+  .desktop-reference-panel {
+    box-shadow: none;
+  }
+
+  .desktop-owner-card,
+  .desktop-reference-metric {
+    border-color: var(--divider-soft);
+  }
+
+  .desktop-reference-panel {
+    border-color: var(--divider-soft);
+    border-radius: 1.1rem;
+  }
+
+  .desktop-reference-secondary {
+    margin-top: 0;
+  }
+
+  .desktop-reference-secondary .shared-account-panel {
+    box-shadow: none;
+  }
+
+  .desktop-reference-secondary .desktop-side-widgets {
+    gap: 0;
+    border-top: 1px solid var(--divider-soft);
+    border-bottom: 1px solid var(--divider-soft);
+  }
+
+  .desktop-reference-secondary .desktop-summary-widget,
+  .desktop-reference-secondary .shared-investment-widget {
+    padding: .75rem .2rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .desktop-reference-secondary .desktop-summary-widget + .desktop-summary-widget {
+    border-top: 1px solid var(--divider-soft);
+  }
+
+  .desktop-reference-secondary .shared-investment-widget__notice {
+    min-height: 0;
+    padding: .6rem;
+    border: 0;
+    border-radius: .7rem;
+    box-shadow: none;
+  }
+}

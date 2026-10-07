@@ -440,8 +440,8 @@
     width: 2.72rem;
     height: 2.72rem;
     flex-basis: 2.72rem;
-    border-radius: 13px;
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 8%, transparent);
+    border-radius: var(--mobile-radius-control);
+    box-shadow: none;
   }
 
   .walletBubble img {
@@ -508,7 +508,7 @@
     min-height: 55px;
     padding-left: 4rem;
     padding-right: 2.65rem;
-    border-radius: 15px;
+    border-radius: var(--mobile-radius-control);
     font-size: 1.3rem;
   }
 
@@ -560,7 +560,7 @@
   .form :global(.field) > input,
   .form :global(.field) > textarea {
     min-height: 45px;
-    border-radius: 13px;
+    border-radius: var(--mobile-radius-control);
     font-size: var(--mobile-native-control-font-size);
     font-weight: var(--font-weight-regular);
   }

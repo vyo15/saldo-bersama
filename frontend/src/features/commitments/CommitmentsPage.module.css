@@ -272,3 +272,13 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* Obligation remains a meaningful financial object; facts inside it stay flat. */
+@media (max-width: 820px) {
+  .card { border-radius: var(--mobile-radius-object); }
+  .summary { border-radius: var(--mobile-radius-object); box-shadow: none; }
+  .meta { border-top-color: var(--mobile-divider); }
+  .mortgageProgress { border-color: transparent; background: transparent; }
+  .cardDetails { border-top-color: var(--mobile-divider); }
+  .typeOption { border-color: transparent; border-radius: var(--mobile-radius-control); background: var(--mobile-surface-tonal); }
+}

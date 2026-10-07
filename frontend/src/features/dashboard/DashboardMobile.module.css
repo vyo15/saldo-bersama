@@ -92,7 +92,7 @@
     margin-top: 10px;
     overflow: hidden;
     border: 1px solid transparent;
-    border-radius: 18px;
+    border-radius: var(--mobile-radius-hero);
     background:
       radial-gradient(circle at 82% 4%, color-mix(in srgb, var(--secondary) 13%, transparent), transparent 38%),
       linear-gradient(125deg, color-mix(in srgb, var(--surface-strong) 82%, var(--surface)) 0%, color-mix(in srgb, var(--surface-tint) 72%, var(--surface)) 56%, var(--surface) 100%);
@@ -384,7 +384,7 @@
   .mobile-quick-action > span {
     width: 42px;
     height: 42px;
-    border-radius: 13px;
+    border-radius: var(--mobile-radius-control);
     color: var(--primary);
     background: var(--surface-section-strong);
     box-shadow: var(--shadow-control);
@@ -527,7 +527,7 @@
     min-height: 58px;
     margin-bottom: 6px;
     border-color: transparent;
-    border-radius: 13px;
+    border-radius: var(--mobile-radius-control);
     background: var(--surface-section);
   }
 

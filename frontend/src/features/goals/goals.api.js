@@ -1,4 +1,4 @@
-import { apiClient } from "../../services/api/client.js";
+import { apiClient, isOutcomeUnknownError } from "../../services/api/client.js";
 
 export const createGoal = (payload, options) => apiClient.request("goals.create", payload, options);
 export const updateGoal = (payload, options) => apiClient.request("goals.update", payload, options);
@@ -9,3 +9,5 @@ export const deleteUnusedGoal = (payload, options) => apiClient.request("goals.d
 export const moveGoal = (payload, options) => apiClient.request("goals.move", payload, options);
 export const allocateGoalInvestment = (payload, options) => apiClient.request("goals.investments.allocate", payload, options);
 export const releaseGoalInvestment = (payload, options) => apiClient.request("goals.investments.release", payload, options);
+
+export const isGoalsOutcomeUnknownError = (error) => isOutcomeUnknownError(error);

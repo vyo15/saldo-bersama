@@ -156,3 +156,6 @@
 - [ ] Coba setoran Target melebihi dana rekening/sisa Target: submit diblokir dengan error inline.
 - [ ] Ubah role anggota existing: review acknowledgement wajib sebelum Simpan.
 - [ ] Masukkan saldo rekonsiliasi invalid/negatif pada rekening non-negatif: error berada di field saldo.
+
+
+- Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.

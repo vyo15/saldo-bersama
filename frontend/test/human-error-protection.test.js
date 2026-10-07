@@ -311,7 +311,7 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
   assert.match(goals, /dismissible=\{!createMutation\.busy && !retryOnly\}/);
   assert.match(goals, /retryOnly = createMutation\.outcomeUnknown/);
   assert.match(goals, /const submitting = editState\.status === "submitting"/);
-  assert.match(goals, /dismissible=\{!submitting\}/);
+  assert.match(goals, /dismissible=\{!submitting && !retryOnly\}/);
   assert.doesNotMatch(goals, /movementState|GoalMovementModal/);
   assert.match(allocations, /dismissible=\{!busy && !retryOnly\}/);
 
@@ -320,12 +320,12 @@ test("modal form mutation tidak dapat didismiss selama request masih berjalan", 
   assert.match(recurring, /const submitting = paymentState\.status === "submitting"/);
   assert.match(recurring, /const submitting = editState\.status === "submitting"/);
   assert.match(recurring, /dismissible=\{!submitting && !retryOnly\}/);
-  assert.ok((recurring.match(/dismissible=\{!submitting\}/g) || []).length >= 1);
+  assert.ok((recurring.match(/dismissible=\{!submitting && !retryOnly\}/g) || []).length >= 2);
 
   assert.ok((categories.match(/const submitting = dialogState\.status === "submitting"/g) || []).length >= 2);
-  assert.ok((categories.match(/dismissible=\{!submitting\}/g) || []).length >= 2);
-  assert.match(accountDialogs, /dismissible=\{!submitting\}/g);
-  assert.match(members, /dismissible=\{!saving\}/);
+  assert.ok((categories.match(/dismissible=\{!submitting && !retryOnly\}/g) || []).length >= 2);
+  assert.match(accountDialogs, /dismissible=\{!submitting && !retryOnly\}/g);
+  assert.match(members, /dismissible=\{!saving && !retryOnly\}/);
 });
 
 test("mutation guard canonical mengunci reentrancy, mempertahankan intent retry, dan membatasi key manual ke form transaksi", async () => {

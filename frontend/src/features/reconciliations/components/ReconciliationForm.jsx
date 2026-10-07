@@ -114,8 +114,9 @@ const BalanceComparisonFlow = ({ selectedAccount, form, setForm, submitState, se
   const balanceError = submitState.error && /saldo|nominal|angka|negatif/i.test(submitState.error.message || "") ? submitState.error.message : "";
   const [notesOpen, setNotesOpen] = useState(false);
   const progressing = ["submitting", "syncing"].includes(submitState.status);
-  const busy = progressing || submitState.status === "completed";
-  const buttonLabel = submitState.status === "completed" ? "Pemeriksaan tersimpan" : submitState.status === "syncing" ? "Memperbarui..." : submitState.status === "submitting" ? "Membandingkan..." : "Bandingkan saldo";
+  const retryOnly = submitState.status === "unknown";
+  const busy = progressing || submitState.status === "completed" || retryOnly;
+  const buttonLabel = submitState.status === "completed" ? "Pemeriksaan tersimpan" : submitState.status === "syncing" ? "Memperbarui..." : submitState.status === "submitting" ? "Membandingkan..." : retryOnly ? "Coba lagi data yang sama" : "Bandingkan saldo";
   return (
     <form className={styles.differenceFlow} onSubmit={onSubmit} noValidate>
       <ActualBalanceField selectedAccount={selectedAccount} form={form} setForm={setForm} setSubmitState={setSubmitState} disabled={busy} error={balanceError} />
@@ -123,15 +124,15 @@ const BalanceComparisonFlow = ({ selectedAccount, form, setForm, submitState, se
       <button type="button" className={styles.notesToggle} onClick={() => setNotesOpen((current) => !current)} aria-expanded={notesOpen}>{notesOpen ? "Sembunyikan catatan" : "+ Tambahkan catatan"}</button>
       {notesOpen ? <label className={`field ${styles.notesField}`} htmlFor="reconciliation-notes"><span className={styles.notesLabel}><span>Catatan</span><small>{form.notes.length}/250</small></span><textarea id="reconciliation-notes" rows="2" maxLength="250" value={form.notes} disabled={busy} placeholder="Opsional" onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label> : null}
       <div className={styles.guardLine}><FiShield aria-hidden="true" /><span>Pemeriksaan hanya membandingkan angka. <strong>Saldo tidak diubah otomatis.</strong></span></div>
-      {submitState.error && !balanceError ? <div className="notice notice--danger" role="alert">{submitState.error.message}</div> : null}
-      <Button variant="primary" icon={FiCheckCircle} type="submit" loading={progressing} disabled={busy || !selectedAccount || form.actual_balance === ""}>{buttonLabel}</Button>
+      {submitState.error && !balanceError ? <div className="notice notice--danger" role="alert">{retryOnly ? "Status pemeriksaan belum dapat dipastikan. Jangan ubah rekening atau nominal; coba lagi dengan data yang sama." : submitState.error.message}</div> : null}
+      <Button variant="primary" icon={FiCheckCircle} type="submit" loading={progressing} disabled={(busy && !retryOnly) || !selectedAccount || form.actual_balance === ""}>{buttonLabel}</Button>
       {progressing ? <ReconciliationSubmitProgress phase={submitState.status} /> : null}
     </form>
   );
 };
 
 const ReconciliationForm = ({ accounts, selectedAccount, form, setForm, submitState, setSubmitState, onSubmitDifference, preview, accountSystemBalance, contextLocked = false }) => {
-  const busy = ["submitting", "syncing", "completed"].includes(submitState.status);
+  const busy = ["submitting", "syncing", "completed", "unknown"].includes(submitState.status);
   const selectAccount = (account) => {
     setForm({ account_id: account.account_id, actual_balance: "", notes: "" });
     setSubmitState({ status: "idle", error: null });

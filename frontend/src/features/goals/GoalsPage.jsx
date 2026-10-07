@@ -13,12 +13,15 @@ import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionSta
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { assertPositiveRupiah } from "../../domain/money.js";
+import { todayInJakarta } from "../../domain/dates.js";
+
 import {
   archiveGoal as requestArchiveGoal,
   createGoal as requestCreateGoal,
   deleteUnusedGoal as requestDeleteUnusedGoal,
   previewGoalLifecycle,
   updateGoal as requestUpdateGoal,
+  isGoalsOutcomeUnknownError,
 } from "./goals.api.js";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
 import { summarizeGoals } from "./goalPresentation.js";
@@ -45,6 +48,7 @@ const useGoalCreation = ({ resource, investmentResource, refreshOverview, invali
     let targetAmount = 0;
     try { targetAmount = assertPositiveRupiah(form.target_amount); } catch { return setMessage({ type: "danger", field: "target_amount", text: "Target nominal harus lebih dari Rp0." }); }
     if (!form.target_date) return setMessage({ type: "danger", field: "target_date", text: "Tanggal target wajib dipilih." });
+    if (form.target_date < todayInJakarta()) return setMessage({ type: "danger", field: "target_date", text: "Tanggal target tidak boleh di masa lalu." });
     if (["cash", "mixed"].includes(form.funding_mode) && !form.account_id) return setMessage({ type: "danger", text: "Pilih rekening tabungan Target." });
     if (form.funding_mode === "investment" && !form.portfolio_id) return setMessage({ type: "danger", text: "Pilih sumber investasi untuk Target." });
     return createMutation.run(async () => {
@@ -76,6 +80,7 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
     if (!editGoal) return;
     let targetAmount;
     try { targetAmount = assertPositiveRupiah(editGoal.target_amount); } catch { setEditState({ status: "error", error: Object.assign(new Error("Target nominal harus lebih dari Rp0."), { field: "target_amount" }) }); return; }
+    if (editGoal.target_date && editGoal.target_date < todayInJakarta()) { setEditState({ status: "error", error: Object.assign(new Error("Tanggal target tidak boleh di masa lalu."), { field: "target_date" }) }); return; }
     setEditState({ status: "submitting", error: null });
     try {
       await requestUpdateGoal({ goal_id: editGoal.goal_id, row_version: editGoal.row_version, name: editGoal.name, target_amount: targetAmount, target_date: editGoal.target_date, priority: editGoal.priority || "normal" }, { rowVersion: editGoal.row_version });
@@ -83,7 +88,7 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
       setEditState({ status: "idle", error: null });
       notify({ message: "Target berhasil diperbarui.", tone: "success", dedupeKey: "goals:update" });
       await refresh(refreshGoalKeys);
-    } catch (error) { setEditState({ status: "error", error }); }
+    } catch (error) { setEditState({ status: isGoalsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openArchive = async (goal) => {
     setArchiveState({ status: "submitting", error: null });
@@ -111,7 +116,7 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
       await refresh(refreshGoalKeys);
-    } catch (error) { setArchiveState({ status: "error", error }); }
+    } catch (error) { setArchiveState({ status: isGoalsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openStatusChange = (goal, nextStatus) => { setStatusTarget({ goal, nextStatus }); setStatusState({ status: "idle", error: null }); };
   const applyGoalStatus = async () => {
@@ -128,7 +133,7 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
         dedupeKey: nextStatus === "completed" ? "goals:complete" : "goals:reopen",
       });
       await refresh(refreshGoalKeys);
-    } catch (error) { setStatusState({ status: "error", error }); }
+    } catch (error) { setStatusState({ status: isGoalsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openEdit = (goal) => { setEditGoal({ ...goal }); setEditState({ status: "idle", error: null }); };
   return { editGoal, setEditGoal, editState, saveGoal, archiveTarget, setArchiveTarget, archiveState, applyGoalLifecycle, statusTarget, setStatusTarget, statusState, applyGoalStatus, openStatusChange, openEdit, openArchive };

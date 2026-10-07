@@ -1,3 +1,6 @@
+## 2026-10-06 — Flow human-error hardening final pass
+- Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.
+
 ## 6 Oktober 2026 - CI history-rewrite recovery dan pre-push diagnostic
 - Memperbaiki GitHub **Quality / Check changed whitespace** agar tidak gagal palsu dengan `fatal: bad object` ketika `github.event.before` atau base SHA sudah orphan setelah amend/force-push. CI sekarang memverifikasi object commit dengan `git cat-file -e` sebelum `git diff --check`, lalu fallback eksplisit ke `HEAD^..HEAD` bila base tidak lagi tersedia.
 - Memperbaiki managed pre-push pada kasus Git tidak mengirim ref update (mis. push non-fast-forward sudah tidak eligible): hook tidak lagi menampilkan error misleading **Push harus mengubah tepat satu ref**, tidak menjalankan verification palsu, dan menyerahkan diagnosis akhir ke Git. Push yang benar-benar mengirim ref tetap fail-closed untuk branch/ref/SHA/dirty tree/non-fast-forward.

@@ -20,6 +20,7 @@ import {
   deleteUnusedAccount,
   previewAccountLifecycle,
   updateAccount as requestUpdateAccount,
+  isAccountsOutcomeUnknownError,
 } from "./accounts.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -28,6 +29,7 @@ import { ACCOUNT_BALANCE_GUIDANCE, accountCardholderName, accountTypeUsesAutomat
 import { investmentContinuationState, readInvestmentContinuation } from "../../shared/workflows/investmentContinuation.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import { latestReconciliationByAccount } from "../../shared/presentation/reconciliation.js";
+
 import styles from "./AccountsPage.module.css";
 
 const MobileAccountSheets = lazy(() => import("./components/MobileAccountSheets.jsx"));
@@ -77,7 +79,7 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
   const [createDialogOpen, setCreateDialogOpen] = useState(initialCreateOpen);
   const openCreateDialog = () => { setDialogState({ status: "idle", error: null }); setCreateDialogOpen(true); };
   const closeCreateDialog = () => {
-    if (dialogState.status === "submitting") return;
+    if (["submitting", "unknown"].includes(dialogState.status)) return;
     setCreateDialogOpen(false);
     setDialogState({ status: "idle", error: null });
     onCreateClose?.();
@@ -94,7 +96,7 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
       notify({ message: "Rekening berhasil dibuat.", tone: "success", dedupeKey: "accounts:create" });
       await reloadAccounts();
       onCreateComplete?.({ createdImmediately: true, saved, payload });
-    } catch (error) { setDialogState({ status: "error", error }); }
+    } catch (error) { setDialogState({ status: isAccountsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openEditAccount = (account) => {
     setEditAccount({
@@ -115,7 +117,7 @@ const useAccountCrudActions = ({ accountForm, setAccountForm, editAccount, setEd
       setDialogState({ status: "idle", error: null });
       notify({ message: "Rekening berhasil diperbarui.", tone: "success", dedupeKey: "accounts:update" });
       await reloadAccounts();
-    } catch (error) { setDialogState({ status: "error", error }); }
+    } catch (error) { setDialogState({ status: isAccountsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   return { createDialogOpen, openCreateDialog, closeCreateDialog, createAccount, openEditAccount, saveAccount };
 };
@@ -162,7 +164,7 @@ const useAccountLifecycleActions = ({ archiveTarget, setArchiveTarget, setDialog
         tone: "success", dedupeKey: preview.canDeleteUnused ? "accounts:delete-unused" : "accounts:archive",
       });
       await reloadAccounts();
-    } catch (error) { setDialogState({ status: "error", error }); }
+    } catch (error) { setDialogState({ status: isAccountsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   return { openAccountLifecycle, archiveSelectedAccount };
 };
@@ -211,8 +213,8 @@ const AccountArchiveConfirmation = ({ archiveTarget, dialogState, setArchiveTarg
     reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason
     expectedConfirmation={archiveTarget?.preview.canDeleteUnused ? archiveTarget.preview.deleteConfirmation : ""}
     acknowledgementLabel={archiveTarget?.preview.canDeleteUnused ? "Saya memahami rekening ini akan dihapus permanen dan hanya audit yang tetap disimpan." : ""}
-    countdownSeconds={archiveTarget?.preview.canDeleteUnused ? 5 : 0} busy={dialogState.status === "submitting"} error={dialogState.error}
-    onCancel={() => dialogState.status !== "submitting" && setArchiveTarget(null)} onConfirm={archiveSelectedAccount}>
+    countdownSeconds={archiveTarget?.preview.canDeleteUnused ? 5 : 0} busy={dialogState.status === "submitting"} retryOnly={dialogState.status === "unknown"} error={dialogState.error}
+    onCancel={() => !["submitting", "unknown"].includes(dialogState.status) && setArchiveTarget(null)} onConfirm={archiveSelectedAccount}>
     {archiveTarget ? <div className={styles.impactSummary}>
       <div><span>Saldo awal</span><strong><Money value={archiveTarget.preview.initialBalance} /></strong></div>
       <div><span>Saldo saat ini</span><strong><Money value={archiveTarget.preview.currentBalance} /></strong></div>

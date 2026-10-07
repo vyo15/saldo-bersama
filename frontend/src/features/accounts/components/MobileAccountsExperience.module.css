@@ -90,7 +90,7 @@
     min-height: 2.75rem;
     padding: 0 .85rem;
     border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
-    border-radius: 1.05rem;
+    border-radius: var(--mobile-radius-control);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -625,6 +625,57 @@
   .mobileBalanceSummary::after {
     display: none;
   }
+  /* Account hero/card remains the visual object; surrounding controls are intentionally flat. */
+  .mobileStackHeaderButton:not(.mobileStackHeaderButtonPrimary) {
+    border-color: transparent;
+    border-radius: var(--mobile-radius-control);
+    background: transparent;
+  }
+
+  .mobileOwnershipFilters {
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid var(--mobile-divider);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .mobileOwnershipFilter { border-radius: 0; }
+  .mobileOwnershipFilter[aria-pressed="true"] {
+    position: relative;
+    background: transparent;
+    box-shadow: none;
+  }
+  .mobileOwnershipFilter[aria-pressed="true"]::after {
+    content: "";
+    height: 2px;
+    position: absolute;
+    left: 24%;
+    right: 24%;
+    bottom: -1px;
+    border-radius: var(--radius-pill);
+    background: var(--primary);
+  }
+
+  .mobileBalanceSummary { border-radius: var(--mobile-radius-object); }
+
+  .mobileQuickActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    border-top: 1px solid var(--mobile-divider);
+    border-bottom: 1px solid var(--mobile-divider);
+  }
+
+  .mobileQuickAction,
+  .mobileQuickActionPlaceholder {
+    min-height: 4rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .mobileQuickActions > * + * { border-left: 1px solid var(--mobile-divider); }
+
 }
 
 @media (max-width: 390px) {

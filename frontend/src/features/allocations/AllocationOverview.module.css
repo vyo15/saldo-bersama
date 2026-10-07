@@ -940,3 +940,51 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* Layout-density audit 2026-10: repeated planning data is a list, not a stack of mini-cards. */
+@media (min-width: 821px) {
+  .allocation-funding-summary__source-list {
+    gap: 0;
+  }
+
+  .allocation-funding-summary__source-list .allocation-funding-summary__source-row {
+    padding: .55rem 0;
+    border-width: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .planning-active-list {
+    gap: 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .planning-active-row {
+    min-height: 4.35rem;
+    padding: .55rem .2rem;
+    border-width: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .planning-active-row:last-child { border-bottom: 0; }
+
+  .planning-active-row--attention {
+    background: color-mix(in srgb, var(--primary-soft) 22%, transparent);
+  }
+
+  .planning-active-row__icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-color: transparent;
+    border-radius: .75rem;
+  }
+
+  .planning-active-row__icon img {
+    width: 2.05rem;
+    height: 2.05rem;
+  }
+}

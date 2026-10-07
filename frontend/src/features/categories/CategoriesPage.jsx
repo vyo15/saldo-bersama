@@ -20,13 +20,14 @@ import {
   categoryIcon,
   categoryIconKey,
 } from "../../shared/presentation/transaction.js";
-import { archiveCategory, createCategory as requestCreateCategory, deleteUnusedCategory, previewCategoryArchive, requestCategoryCreation, updateCategory as requestUpdateCategory } from "./categories.api.js";
+import { archiveCategory, createCategory as requestCreateCategory, deleteUnusedCategory, previewCategoryArchive, requestCategoryCreation, updateCategory as requestUpdateCategory, isCategoriesOutcomeUnknownError } from "./categories.api.js";
 import { categoryTypeLabel } from "../../shared/presentation/category.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
 import { ArchiveCategoryModal, CreateCategoryModal, EditCategoryModal } from "./CategoryDialogs.jsx";
 import { categoryIconToneClass } from "./categoryUi.js";
 import CategoryVisualIntro from "./CategoryVisualIntro.jsx";
 import styles from "./CategoriesPage.module.css";
+
 
 const emptyCategoryForm = () => ({
   name: "",
@@ -213,7 +214,7 @@ const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenM
   };
   const openCreate = () => { setOpenMenuId(""); setDialogState({ status: "idle", error: null }); setCreateOpen(true); };
   const openEdit = (category) => { setOpenMenuId(""); setEditCategory({ ...category, icon: categoryIconKey(category.icon, category.transaction_type) }); setDialogState({ status: "idle", error: null }); };
-  const closeCreate = () => { if (dialogState.status !== "submitting") { setCreateOpen(false); setDialogState({ status: "idle", error: null }); } };
+  const closeCreate = () => { if (!["submitting", "unknown"].includes(dialogState.status)) { setCreateOpen(false); setDialogState({ status: "idle", error: null }); } };
 
   const createCategory = async (event) => {
     event.preventDefault(); setDialogState({ status: "submitting", error: null });
@@ -225,14 +226,14 @@ const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenM
       notify({ message: ownerMode ? "Kategori berhasil dibuat." : "Pengajuan kategori dikirim ke Administrator.", tone: "success", dedupeKey: ownerMode ? "categories:create" : "categories:request-create" });
       if (ownerMode) { await reloadCategories(); onCreated?.(createdType); }
       else await requestsResource?.reload?.();
-    } catch (error) { setDialogState({ status: "error", error }); }
+    } catch (error) { setDialogState({ status: isCategoriesOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const saveCategory = async (event) => {
     event.preventDefault(); if (!editCategory) return; setDialogState({ status: "submitting", error: null });
     try {
       await requestUpdateCategory({ category_id: editCategory.category_id, name: editCategory.name, icon: editCategory.icon, row_version: editCategory.row_version }, { rowVersion: editCategory.row_version });
       setEditCategory(null); setDialogState({ status: "idle", error: null }); notify({ message: "Kategori berhasil diperbarui.", tone: "success", dedupeKey: "categories:update" }); await reloadCategories();
-    } catch (error) { setDialogState({ status: "error", error }); }
+    } catch (error) { setDialogState({ status: isCategoriesOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openArchivePreview = async (category) => {
     setOpenMenuId(""); setDialogState({ status: "submitting", error: null });
@@ -248,7 +249,7 @@ const useCategoryActions = ({ resource, notify, invalidate, refreshAll, setOpenM
       if (preview.canDeleteUnused) { await deleteUnusedCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version }); notify({ message: "Kategori yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "categories:delete-unused" }); }
       else { await archiveCategory({ category_id: category.category_id, row_version: category.row_version, reason }, { rowVersion: category.row_version }); notify({ message: "Kategori berhasil diarsipkan.", tone: "success", dedupeKey: "categories:archive" }); }
       setArchiveTarget(null); setDialogState({ status: "idle", error: null }); await reloadCategories();
-    } catch (error) { setDialogState({ status: "error", error }); }
+    } catch (error) { setDialogState({ status: isCategoriesOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   return { form, setForm, createOpen, editCategory, setEditCategory, archiveTarget, setArchiveTarget, message, dialogState, reloadCategories, openCreate, openEdit, closeCreate, createCategory, saveCategory, openArchivePreview, applyCategoryLifecycle };
 };

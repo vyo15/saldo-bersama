@@ -281,3 +281,6 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 - Shopping item: quantity invalid ditolak sebelum mutation; remove menyediakan Undo selama item belum purchased.
 - Allocation/Target/Reconciliation: nominal/saldo invalid tampil inline dan preview dampak tetap terlihat sebelum mutation.
 - Perubahan role anggota memerlukan acknowledgement saat role existing berubah.
+
+
+- Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.

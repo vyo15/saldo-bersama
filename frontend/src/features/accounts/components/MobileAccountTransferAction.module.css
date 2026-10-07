@@ -3,14 +3,14 @@
     min-width: 0;
     min-height: 3.7rem;
     padding: .45rem;
-    border: 1px solid var(--border);
-    border-radius: 1.05rem;
+    border: 0;
+    border-radius: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: .32rem;
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    background: transparent;
     color: var(--text-soft);
     font: inherit;
     font-size: var(--font-size-xs);
@@ -38,8 +38,8 @@
 
   @media (hover: hover) and (pointer: fine) {
     .mobileTransferQuickAction:hover:not(:disabled) {
-      border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
-      background: var(--primary-soft);
+      border-color: transparent;
+      background: var(--mobile-row-pressed);
       color: var(--primary);
     }
 

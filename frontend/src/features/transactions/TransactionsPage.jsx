@@ -12,12 +12,13 @@ import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { cancelTransaction as requestCancelTransaction, restoreTransaction as requestRestoreTransaction } from "./transactions.api.js";
+import { cancelTransaction as requestCancelTransaction, restoreTransaction as requestRestoreTransaction, isTransactionsOutcomeUnknownError } from "./transactions.api.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
 import { currentMonthInJakarta } from "../../domain/dates.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import { collectionEmptyState, EMPTY_COLLECTION_STATE } from "../../shared/presentation/emptyState.js";
+
 
 const TransferRequestsPanel = lazy(() => import("./TransferRequestsPanel.jsx"));
 const MobileTransactionHistory = lazy(() => import("./components/MobileTransactionHistory.jsx"));
@@ -61,8 +62,8 @@ const repeatDraftFromTransaction = (item) => ({
 const useTransactionLifecycle = ({ resource, reportResource, refreshOverview, invalidate }) => {
   const [cancelTarget, setCancelTarget] = useState(null); const [cancelState, setCancelState] = useState({ status: "idle", error: null }); const [restoreTarget, setRestoreTarget] = useState(null); const [restoreState, setRestoreState] = useState({ status: "idle", error: null });
   const refresh = async () => { invalidate(refreshKeys); await Promise.allSettled([resource.reload(), reportResource.reload(), refreshOverview()]); };
-  const cancelTransaction = async (reason) => { if (!cancelTarget) return; setCancelState({ status: "submitting", error: null }); try { await requestCancelTransaction({ transactionId: cancelTarget.transaction_id, rowVersion: cancelTarget.row_version, reason }, { rowVersion: cancelTarget.row_version }); setCancelTarget(null); setCancelState({ status: "idle", error: null }); await refresh(); } catch (error) { setCancelState({ status: "error", error }); } };
-  const restoreCancelledTransaction = async (reason) => { if (!restoreTarget) return; setRestoreState({ status: "submitting", error: null }); try { await requestRestoreTransaction({ transaction_id: restoreTarget.transaction_id, row_version: restoreTarget.row_version, reason }, { rowVersion: restoreTarget.row_version }); setRestoreTarget(null); setRestoreState({ status: "idle", error: null }); await refresh(); } catch (error) { setRestoreState({ status: "error", error }); } };
+  const cancelTransaction = async (reason) => { if (!cancelTarget) return; setCancelState({ status: "submitting", error: null }); try { await requestCancelTransaction({ transactionId: cancelTarget.transaction_id, rowVersion: cancelTarget.row_version, reason }, { rowVersion: cancelTarget.row_version }); setCancelTarget(null); setCancelState({ status: "idle", error: null }); await refresh(); } catch (error) { setCancelState({ status: isTransactionsOutcomeUnknownError(error) ? "unknown" : "error", error }); } };
+  const restoreCancelledTransaction = async (reason) => { if (!restoreTarget) return; setRestoreState({ status: "submitting", error: null }); try { await requestRestoreTransaction({ transaction_id: restoreTarget.transaction_id, row_version: restoreTarget.row_version, reason }, { rowVersion: restoreTarget.row_version }); setRestoreTarget(null); setRestoreState({ status: "idle", error: null }); await refresh(); } catch (error) { setRestoreState({ status: isTransactionsOutcomeUnknownError(error) ? "unknown" : "error", error }); } };
   const openCancel = (item) => { setCancelTarget(item); setCancelState({ status: "idle", error: null }); }; const openRestore = (item) => { setRestoreTarget(item); setRestoreState({ status: "idle", error: null }); };
   return { cancelTarget, setCancelTarget, cancelState, restoreTarget, setRestoreTarget, restoreState, cancelTransaction, restoreCancelledTransaction, openCancel, openRestore };
 };

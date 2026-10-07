@@ -98,7 +98,7 @@
     inset-block-start: calc(env(safe-area-inset-top) + 10px);
     width: min(21rem, calc(100vw - 24px));
     padding: 9px 10px;
-    border-radius: 13px;
+    border-radius: var(--mobile-radius-control);
   }
 
   .processModule { display: none; }
@@ -111,7 +111,7 @@
     gap: 7px;
   }
 
-  .toast { min-height: 3rem; padding: 9px 10px; border-radius: 13px; }
+  .toast { min-height: 3rem; padding: 9px 10px; border-radius: var(--mobile-radius-control); }
   .close { width: var(--control-height-md); height: var(--control-height-md); }
 }
 

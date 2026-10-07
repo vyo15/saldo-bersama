@@ -1548,3 +1548,155 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
     overflow-wrap: anywhere;
   }
 }
+
+/* Layout-density audit 2026-10: desktop Settings is a quiet two-pane workspace.
+   Navigation carries identity only; explanations belong to the destination or the info affordance. */
+@media (min-width: 821px) {
+  .settingsWorkspace {
+    min-height: 36rem;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    grid-template-columns: minmax(12.75rem, 14.5rem) minmax(0, 1fr);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .settingsDesktopSubmenu {
+    padding: .35rem .8rem .5rem 0;
+    gap: .35rem;
+    background: transparent;
+  }
+
+  .settingsDesktopPaneLabel { display: none; }
+  .settingsDesktopGroupedNav { gap: .9rem; }
+  .settingsDesktopGroup { gap: .3rem; }
+  .settingsDesktopGroup > h2 { padding: 0 .5rem; }
+
+  .settingsDesktopSubmenuItem {
+    min-height: 2.85rem;
+    padding: .45rem .5rem;
+    border: 0;
+    border-radius: .7rem;
+    grid-template-columns: 1.8rem minmax(0, 1fr) 1rem;
+    gap: .5rem;
+  }
+
+  .settingsDesktopSubmenuItem.isActive {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--primary-soft) 78%, transparent);
+  }
+
+  .settingsDesktopSubmenuIcon {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+
+  .settingsDesktopSubmenuCopy { display: block; }
+  .settingsDesktopSubmenuCopy strong { font-size: 13px; }
+  .settingsDesktopSubmenuCopy small { display: none; }
+
+  .settingsDesktopContent {
+    padding: .2rem 0 1rem clamp(1.1rem, 2vw, 1.75rem);
+    gap: .9rem;
+    background: transparent;
+  }
+
+  .settingsDesktopDetailHeader {
+    min-height: 3.25rem;
+    padding-bottom: .7rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .settingsDesktopTitleLine h1 {
+    font-size: clamp(1.45rem, 2vw, 1.8rem);
+  }
+
+  .settingsDesktopDetailHeader p { display: none; }
+  .settingsDesktopOverview { gap: .9rem; }
+  .settingsDesktopOverviewIntro { gap: 0; }
+  .settingsDesktopOverviewIntro h2 { font-size: 14px; }
+  .settingsDesktopOverviewIntro p { display: none; }
+
+  .settingsDesktopFacts {
+    border-radius: 1rem;
+    background: transparent;
+  }
+
+  .settingsDesktopFacts > div {
+    min-height: 4.35rem;
+    padding: .75rem .9rem;
+  }
+
+  .settingsDesktopBackendSummary {
+    max-width: 44rem;
+    padding: .7rem .85rem;
+    border-radius: .8rem;
+    background: var(--surface-soft);
+  }
+
+  .serviceGrid { gap: .65rem; }
+  .serviceTile {
+    padding: .9rem;
+    border-radius: 1rem;
+    gap: .8rem;
+    box-shadow: none;
+  }
+
+  .serviceIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .75rem;
+  }
+
+  .serviceCopy { gap: .2rem; }
+  .serviceCopy p,
+  .serviceCopy small {
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+  }
+
+  .dataStorageGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dataStorageCard {
+    min-height: 4.5rem;
+    padding: .65rem .2rem;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: .75rem;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .dataStorageCard:last-child { border-bottom: 0; }
+  .dataStorageCard:hover { transform: none; }
+  .dataStorageCopy { gap: .15rem; }
+  .dataStorageCopy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dataStorageMeta { white-space: nowrap; }
+}
+
+/* Secondary navigation copy may truncate; the destination owns the complete explanation. */
+@media (max-width: 820px) {
+  .settingsListCopy small {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    white-space: normal;
+    overflow-wrap: normal;
+  }
+}

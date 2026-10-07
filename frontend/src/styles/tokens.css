@@ -261,6 +261,16 @@
   --mobile-section-gap: 16px;
   --mobile-card-padding: 16px;
   --mobile-card-radius: 16px;
+  /* Mobile surface grammar: canvas -> section -> row -> divider; object/hero are explicit opt-ins. */
+  --mobile-surface-canvas: var(--page);
+  --mobile-surface-tonal: color-mix(in srgb, var(--surface-section) 82%, transparent);
+  --mobile-surface-object: var(--surface);
+  --mobile-divider: var(--divider-soft);
+  --mobile-row-pressed: color-mix(in srgb, var(--primary-soft) 40%, transparent);
+  --mobile-radius-icon: var(--radius-sm);
+  --mobile-radius-control: var(--radius-control);
+  --mobile-radius-object: var(--radius-surface);
+  --mobile-radius-hero: var(--radius-special);
   --mobile-control-height: 44px;
   --mobile-hit-target: 44px;
   --keyboard-inset: 0px;

@@ -29,3 +29,6 @@ Untuk guarded/high-risk, Done juga mensyaratkan approval eksplisit dan evidence 
 - Field error yang dapat diketahui client tampil inline dan dapat ditemukan keyboard/screen reader.
 - Reversible low-risk action menyediakan recovery/Undo bila contract backend mendukung.
 - Perubahan privilege existing user memiliki review acknowledgement eksplisit.
+
+
+- Human-error hardening final: create anggota dengan email aktif harus berhenti tanpa silent update; privilege Administrator baru/perubahan role wajib direview; Shopping Undo mengembalikan status sebelum dihapus dan tidak kedaluwarsa saat restore; editor Shopping, Rekening, Kategori, Target, Rekonsiliasi, lifecycle Transaksi, Anggota, dan Jadwal Rutin mempertahankan exact-retry saat outcome mutation belum pasti; Target baru/edit tidak menerima tanggal masa lalu.

@@ -14,6 +14,7 @@ import { formatRupiah } from "../../../domain/money.js";
 import { canRepresentAccountTransfer } from "../../../domain/ownership.js";
 import { accountDisplayLabel } from "../../../shared/presentation/account.js";
 import TemporalInput from "../../../components/common/TemporalInput.jsx";
+import { todayInJakarta } from "../../../domain/dates.js";
 
 const goalTypeOptions = [
   { value: "savings", label: "Tabungan", icon: TargetIcon },
@@ -55,7 +56,7 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, investmentPortf
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Jenis target" name="goal-type" value={form.goal_type} onChange={(goal_type) => setForm((current) => ({ ...current, goal_type }))} options={goalTypeOptions} columns={3} mobileColumns={3} segmented />
       <MoneyInput id="goal-target" label="Target nominal" value={form.target_amount} error={message?.field === "target_amount" ? message.text : ""} onChange={(value) => setForm((current) => ({ ...current, target_amount: value }))} />
-      <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
+      <label className="field"><span>Tanggal target</span><TemporalInput required type="date" min={todayInJakarta()} value={form.target_date} onChange={(event) => setForm((current) => ({ ...current, target_date: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Cara menabung" name="goal-funding-mode" value={form.funding_mode} onChange={(funding_mode) => setForm((current) => ({ ...current, funding_mode, account_id: funding_mode === "investment" ? "" : current.account_id, portfolio_id: funding_mode === "investment" ? current.portfolio_id : "" }))} options={fundingOptions} columns={3} mobileColumns={3} segmented />
       {cashFunding ? <InlineSelectionPicker className="form-grid__full" label="Rekening tabungan" required value={form.account_id} onChange={(account_id) => setForm((current) => ({ ...current, account_id }))} placeholder="Pilih rekening" placeholderOption={{ icon: AccountIcon }} searchable={accounts.length > 8} searchPlaceholder="Cari rekening…" options={accounts.map((account) => ({ value: account.account_id, label: accountDisplayLabel(account), meta: `Tersedia ${formatRupiah(account.available_balance ?? account.balance ?? 0)}`, ...accountOptionVisual(account) }))} /> : null}
       {investmentFunding ? <InlineSelectionPicker className="form-grid__full" label="Sumber investasi" required value={form.portfolio_id} onChange={(portfolio_id) => setForm((current) => ({ ...current, portfolio_id }))} placeholder="Pilih sumber investasi" placeholderOption={{ icon: InvestmentIcon }} options={investmentSourceOptions(investmentPortfolios)} /> : null}
@@ -71,15 +72,17 @@ const GoalCreateModal = ({ open, close, form, setForm, accounts, investmentPortf
 const GoalEditModal = ({ editGoal, setEditGoal, editState, saveGoal }) => {
   const close = () => setEditGoal(null);
   const submitting = editState.status === "submitting";
-  const guard = useUnsavedChangesGuard({ open: Boolean(editGoal), value: editGoal, onClose: close, blocked: submitting });
-  return <Modal open={Boolean(editGoal)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan target" dismissible={!submitting} title="Edit target" footer={<><Button type="button" disabled={submitting} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={submitting}>{submitting ? "Menyimpan..." : "Simpan perubahan"}</Button></>}>
-    <form id="goal-edit-form" className="form-grid" onSubmit={saveGoal}>
+  const retryOnly = editState.status === "unknown";
+  const guard = useUnsavedChangesGuard({ open: Boolean(editGoal), value: editGoal, onClose: close, blocked: submitting || retryOnly });
+  return <Modal open={Boolean(editGoal)} onClose={guard.requestClose} discardGuard={guard} discardSubject="perubahan target" dismissible={!submitting && !retryOnly} title="Edit target" footer={<><Button type="button" disabled={submitting || retryOnly} onClick={guard.discardAndClose}>Batal</Button><Button type="submit" form="goal-edit-form" variant="primary" disabled={submitting}>{submitting ? "Menyimpan..." : retryOnly ? "Coba lagi data yang sama" : "Simpan perubahan"}</Button></>}>
+    <form id="goal-edit-form" className="form-grid" onSubmit={saveGoal}><fieldset className="mutation-retry-lock" disabled={retryOnly}>
       <label className="field form-grid__full"><span>Nama target *</span><input required maxLength="100" value={editGoal?.name || ""} onChange={(event) => setEditGoal((current) => ({ ...current, name: event.target.value }))} /></label>
       <MoneyInput id="goal-edit-target" label="Target nominal" value={editGoal?.target_amount || ""} error={editState.error?.field === "target_amount" ? editState.error.message : ""} onChange={(value) => setEditGoal((current) => ({ ...current, target_amount: value }))} />
-      <label className="field"><span>Tanggal target</span><TemporalInput required type="date" value={editGoal?.target_date || ""} onChange={(event) => setEditGoal((current) => ({ ...current, target_date: event.target.value }))} /></label>
+      <label className="field"><span>Tanggal target</span><TemporalInput required type="date" min={todayInJakarta()} value={editGoal?.target_date || ""} onChange={(event) => setEditGoal((current) => ({ ...current, target_date: event.target.value }))} /></label>
       <VisualChoiceGroup className="form-grid__full" legend="Prioritas" name="goal-priority" value={editGoal?.priority || "normal"} onChange={(priority) => setEditGoal((current) => ({ ...current, priority }))} options={[{ value: "low", label: "Rendah", icon: PriorityLowIcon }, { value: "normal", label: "Normal", icon: PriorityNormalIcon }, { value: "high", label: "Tinggi", icon: PriorityHighIcon }]} columns={3} mobileColumns={3} segmented />
       <CompactNotice className="form-grid__full" tone="neutral" title="Cara menabung tetap">Cara menabung ditetapkan saat Target dibuat. Setelah ada riwayat dana, mode tidak diubah dari Edit agar catatan tunai dan investasi tetap konsisten.</CompactNotice>
-      {editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{editState.error.message}</div> : null}
+      </fieldset>
+      {editState.error ? <div className="notice notice--danger form-grid__full" role="alert">{retryOnly ? "Status perubahan belum dapat dipastikan. Coba lagi data yang sama." : editState.error.message}</div> : null}
     </form>
   </Modal>;
 };
@@ -95,15 +98,16 @@ const GoalStatusConfirmation = ({ statusTarget, statusState, setStatusTarget, ap
     confirmLabel={completing ? "Tandai selesai" : "Buka kembali"}
     tone="primary"
     busy={statusState.status === "submitting"}
+    retryOnly={statusState.status === "unknown"}
     error={statusState.error}
-    onCancel={() => statusState.status !== "submitting" && setStatusTarget(null)}
+    onCancel={() => !["submitting", "unknown"].includes(statusState.status) && setStatusTarget(null)}
     onConfirm={applyGoalStatus}
   />;
 };
 
 const GoalConfirmations = ({ archiveTarget, archiveState, setArchiveTarget, applyGoalLifecycle, statusTarget, statusState, setStatusTarget, applyGoalStatus }) => <>
   <GoalStatusConfirmation statusTarget={statusTarget} statusState={statusState} setStatusTarget={setStatusTarget} applyGoalStatus={applyGoalStatus} />
-  <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus target yang belum dipakai?" : "Arsipkan target?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.goal.name} masih Rp0 dan belum pernah memiliki mutasi, transaksi, atau investasi terkait.` : `${archiveTarget.goal.name} sudah memiliki histori. Target tidak dihapus permanen dan riwayat tetap tersimpan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan target"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={archiveTarget?.preview.canDeleteUnused ? "Saya memahami target ini belum pernah digunakan dan penghapusan bersifat permanen." : ""} busy={archiveState.status === "submitting"} error={archiveState.error} onCancel={() => archiveState.status !== "submitting" && setArchiveTarget(null)} onConfirm={applyGoalLifecycle}>{archiveTarget ? <div className="notice notice--info">Progress saat ini <Money value={archiveTarget.preview.currentAmount} /> · mutasi historis {archiveTarget.preview.dependencies.movements} · transaksi terkait {archiveTarget.preview.dependencies.transactions} · aktivitas investasi {archiveTarget.preview.dependencies.investmentEvents || 0}.</div> : null}</ConfirmationModal>
+  <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.preview.canDeleteUnused ? "Hapus target yang belum dipakai?" : "Arsipkan target?"} description={archiveTarget ? (archiveTarget.preview.canDeleteUnused ? `${archiveTarget.goal.name} masih Rp0 dan belum pernah memiliki mutasi, transaksi, atau investasi terkait.` : `${archiveTarget.goal.name} sudah memiliki histori. Target tidak dihapus permanen dan riwayat tetap tersimpan.`) : ""} confirmLabel={archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan target"} reasonLabel={archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={archiveTarget?.preview.canDeleteUnused ? "Saya memahami target ini belum pernah digunakan dan penghapusan bersifat permanen." : ""} busy={archiveState.status === "submitting"} retryOnly={archiveState.status === "unknown"} error={archiveState.error} onCancel={() => !["submitting", "unknown"].includes(archiveState.status) && setArchiveTarget(null)} onConfirm={applyGoalLifecycle}>{archiveTarget ? <div className="notice notice--info">Progress saat ini <Money value={archiveTarget.preview.currentAmount} /> · mutasi historis {archiveTarget.preview.dependencies.movements} · transaksi terkait {archiveTarget.preview.dependencies.transactions} · aktivitas investasi {archiveTarget.preview.dependencies.investmentEvents || 0}.</div> : null}</ConfirmationModal>
 </>;
 
 export { GoalConfirmations, GoalCreateModal, GoalEditModal };
