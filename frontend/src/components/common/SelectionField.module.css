@@ -349,6 +349,13 @@
   right: -8px;
 }
 
+
+
+
+
+/* Mobile readability: selected financial/entity labels may grow instead of being silently truncated. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
   .control.open {
     z-index: 1;
@@ -417,22 +424,20 @@
   .search {
     margin: var(--space-1) var(--space-2) var(--space-2);
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .trigger,
-  .chevron {
-    transition: none;
-  }
-}
-
-/* Mobile readability: selected financial/entity labels may grow instead of being silently truncated. */
-@media (max-width: 820px) {
   .triggerValue,
   .triggerMeta {
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+}
+
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
+@media (prefers-reduced-motion: reduce) {
+  .trigger,
+  .chevron {
+    transition: none;
   }
 }

@@ -18,6 +18,43 @@
   max-width: 100%;
 }
 
+
+
+
+
+
+
+.embeddedHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.embeddedHeader h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.embeddedHeader p {
+  max-width: 44rem;
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+
+.incomeSuccess {
+  display: grid; gap: 8px;
+}
+
+.incomeSuccessActions {
+  display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
+}
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
   .headerActions {
     width: 100%;
@@ -26,6 +63,18 @@
 
   .headerActions :global(.button) {
     white-space: nowrap;
+  }
+
+  /* Planning already labels the active tab. Keep only the recurring actions in the embedded mobile view. */
+  .embeddedHeader > div { display: none; }
+  .embeddedHeader { display: block; }
+  .embeddedHeader .headerActions { width: 100%; }
+}
+
+@media (max-width: 700px) {
+  .embeddedHeader {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
@@ -48,46 +97,4 @@
   .headerActions :global(.button) {
     width: 100%;
   }
-}
-
-.embeddedHeader {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.embeddedHeader h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.embeddedHeader p {
-  max-width: 44rem;
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-@media (max-width: 700px) {
-  .embeddedHeader {
-    align-items: stretch;
-    flex-direction: column;
-  }
-}
-
-.incomeSuccess {
-  display: grid; gap: 8px;
-}
-
-.incomeSuccessActions {
-  display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
-}
-
-@media (max-width: 820px) {
-  /* Planning already labels the active tab. Keep only the recurring actions in the embedded mobile view. */
-  .embeddedHeader > div { display: none; }
-  .embeddedHeader { display: block; }
-  .embeddedHeader .headerActions { width: 100%; }
 }

@@ -57,30 +57,10 @@
 .empty p { max-width: 300px; margin: 9px 0 0; color: var(--text-muted); font-size: var(--font-size-sm); line-height: 1.55; }
 .desktopHeader { display: block; }
 
-@media (max-width: 820px) {
-  .page { min-height: calc(100dvh - var(--mobile-navigation-height) - env(safe-area-inset-bottom)); background: var(--surface); }
-  .desktopHeader { display: none; }
-  .header { position: sticky; top: 0; z-index: 6; display: grid; padding: 8px var(--mobile-page-gutter); background: color-mix(in srgb, var(--surface) 96%, transparent); backdrop-filter: blur(18px); }
-  .filterBar { position: sticky; top: 66px; z-index: 5; margin: 0; padding: 10px var(--mobile-page-gutter) 9px; background: linear-gradient(var(--surface) 80%, color-mix(in srgb, var(--surface) 0%, transparent)); }
-  .filters { width: 100%; min-width: 0; }
-  .filter { min-height: var(--mobile-control-height); padding-inline: 4px; }
-  .content { padding: 0 var(--mobile-page-gutter) 24px; }
-  .group { margin-top: 8px; }
-  .group h2 { margin-bottom: 8px; }
-  .list { border-width: 0; border-radius: 0; box-shadow: none; background: transparent; }
-  .swipeItem { touch-action: pan-y pinch-zoom; }
-  .swipeAction { padding-inline: 14px; }
-  .row { min-height: 82px; padding: 13px 2px; grid-template-columns: 42px minmax(0, 1fr) 24px; gap: 11px; touch-action: pan-y pinch-zoom; }
-  .row[data-read="false"] { box-shadow: inset 3px 0 0 var(--primary); }
-  .icon { width: 40px; height: 40px; }
-  .copy strong { font-size: 14px; }
-  .empty { min-height: calc(100dvh - var(--mobile-navigation-height) - 132px); padding-top: 70px; }
-}
 
 
-@media (prefers-reduced-motion: reduce) {
-  .swipeCollapse, .row { transition: none; }
-}
+
+
 
 @media (min-width: 821px) {
   .header { display: none; }
@@ -119,7 +99,30 @@
 }
 
 /* Native notification history uses row dividers only; the segmented filter remains a control surface. */
+
+
+/* Notification entity names remain readable when they identify the action target. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
+  .page { min-height: calc(100dvh - var(--mobile-navigation-height) - env(safe-area-inset-bottom)); background: var(--surface); }
+  .desktopHeader { display: none; }
+  .header { position: sticky; top: 0; z-index: 6; display: grid; padding: 8px var(--mobile-page-gutter); background: color-mix(in srgb, var(--surface) 96%, transparent); backdrop-filter: blur(18px); }
+  .filterBar { position: sticky; top: 66px; z-index: 5; margin: 0; padding: 10px var(--mobile-page-gutter) 9px; background: linear-gradient(var(--surface) 80%, color-mix(in srgb, var(--surface) 0%, transparent)); }
+  .filters { width: 100%; min-width: 0; }
+  .filter { min-height: var(--mobile-control-height); padding-inline: 4px; }
+  .content { padding: 0 var(--mobile-page-gutter) 24px; }
+  .group { margin-top: 8px; }
+  .group h2 { margin-bottom: 8px; }
+  .list { border-width: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .swipeItem { touch-action: pan-y pinch-zoom; }
+  .swipeAction { padding-inline: 14px; }
+  .row { min-height: 82px; padding: 13px 2px; grid-template-columns: 42px minmax(0, 1fr) 24px; gap: 11px; touch-action: pan-y pinch-zoom; }
+  .row[data-read="false"] { box-shadow: inset 3px 0 0 var(--primary); }
+  .icon { width: 40px; height: 40px; }
+  .copy strong { font-size: 14px; }
+  .empty { min-height: calc(100dvh - var(--mobile-navigation-height) - 132px); padding-top: 70px; }
+
   .list {
     border: 0;
     border-radius: 0;
@@ -130,14 +133,16 @@
     border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
     background: transparent;
   }
-}
 
-/* Notification entity names remain readable when they identify the action target. */
-@media (max-width: 820px) {
   .entity {
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
     overflow-wrap: anywhere;
   }
+}
+
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
+@media (prefers-reduced-motion: reduce) {
+  .swipeCollapse, .row { transition: none; }
 }

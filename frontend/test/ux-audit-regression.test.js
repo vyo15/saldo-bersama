@@ -415,7 +415,7 @@ test("dashboard mobile menjaga hero compact tanpa nominal pecah dan chrome heade
   assert.match(styles, /\.mobile-usable-funds :global\(\.money\),[\s\S]*?white-space:\s*nowrap;/);
   assert.doesNotMatch(styles, /\.mobile-usable-funds :global\(\.money\),[\s\S]*?overflow-wrap:\s*anywhere;/);
   assert.match(styles, /\.mobile-ownership-summary\.mobile-reference-ownership \{[\s\S]*?border:\s*1px solid transparent;[\s\S]*?gap:\s*0;/);
-  assert.match(styles, /Editorial native surface hierarchy:[\s\S]*?\.mobile-ownership-summary\.mobile-reference-ownership \{[\s\S]*?border-color:\s*transparent;[\s\S]*?background:\s*transparent;/);
+  assert.match(styles, /\.mobile-ownership-summary\.mobile-reference-ownership \{[^}]*border-color:\s*transparent;[^}]*background:\s*transparent;/s);
   assert.match(styles, /\.mobile-reference-ownership \.mobile-owner-card \{[\s\S]*?border:\s*0;[\s\S]*?box-shadow:\s*none;/);
 });
 

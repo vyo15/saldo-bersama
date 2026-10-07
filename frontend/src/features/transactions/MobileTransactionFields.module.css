@@ -33,7 +33,7 @@
 .typeSelector label > span {
   min-height: 58px;
   padding: 6px 4px;
-  border-radius: 13px;
+  border-radius: var(--mobile-radius-control);
   flex-direction: column;
   justify-content: center;
   gap: 3px;
@@ -187,24 +187,26 @@
 .detailStack {
   min-width: 0;
   display: grid;
-  gap: 10px;
+  gap: 0;
+  border-top: 1px solid var(--mobile-divider);
 }
 
 .detailRow {
   position: relative;
   width: 100%;
   min-height: 58px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--mobile-divider);
+  border-radius: 0;
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr) 18px;
   align-items: center;
   gap: 9px;
   color: inherit;
   text-align: left;
-  background: var(--surface);
-  box-shadow: var(--shadow-control);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
 }
@@ -228,15 +230,16 @@
 .contextLocked {
   width: 100%;
   min-height: 58px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
-  border-radius: 14px;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--mobile-divider);
+  border-radius: 0;
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr) 18px;
   align-items: center;
   gap: 9px;
-  background: color-mix(in srgb, var(--primary-soft) 18%, var(--surface));
-  box-shadow: var(--shadow-control);
+  background: color-mix(in srgb, var(--primary-soft) 10%, transparent);
+  box-shadow: none;
 }
 
 .contextLockedCheck {
@@ -274,7 +277,7 @@
 .detailValue {
   overflow: hidden;
   color: var(--text);
-  font-size: .9rem;
+  font-size: var(--type-row-title);
   font-weight: var(--font-weight-semibold);
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -332,7 +335,7 @@
   flex: 0 0 auto;
   padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: var(--mobile-radius-control);
   background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
   color: var(--text-muted);
   font: inherit;
@@ -358,7 +361,7 @@
   resize: none;
   padding: .72rem .78rem;
   border: 1px solid var(--border);
-  border-radius: 13px;
+  border-radius: var(--mobile-radius-control);
   outline: 0;
   background: var(--input);
   color: var(--text);
@@ -380,7 +383,7 @@
 .warningNotice,
 .failureNotice {
   padding: .7rem .75rem;
-  border-radius: 13px;
+  border-radius: var(--mobile-radius-control);
   font-size: var(--font-size-xs);
   line-height: 1.45;
 }
@@ -393,19 +396,19 @@
 }
 
 .validationNotice {
-  border: 1px solid color-mix(in srgb, var(--negative) 24%, var(--border));
+  border: 0;
   background: var(--negative-soft);
   color: var(--negative);
 }
 
 .warningNotice {
-  border: 1px solid color-mix(in srgb, var(--warning) 24%, var(--border));
+  border: 0;
   background: var(--warning-soft);
   color: var(--warning);
 }
 
 .failureNotice {
-  border: 1px solid color-mix(in srgb, var(--negative) 24%, var(--border));
+  border: 0;
   background: var(--negative-soft);
   color: var(--negative);
 }
@@ -439,27 +442,9 @@
   border-radius: 4px;
 }
 
-@media (max-width: 350px) {
-  .typeSelector > div {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 
-  .typeSelector label > span {
-    min-height: 54px;
-    padding: 7px 8px;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 7px;
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .typeSelector label > span,
-  .detailRow,
-  .notes {
-    transition: none;
-  }
-}
+
 
 .needField {
   min-width: 0;
@@ -482,8 +467,8 @@
 .needEmpty {
   min-height: 58px;
   padding: 9px 10px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 14px;
+  border: 0;
+  border-radius: var(--mobile-radius-control);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
@@ -493,14 +478,14 @@
 
 .needEmpty > svg { width: 18px; height: 18px; color: var(--text-muted); }
 .needEmpty > span { min-width: 0; display: grid; gap: 2px; }
-.needEmpty strong { font-size: 12px; }
+.needEmpty strong { font-size: var(--type-row-title); }
 .needEmpty small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
 
 .needLocked {
   min-height: 56px;
   padding: 9px 10px;
-  border: 1px solid color-mix(in srgb, var(--primary) 48%, var(--border));
-  border-radius: 14px;
+  border: 0;
+  border-radius: var(--mobile-radius-control);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
@@ -509,7 +494,7 @@
 }
 .needLocked > svg { width: 18px; height: 18px; color: var(--primary); }
 .needLocked > span { min-width: 0; display: grid; gap: 2px; }
-.needLocked strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.needLocked strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--type-row-title); }
 .needLocked span small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
 .needLocked > small { color: var(--primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 
@@ -522,9 +507,10 @@
 .additionalToggle {
   width: 100%;
   min-height: 52px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--mobile-divider);
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -536,7 +522,7 @@
 }
 
 .additionalToggle > span { min-width: 0; display: grid; gap: 2px; }
-.additionalToggle strong { font-size: 12px; }
+.additionalToggle strong { font-size: var(--type-row-title); }
 .additionalToggle small { color: var(--text-muted); font-size: var(--font-size-xs); }
 .additionalToggle > svg { width: 17px; height: 17px; flex: 0 0 17px; color: var(--text-muted); }
 .additionalToggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
@@ -544,13 +530,18 @@
 .additionalBody {
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--mobile-radius-object);
   display: grid;
   gap: 12px;
   background: color-mix(in srgb, var(--surface-soft) 54%, var(--surface));
 }
 
 /* Composer selections are part of the transaction decision; selected identity must stay readable. */
+
+
+/* Mobile transaction composer: grouped native rows instead of one framed card per fact. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
   .typeSelector label > span > span:last-child,
   .detailValue,
@@ -561,10 +552,7 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-}
 
-/* Mobile transaction composer: grouped native rows instead of one framed card per fact. */
-@media (max-width: 820px) {
   .composer { gap: 14px; }
   .typeSelector label > span { border-radius: var(--mobile-radius-control); }
   .amountVisual :global([data-ui="money-input"] input) { border-radius: var(--mobile-radius-control); box-shadow: none; }
@@ -636,4 +624,27 @@
   .validationNotice,
   .warningNotice,
   .failureNotice { border-color: transparent; border-radius: var(--mobile-radius-control); }
+}
+
+@media (max-width: 350px) {
+  .typeSelector > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .typeSelector label > span {
+    min-height: 54px;
+    padding: 7px 8px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 7px;
+  }
+}
+
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
+@media (prefers-reduced-motion: reduce) {
+  .typeSelector label > span,
+  .detailRow,
+  .notes {
+    transition: none;
+  }
 }

@@ -6,7 +6,7 @@
 .formHeader { margin-bottom: var(--space-4); align-items: flex-start; }
 .formHeader > div { min-width: 0; }
 .formHeader h2 { margin: var(--space-2) 0 0; letter-spacing: -.02em; }
-.formHeader p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.formHeader p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--type-meta); line-height: 1.45; }
 .refreshButton { width: var(--control-height-md); height: var(--control-height-md); padding: 0; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--surface); color: var(--primary); box-shadow: var(--shadow-control); cursor: pointer; transition: border-color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard), transform var(--motion-control) var(--ease-standard); }
 @media (hover: hover) and (pointer: fine) {
   .refreshButton:hover:not(:disabled) { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); background: var(--primary-soft); transform: translateY(-1px); }
@@ -18,38 +18,38 @@
 .form { min-width: 0; display: grid; gap: var(--space-3); }
 .accountChooser { min-width: 0; }
 
-.contextAccount { min-width: 0; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border)); border-radius: 14px; display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }
-.contextAccountVisual { width: 38px; height: 38px; overflow: hidden; border: 1px solid var(--border); border-radius: 11px; display: grid; place-items: center; color: var(--primary); background: var(--surface); }
+.contextAccount { min-width: 0; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border)); border-radius: var(--radius-control); display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }
+.contextAccountVisual { width: 38px; height: 38px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--primary); background: var(--surface); }
 .contextAccountVisual img { width: 100%; height: 100%; object-fit: contain; padding: 5px; }
 .contextAccountVisual svg { width: 18px; height: 18px; }
 .contextAccountCopy { min-width: 0; display: grid; gap: 2px; }
 .contextAccountCopy strong, .contextAccountCopy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.contextAccountCopy strong { color: var(--text); font-size: var(--font-size-sm); }
-.contextAccountCopy small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.contextAccountCopy strong { color: var(--text); font-size: var(--type-row-title); }
+.contextAccountCopy small { color: var(--text-muted); font-size: var(--type-meta); }
 .contextAccountState { padding: 4px 7px; border-radius: var(--radius-pill); color: var(--primary-strong); background: var(--primary-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
-.systemBalanceCard { min-width: 0; padding: 14px; border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border)); border-radius: 16px; background: radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--primary-soft) 45%, transparent), transparent 44%), var(--surface-soft); }
-.systemBalanceCard > span { display: block; color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+.systemBalanceCard { min-width: 0; padding: 14px; border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border)); border-radius: var(--radius-surface); background: radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--primary-soft) 45%, transparent), transparent 44%), var(--surface-soft); }
+.systemBalanceCard > span { display: block; color: var(--text-soft); font-size: var(--type-meta); font-weight: var(--font-weight-semibold); }
 .systemBalanceCard > strong, .systemBalanceCard > strong :global(.money) { display: block; margin-top: 6px; color: var(--text); font-size: clamp(1.9rem, 6vw, 2.35rem); font-weight: var(--font-weight-bold); line-height: 1.08; letter-spacing: -.045em; }
-.systemBalanceCard > small { display: block; margin-top: 6px; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.systemBalanceCard > small { display: block; margin-top: 6px; color: var(--text-muted); font-size: var(--type-meta); line-height: 1.45; }
 .differenceFlow { min-width: 0; display: grid; gap: var(--space-3); padding-top: 3px; }
 .differenceFlow :global(.field) { min-width: 0; }
-.balanceHint { margin-top: -6px; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.balanceHint { margin-top: -6px; color: var(--text-muted); font-size: var(--type-meta); line-height: 1.45; }
 .differenceFlow :global(input), .notesField textarea { font-size: var(--font-size-body); }
-.differencePreview { min-width: 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--warning) 26%, var(--border)); border-radius: 13px; background: color-mix(in srgb, var(--warning-soft) 50%, var(--surface)); }
+.differencePreview { min-width: 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--warning) 26%, var(--border)); border-radius: var(--radius-control); background: color-mix(in srgb, var(--warning-soft) 50%, var(--surface)); }
 .differencePreview[data-state="matched"] { border-color: color-mix(in srgb, var(--positive) 22%, var(--border)); background: color-mix(in srgb, var(--positive-soft) 48%, var(--surface)); }
 .differencePreviewTitle { display: flex; align-items: center; gap: 7px; color: var(--warning); }
 .differencePreview[data-state="matched"] .differencePreviewTitle { color: var(--positive); }
 .differencePreviewTitle svg { width: 16px; height: 16px; flex: 0 0 auto; }
-.differencePreviewTitle strong { font-size: var(--font-size-xs); }
+.differencePreviewTitle strong { font-size: var(--type-meta); }
 .differencePreview dl { margin: 8px 0 0; display: grid; gap: 6px; }
-.differencePreview dl > div { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: var(--font-size-xs); }
+.differencePreview dl > div { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: var(--type-meta); }
 .differencePreview dd { margin: 0; color: var(--text); font-weight: var(--font-weight-semibold); }
 .differencePreview dd :global(.money) { font-size: inherit; }
-.notesToggle { justify-self: start; min-height: var(--mobile-hit-target); padding: 0; border: 0; color: var(--primary); background: transparent; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); cursor: pointer; }
+.notesToggle { justify-self: start; min-height: var(--mobile-hit-target); padding: 0; border: 0; color: var(--primary); background: transparent; font-size: var(--type-meta); font-weight: var(--font-weight-bold); cursor: pointer; }
 .notesLabel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.notesLabel small { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
+.notesLabel small { color: var(--text-muted); font-size: var(--type-meta); font-weight: var(--font-weight-medium); }
 .notesField textarea { min-height: 4.5rem; resize: vertical; }
-.guardLine { min-width: 0; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--info) 18%, var(--border)); border-radius: 12px; display: flex; align-items: flex-start; gap: 8px; color: var(--text-soft); background: color-mix(in srgb, var(--info-soft) 48%, var(--surface)); font-size: var(--font-size-xs); line-height: 1.45; }
+.guardLine { min-width: 0; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--info) 18%, var(--border)); border-radius: var(--radius-control); display: flex; align-items: flex-start; gap: 8px; color: var(--text-soft); background: color-mix(in srgb, var(--info-soft) 48%, var(--surface)); font-size: var(--type-meta); line-height: 1.45; }
 .guardLine svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; color: var(--info); }
 .guardLine strong { color: var(--text); }
 .differenceFlow > :global(.button) { width: 100%; min-height: 48px; }
@@ -106,13 +106,13 @@
 
 .mobileHistoryMetrics dt {
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--type-meta);
 }
 
 .mobileHistoryMetrics dd {
   margin: 0;
   color: var(--text);
-  font-size: var(--font-size-body-sm);
+  font-size: var(--type-meta);
   font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -122,50 +122,62 @@
 
 @keyframes reconciliation-spin { to { transform: rotate(360deg); } }
 
-@media (max-width: 820px) {
-  .differenceFlow :global(input), .notesField textarea { font-size: var(--mobile-native-control-font-size); }
-  .notesToggle { min-height: var(--mobile-control-height); }
-  .formPanel,
-  .historyPanel { box-shadow: none; }
-  .historyPanel { margin-top: 2px; }
-}
 
-@media (max-width: 580px) {
-  .page :global(.page-header) { padding: 0 1px; }
-  .page :global(.page-header p) { display: block; overflow: visible; -webkit-line-clamp: unset; }
-  .formPanel, .historyPanel { padding: 0; border-radius: 0; }
-  .formPanel { box-shadow: none; }
-  .formHeader h2 { font-size: 19px; }
-  .refreshButton { width: var(--mobile-control-height); height: var(--mobile-control-height); }
-  .systemBalanceCard { padding: 14px; }
-  .systemBalanceCard > strong, .systemBalanceCard > strong :global(.money) { font-size: clamp(1.9rem, 9vw, 2.3rem); }
-  .notesField textarea { resize: none; }
-  .historyHeader { align-items: center; flex-direction: row; gap: var(--space-3); }
-  .historyHeader h2 { flex: 0 0 auto; }
-  .historyFilter { min-width: 0; max-width: 11rem; margin-left: auto; }
-  .mobileHistoryCard { padding: 14px 0; border-radius: 0; }
-  .mobileHistoryDifference { margin-top: 0; }
-}
 
-@media (max-width: 360px) {
-  .systemBalanceCard > strong, .systemBalanceCard > strong :global(.money) { font-size: clamp(1.75rem, 9vw, 2.05rem); }
-  .historyFilter { max-width: 9.5rem; }
-  .mobileHistoryDifference { align-items: flex-start; }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .refreshButton, .historyDisclosureChevron { transition: none; }
-  .refreshButton[aria-busy="true"] svg { animation: none; }
-}
+
+
+
+
 
 .historyDisclosure { min-width: 0; }
 .historyDisclosureButton { display: none; }
 .historyDisclosureContent { min-width: 0; }
 .historyLoading { min-height: var(--mobile-control-height); padding: var(--space-3); display: grid; place-items: center; color: var(--text-muted); font-size: var(--font-size-xs); }
 
+
+
+
+/* History stays secondary to the comparison/diagnosis workspace on wide screens. */
+@media (min-width: 1280px) {
+  .historyDisclosure, .historyDisclosureContent, .historyPanel { min-width: 0; }
+}
+
+.contextBack {
+  margin-bottom: calc(var(--space-2) * -1);
+}
+
+/* Reconciliation workflow: comparison and diagnosis stay together; history remains secondary. */
+.workspace { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--space-5); }
+.analysisPlaceholder { min-width: 0; min-height: 16rem; padding: clamp(18px, 2vw, 24px); border: 1px dashed color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: var(--radius-surface); display: grid; align-content: center; justify-items: center; gap: 7px; background: color-mix(in srgb, var(--primary-soft) 18%, var(--surface)); text-align: center; }
+.analysisPlaceholder strong { max-width: 27rem; color: var(--text); font-size: clamp(1.05rem, 2vw, 1.3rem); line-height: 1.35; }
+.analysisPlaceholder small { max-width: 31rem; color: var(--text-muted); font-size: var(--font-size-sm); line-height: 1.5; }
+.analysisBadge { padding: 4px 8px; border-radius: var(--radius-pill); color: var(--primary-strong); background: var(--primary-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+
+
+
+@media (min-width: 1280px) {
+  .workspace { grid-template-columns: minmax(300px, .55fr) minmax(0, 1.45fr); gap: clamp(18px, 2vw, 28px); }
+  .workspace > .formPanel { position: sticky; top: 82px; }
+  .historyDisclosure { margin-top: var(--space-2); }
+}
+
+/* Reconciliation account/history identity is required to make a safe financial decision. */
+
+
+/* Mobile reconciliation is one diagnosis flow on the app canvas. Only difference/result
+   states stay tonal; form/history wrappers and each history record no longer become cards. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
+  .differenceFlow :global(input), .notesField textarea { font-size: var(--mobile-native-control-font-size); }
+  .notesToggle { min-height: var(--mobile-control-height); }
+  .formPanel,
+  .historyPanel { box-shadow: none; }
+  .historyPanel { margin-top: 2px; }
+
   .historyDisclosure {
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--mobile-divider);
     padding-top: var(--space-2);
   }
 
@@ -185,8 +197,8 @@
   }
 
   .historyDisclosureButton > span:first-child { min-width: 0; display: grid; gap: .15rem; }
-  .historyDisclosureButton strong { font-size: var(--font-size-sm); }
-  .historyDisclosureButton small { color: var(--text-muted); font-size: var(--font-size-xs); }
+  .historyDisclosureButton strong { font-size: var(--type-row-title); }
+  .historyDisclosureButton small { color: var(--text-muted); font-size: var(--type-meta); }
   .historyDisclosureChevron { width: 18px; height: 18px; flex: 0 0 auto; color: var(--primary); transition: transform var(--motion-control) var(--ease-standard); }
   .historyDisclosureChevron[data-expanded="true"] { transform: rotate(180deg); }
   .historyDisclosureButton:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
@@ -194,37 +206,9 @@
 
   .historyDisclosureContent { display: none; padding-top: var(--space-2); }
   .historyDisclosureContent.isExpanded { display: block; }
-}
 
-
-/* History stays secondary to the comparison/diagnosis workspace on wide screens. */
-@media (min-width: 1280px) {
-  .historyDisclosure, .historyDisclosureContent, .historyPanel { min-width: 0; }
-}
-
-.contextBack {
-  margin-bottom: calc(var(--space-2) * -1);
-}
-
-/* Reconciliation workflow: comparison and diagnosis stay together; history remains secondary. */
-.workspace { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--space-5); }
-.analysisPlaceholder { min-width: 0; min-height: 16rem; padding: clamp(18px, 2vw, 24px); border: 1px dashed color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: var(--radius-surface); display: grid; align-content: center; justify-items: center; gap: 7px; background: color-mix(in srgb, var(--primary-soft) 18%, var(--surface)); text-align: center; }
-.analysisPlaceholder strong { max-width: 27rem; color: var(--text); font-size: clamp(1.05rem, 2vw, 1.3rem); line-height: 1.35; }
-.analysisPlaceholder small { max-width: 31rem; color: var(--text-muted); font-size: var(--font-size-sm); line-height: 1.5; }
-.analysisBadge { padding: 4px 8px; border-radius: var(--radius-pill); color: var(--primary-strong); background: var(--primary-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
-
-@media (max-width: 820px) {
   .analysisPlaceholder { display: none; }
-}
 
-@media (min-width: 1280px) {
-  .workspace { grid-template-columns: minmax(300px, .55fr) minmax(0, 1.45fr); gap: clamp(18px, 2vw, 28px); }
-  .workspace > .formPanel { position: sticky; top: 82px; }
-  .historyDisclosure { margin-top: var(--space-2); }
-}
-
-/* Reconciliation account/history identity is required to make a safe financial decision. */
-@media (max-width: 820px) {
   .contextAccountCopy strong,
   .contextAccountCopy small,
   .mobileHistoryCardHeader strong {
@@ -233,11 +217,7 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-}
 
-/* Mobile reconciliation is one diagnosis flow on the app canvas. Only difference/result
-   states stay tonal; form/history wrappers and each history record no longer become cards. */
-@media (max-width: 820px) {
   .formPanel,
   .historyPanel {
     padding: 0;
@@ -262,8 +242,31 @@
 }
 
 @media (max-width: 580px) {
-  .formPanel,
-  .historyPanel { padding: 0; border-radius: 0; }
+  .page :global(.page-header) { padding: 0 1px; }
+  .page :global(.page-header p) { display: block; overflow: visible; -webkit-line-clamp: unset; }
+  .formPanel, .historyPanel { padding: 0; border-radius: 0; }
   .formPanel { box-shadow: none; }
+  .formHeader h2 { font-size: 19px; }
+  .refreshButton { width: var(--mobile-control-height); height: var(--mobile-control-height); }
+  .systemBalanceCard { padding: 14px; }
+  .systemBalanceCard > strong, .systemBalanceCard > strong :global(.money) { font-size: clamp(1.9rem, 9vw, 2.3rem); }
+  .notesField textarea { resize: none; }
+  .historyHeader { align-items: center; flex-direction: row; gap: var(--space-3); }
+  .historyHeader h2 { flex: 0 0 auto; }
+  .historyFilter { min-width: 0; max-width: 11rem; margin-left: auto; }
   .mobileHistoryCard { padding: 14px 0; border-radius: 0; }
+  .mobileHistoryDifference { margin-top: 0; }
+
+}
+
+@media (max-width: 360px) {
+  .systemBalanceCard > strong, .systemBalanceCard > strong :global(.money) { font-size: clamp(1.75rem, 9vw, 2.05rem); }
+  .historyFilter { max-width: 9.5rem; }
+  .mobileHistoryDifference { align-items: flex-start; }
+}
+
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
+@media (prefers-reduced-motion: reduce) {
+  .refreshButton, .historyDisclosureChevron { transition: none; }
+  .refreshButton[aria-busy="true"] svg { animation: none; }
 }

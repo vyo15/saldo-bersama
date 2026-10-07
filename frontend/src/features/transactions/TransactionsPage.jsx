@@ -116,7 +116,15 @@ const TransactionResourceStates = ({ resource, items, filtersActive, openTransac
   const emptyState = collectionEmptyState({ visibleCount: items.length, totalCount: resource.data?.total, filtersActive });
   const filteredEmpty = emptyState === EMPTY_COLLECTION_STATE.FILTERED;
   return <>
-    {resource.data?.periodLocked ? <div className="notice notice--warning" role="status">Periode ini dikunci karena periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</div> : null}
+    {resource.data?.periodLocked ? <div className={`notice notice--warning ${styles.periodLockNotice}`} role="status">
+      <strong>Periode terkunci</strong>
+      <span>Transaksi pada periode ini tidak dapat diubah.</span>
+      <details>
+        <summary>Lihat alasan</summary>
+        <p>Periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</p>
+      </details>
+      <p className={styles.periodLockDesktopReason}>Periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</p>
+    </div> : null}
     {resource.status === "loading" ? <NativePageSkeleton kind="transactions" variant="panel" label="Memuat transaksi…" /> : null}
     {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}
     {resource.status === "ready" && !items.length ? <EmptyState className={`${styles.emptyState} ${filteredEmpty ? styles.emptyStateFiltered : ""}`} title={filteredEmpty ? "Transaksi tidak ditemukan" : "Belum ada transaksi"} description={filteredEmpty ? "Ubah atau reset filter untuk melihat transaksi lain." : mobileLayout ? "Gunakan tombol Catat pada navigasi bawah untuk mencatat transaksi pertama." : "Catat transaksi pertama untuk mulai merekam aktivitas keuangan."} action={filteredEmpty ? <Button icon={FiRotateCcw} onClick={resetFilters}>Reset filter</Button> : mobileLayout ? null : <Button variant="primary" onClick={openTransactionComposer}>Catat transaksi</Button>} /> : null}

@@ -118,30 +118,30 @@
 .goal-card__funding [data-tone="negative"], .goal-card__funding [data-tone="negative"] strong, .goal-card__funding [data-tone="negative"] :global(.money) { color: var(--negative); }
 .goal-card__completion { margin: 0; color: var(--text-soft); font-size: 12px; line-height: 1.45; }
 
+
+
+
+
+
+/* Target is a meaningful object, but nested outlines are removed on mobile. */
+
+
+/* Target names are primary entities and may occupy multiple lines on mobile. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 1100px) {
   .goal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .goal-grid > * { grid-column: auto; }
 }
+
 @media (max-width: 820px) {
   .goal-card { padding: 13px 14px; gap: 9px; border-radius: var(--mobile-card-radius); }
-  .goal-summary { min-height: 9.2rem; padding: 14px; border-radius: 16px; }
+  .goal-summary { min-height: 9.2rem; padding: 14px; border-radius: var(--radius-hero); }
   .goal-summary__content { width: 72%; }
   .goal-summary__amount :global(.money) { font-size: clamp(25px, 8vw, 31px); }
-  .goal-summary__description { font-size: 12px; }
+  .goal-summary__description { font-size: var(--type-meta); }
   .goal-summary__art { right: -1%; bottom: .2rem; width: min(8.5rem, 31%); max-height: 8.5rem; opacity: .42; }
-}
-@media (max-width: 580px) {
-  .goal-grid { grid-template-columns: 1fr; }
-  .goal-grid__empty { min-height: 18rem; }
-  .goal-grid__empty::before { width: min(10rem, 48vw); height: min(7.5rem, 36vw); }
-}
-@media (max-width: 420px) {
-  .goal-summary__content { width: 68%; }
-  .goal-summary__art { right: -3%; width: min(7.2rem, 29%); }
-}
 
-/* Target is a meaningful object, but nested outlines are removed on mobile. */
-@media (max-width: 820px) {
   .goal-summary {
     border-color: transparent;
     box-shadow: none;
@@ -159,14 +159,22 @@
     border-radius: 0;
     background: transparent;
   }
-}
 
-/* Target names are primary entities and may occupy multiple lines on mobile. */
-@media (max-width: 820px) {
   .goal-card__heading h2 {
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
     overflow-wrap: anywhere;
   }
+}
+
+@media (max-width: 580px) {
+  .goal-grid { grid-template-columns: 1fr; }
+  .goal-grid__empty { min-height: 18rem; }
+  .goal-grid__empty::before { width: min(10rem, 48vw); height: min(7.5rem, 36vw); }
+}
+
+@media (max-width: 420px) {
+  .goal-summary__content { width: 68%; }
+  .goal-summary__art { right: -3%; width: min(7.2rem, 29%); }
 }

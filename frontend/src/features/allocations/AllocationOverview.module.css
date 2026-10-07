@@ -614,6 +614,149 @@
   }
 }
 
+
+
+
+
+/* Unified planning launcher keeps Atur Dana discoverable without adding domain tabs. */
+.planning-create-list {
+  display: grid;
+  gap: 7px;
+}
+
+.planning-create-option {
+  width: 100%;
+  min-height: 62px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+
+.planning-create-option:active {
+  transform: scale(.99);
+}
+
+.planning-create-option:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.planning-create-option__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.planning-create-option__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.planning-create-option__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.planning-create-option__copy strong {
+  font-size: var(--font-size-sm);
+  line-height: 1.3;
+}
+
+.planning-create-option__copy small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planning-create-option__arrow {
+  width: 17px;
+  height: 17px;
+  color: var(--text-muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .planning-create-option:hover {
+    border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+    background: color-mix(in srgb, var(--primary-soft) 22%, var(--surface));
+  }
+}
+
+/* Mobile planning reads as one native list beneath a single hero instead of a stack of cards. */
+
+
+/* Planning list identity and source metadata may reflow on mobile instead of becoming ambiguous ellipses. */
+
+
+/* Layout-density audit 2026-10: repeated planning data is a list, not a stack of mini-cards. */
+@media (min-width: 821px) {
+  .allocation-funding-summary__source-list {
+    gap: 0;
+  }
+
+  .allocation-funding-summary__source-list .allocation-funding-summary__source-row {
+    padding: .55rem 0;
+    border-width: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .planning-active-list {
+    gap: 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .planning-active-row {
+    min-height: 4.35rem;
+    padding: .55rem .2rem;
+    border-width: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .planning-active-row:last-child { border-bottom: 0; }
+
+  .planning-active-row--attention {
+    background: color-mix(in srgb, var(--primary-soft) 22%, transparent);
+  }
+
+  .planning-active-row__icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-color: transparent;
+    border-radius: .75rem;
+  }
+
+  .planning-active-row__icon img {
+    width: 2.05rem;
+    height: 2.05rem;
+  }
+}
+
+/* Canonical mobile cascade: one broad <=820 layer, compact exceptions after. */
 @media (max-width: 820px) {
   .allocations-page {
     gap: 10px;
@@ -773,125 +916,7 @@
     width: min(246px, 74vw);
     margin-bottom: 1px;
   }
-}
 
-@media (max-width: 360px) {
-  .allocation-funding-summary__copy {
-    width: 52%;
-    padding-left: 12px;
-  }
-
-  .allocation-funding-summary__art {
-    right: -38px;
-    width: 62%;
-  }
-
-  .allocation-funding-summary__art img {
-    width: 214px;
-  }
-
-  .allocation-funding-summary__actions :global(.button) {
-    width: 132px;
-    min-width: 132px;
-    max-width: 132px;
-    padding-inline: 9px;
-  }
-
-  .allocation-funding-summary__count {
-    right: 8px;
-  }
-
-  .allocation-planning-nav__link {
-    font-size: var(--font-size-xs);
-  }
-}
-
-/* Unified planning launcher keeps Atur Dana discoverable without adding domain tabs. */
-.planning-create-list {
-  display: grid;
-  gap: 7px;
-}
-
-.planning-create-option {
-  width: 100%;
-  min-height: 62px;
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  background: var(--surface);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition:
-    border-color var(--motion-fast) var(--motion-easing),
-    background-color var(--motion-fast) var(--motion-easing),
-    transform var(--motion-fast) var(--motion-easing);
-}
-
-.planning-create-option:active {
-  transform: scale(.99);
-}
-
-.planning-create-option:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.planning-create-option__icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: var(--primary-soft);
-  color: var(--primary);
-}
-
-.planning-create-option__icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.planning-create-option__copy {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.planning-create-option__copy strong {
-  font-size: var(--font-size-sm);
-  line-height: 1.3;
-}
-
-.planning-create-option__copy small {
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.planning-create-option__arrow {
-  width: 17px;
-  height: 17px;
-  color: var(--text-muted);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .planning-create-option:hover {
-    border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
-    background: color-mix(in srgb, var(--primary-soft) 22%, var(--surface));
-  }
-}
-
-/* Mobile planning reads as one native list beneath a single hero instead of a stack of cards. */
-@media (max-width: 820px) {
   .allocation-funding-summary {
     border-color: transparent;
     box-shadow: none;
@@ -925,10 +950,7 @@
       background: color-mix(in srgb, var(--primary-soft) 24%, transparent);
     }
   }
-}
 
-/* Planning list identity and source metadata may reflow on mobile instead of becoming ambiguous ellipses. */
-@media (max-width: 820px) {
   .allocation-funding-summary__source-row strong,
   .planning-active-row__title,
   .planning-active-row__meta,
@@ -941,50 +963,33 @@
   }
 }
 
-/* Layout-density audit 2026-10: repeated planning data is a list, not a stack of mini-cards. */
-@media (min-width: 821px) {
-  .allocation-funding-summary__source-list {
-    gap: 0;
+@media (max-width: 360px) {
+  .allocation-funding-summary__copy {
+    width: 52%;
+    padding-left: 12px;
   }
 
-  .allocation-funding-summary__source-list .allocation-funding-summary__source-row {
-    padding: .55rem 0;
-    border-width: 0;
-    border-top: 1px solid var(--border);
-    border-radius: 0;
-    background: transparent;
+  .allocation-funding-summary__art {
+    right: -38px;
+    width: 62%;
   }
 
-  .planning-active-list {
-    gap: 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
+  .allocation-funding-summary__art img {
+    width: 214px;
   }
 
-  .planning-active-row {
-    min-height: 4.35rem;
-    padding: .55rem .2rem;
-    border-width: 0;
-    border-bottom: 1px solid var(--border);
-    border-radius: 0;
-    background: transparent;
+  .allocation-funding-summary__actions :global(.button) {
+    width: 132px;
+    min-width: 132px;
+    max-width: 132px;
+    padding-inline: 9px;
   }
 
-  .planning-active-row:last-child { border-bottom: 0; }
-
-  .planning-active-row--attention {
-    background: color-mix(in srgb, var(--primary-soft) 22%, transparent);
+  .allocation-funding-summary__count {
+    right: 8px;
   }
 
-  .planning-active-row__icon {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-color: transparent;
-    border-radius: .75rem;
-  }
-
-  .planning-active-row__icon img {
-    width: 2.05rem;
-    height: 2.05rem;
+  .allocation-planning-nav__link {
+    font-size: var(--font-size-xs);
   }
 }

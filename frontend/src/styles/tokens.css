@@ -196,7 +196,7 @@
   --radius-xs: 8px;
   --radius-sm: 10px;
   --radius-control: 12px;
-  --radius-icon: 14px;
+  --radius-icon: 10px;
   --radius-surface: 16px;
   --radius-hero: 20px;
   --radius-special: 24px;
@@ -257,10 +257,29 @@
   --font-size-xs: 12px;
   --font-size-body-sm: 13px;
   --font-size-body: 16px;
+  /* Semantic type roles. Feature CSS should consume roles before choosing local pixel sizes. */
+  --type-financial-hero: clamp(24px, 7vw, 32px);
+  --type-page-title: clamp(22px, 6.4vw, 28px);
+  --type-section-title: 16px;
+  --type-row-title: 14px;
+  --type-body: 14px;
+  --type-meta: 13px;
+  --type-caption: 12px;
+  --type-nav-label: 12px;
   --mobile-page-gutter: 16px;
   --mobile-section-gap: 16px;
   --mobile-card-padding: 16px;
   --mobile-card-radius: 16px;
+  /* Shared surface roles keep elevation semantic instead of decorative. */
+  --surface-role-canvas: var(--page);
+  --surface-role-section: transparent;
+  --surface-role-row: transparent;
+  --surface-role-tonal-object: var(--surface-section);
+  --surface-role-hero: var(--surface);
+  --shadow-role-floating: var(--shadow-floating);
+  --shadow-role-navigation: var(--shadow-navigation);
+  --shadow-role-hero: var(--shadow-hero);
+
   /* Mobile surface grammar: canvas -> section -> row -> divider; object/hero are explicit opt-ins. */
   --mobile-surface-canvas: var(--page);
   --mobile-surface-tonal: color-mix(in srgb, var(--surface-section) 82%, transparent);
@@ -275,7 +294,7 @@
   --mobile-hit-target: 44px;
   --keyboard-inset: 0px;
   --mobile-native-control-font-size: 16px;
-  --mobile-financial-meta-size: 12px;
+  --mobile-financial-meta-size: var(--type-meta);
 }
 
 :root[data-theme="dark"] {

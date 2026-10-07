@@ -351,48 +351,34 @@
   .repeatGrid { grid-template-columns: minmax(0, 1fr); }
 }
 
-@media (max-width: 820px) {
-  .page { gap: .65rem; }
-  .page :global(.page-header__actions) { display: none; }
-  .page .emptyState { margin-top: .5rem; min-height: clamp(11rem, 28dvh, 16rem); }
-  .page .emptyStateFiltered { min-height: 9rem; }
-  .detailModal .actions { width: 100%; }
-  .detailModal .actions :global(.button) { flex: 1 1 0; }
-  .detailModal .managedNote { max-width: none; width: 100%; text-align: left; }
-  .managedNote { max-width: none; text-align: right; }
-  .actionMenu { display: none; }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  :global(.modal).detailDrawer { animation: none; }
-  .quickActions button,
-  .repeatCard,
-  .ledgerRow { transition: none; }
+
+
+
+
+.periodLockNotice {
+  display: grid;
+  gap: .3rem;
 }
+.periodLockNotice > strong { font-size: var(--type-row-title); line-height: 1.3; }
+.periodLockNotice > span,
+.periodLockDesktopReason { margin: 0; font-size: var(--type-meta); line-height: 1.45; }
+.periodLockNotice details { display: none; }
+.periodLockNotice summary { min-height: var(--mobile-hit-target); align-items: center; color: currentColor; font-size: var(--type-meta); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.periodLockNotice details p { margin: 0 0 .25rem; color: currentColor; font-size: var(--type-meta); line-height: 1.45; }
 
 .shoppingDetail { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:grid; gap:10px; }
 .shoppingDetail header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
 .shoppingDetail header > div { display:grid; gap:2px; }
-.shoppingDetail header span { color:var(--text-soft); font-size: 12px; }
-.shoppingDetail header button { border:0; background:transparent; color:var(--primary); font:inherit; font-size: 12px; font-weight:700; cursor:pointer; }
+.shoppingDetail header span { color:var(--text-soft); font-size: var(--type-meta); }
+.shoppingDetail header button { border:0; background:transparent; color:var(--primary); font:inherit; font-size: var(--type-meta); font-weight:700; cursor:pointer; }
 .shoppingDetail > div { display:grid; gap:5px; }
 .shoppingDetail > div > div { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent); font-size:12px; }
 .shoppingDetail > div > div span { display:grid; gap:1px; min-width:0; }
-.shoppingDetail > div > div small,.shoppingMore { color:var(--text-soft); font-size: 12px; }
+.shoppingDetail > div > div small,.shoppingMore { color:var(--text-soft); font-size: var(--type-meta); }
 
 /* Mobile transaction actions/history prioritize complete primary labels over one-line clipping. */
-@media (max-width: 820px) {
-  .quickActions button strong,
-  .categoryBreakdownCopy strong,
-  .repeatCopy strong,
-  .repeatCopy small,
-  .filterChip span {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-}
+
 
 /* Layout-density audit 2026-10: keep the ledger as the primary desktop task surface.
    Supporting analytics stay compact and repeated actions move below the result list. */
@@ -530,4 +516,39 @@
   }
 
   .repeatAction { background: transparent; }
+}
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
+@media (max-width: 820px) {
+  .page { gap: .65rem; }
+  .page :global(.page-header__actions) { display: none; }
+  .page .emptyState { margin-top: .5rem; min-height: clamp(11rem, 28dvh, 16rem); }
+  .page .emptyStateFiltered { min-height: 9rem; }
+  .detailModal .actions { width: 100%; }
+  .detailModal .actions :global(.button) { flex: 1 1 0; }
+  .detailModal .managedNote { max-width: none; width: 100%; text-align: left; }
+  .managedNote { max-width: none; text-align: right; }
+  .actionMenu { display: none; }
+  .periodLockNotice details { display: grid; }
+  .periodLockNotice summary { display: flex; }
+  .periodLockDesktopReason { display: none; }
+
+  .quickActions button strong,
+  .categoryBreakdownCopy strong,
+  .repeatCopy strong,
+  .repeatCopy small,
+  .filterChip span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
+@media (prefers-reduced-motion: reduce) {
+  :global(.modal).detailDrawer { animation: none; }
+  .quickActions button,
+  .repeatCard,
+  .ledgerRow { transition: none; }
 }

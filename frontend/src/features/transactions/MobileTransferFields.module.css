@@ -330,16 +330,17 @@
 .feedbackAction:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 4px; }
 .error { color: var(--negative); font-size: var(--font-size-xs); line-height: 1.4; }
 
-@media (max-width: 25rem) {
-  .composer { padding-inline: .75rem; }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .note,
-  .submitButton { transition: none; }
-}
+
+
 
 /* Transfer date/impact labels reflow rather than becoming ambiguous on mobile. */
+
+
+/* Transfer follows the same native-form grammar as Catat: rows merge into canvas while
+   amount and impact remain the two meaningful financial objects. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
   .dateCopy strong,
   .dateCopy small,
@@ -349,11 +350,7 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-}
 
-/* Transfer follows the same native-form grammar as Catat: rows merge into canvas while
-   amount and impact remain the two meaningful financial objects. */
-@media (max-width: 820px) {
   .composer { padding-inline: var(--mobile-page-gutter); gap: 14px; }
   .amountCard {
     border-color: transparent;
@@ -381,4 +378,14 @@
   }
   .warning,
   .failure { border-color: transparent; border-radius: var(--mobile-radius-control); }
+}
+
+@media (max-width: 25rem) {
+  .composer { padding-inline: .75rem; }
+}
+
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
+@media (prefers-reduced-motion: reduce) {
+  .note,
+  .submitButton { transition: none; }
 }

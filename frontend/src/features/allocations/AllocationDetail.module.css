@@ -797,6 +797,105 @@
 @media (hover: hover) and (pointer: fine) {
 }
 
+
+
+
+.allocation-limit-row__shopping-link {
+  margin: 7px 0 0 43px;
+  min-height: var(--mobile-hit-target);
+  padding: 0 9px;
+  border: 0;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: color-mix(in srgb, var(--primary-soft) 72%, transparent);
+  color: var(--primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.allocation-limit-row__shopping-link svg:last-child { margin-left: 2px; }
+.allocation-limit-row__shopping-link:hover { background: var(--primary-soft); }
+.allocation-limit-row__shopping-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+
+/* Compact detail hierarchy: primary financial state stays visible; management lives in overflow. */
+.allocation-detail-hero__heading {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.allocation-detail-hero__heading > div {
+  min-width: 0;
+}
+
+.allocation-detail-hero__heading > div > span {
+  color: var(--primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.allocation-detail-menu {
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
+}
+
+.allocation-detail-menu > summary {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--text-soft);
+  cursor: pointer;
+  list-style: none;
+}
+
+.allocation-detail-menu > summary::-webkit-details-marker { display: none; }
+.allocation-detail-menu > summary:hover { background: var(--surface-soft); }
+.allocation-detail-menu > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.allocation-detail-menu > summary svg { width: 20px; height: 20px; }
+
+.allocation-detail-menu__items {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(240px, calc(100vw - 40px));
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  gap: 4px;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-floating);
+}
+
+.allocation-detail-menu__items :global(.button) {
+  width: 100%;
+  justify-content: flex-start;
+  box-shadow: none;
+}
+
+.allocation-detail-hero__metrics--compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+
+
+/* Mobile detail keeps one tonal hero and lets detail/list sections flow directly on the app canvas. */
+
+
+/* Mobile Kebutuhan rows use vertical hierarchy so names/status never compete with primary actions. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
   /* Planning owns the mobile app-level title; avoid a second web-page heading inside its tab panel. */
   .allocation-embedded-header { display: none; }
@@ -901,138 +1000,7 @@
   }
 
   .allocation-limit-row__menu-items :global(.button) { justify-content: flex-start; }
-}
 
-
-.allocation-limit-row__shopping-link {
-  margin: 7px 0 0 43px;
-  min-height: var(--mobile-hit-target);
-  padding: 0 9px;
-  border: 0;
-  border-radius: 9px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: color-mix(in srgb, var(--primary-soft) 72%, transparent);
-  color: var(--primary);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.allocation-limit-row__shopping-link svg:last-child { margin-left: 2px; }
-.allocation-limit-row__shopping-link:hover { background: var(--primary-soft); }
-.allocation-limit-row__shopping-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-@media (max-width: 480px) {
-  .allocation-detail-hero,
-  .allocation-detail-section { padding-inline: 12px; }
-
-  .allocation-detail-panel__header { gap: 8px; }
-  .allocation-detail-section__count { padding-inline: 7px; }
-
-  .allocation-needs-filter {
-    gap: 3px;
-    padding: 3px;
-  }
-
-  .allocation-needs-filter__button {
-    padding-inline: 4px;
-    gap: 3px;
-  }
-
-  .allocation-limit-row {
-    padding-inline: 9px;
-    gap: 6px;
-  }
-
-  .allocation-limit-row__header {
-    grid-template-columns: 32px minmax(0, 1fr) auto;
-    gap: 7px;
-  }
-
-  .allocation-limit-row__content {
-    margin-left: 39px;
-  }
-
-  .allocation-limit-row__icon {
-    width: 32px;
-    height: 32px;
-    flex-basis: 32px;
-    border-radius: 10px;
-  }
-
-  .allocation-limit-row__icon svg { width: 15px; height: 15px; }
-  .allocation-limit-row__pattern { max-width: 6.5rem; }
-}
-
-/* Compact detail hierarchy: primary financial state stays visible; management lives in overflow. */
-.allocation-detail-hero__heading {
-  min-width: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.allocation-detail-hero__heading > div {
-  min-width: 0;
-}
-
-.allocation-detail-hero__heading > div > span {
-  color: var(--primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.allocation-detail-menu {
-  position: relative;
-  z-index: 5;
-  flex: 0 0 auto;
-}
-
-.allocation-detail-menu > summary {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  color: var(--text-soft);
-  cursor: pointer;
-  list-style: none;
-}
-
-.allocation-detail-menu > summary::-webkit-details-marker { display: none; }
-.allocation-detail-menu > summary:hover { background: var(--surface-soft); }
-.allocation-detail-menu > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.allocation-detail-menu > summary svg { width: 20px; height: 20px; }
-
-.allocation-detail-menu__items {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  width: min(240px, calc(100vw - 40px));
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  display: grid;
-  gap: 4px;
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-floating);
-}
-
-.allocation-detail-menu__items :global(.button) {
-  width: 100%;
-  justify-content: flex-start;
-  box-shadow: none;
-}
-
-.allocation-detail-hero__metrics--compact {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-@media (max-width: 820px) {
   .allocation-detail-hero {
     padding: 14px;
     grid-template-columns: minmax(0, 1fr);
@@ -1055,10 +1023,7 @@
   .allocation-detail-hero__metrics--compact > div {
     padding: 9px 8px;
   }
-}
 
-/* Mobile detail keeps one tonal hero and lets detail/list sections flow directly on the app canvas. */
-@media (max-width: 820px) {
   .allocation-detail-shell {
     overflow: visible;
     border-color: transparent;
@@ -1105,10 +1070,7 @@
     border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
     background: transparent;
   }
-}
 
-/* Mobile Kebutuhan rows use vertical hierarchy so names/status never compete with primary actions. */
-@media (max-width: 820px) {
   .allocation-detail-panel__header p {
     color: var(--text-soft);
     font-size: var(--font-size-body-sm);
@@ -1157,4 +1119,46 @@
   .allocation-limit-row__shopping-link {
     min-height: var(--mobile-control-height);
   }
+}
+
+@media (max-width: 480px) {
+  .allocation-detail-hero,
+  .allocation-detail-section { padding-inline: 12px; }
+
+  .allocation-detail-panel__header { gap: 8px; }
+  .allocation-detail-section__count { padding-inline: 7px; }
+
+  .allocation-needs-filter {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .allocation-needs-filter__button {
+    padding-inline: 4px;
+    gap: 3px;
+  }
+
+  .allocation-limit-row {
+    padding-inline: 9px;
+    gap: 6px;
+  }
+
+  .allocation-limit-row__header {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 7px;
+  }
+
+  .allocation-limit-row__content {
+    margin-left: 39px;
+  }
+
+  .allocation-limit-row__icon {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    border-radius: 10px;
+  }
+
+  .allocation-limit-row__icon svg { width: 15px; height: 15px; }
+  .allocation-limit-row__pattern { max-width: 6.5rem; }
 }

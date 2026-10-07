@@ -93,3 +93,20 @@ test("route yang mendekati build budget memindahkan interaction sekunder ke lazy
   assert.match(reconciliation, /const ReconciliationHistory = lazy\(\(\) => import\("\.\/components\/ReconciliationHistory\.jsx"\)\)/);
   assert.match(reconciliation, /<Suspense fallback=\{<div className=\{styles\.historyLoading\}/);
 });
+
+
+test("period lock uses progressive disclosure and mobile transaction rows keep primary copy readable", async () => {
+  const [page, pageCss, fields, history] = await Promise.all([
+    read("src/features/transactions/TransactionsPage.jsx"),
+    read("src/features/transactions/TransactionsPage.module.css"),
+    read("src/features/transactions/MobileTransactionFields.module.css"),
+    read("src/features/transactions/components/MobileTransactionHistory.module.css"),
+  ]);
+
+  assert.match(page, /<strong>Periode terkunci<\/strong>/);
+  assert.match(page, /<summary>Lihat alasan<\/summary>/);
+  assert.match(pageCss, /@media \(max-width: 820px\)[\s\S]*?\.periodLockNotice details \{ display:\s*grid; \}[\s\S]*?\.periodLockDesktopReason \{ display:\s*none; \}/);
+  assert.match(fields, /\.detailValue \{[^}]*font-size:\s*var\(--type-row-title\);/s);
+  assert.match(fields, /\.needEmpty strong \{ font-size:\s*var\(--type-row-title\); \}/);
+  assert.match(history, /\.rowCopy > strong \{[^}]*font-size:\s*var\(--type-row-title\);/s);
+});

@@ -191,7 +191,8 @@ test("micro continuity menjaga nominal final langsung dan motion reduced-motion 
   assert.doesNotMatch(money, /requestAnimationFrame|setInterval/);
   assert.match(components, /\[data-native-enter\]/);
   assert.match(components, /@keyframes native-item-enter/);
-  assert.match(components, /prefers-reduced-motion: reduce[^}]*\}\s*\[data-native-enter\]|prefers-reduced-motion: reduce\) \{ \[data-native-enter\]/s);
+  const compactComponents = components.replace(/\s+/g, " ");
+  assert.match(compactComponents, /@media \(prefers-reduced-motion: reduce\) \{ \[data-native-enter\] \{ animation: none; \} \}/);
   assert.match(progress, /transition: inline-size var\(--motion-standard\) var\(--ease-standard\)/);
   assert.match(progress, /prefers-reduced-motion: reduce/);
 });

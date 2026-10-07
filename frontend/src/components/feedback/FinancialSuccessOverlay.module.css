@@ -240,6 +240,22 @@
   100% { transform: translate3d(var(--note-drift-a), 110dvh, 0) rotate(calc(var(--note-rotation) + 4deg)) scale(var(--note-scale)); opacity: 0; }
 }
 
+
+
+
+
+.subtle .content { min-height: 29rem; padding-top: 2.4rem; }
+.subtle .brandSuccess { width: 5.25rem; height: 5.25rem; }
+.subtle .brandLogoWrap { width: 4.65rem; height: 4.65rem; }
+.subtle .brandLogo { width: 4.25rem; height: 4.25rem; }
+.subtle .brandLogoWrap::before,
+.subtle .brandLogoWrap::after { display: none; }
+.subtle .brandCheckBadge { width: 2.15rem; height: 2.15rem; border-width: .2rem; box-shadow: 0 .45rem 1rem color-mix(in srgb, var(--positive) 20%, transparent); }
+
+
+/* Result summaries must keep the complete label/value readable on narrow screens. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
   .backdrop { padding: 0; background: var(--page); backdrop-filter: none; }
   .dialog { width: 100vw; max-width: none; height: 100dvh; max-height: none; border: 0; border-radius: 0; box-shadow: none; background: radial-gradient(circle at 50% 19%, color-mix(in srgb, var(--primary) 17%, transparent), transparent 18rem), linear-gradient(180deg, color-mix(in srgb, var(--page) 90%, var(--primary-soft)), var(--page) 56%); }
@@ -250,27 +266,10 @@
   .moneyNote { filter: saturate(.8) brightness(.88); }
   .moneyFar { filter: blur(.8px) saturate(.72) brightness(.82); }
   .moneyNear { filter: blur(.12px) saturate(.84) brightness(.9); }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .backdrop, .dialog, .brandLogoWrap, .brandLogoWrap::before, .brandLogoWrap::after, .brandCheckBadge, .brandCheckPath { animation: none; opacity: 1; transform: none; stroke-dashoffset: 0; }
-  .moneyField { display: none; }
-}
-
-.subtle .content { min-height: 29rem; padding-top: 2.4rem; }
-.subtle .brandSuccess { width: 5.25rem; height: 5.25rem; }
-.subtle .brandLogoWrap { width: 4.65rem; height: 4.65rem; }
-.subtle .brandLogo { width: 4.25rem; height: 4.25rem; }
-.subtle .brandLogoWrap::before,
-.subtle .brandLogoWrap::after { display: none; }
-.subtle .brandCheckBadge { width: 2.15rem; height: 2.15rem; border-width: .2rem; box-shadow: 0 .45rem 1rem color-mix(in srgb, var(--positive) 20%, transparent); }
-@media (max-width: 820px) {
   .subtle .content { min-height: 100dvh; padding-top: calc(max(3.25rem, env(safe-area-inset-top) + 2.5rem)); }
   .subtle .brandSuccess { margin-top: .35rem; }
-}
 
-/* Result summaries must keep the complete label/value readable on narrow screens. */
-@media (max-width: 820px) {
   .summary dt,
   .summary dd {
     max-width: none;
@@ -279,4 +278,10 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
+}
+
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
+@media (prefers-reduced-motion: reduce) {
+  .backdrop, .dialog, .brandLogoWrap, .brandLogoWrap::before, .brandLogoWrap::after, .brandCheckBadge, .brandCheckPath { animation: none; opacity: 1; transform: none; stroke-dashoffset: 0; }
+  .moneyField { display: none; }
 }

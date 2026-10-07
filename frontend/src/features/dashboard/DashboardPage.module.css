@@ -99,9 +99,9 @@
 .mobile-notification-badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border: 2px solid var(--hero-start); border-radius: var(--radius-pill); display: grid; place-items: center; background: var(--secondary); color: var(--on-secondary); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); line-height: 1; }
 
 .mobile-next-action-heading > span { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
-.mobile-next-action { width: 100%; min-height: 64px; padding: 10px; border: 1px solid color-mix(in srgb, var(--info) 18%, var(--border)); border-radius: 16px; display: grid; grid-template-columns: 36px minmax(0, 1fr) 22px; align-items: center; gap: 10px; background: color-mix(in srgb, var(--info-soft) 55%, var(--surface)); color: var(--text); text-align: left; text-decoration: none; }
-.mobile-next-action[data-severity="warning"] { border-color: color-mix(in srgb, var(--warning) 20%, var(--border)); background: color-mix(in srgb, var(--warning-soft) 46%, var(--surface)); }
-.mobile-next-action[data-severity="danger"] { border-color: color-mix(in srgb, var(--negative) 22%, var(--border)); background: color-mix(in srgb, var(--negative-soft) 46%, var(--surface)); }
+.mobile-next-action { width: 100%; min-height: 62px; padding: 9px 2px; border: 0; border-bottom: 1px solid var(--mobile-divider); border-radius: 0; display: grid; grid-template-columns: 36px minmax(0, 1fr) 22px; align-items: center; gap: 10px; background: transparent; color: var(--text); text-align: left; text-decoration: none; }
+.mobile-next-action[data-severity="warning"],
+.mobile-next-action[data-severity="danger"] { background: transparent; }
 .mobile-next-action:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .mobile-next-action:active { transform: scale(.994); }
 .mobile-next-action__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: var(--info); background: var(--info-soft); }
@@ -109,8 +109,8 @@
 .mobile-next-action[data-severity="danger"] .mobile-next-action__icon { color: var(--negative); background: var(--negative-soft); }
 .mobile-next-action__icon svg { width: 18px; height: 18px; }
 .mobile-next-action__copy { min-width: 0; display: grid; gap: 3px; }
-.mobile-next-action__copy strong { overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.mobile-next-action__copy small { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); line-height: 1.35; }
+.mobile-next-action__copy strong { overflow: hidden; color: var(--text); font-size: var(--type-row-title); text-overflow: ellipsis; white-space: nowrap; }
+.mobile-next-action__copy small { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--text-muted); font-size: var(--type-meta); font-weight: var(--font-weight-medium); line-height: 1.35; }
 .mobile-next-action__copy em { color: var(--primary); font-size: var(--font-size-xs); font-style: normal; font-weight: var(--font-weight-semibold); }
 .mobile-next-action__chevron { color: var(--text-muted); }
 
@@ -118,7 +118,7 @@
 .mobile-empty-guidance__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: var(--primary); background: var(--primary-soft); }
 .mobile-empty-guidance__icon svg { width: 18px; height: 18px; }
 .mobile-empty-guidance > span:last-child { min-width: 0; display: grid; gap: 3px; }
-.mobile-empty-guidance strong { font-size: 12px; }
+.mobile-empty-guidance strong { font-size: var(--type-row-title); }
 .mobile-empty-guidance small { color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
 
 .mobile-transaction-list { overflow: hidden; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: transparent; }
@@ -378,6 +378,22 @@
   .shared-dashboard-widgets { grid-template-columns: 1fr; }
 }
 
+
+
+
+
+
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-hero-button.is-refreshing svg { animation: none; }
+  .mobile-quick-action > span { transition: none; }
+}
+
+.masked-money { white-space: nowrap; color: inherit; font-size: inherit; font-weight: var(--font-weight-bold); letter-spacing: .02em; }
+
+/* Legacy/shared mobile dashboard rows follow the same readable-content contract as DashboardMobile. */
+
+/* Canonical mobile cascade: one broad <=820 layer, compact exceptions after. */
 @media (max-width: 820px) {
   .dashboard-desktop { display: none; }
   .mobile-finance-dashboard { display: block; }
@@ -409,6 +425,19 @@
   .mobile-transaction-item { min-height: 60px; gap: 9px; }
   .mobile-transaction-icon { width: 36px; height: 36px; border-radius: 12px; }
   .mobile-transaction-amount { font-size: 12px; }
+
+  .mobile-finance-user__copy strong,
+  .mobile-ownership-summary span,
+  .mobile-ownership-summary strong,
+  .mobile-ownership-summary small,
+  .mobile-next-action__copy strong,
+  .mobile-transaction-copy strong,
+  .mobile-transaction-copy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (max-width: 520px) {
@@ -424,27 +453,4 @@
   .mobile-finance-content { padding-inline: var(--mobile-page-gutter); }
   .mobile-quick-action > span { width: 44px; height: 44px; }
   .mobile-hero-button { width: var(--mobile-control-height); min-width: var(--mobile-control-height); height: var(--mobile-control-height); min-height: var(--mobile-control-height); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mobile-hero-button.is-refreshing svg { animation: none; }
-  .mobile-quick-action > span { transition: none; }
-}
-
-.masked-money { white-space: nowrap; color: inherit; font-size: inherit; font-weight: var(--font-weight-bold); letter-spacing: .02em; }
-
-/* Legacy/shared mobile dashboard rows follow the same readable-content contract as DashboardMobile. */
-@media (max-width: 820px) {
-  .mobile-finance-user__copy strong,
-  .mobile-ownership-summary span,
-  .mobile-ownership-summary strong,
-  .mobile-ownership-summary small,
-  .mobile-next-action__copy strong,
-  .mobile-transaction-copy strong,
-  .mobile-transaction-copy small {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
 }

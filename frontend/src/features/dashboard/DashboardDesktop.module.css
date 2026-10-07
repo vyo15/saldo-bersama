@@ -1227,13 +1227,13 @@
   }
 
   .desktop-owner-card--self .desktop-owner-card__icon {
-    color: #2f88eb;
-    background: color-mix(in srgb, #dceeff 82%, var(--surface));
+    color: var(--info);
+    background: var(--info-soft);
   }
 
   .desktop-owner-card--partner .desktop-owner-card__icon {
-    color: #cf4976;
-    background: color-mix(in srgb, #ffe7ef 84%, var(--surface));
+    color: var(--accent-rose);
+    background: color-mix(in srgb, var(--accent-rose) 12%, var(--surface));
   }
 
   .desktop-owner-card--shared .desktop-owner-card__icon {
@@ -1327,8 +1327,8 @@
   }
 
   .desktop-reference-metric--allocation .desktop-reference-metric__icon {
-    color: #4e8fe8;
-    background: color-mix(in srgb, #e4efff 80%, var(--surface));
+    color: var(--info);
+    background: var(--info-soft);
   }
 
   .desktop-reference-metric > span:nth-child(2) {
@@ -1426,9 +1426,9 @@
   .desktop-quick-action--record > span:first-child { color: var(--primary); background: var(--primary-soft); }
 
   .desktop-quick-action--transfer {
-    background: linear-gradient(180deg, color-mix(in srgb, #e8f2ff 72%, var(--surface)), var(--surface));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--info-soft) 72%, var(--surface)), var(--surface));
   }
-  .desktop-quick-action--transfer > span:first-child { color: #2f88eb; background: color-mix(in srgb, #dceeff 82%, var(--surface)); }
+  .desktop-quick-action--transfer > span:first-child { color: var(--info); background: var(--info-soft); }
 
   .desktop-quick-action--planning {
     background: linear-gradient(180deg, color-mix(in srgb, var(--positive-soft) 62%, var(--surface)), var(--surface));
@@ -1441,9 +1441,9 @@
   .desktop-quick-action--goal > span:first-child { color: var(--warning); background: var(--warning-soft); }
 
   .desktop-quick-action--account {
-    background: linear-gradient(180deg, color-mix(in srgb, #eee8ff 60%, var(--surface)), var(--surface));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-purple) 8%, var(--surface)), var(--surface));
   }
-  .desktop-quick-action--account > span:first-child { color: #7658df; background: color-mix(in srgb, #ece7ff 82%, var(--surface)); }
+  .desktop-quick-action--account > span:first-child { color: var(--accent-purple); background: color-mix(in srgb, var(--accent-purple) 12%, var(--surface)); }
 
   .desktop-quick-action--investment {
     background: linear-gradient(180deg, color-mix(in srgb, var(--surface-soft) 72%, var(--surface)), var(--surface));
@@ -1756,18 +1756,18 @@
 }
 
 :root[data-theme="dark"] .desktop-owner-card--self .desktop-owner-card__icon {
-  color: #72a8f0;
-  background: rgba(78, 143, 232, .14);
+  color: color-mix(in srgb, var(--info) 72%, white);
+  background: color-mix(in srgb, var(--info) 14%, transparent);
 }
 
 :root[data-theme="dark"] .desktop-owner-card--partner .desktop-owner-card__icon {
-  color: #e58aae;
-  background: rgba(207, 73, 118, .14);
+  color: color-mix(in srgb, var(--accent-rose) 74%, white);
+  background: color-mix(in srgb, var(--accent-rose) 14%, transparent);
 }
 
 :root[data-theme="dark"] .desktop-reference-metric--allocation .desktop-reference-metric__icon {
-  color: #72a8f0;
-  background: rgba(78, 143, 232, .14);
+  color: color-mix(in srgb, var(--info) 72%, white);
+  background: color-mix(in srgb, var(--info) 14%, transparent);
 }
 
 :root[data-theme="dark"] .desktop-quick-action--record,

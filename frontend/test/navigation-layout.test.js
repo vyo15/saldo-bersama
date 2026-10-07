@@ -232,7 +232,7 @@ test("layout mobile compact mempertahankan safe area dan target sentuh", async (
 
   assert.match(responsiveCss, /--mobile-navigation-height:\s*72px;/);
   assert.match(responsiveCss, /\.mobile-navigation a,\s*\n\s*\.mobile-navigation__more \{[^}]*height:\s*var\(--mobile-navigation-height\);[^}]*min-height:\s*var\(--mobile-navigation-height\);/);
-  assert.match(responsiveCss, /--mobile-navigation-label-size:\s*12px;/);
+  assert.match(responsiveCss, /--mobile-navigation-label-size:\s*var\(--type-nav-label\);/);
   assert.match(responsiveCss, /--mobile-navigation-icon-size:\s*24px;/);
   assert.match(responsiveCss, /--mobile-navigation-add-size:\s*52px;/);
   assert.match(responsiveCss, /--mobile-navigation-add-lift:\s*26px;/);

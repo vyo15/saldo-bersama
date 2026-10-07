@@ -289,7 +289,7 @@ test("editorial app theme keeps tonal depth and rule-based mobile hierarchy in b
   assert.match(dashboard, /\.mobile-quick-section > h2::after[\s\S]*background:\s*var\(--divider-soft\)/);
   assert.match(dashboard, /\.mobile-finance-summary\.mobile-reference-summary[\s\S]*background:\s*var\(--surface-section-strong\)/);
   assert.match(dashboard, /\.mobile-finance-section\.mobile-reference-panel[\s\S]*border:\s*0[\s\S]*background:\s*transparent/);
-  assert.match(responsive, /\.mobile-navigation \{[^}]*border-top:\s*1px solid var\(--divider-soft\);[^}]*box-shadow:\s*var\(--shadow-navigation\);/s);
+  assert.match(responsive, /\.mobile-navigation \{[^}]*border-top:\s*1px solid var\(--divider-soft\);[^}]*box-shadow:\s*var\(--shadow-role-navigation\);/s);
 });
 
 test("halaman data utama memiliki representasi card mobile dan filter transaksi canonical", async () => {

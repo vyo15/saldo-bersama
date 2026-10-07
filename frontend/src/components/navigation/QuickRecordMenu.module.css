@@ -122,6 +122,15 @@
   .actionCard:hover { box-shadow: var(--shadow-control-hover); }
 }
 
+
+
+
+
+
+
+/* Mobile quick actions keep commitment identity readable; compactness comes from spacing, not clipping. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
   .modal :global(.modal__header) { padding: 14px 14px 10px; }
   .modal :global(.modal__body) { padding: 10px 14px calc(14px + env(safe-area-inset-bottom)); }
@@ -140,6 +149,14 @@
   .actionCopy small { font-size: var(--font-size-xs); }
   .futureLabel { font-size: var(--font-size-xs); }
   .commitmentRow { min-height: 80px; }
+
+  .commitmentHeading strong,
+  .commitmentCopy small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (max-width: 360px) {
@@ -148,18 +165,8 @@
   .actionCopy small { font-size: var(--font-size-xs); }
 }
 
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
 @media (prefers-reduced-motion: reduce) {
   .actionCard,
   .commitmentRow { transition: none; }
-}
-
-/* Mobile quick actions keep commitment identity readable; compactness comes from spacing, not clipping. */
-@media (max-width: 820px) {
-  .commitmentHeading strong,
-  .commitmentCopy small {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
 }

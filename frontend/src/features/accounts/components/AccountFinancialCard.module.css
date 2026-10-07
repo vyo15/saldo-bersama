@@ -241,31 +241,7 @@
   margin: 0;
 }
 
-@media (max-width: 820px) {
-  .visual {
-    border-radius: .7rem;
-  }
 
-  .accountNumber {
-    font-size: .48rem;
-    gap: .12rem;
-    letter-spacing: .02em;
-  }
-
-  .holderName {
-    font-size: .38rem;
-    letter-spacing: .05em;
-  }
-
-  .contactless {
-    min-width: .8rem;
-    min-height: .8rem;
-  }
-
-  .detailVisual {
-    width: min(100%, 26rem);
-  }
-}
 
 .cardOwnership,
 .cardTypeLabel {
@@ -622,6 +598,49 @@
   color: var(--negative);
 }
 
+
+
+
+
+
+
+
+/* The detail heading is app content, unlike the decorative physical-card facsimile labels above. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
+@media (max-width: 820px) {
+  .visual {
+    border-radius: .7rem;
+  }
+
+  .accountNumber {
+    font-size: .48rem;
+    gap: .12rem;
+    letter-spacing: .02em;
+  }
+
+  .holderName {
+    font-size: .38rem;
+    letter-spacing: .05em;
+  }
+
+  .contactless {
+    min-width: .8rem;
+    min-height: .8rem;
+  }
+
+  .detailVisual {
+    width: min(100%, 26rem);
+  }
+
+  .mobileDetailHeading h2 {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
 @media (max-width: 520px) {
   .mobileDetailHeading {
     align-items: flex-start;
@@ -658,19 +677,9 @@
   }
 }
 
-
+/* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
 @media (prefers-reduced-motion: reduce) {
   .stackVisual .cardImage {
     transition: none;
-  }
-}
-
-/* The detail heading is app content, unlike the decorative physical-card facsimile labels above. */
-@media (max-width: 820px) {
-  .mobileDetailHeading h2 {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
   }
 }

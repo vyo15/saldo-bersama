@@ -114,11 +114,7 @@
   gap: 12px;
 }
 
-@media (max-width: 820px) {
-  .allocation-advanced__content {
-    grid-template-columns: 1fr;
-  }
-}
+
 
 .allocation-create-needs {
   display: grid;
@@ -146,18 +142,7 @@
   font-size: .8125rem;
 }
 
-@media (max-width: 360px) {
-  .allocation-create-needs .allocation-create-need-primary-fields {
-    grid-template-columns: 1fr;
-  }
 
-  .allocation-create-needs .allocation-need-amount input,
-  .allocation-create-needs .allocation-need-amount--reduced input,
-  .allocation-create-needs .allocation-need-amount--compact input,
-  .allocation-create-needs .allocation-need-amount--tight input {
-    font-size: 1rem;
-  }
-}
 
 .allocation-create-funding {
   padding: 12px 14px;
@@ -427,18 +412,7 @@
   text-align: right;
 }
 
-@media (max-width: 580px) {
-  .allocation-create-summary {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 5px;
-  }
 
-  .allocation-create-summary > small {
-    max-width: none;
-    text-align: left;
-  }
-}
 
 .allocation-create-steps {
   display: flex;
@@ -466,7 +440,13 @@
 }
 
 /* Locked/source identities are decision-critical in mobile forms and must remain fully readable. */
+
+/* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
+  .allocation-advanced__content {
+    grid-template-columns: 1fr;
+  }
+
   .allocation-advanced > summary small,
   .allocation-funding-lock > strong,
   .allocation-create-summary strong {
@@ -474,5 +454,31 @@
     text-overflow: clip;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 580px) {
+  .allocation-create-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .allocation-create-summary > small {
+    max-width: none;
+    text-align: left;
+  }
+}
+
+@media (max-width: 360px) {
+  .allocation-create-needs .allocation-create-need-primary-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .allocation-create-needs .allocation-need-amount input,
+  .allocation-create-needs .allocation-need-amount--reduced input,
+  .allocation-create-needs .allocation-need-amount--compact input,
+  .allocation-create-needs .allocation-need-amount--tight input {
+    font-size: 1rem;
   }
 }

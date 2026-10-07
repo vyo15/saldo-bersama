@@ -253,12 +253,13 @@ test("density mobile memakai token readable dan tidak mengecilkan kontrol pada l
   assert.match(tokens, /--mobile-card-padding:\s*16px;/);
   assert.match(tokens, /--mobile-control-height:\s*44px;/);
   assert.match(tokens, /--mobile-native-control-font-size:\s*16px;/);
-  assert.match(tokens, /--mobile-financial-meta-size:\s*12px;/);
+  assert.match(tokens, /--type-meta:\s*13px;/);
+  assert.match(tokens, /--mobile-financial-meta-size:\s*var\(--type-meta\);/);
   assert.match(reset, /body \{[^}]*font-size:\s*var\(--font-size-body\);/s);
   assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-size-xs:\s*12px;[\s\S]*--font-size-sm:\s*12\.5px;[\s\S]*--font-size-body-sm:\s*13px;[\s\S]*--font-size-body:\s*14px;/);
   assert.match(responsive, /@media \(max-width: 820px\)[\s\S]*--font-weight-semibold:\s*550;[\s\S]*--font-weight-bold:\s*650;/);
   assert.match(dashboard, /\.mobile-finance-summary span \{ font-size:\s*var\(--font-size-xs\);/);
-  assert.match(dashboard, /\.mobile-transaction-copy small \{[^}]*font-size:\s*var\(--font-size-xs\);/);
+  assert.match(dashboard, /\.mobile-transaction-copy small \{[^}]*font-size:\s*var\(--type-meta\);/);
   assert.doesNotMatch(pages, /\.premium-/);
   assert.match(loginStyles, /\.login-mobile-google-button \{[^}]*min-height:\s*54px;/);
   assert.doesNotMatch(pages, /\.shared-account-panel \{/);
