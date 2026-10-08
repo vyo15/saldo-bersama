@@ -37,6 +37,7 @@ export const ACTION_POLICIES = Object.freeze({
   "investments.overview": snapshotRead(),
   "investments.instruments.list": read(),
   "investments.assets.create": write(),
+  "investments.assets.recordPurchase": write(),
   "investments.portfolios.create": write(),
   "investments.instruments.upsert": write(),
   "investments.trades.buy": write(),

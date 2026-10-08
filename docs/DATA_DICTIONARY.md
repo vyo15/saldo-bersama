@@ -96,7 +96,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 - `transactions.transaction_type`: `income`, `expense`, `transfer`, `refund`, `adjustment`.
 - `investment_portfolios.rdn_account_id`: FK unik ke rekening `account_type=investment`; runtime mewajibkan rekening aktif, operable saat create, dan `allow_negative=0`. `row_version` portfolio menjadi optimistic-lock token seluruh mutation portfolio.
 - `investment_instruments.lot_size`: integer positif untuk konversi lot → lembar. Ticker unik uppercase; status `inactive` melarang buy baru tetapi tidak memblok sell holding existing.
-- `investment_trades`: `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, `cash_amount` semuanya integer; `cash_effect_enabled` default `1` untuk histori lama dan bernilai `0` pada Buy/Sell current; `notes` adalah catatan opsional maks. 500 karakter; service/integrity memastikan lembar = lot × lot size, gross = lembar × harga, buy cash = gross + fee, sell cash = gross - fee.
+- `investment_trades`: `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, `cash_amount` semuanya integer; `cash_effect_enabled` adalah flag immutable per trade: row historis dan trade baru dengan RDN eksplisit bernilai `1`, sedangkan trade pada rekening internal tersembunyi bernilai `0`; `notes` adalah catatan opsional maks. 500 karakter; service/integrity memastikan lembar = lot × lot size, gross = lembar × harga, buy cash = gross + fee, sell cash = gross - fee.
 - `savings_goals.funding_mode`: `cash`, `investment`, atau `mixed`. Rekening compatibility tetap tersimpan, tetapi progress authoritative adalah cash Target + market value investasi teralokasi + retained sale cash. Kenaikan market value tidak menandai Target `completed` otomatis.
 - `goal_investment_events`: `share_delta`, `cost_basis_delta`, `cash_delta`, dan `realized_pl_delta` adalah integer append-only. `instrument_id` boleh `NULL` hanya untuk retained cash; `trade_id` unik bila event lahir dari Buy/Sell; total alokasi aktif per portfolio/instrumen tidak boleh melampaui holding aktual.
 - `investment_valuations.price_per_share`: integer positif; snapshot harga tidak mengubah cash/ledger. Harga read-model paling baru dapat berasal dari valuation atau trade terakhir.
@@ -141,7 +141,7 @@ Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API cont
 
 ## Current schema marker
 
-Versi runtime aktif: `24`. Latest migration canonical: `022_goal_investment_funding.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
+Versi runtime aktif: `26`. Latest migration canonical: `024_investment_fractional_precision.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
 
 Compatibility penting yang tetap current:
 
@@ -164,3 +164,10 @@ Barang operasional pada daftar. `quantity_milli=1000` berarti 1 unit. Nilai esti
 Snapshot satu checkout belanja. Setiap row memiliki `transaction_id` unik sehingga satu checkout tidak dapat membuat dua transaksi.
 
 Schema shopping diperkenalkan oleh migration `023_shopping_lists.sql`.
+
+
+## Presisi investasi schema v26
+
+`investment_trades.unit_quantity_hundredths`, `investment_corrections.unit_delta_hundredths`: jumlah unit dikalikan 100.
+`investment_trades.price_cents`, `investment_valuations.price_cents`, `investment_corrections.reference_price_cents`, dan `investment_corrections.average_price_cents`: harga dikalikan 100 (dua desimal).
+`investment_corrections.market_value_rupiah` dan `investment_valuations.market_value_rupiah`: nilai portofolio aktual dari broker opsional dalam Rupiah integer (tidak harus sama dengan unit×NAB yang ditampilkan karena pembulatan di broker). Semua kolom baru nullable dan row lama dibaca dengan fallback INTEGER asli; histori tidak diubah.

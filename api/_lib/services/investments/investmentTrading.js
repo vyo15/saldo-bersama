@@ -2,6 +2,47 @@ import { appendAudit } from "../audit.js";
 import { appError, assertVersion, dateValue, nonNegativeInteger, nowIso, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { assertActivityAfterReconciliation, assertChronology, assertPortfolioHistoryDate, assertPortfolioOperable, bumpPortfolio, instrumentRow, portfolioRow, portfolioState, safeAdd, safeInteger, safeMultiply } from "./investmentState.js";
 import { prepareGoalLinkedTrade, recordPreparedGoalLinkedTrade } from "../planning/goalInvestments.js";
+import { accountBalanceAsOf, firstNegativeBalance } from "../readModels.js";
+import { assertTransactionDateUnlocked } from "../finance/transactionValidation.js";
+import { decimalHundredths, isMutualFund, safeRupiahFromCentsAndUnits } from "./investmentPrecision.js";
+
+const tradeAmounts = (payload, instrument, tradeType) => {
+  const fund = isMutualFund(instrument);
+  const unitHundredths = fund ? decimalHundredths(payload.lots, "Jumlah unit") * Number(instrument.lot_size) : safeMultiply(positiveInteger(payload.lots, "Jumlah lot"), Number(instrument.lot_size), "Jumlah lembar") * 100;
+  if (!Number.isSafeInteger(unitHundredths)) throw appError("INVALID_AMOUNT", "Jumlah unit melampaui batas aman.", 400);
+  const shares = unitHundredths / 100;
+  const lots = fund ? Math.ceil(Number(payload.lots)) : positiveInteger(payload.lots, "Jumlah lot");
+  const priceCents = fund ? decimalHundredths(payload.price_per_share, "Nilai per unit") : positiveInteger(payload.price_per_share, "Harga per saham") * 100;
+  const price = Math.max(1, Math.round(priceCents / 100));
+  const fee = nonNegativeInteger(payload.fee_amount || 0, "Fee");
+  if (payload.goal_id && !Number.isInteger(shares)) throw appError("FRACTIONAL_GOAL_UNSUPPORTED", "Unit reksa dana pecahan belum dapat ditautkan ke Target. Catat transaksi tanpa Target dahulu.", 409);
+  const gross = safeRupiahFromCentsAndUnits(unitHundredths, priceCents, "Nilai transaksi");
+  if (!gross) throw appError("INVALID_AMOUNT", "Total transaksi terlalu kecil untuk dicatat dalam Rupiah.", 400);
+  if (tradeType === "sell" && fee >= gross) throw appError("INVALID_FEE", "Fee jual harus lebih kecil dari nilai transaksi.", 400);
+  const cashAmount = tradeType === "buy" ? safeAdd(gross, fee, "Dana pembelian") : gross - fee;
+  return { shares, lots, unitHundredths, priceCents, price, fee, gross, cashAmount };
+};
+
+const assertTradeCashAvailability = async (db, portfolio, tradeType, tradeDate, cashAmount) => {
+  // Hidden compatibility portfolios deliberately retain historical no-cash semantics.
+  const enabled = Number(portfolio.is_system_hidden || 0) === 0;
+  if (!enabled) return false;
+  await assertTransactionDateUnlocked(db, tradeDate);
+  if (tradeType !== "buy") return true;
+  const balance = await accountBalanceAsOf(db, portfolio, tradeDate);
+  if (balance < cashAmount) throw appError("INSUFFICIENT_RDN_CASH", "Saldo RDN tidak cukup untuk pembelian ini. Transfer dana ke RDN terlebih dahulu.", 409, { balance, required: cashAmount });
+  const issue = await firstNegativeBalance(db, portfolio, { candidate: {
+    transaction_date: tradeDate, transaction_type: "investment", investment_account_id: portfolio.account_id,
+    investment_cash_effect: -cashAmount,
+  }, fromDate: tradeDate });
+  if (issue) throw appError("INSUFFICIENT_RDN_CASH", "Pembelian membuat Saldo RDN negatif pada histori transaksi.", 409, { date: issue.date, balance: issue.balance });
+  return true;
+};
+
+const assertSaleHoldingAvailable = (state, instrument, shares) => {
+  const holding = state.holdings.find((item) => item.instrument_id === instrument.instrument_id);
+  if (!holding || shares > holding.shares) throw appError("INSUFFICIENT_HOLDING", "Jumlah yang dijual melebihi kepemilikan yang tersedia.", 409, { availableShares: holding?.shares || 0 });
+};
 
 const createTrade = async (db, context, tradeType) => {
   const payload = context.payload || {};
@@ -14,30 +55,23 @@ const createTrade = async (db, context, tradeType) => {
   assertPortfolioHistoryDate(portfolio, tradeDate, "Tanggal transaksi investasi");
   await assertChronology(db, portfolio.portfolio_id, tradeDate);
   await assertActivityAfterReconciliation(db, portfolio.portfolio_id, tradeDate);
-  const lots = positiveInteger(payload.lots, "Jumlah lot");
-  const shares = safeMultiply(lots, Number(instrument.lot_size), "Jumlah lembar");
-  const price = positiveInteger(payload.price_per_share, "Harga per saham");
-  const fee = nonNegativeInteger(payload.fee_amount || 0, "Fee");
-  const gross = safeMultiply(shares, price, "Nilai transaksi");
-  if (tradeType === "sell" && fee >= gross) throw appError("INVALID_FEE", "Fee jual harus lebih kecil dari nilai transaksi.", 400);
-  const cashAmount = tradeType === "buy" ? safeAdd(gross, fee, "Dana pembelian") : gross - fee;
+  const { shares, lots, unitHundredths, priceCents, price, fee, gross, cashAmount } = tradeAmounts(payload, instrument, tradeType);
+  const cashEffectEnabled = await assertTradeCashAvailability(db, portfolio, tradeType, tradeDate, cashAmount);
   const currentState = await portfolioState(db, portfolio);
-  if (tradeType === "sell") {
-    const holding = currentState.holdings.find((item) => item.instrument_id === instrument.instrument_id);
-    if (!holding || shares > holding.shares) throw appError("INSUFFICIENT_HOLDING", "Jumlah yang dijual melebihi kepemilikan yang tersedia.", 409, { availableShares: holding?.shares || 0 });
-  }
+  if (tradeType === "sell") assertSaleHoldingAvailable(currentState, instrument, shares);
   const goalLink = await prepareGoalLinkedTrade(db, context, {
     portfolio, instrument, tradeType, shares, tradeDate, cashAmount, currentState, retainForGoal: payload.retain_for_goal !== false,
   });
-  // Schema v17 treats Buy/Sell as an investment position record only. The cash amount
-  // remains part of the immutable trade history for cost basis/realized P&L, but it no
-  // longer mutates an RDN/account balance. Historical v16 rows keep their old cash impact.
-  const record = { trade_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, trade_type: tradeType, trade_date: tradeDate, lots, share_quantity: shares, price_per_share: price, fee_amount: fee, gross_amount: gross, cash_amount: cashAmount, cash_effect_enabled: 0, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
+  // The per-trade flag preserves historical semantics; never retroactively
+  // change past trades, opening positions, or hidden asset-centric cash.
+  const record = { trade_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, trade_type: tradeType, trade_date: tradeDate, lots, share_quantity: Math.ceil(shares), price_per_share: price, fee_amount: fee, gross_amount: gross, cash_amount: cashAmount, cash_effect_enabled: cashEffectEnabled ? 1 : 0, notes: sanitizeText(payload.notes, 500), idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
   await db.execute(`INSERT INTO investment_trades(trade_id,portfolio_id,instrument_id,trade_type,trade_date,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,cash_effect_enabled,notes,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
+  await db.execute("UPDATE investment_trades SET unit_quantity_hundredths=?,price_cents=? WHERE trade_id=?", [unitHundredths, priceCents, record.trade_id]);
   const goalEvent = await recordPreparedGoalLinkedTrade(db, context, goalLink, { portfolio, instrument, trade: record, tradeDate });
   const rowVersion = await bumpPortfolio(db, context, portfolio);
-  await appendAudit(db, context, { entityType: "investment_trade", entityId: record.trade_id, next: { ...record, row_version: rowVersion, goal_id: goalEvent?.goal_id || "" } });
-  return { ...publicRow(record), row_version: rowVersion, goal_investment_event: goalEvent };
+  const preciseRecord = { ...record, lots: Number(payload.lots), share_quantity: shares, price_per_share: priceCents / 100 };
+  await appendAudit(db, context, { entityType: "investment_trade", entityId: record.trade_id, next: { ...preciseRecord, row_version: rowVersion, goal_id: goalEvent?.goal_id || "" } });
+  return { ...publicRow(preciseRecord), row_version: rowVersion, goal_investment_event: goalEvent };
 };
 
 export const buyInvestment = (db, context) => createTrade(db, context, "buy");
@@ -54,12 +88,17 @@ export const updateInvestmentValuation = async (db, context) => {
   assertPortfolioHistoryDate(portfolio, valuationDate, "Tanggal harga");
   const latest = await db.one("SELECT valuation_date FROM investment_valuations WHERE portfolio_id=? AND instrument_id=? ORDER BY valuation_date DESC,created_at DESC LIMIT 1", [portfolio.portfolio_id, instrument.instrument_id]);
   if (latest?.valuation_date && valuationDate < latest.valuation_date) throw appError("VALUATION_CHRONOLOGY_CONFLICT", `Harga terbaru sudah tercatat pada ${latest.valuation_date}.`, 409);
-  const price = positiveInteger(payload.price_per_share, "Harga per saham");
+  const priceCents = isMutualFund(instrument) ? decimalHundredths(payload.price_per_share, "NAB per unit") : positiveInteger(payload.price_per_share, "Harga per saham") * 100;
+  const price = Math.max(1, Math.round(priceCents / 100));
+  const marketValue = payload.market_value === undefined || payload.market_value === null || payload.market_value === ""
+    ? null : nonNegativeInteger(payload.market_value, "Total nilai aktual dari broker");
   const record = { valuation_id: uuid(), portfolio_id: portfolio.portfolio_id, instrument_id: instrument.instrument_id, valuation_date: valuationDate, price_per_share: price, idempotency_key: context.idempotencyKey, created_by: context.actor.user_id, created_at: nowIso() };
   await db.execute("INSERT INTO investment_valuations(valuation_id,portfolio_id,instrument_id,valuation_date,price_per_share,idempotency_key,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)", Object.values(record));
+  await db.execute("UPDATE investment_valuations SET price_cents=?,market_value_rupiah=? WHERE valuation_id=?", [priceCents, marketValue, record.valuation_id]);
   const rowVersion = await bumpPortfolio(db, context, portfolio);
-  await appendAudit(db, context, { entityType: "investment_valuation", entityId: record.valuation_id, next: { ...record, row_version: rowVersion } });
-  return { ...publicRow(record), row_version: rowVersion };
+  const preciseRecord = { ...record, price_per_share: priceCents / 100, market_value: marketValue };
+  await appendAudit(db, context, { entityType: "investment_valuation", entityId: record.valuation_id, next: { ...preciseRecord, row_version: rowVersion } });
+  return { ...publicRow(preciseRecord), row_version: rowVersion };
 };
 
 const actualHoldingMap = (value) => {
@@ -67,7 +106,7 @@ const actualHoldingMap = (value) => {
   const map = new Map();
   for (const item of value) {
     const id = String(item?.instrument_id || "");
-    const shares = nonNegativeInteger(item?.shares ?? 0, "Jumlah lembar aktual");
+    const shares = decimalHundredths(item?.shares ?? 0, "Jumlah unit aktual", { allowZero: true }) / 100;
     if (!id || map.has(id)) throw appError("INVALID_RECONCILIATION", "Instrumen aktual harus unik dan valid.", 400);
     map.set(id, shares);
   }
@@ -85,10 +124,13 @@ export const reconcileInvestment = async (db, context) => {
   const state = await portfolioState(db, portfolio, reconciliationDate);
   const actualCash = safeInteger(payload.actual_cash, "Cash RDN aktual");
   const actual = actualHoldingMap(payload.holdings || []);
-  for (const id of actual.keys()) await instrumentRow(db, id);
+  for (const [id, shares] of actual) {
+    const instrument = await instrumentRow(db, id);
+    if (!isMutualFund(instrument) && !Number.isSafeInteger(shares)) throw appError("INVALID_RECONCILIATION", "Jumlah lembar saham aktual wajib bilangan bulat.", 400);
+  }
   const recorded = new Map(state.holdings.map((item) => [item.instrument_id, item.shares]));
   const ids = [...new Set([...recorded.keys(), ...actual.keys()])].sort();
-  const comparisons = ids.map((instrumentId) => ({ instrument_id: instrumentId, recorded_shares: recorded.get(instrumentId) || 0, actual_shares: actual.get(instrumentId) || 0, difference: (actual.get(instrumentId) || 0) - (recorded.get(instrumentId) || 0) }));
+  const comparisons = ids.map((instrumentId) => ({ instrument_id: instrumentId, recorded_shares: recorded.get(instrumentId) || 0, actual_shares: actual.get(instrumentId) || 0, difference: Math.round(((actual.get(instrumentId) || 0) - (recorded.get(instrumentId) || 0)) * 100) / 100 }));
   const differences = comparisons.filter((item) => item.difference !== 0);
   const cashDifference = actualCash - state.rdn_cash;
   const status = cashDifference === 0 && differences.length === 0 ? "matched" : "mismatch";

@@ -364,3 +364,21 @@ test("preview dampak transaksi compact menampilkan nominal sekali dan hasil akhi
   assert.match(design, /nominal transaksi satu kali → hasil akhir entity yang berubah/);
   assert.match(design, /Nominal hasil tidak boleh dipotong dengan ellipsis pada mobile/);
 });
+
+
+test("transfer Member yang membutuhkan approval membuka pengajuan, bukan membuat transaksi langsung", async () => {
+  const [controller, api, form, impact, mobile] = await Promise.all([
+    readFile(new URL("../src/features/transactions/transactionFormController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/transferRequests.api.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/TransactionForm.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/components/TransactionImpactPreview.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/transactions/MobileTransferFields.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(controller, /if \(!transaction && transferApprovalRequired\)/);
+  assert.match(controller, /requestTransferApproval\(validation\.value, \{ idempotencyKey: idempotencyKeyRef\.current \}\)/);
+  assert.match(controller, /transferApprovalRequired: selectedTransferRoute\?\.mode === "approval_required"/);
+  assert.match(api, /transferRequests\.request/);
+  assert.match(form, /Ajukan transfer/);
+  assert.match(mobile, /Ajukan transfer ke Administrator/);
+  assert.match(impact, /Pengajuan tidak langsung memindahkan dana/);
+});

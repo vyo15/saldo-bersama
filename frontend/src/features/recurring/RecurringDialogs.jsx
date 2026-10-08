@@ -124,12 +124,22 @@ const PaymentForm = ({ payment, setPayment, paymentState, paymentAccounts, payme
   const debtCommitment = Boolean(commitment && commitment.commitment_type !== "arisan");
   const automaticPrincipal = Boolean(debtCommitment && commitment.commitment_auto_principal);
   const amountLabel = commitment ? "Nominal pembayaran" : "Nominal";
-  const updateAmount = (amount) => setPayment((current) => ({ ...current, amount }));
+  const updateAmount = (amount) => setPayment((current) => ({ ...current, amount, confirm_overpayment: false }));
   const updateAccount = (account_id) => setPayment((current) => ({ ...current, account_id, envelope_period_id: "", overspend_reason: "" }));
   const updateTransactionDate = (event) => setPayment((current) => ({ ...current, transaction_date: event.target.value, envelope_period_id: "", overspend_reason: "" }));
   return <form id="recurring-payment-form" className="form-grid" onSubmit={completeOccurrence}>
     <CommitmentPaymentNotice commitment={commitment} automaticPrincipal={automaticPrincipal} />
     <MoneyInput id="recurring-actual-amount" label={amountLabel} value={payment.amount} onChange={updateAmount} required />
+    {(() => {
+      const remaining = Math.max(0, Number(payment.item?.expected_amount || 0) - Number(payment.item?.actual_amount || 0));
+      const entered = Number(payment.amount || 0);
+      const unusual = remaining > 0 && entered > remaining * 1.25 && entered - remaining >= 100_000;
+      return unusual ? <label className="field form-grid__full">
+        <span>Periksa nominal pembayaran</span>
+        <span className="notice notice--warning">Jumlah aktual {formatRupiah(entered)} melebihi sisa tagihan {formatRupiah(remaining)}. Pastikan angka sesuai bukti pembayaran.</span>
+        <span><input type="checkbox" required checked={payment.confirm_overpayment === true} onChange={(event) => setPayment((current) => ({ ...current, confirm_overpayment: event.target.checked }))} /> Saya sudah memeriksa nominal aktual.</span>
+      </label> : null;
+    })()}
     <AccountField label={accountLabel} value={payment.account_id} accounts={paymentAccounts} onChange={updateAccount} />
     <label className="field"><span>Tanggal *</span><TemporalInput required type="date" value={payment.transaction_date} onChange={updateTransactionDate} /></label>
     <DebtCommitmentPaymentFields payment={payment} setPayment={setPayment} debtCommitment={debtCommitment} automaticPrincipal={automaticPrincipal} />

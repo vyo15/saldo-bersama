@@ -3,6 +3,14 @@
 **Status:** Accepted
 **Date:** 2026-09-02
 
+## Amendment konfirmasi posisi awal versus pembelian pertama (8 Oktober 2026)
+
+UI **Tambah investasi** wajib menanyakan **Sudah punya / Belum punya** per aset. Posisi awal yang dimiliki sebelum pencatatan tidak menggerakkan kas (`investments.assets.create`), sedangkan pembelian yang terjadi di broker setelah pencatatan memakai `investments.assets.recordPurchase` dengan RDN eksplisit yang terlihat, saldo cukup, cash-effect benar, dan idempotency mutation. Keduanya bukan order broker; Transfer Bank→RDN hanya dicatat oleh pengguna jika perpindahan dana memang terjadi. Rekening internal yang disembunyikan hanya untuk kompatibilitas histori/posisi awal dan tidak dapat menjadi sumber pembelian pertama. Backend baru tidak boleh mengubah atau mendebit ulang histori legacy.
+
+## Amendment keamanan keuangan (8 Oktober 2026)
+
+Pada portfolio dengan RDN eksplisit yang terlihat (`accounts.is_system_hidden=0`), Buy/Sell **baru** kembali memakai ledger cash investment (`cash_effect_enabled=1`). Buy wajib memeriksa dana RDN saat tanggal trade dan tidak boleh membuat histori berikutnya negatif; Sell menambah saldo RDN. Pada flow asset-centric berbasis rekening internal tersembunyi (RDN yang tidak dapat ditransfer pengguna), tetap accounting-only (`cash_effect_enabled=0`) agar pengguna tidak terjebak pada akun ber-saldo nol dan histori lama tidak didebit retroaktif. Flag cash-effect tiap trade immutable, opening position tetap bukan transaksi beli. Seluruh kontrak di bawah harus dibaca bersama amendment ini.
+
 ## Amendment schema v17 (11 September 2026)
 
 Keputusan RDN-ledger di bawah ini tetap authoritative untuk **histori v15/v16 dan compatibility/recovery**, tetapi tidak lagi menjadi mental model atau cash prerequisite untuk pencatatan investasi baru. Schema v17 mengadopsi UI/flow asset-centric: user menambah saham/reksa dana langsung melalui `investments.assets.create`; backend boleh mempertahankan portfolio + rekening investment tersembunyi hanya untuk FK legacy. Direct opening-position dan Buy/Sell v17 memakai `cash_effect_enabled=0`, sehingga tidak mengubah rekening dan tidak memerlukan saldo RDN. Existing row mendapat default `cash_effect_enabled=1`, sehingga histori lama tetap identik. Total investasi user-facing menggunakan `market_value`; `rdn_cash`/`portfolio_value` dipertahankan sebagai compatibility read-model.

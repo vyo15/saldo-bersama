@@ -82,6 +82,7 @@ font-weight: var(--font-weight-semibold);
 }
 
 .field input,
+.field select,
 .field textarea {
 width: 100%;
   min-height: var(--control-height-md);
@@ -95,12 +96,13 @@ width: 100%;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .field input:hover, .field textarea:hover {
+  .field input:hover, .field select:hover, .field textarea:hover {
     border-color: color-mix(in srgb, var(--primary) 28%, var(--border-strong));
   }
 }
 
 .field input:focus-visible,
+.field select:focus-visible,
 .field textarea:focus-visible {
 outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
@@ -112,6 +114,7 @@ min-height: 5.5rem;
 }
 
 .field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
 .field textarea[aria-invalid="true"] {
 border-color: var(--negative);
 }
@@ -383,3 +386,98 @@ transition: none;
   background: var(--surface-elevated); box-shadow: var(--shadow-md);
 }
 .holdingActionMenu > div :global(.button) { justify-content: flex-start; width: 100%; }
+
+/* Only Tambah Investasi: match compact native account selection surfaces. */
+.setupForm,
+.setupFields {
+  gap: var(--space-3);
+}
+
+.setupImpact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--mobile-divider);
+  color: var(--text-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.setupImpact strong {
+  color: var(--text);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.setupOptional {
+  min-width: 0;
+  border-top: 1px solid var(--mobile-divider);
+  padding-top: var(--space-2);
+}
+
+.setupOptional > summary {
+  padding: var(--space-2) 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  list-style: none;
+}
+
+.setupOptional > summary::-webkit-details-marker { display: none; }
+.setupOptional > summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-inline-start: auto;
+  margin-inline-end: 5px;
+  border-inline-end: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+.setupOptional[open] > summary::after { transform: rotate(225deg); }
+
+.setupOptional > summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.setupOptional[open] > :not(summary) { margin-top: var(--space-2); }
+
+.setupForm .review { gap: var(--space-3); }
+.setupForm .review h3 { margin: 0; font-size: var(--font-size-body); }
+.setupForm .reviewGrid {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.setupForm .reviewGrid > div {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--mobile-divider);
+  border-radius: 0;
+  background: transparent;
+}
+.setupForm .reviewGrid dd { max-width: 60%; text-align: end; }
+
+@media (min-width: 430px) and (max-width: 620px) {
+  .setupFields .formRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .setupFields .formRow input { min-width: 0; padding-inline: var(--space-2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setupOptional > summary::after { transition: none; }
+}

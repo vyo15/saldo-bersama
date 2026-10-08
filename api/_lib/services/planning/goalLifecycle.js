@@ -44,11 +44,11 @@ const goalProgressStatement = (goalId, cutoffDate = todayJakarta()) => ({
       FROM goal_movements m LEFT JOIN transactions t ON t.transaction_id=m.transaction_id
       WHERE m.goal_id=? AND m.status='active' AND COALESCE(t.transaction_date,substr(m.created_at,1,10))<=?
     ), price_events AS (
-      SELECT portfolio_id,instrument_id,valuation_date AS price_date,created_at,price_per_share,3 AS priority,rowid AS source_order FROM investment_valuations WHERE valuation_date<=?
+      SELECT portfolio_id,instrument_id,valuation_date AS price_date,created_at,COALESCE(price_cents/100.0,price_per_share) AS price_per_share,3 AS priority,rowid AS source_order FROM investment_valuations WHERE valuation_date<=?
       UNION ALL
-      SELECT portfolio_id,instrument_id,trade_date,created_at,price_per_share,2,rowid FROM investment_trades WHERE trade_date<=?
+      SELECT portfolio_id,instrument_id,trade_date,created_at,COALESCE(price_cents/100.0,price_per_share),2,rowid FROM investment_trades WHERE trade_date<=?
       UNION ALL
-      SELECT portfolio_id,instrument_id,correction_date,created_at,reference_price,1,rowid FROM investment_corrections WHERE correction_type='opening_position' AND reference_price>0 AND correction_date<=?
+      SELECT portfolio_id,instrument_id,correction_date,created_at,COALESCE(reference_price_cents/100.0,reference_price),1,rowid FROM investment_corrections WHERE correction_type='opening_position' AND reference_price>0 AND correction_date<=?
     ), latest_prices AS (
       SELECT portfolio_id,instrument_id,price_per_share FROM (
         SELECT price_events.*,ROW_NUMBER() OVER (PARTITION BY portfolio_id,instrument_id ORDER BY price_date DESC,created_at DESC,priority DESC,source_order DESC) AS rn

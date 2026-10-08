@@ -72,7 +72,7 @@ const ClosedPositionMetrics = ({ holding, quantityLabel }) => {
 const HoldingDetailFooter = ({ portfolio, holding, closed, onClose, onAction }) => {
   const lotSize = Number(holding.lot_size || 100);
   const shares = Number(holding.shares || 0);
-  const canSell = portfolio.can_operate && !closed && shares >= lotSize;
+  const canSell = portfolio.can_operate && !closed && shares >= (isMutualFundInstrument(holding) ? 0.01 : lotSize);
   return <div className={`${formStyles.holdingActions} form-actions`}>
     {portfolio.can_operate ? <Button type="button" variant={canSell ? "secondary" : "primary"} onClick={() => onAction("buy", portfolio, { initialInstrumentId: holding.instrument_id })}>Beli</Button> : null}
     {canSell ? <Button type="button" variant="primary" onClick={() => onAction("sell", portfolio, { initialInstrumentId: holding.instrument_id })}>Jual</Button> : null}

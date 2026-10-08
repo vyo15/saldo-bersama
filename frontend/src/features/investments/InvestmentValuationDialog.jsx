@@ -9,6 +9,7 @@ import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import InvestmentAssetLogo from "./InvestmentAssetLogo.jsx";
 import InvestmentFormField from "./InvestmentFormField.jsx";
+import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
 import { bulkUpdateInvestmentValuations, invalidateInvestmentReads } from "./investments.api.js";
 
 import formStyles from "./InvestmentForm.module.css";
@@ -36,7 +37,7 @@ const validationErrors = (rows, prices, valuationDate) => {
   else if (valuationDate > TODAY()) errors.valuation_date = "Tanggal nilai tidak boleh di masa depan.";
   for (const { key, holding } of changedValuations(rows, prices)) {
     const price = Number(prices[key]);
-    if (!Number.isSafeInteger(price) || price <= 0) errors[key] = `${isMutualFundInstrument(holding) ? "NAB per unit" : "Harga per lembar"} harus berupa Rupiah lebih dari 0.`;
+    if (!Number.isFinite(price) || price <= 0 || (isMutualFundInstrument(holding) ? !/^\d+(?:\.\d{1,2})?$/.test(String(prices[key])) : !Number.isSafeInteger(price))) errors[key] = `${isMutualFundInstrument(holding) ? "NAB per unit (maksimal 2 desimal)" : "Harga per lembar"} harus lebih dari 0.`;
   }
   return errors;
 };
@@ -70,9 +71,9 @@ const AssetPriceRow = ({ row, value, error, disabled, onChange }) => {
     </div>
     <div className={styles.currentValue}>
       <span>Sebelumnya</span>
-      <strong><Money value={holding.price_per_share} /></strong>
+      <strong><InvestmentUnitPrice value={holding.price_per_share} /></strong>
     </div>
-    <MoneyInput
+    {mutualFund ? <InvestmentFormField id={`investment-valuation-${key.replace(/[^a-zA-Z0-9_-]/g, "-")}`} label="NAB per unit" required error={error}><input min="0.01" step="0.01" type="number" inputMode="decimal" disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} /></InvestmentFormField> : <MoneyInput
       id={`investment-valuation-${key.replace(/[^a-zA-Z0-9_-]/g, "-")}`}
       label={mutualFund ? "NAB per unit" : "Harga per lembar"}
       required
@@ -80,7 +81,7 @@ const AssetPriceRow = ({ row, value, error, disabled, onChange }) => {
       value={value}
       error={error}
       onChange={onChange}
-    />
+    />}
   </article>;
 };
 

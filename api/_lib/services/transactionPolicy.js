@@ -42,6 +42,9 @@ export const transferRouteMode = (actor, source, destination) => {
   const sourceOperable = source.owner_scope === "shared"
     || (source.owner_scope === "personal" && source.owner_user_id === actor.user_id);
   if (!sourceOperable) return "denied";
+  // Member cannot debit household money into any personal account without an
+  // auditable Administrator decision, even when the destination is their own.
+  if (actor.role !== "owner" && source.owner_scope === "shared" && destination.owner_scope === "personal") return "approval_required";
   return "direct";
 };
 

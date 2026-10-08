@@ -1,30 +1,7 @@
 import { todayJakarta } from "../core.js";
-import { integrationEnqueuers } from "../integrations.js";
-import { payOccurrence } from "./recurringOccurrences.js";
+import { accountBalanceAsOf } from "../readModels.js";
 import { refreshRecurringProjectionHorizon } from "./recurringSchedule.js";
 import { fundedBudgetCapacity, resolveBudgetEnvelopePeriodForDate, resolveRecurringBudgetForPeriod } from "./recurringBudgetLink.js";
-
-const operationalSkipCodes = new Set([
-  "BUDGET_DATE_MISMATCH",
-  "BUDGET_ENVELOPE_MISMATCH",
-  "BUDGET_INACTIVE",
-  "ENVELOPE_DATE_MISMATCH",
-  "ENVELOPE_LIMIT",
-  "ENVELOPE_SOURCE_ACCOUNT_MISMATCH",
-  "INSUFFICIENT_BALANCE",
-  "OCCURRENCE_ALREADY_COMPLETE",
-  "OVERSPEND_REASON_REQUIRED",
-  "POSSIBLE_DUPLICATE",
-  "UNALLOCATED_FUNDS_INSUFFICIENT",
-]);
-
-const automaticActor = async (db, rule) => {
-  if (rule.scope === "personal" && rule.owner_user_id) {
-    const personal = await db.one("SELECT * FROM users WHERE user_id=? AND status='active'", [rule.owner_user_id]);
-    if (personal) return personal;
-  }
-  return db.one("SELECT * FROM users WHERE role='owner' AND status='active' ORDER BY created_at,user_id LIMIT 1");
-};
 
 const dueCommitmentOccurrences = (db, today) => db.all(`SELECT o.*,r.*,o.row_version AS occurrence_row_version,c.status AS commitment_status,
     c.commitment_type,c.current_balance AS commitment_current_balance,c.original_amount AS commitment_original_amount,
@@ -36,7 +13,7 @@ const dueCommitmentOccurrences = (db, today) => db.all(`SELECT o.*,r.*,o.row_ver
     AND r.status='active' AND r.kind='expense' AND r.budget_id IS NOT NULL
     AND c.status='active'
   ORDER BY o.due_date,o.occurrence_id
-  LIMIT 100`, [today]);
+  `, [today]);
 
 const fundedPaymentPlan = async (db, row) => {
   const budget = await resolveRecurringBudgetForPeriod(db, row, row.period_key);
@@ -60,59 +37,65 @@ const fundedPaymentPlan = async (db, row) => {
     }
   }
   if (!amount || !capacity.ready || capacity.budgetRemaining < amount || capacity.envelopeRemaining < amount) return null;
-  return { amount, budget, envelope };
+  return { amount, budget, envelope, capacity };
 };
 
-const settleOne = async (db, row, today) => {
-  const actor = await automaticActor(db, row);
-  if (!actor) return { settled: false, reason: "NO_ACTIVE_ACTOR" };
-  const plan = await fundedPaymentPlan(db, row);
-  if (!plan) return { settled: false, reason: "FUNDS_NOT_READY" };
-  const requestId = `auto-commitment:${row.occurrence_id}:${today}`;
-  const baseContext = {
-    actor,
-    signedActor: null,
-    action: "recurring.payOccurrence",
-    payload: {},
-    rowVersion: row.occurrence_row_version,
-    requestId,
-    idempotencyKey: requestId,
-  };
-  const context = { ...baseContext, ...integrationEnqueuers(baseContext) };
-  await payOccurrence(db, {
-    ...context,
-    payload: {
-      occurrence_id: row.occurrence_id,
-      row_version: row.occurrence_row_version,
-      account_id: row.default_account_id,
-      amount: plan.amount,
-      // Catch-up keeps the same ledger date the automatic payment would have used if the scheduler had run on time.
-      // This also preserves the Kebutuhan/Alokasi period for month-boundary overdue occurrences.
-      transaction_date: row.due_date,
-      envelope_period_id: plan.envelope.envelope_period_id,
-    },
-  });
-  return { settled: true, amount: plan.amount };
-};
-
+// Dana dialokasikan != bank sudah membayar. Scheduler hanya melaporkan dana
+// siap; pembayaran benar-benar dicatat lewat konfirmasi recurring.payOccurrence.
+// Jangan otomatis membuat transaksi atau melunasi kewajiban dari jadwal cron.
 export const processFundedCommitmentPayments = async (db, { today = todayJakarta() } = {}) => {
   const projection = await refreshRecurringProjectionHorizon(db, { today });
   const candidates = await dueCommitmentOccurrences(db, today);
-  const result = { candidates: candidates.length, settled: 0, skipped: 0, amount: 0, skip_reasons: {}, projection };
+  const result = { candidates: candidates.length, ready: 0, ready_amount: 0, settled: 0, skipped: 0, amount: 0, skip_reasons: {}, projection };
+  const accountFunds = new Map();
+  const budgetFunds = new Map();
+  const envelopeFunds = new Map();
   for (const row of candidates) {
     try {
-      const outcome = await db.transaction((tx) => settleOne(tx, row, today));
-      if (outcome.settled) {
-        result.settled += 1;
-        result.amount += Number(outcome.amount || 0);
-      } else {
-        result.skipped += 1;
-        result.skip_reasons[outcome.reason] = Number(result.skip_reasons[outcome.reason] || 0) + 1;
+      const plan = await fundedPaymentPlan(db, row);
+      let reason = "FUNDS_NOT_READY";
+      if (plan) {
+        const accountId = row.default_account_id;
+        // Different unpaid occurrences can point at the same funded Kebutuhan
+        // and Alokasi. Reserve their simulated capacity together or the
+        // scheduler could report the same allocated money as ready twice.
+        const budgetId = plan.budget.budget_id;
+        const envelopeId = plan.envelope.envelope_period_id;
+        if (!budgetFunds.has(budgetId)) budgetFunds.set(budgetId, plan.capacity.budgetRemaining);
+        if (!envelopeFunds.has(envelopeId)) envelopeFunds.set(envelopeId, plan.capacity.envelopeRemaining);
+        const budgetAvailable = budgetFunds.get(budgetId);
+        const envelopeAvailable = envelopeFunds.get(envelopeId);
+        if (budgetAvailable < plan.amount || envelopeAvailable < plan.amount) {
+          result.skipped += 1;
+          result.skip_reasons.FUNDED_CAPACITY_RESERVED = Number(result.skip_reasons.FUNDED_CAPACITY_RESERVED || 0) + 1;
+          continue;
+        }
+        if (!accountFunds.has(accountId)) {
+          const account = await db.one("SELECT * FROM accounts WHERE account_id=?", [accountId]);
+          const available = account?.status === "active" && account.account_type !== "investment"
+            ? await accountBalanceAsOf(db, account, today)
+            : 0;
+          accountFunds.set(accountId, Math.max(0, available));
+        }
+        const remainingCash = accountFunds.get(accountId);
+        if (remainingCash >= plan.amount) {
+          accountFunds.set(accountId, remainingCash - plan.amount);
+          budgetFunds.set(budgetId, budgetAvailable - plan.amount);
+          envelopeFunds.set(envelopeId, envelopeAvailable - plan.amount);
+          result.ready += 1;
+          result.ready_amount += plan.amount;
+          continue;
+        }
+        reason = "ACCOUNT_FUNDS_NOT_READY";
       }
-    } catch (error) {
-      if (!operationalSkipCodes.has(error?.code)) throw error;
       result.skipped += 1;
-      result.skip_reasons[error.code] = Number(result.skip_reasons[error.code] || 0) + 1;
+      result.skip_reasons[reason] = Number(result.skip_reasons[reason] || 0) + 1;
+    } catch (error) {
+      // A corrupted/closed historical item must not mask all later obligations;
+      // retain visibility of the individual operational error in scheduler logs.
+      result.skipped += 1;
+      const code = String(error?.code || "ASSESSMENT_FAILED");
+      result.skip_reasons[code] = Number(result.skip_reasons[code] || 0) + 1;
     }
   }
   return result;

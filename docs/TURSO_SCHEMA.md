@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `023_shopping_lists.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `024_investment_fractional_precision.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -41,9 +41,9 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `investment_portfolios` — compatibility container untuk histori investasi; UI current tidak menampilkan broker/portfolio sebagai hierarchy utama.
 - `investment_instruments` — registry ticker/exchange/lot size global yang dikelola Administrator.
 - `investment_trades` — histori buy/sell append-only; `cash_effect_enabled` membedakan record accounting-only current dari histori cash legacy.
-- `investment_valuations` — snapshot harga manual append-only.
+- `investment_valuations` — snapshot harga manual append-only; `price_cents` menyimpan nilai per unit dua desimal dan `market_value_rupiah` opsional menyimpan nilai total broker aktual.
 - `investment_reconciliations` — snapshot perbandingan broker vs recorded state; tidak auto-adjust.
-- `investment_corrections` — event correction/opening-position append-only; `cash_effect_enabled` membedakan histori cash legacy dari posisi aset accounting-only.
+- `investment_corrections` — event correction/opening-position append-only; field presisi `unit_delta_hundredths`, `reference_price_cents`, `average_price_cents`, dan `market_value_rupiah` opsional disimpan bersama legacy integer tanpa menulis ulang histori.
 
 ### Guard dan operasional
 
@@ -87,14 +87,14 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `accounts.ewallet_template` menyimpan provider visual E-wallet secara terpisah dari nama rekening. Nilai rekening E-wallet dibatasi ke `generic`, `shopeepay`, `dana`, `gopay`, `ovo`, atau `linkaja`; rekening non-E-wallet wajib `generic`.
 - `accounts.is_system_hidden` default `0`. Nilai `1` hanya untuk rekening compatibility yang dibuat backend bagi flow Investasi asset-centric; rekening tersebut tidak dikembalikan oleh `accounts.list` dan tidak boleh menjadi pilihan user-facing. Data rekening existing otomatis tetap `0`.
 - `investment_portfolios` tetap memiliki FK `rdn_account_id` untuk compatibility histori. Flow current dapat memakai portfolio legacy yang operable atau membuat compatibility portfolio baru di atas rekening hidden Rp0; broker selalu metadata legacy, bukan hierarchy produk.
-- Trade investasi menyimpan `lots`, `share_quantity`, `price_per_share`, `fee_amount`, `gross_amount`, dan `cash_amount` sebagai INTEGER. Service + integrity checker memastikan `share_quantity = lots × lot_size`, gross = lembar × harga, buy cash = gross + fee, dan sell cash = gross - fee.
-- `investment_trades.cash_effect_enabled` dan `investment_corrections.cash_effect_enabled` mempertahankan `1` pada histori yang memang berdampak cash. Record Buy/Sell dan direct opening-position current memakai `0`; nominal cash/cost tetap tersimpan untuk cost basis/P&L tetapi tidak memutasikan rekening.
+- Trade investasi mempertahankan kolom legacy INTEGER dan menambahkan `unit_quantity_hundredths` serta `price_cents` untuk reksa dana; gross dihitung dari unit×NAB presisi lalu dibulatkan hanya pada nominal Rupiah. Saham tetap memakai jumlah lembar integer, sedangkan harga average posisi awal boleh dua desimal. Legacy rows tetap dibaca menggunakan fallback integer, tanpa migrasi ulang data asli.
+- `investment_trades.cash_effect_enabled` dan `investment_corrections.cash_effect_enabled` mempertahankan nilai pada histori lama. Trade pada RDN eksplisit mengubah saldo cash; catatan aset pada RDN kompatibilitas yang tersembunyi tetap accounting-only. Posisi awal tidak otomatis mencatat transaksi kas baru.
 - `savings_goals.funding_mode` dibatasi ke `cash`, `investment`, atau `mixed`. Progress Target dihitung dari cash movement + nilai pasar alokasi investasi + hasil penjualan yang masih dipertahankan; market value tidak mengubah `status` secara otomatis.
 - `goal_investment_events` menyimpan delta saham/cost basis/cash append-only. `trade_id` unik bila ada agar satu Buy/Sell tidak tercatat dua kali untuk Target; alokasi lintas Target tidak boleh melebihi holding aktual dan retained cash tidak boleh negatif.
 - View `investment_account_events` hanya memproyeksikan row dengan `cash_effect_enabled=1`. Karena itu cash RDN legacy tetap dapat direplay tanpa membuat trade current memengaruhi saldo rekening.
 - Event compatibility tidak boleh mendahului `accounts.initial_balance_date` portfolio. Trade tidak boleh future, perubahan holding mengikuti chronology/checkpoint yang sudah ada, dan direct asset position tidak boleh menulis ke periode yang sudah direkonsiliasi.
 - Reconciliation legacy bersifat snapshot as-of tanggal yang diminta dan tidak mengubah holding/cash. Correction reguler append-only Administrator-only; hasil holding/cost basis negatif atau tidak konsisten ditolak.
-- Harga read-model adalah event harga terakhir yang diketahui antara trade dan valuation manual. Karena itu holding baru memiliki valuation fallback dari harga trade tanpa membuat valuation row sintetis.
+- Harga read-model adalah event harga terakhir dari trade/valuation/posisi awal. `market_value_rupiah` broker opsional adalah snapshot nilai total otoritatif sampai ada transaksi berikutnya; nilai ini tidak dipaksa sama dengan kuantitas yang ditampilkan × harga yang ditampilkan, karena keduanya dapat dibulatkan oleh broker. Setelah Buy/Sell nilai dihitung ulang dari holding dan harga terbaru.
 - Data finansial menggunakan `ON DELETE RESTRICT`.
 - Audit dicegah dari update/delete melalui trigger append-only.
 - Status transaksi normal berubah melalui soft cancel/archive, bukan hard delete.
@@ -125,9 +125,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `25`
+Versi aktif: `26`
 
-Latest migration: `023_shopping_lists.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `024_investment_fractional_precision.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 

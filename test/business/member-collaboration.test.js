@@ -90,56 +90,32 @@ test("Member membuat rekening pribadi sendiri secara langsung, sedangkan kategor
   }
 });
 
-test("Transfer dari rekening Bersama ke rekening personal berjalan langsung berdasarkan hak rekening sumber", async () => {
+test("Member wajib mengajukan transfer Bersama ke Pribadi; ledger tetap utuh sampai disetujui", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
     await seedUser(db, member);
     await seedUser(db, other);
-
     const shared = await createAccount(db, { name: "Dana Bersama", owner_scope: "shared", initial_balance: 500_000 });
-    const memberPersonal = await createAccount(db, { name: "Pribadi Member", owner_scope: "personal", owner_user_id: member.user_id }, member);
-    const otherPersonal = await createAccount(db, { name: "Pribadi Lain", owner_scope: "personal", owner_user_id: other.user_id }, other);
-
-    const direct = await dispatch(db, member, "transactions.create", {
-      transaction_type: "transfer",
-      transaction_date: todayJakarta(),
-      source_account_id: shared.account_id,
-      destination_account_id: memberPersonal.account_id,
-      amount: 50_000,
-      description: "Jatah pribadi Member",
-    }, { idempotencyKey: "direct-shared-personal" });
-    assert.equal(direct.scope, "shared");
-    assert.equal(direct.owner_user_id, "");
-    assert.equal(direct.amount, 50_000);
-
-    const toPartner = await dispatch(db, member, "transactions.create", {
-      transaction_type: "transfer",
-      transaction_date: todayJakarta(),
-      source_account_id: shared.account_id,
-      destination_account_id: otherPersonal.account_id,
-      amount: 25_000,
-      description: "Transfer ke pasangan",
-    }, { idempotencyKey: "direct-shared-other-personal" });
-    assert.equal(toPartner.scope, "shared");
-
-    const requestCount = await db.one("SELECT COUNT(*) AS count FROM transfer_requests");
-    assert.equal(Number(requestCount.count), 0, "flow transaksi langsung tidak membuat approval request tersembunyi");
-
-    const crossPersonal = await dispatch(db, member, "transactions.create", {
-      transaction_type: "transfer",
-      transaction_date: todayJakarta(),
-      source_account_id: memberPersonal.account_id,
-      destination_account_id: otherPersonal.account_id,
-      amount: 10_000,
-    }, { idempotencyKey: "cross-personal-member" });
-    assert.equal(crossPersonal.scope, "personal");
-    assert.equal(crossPersonal.owner_user_id, member.user_id);
-  } finally {
-    db.close();
-  }
+    const mine = await createAccount(db, { name: "Pribadi Member", owner_scope: "personal", owner_user_id: member.user_id, initial_balance: 30_000 }, member);
+    const partner = await createAccount(db, { name: "Pribadi Lain", owner_scope: "personal", owner_user_id: other.user_id }, other);
+    for (const destination of [mine, partner]) {
+      const payload = { transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id, destination_account_id: destination.account_id, amount: 50_000, description: "Memerlukan approval" };
+      await assert.rejects(dispatch(db, member, "transactions.create", payload), (error) => error.code === "TRANSFER_APPROVAL_REQUIRED");
+      const request = await dispatch(db, member, "transferRequests.request", payload);
+      assert.equal(request.status, "pending");
+      assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions WHERE source_account_id=?", [shared.account_id])).count), 0);
+    }
+    const ownTransfer = await dispatch(db, member, "transactions.create", {
+      transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: mine.account_id, destination_account_id: partner.account_id, amount: 10_000,
+    });
+    assert.equal(ownTransfer.owner_user_id, member.user_id);
+    const adminTransfer = await dispatch(db, owner, "transactions.create", {
+      transaction_type: "transfer", transaction_date: todayJakarta(), source_account_id: shared.account_id, destination_account_id: mine.account_id, amount: 10_000,
+    });
+    assert.equal(adminTransfer.amount, 10_000);
+  } finally { db.close(); }
 });
-
 
 test("transfer request menolak rekening sumber dan tujuan yang sama sebelum menyimpan request", async () => {
   const db = await createSqliteTestDatabase();

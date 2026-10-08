@@ -9,7 +9,7 @@ import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx
 import { useFeedback } from "../../components/feedback/feedbackContext.js";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
-import { readInvestmentContinuation } from "../../shared/workflows/investmentContinuation.js";
+import { investmentRdnAccountSetupState, readInvestmentContinuation } from "../../shared/workflows/investmentContinuation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import investmentEmptyDuo from "../../assets/investments/investment-empty-duo.webp";
 import styles from "./InvestmentsPage.module.css";
@@ -46,13 +46,15 @@ const useLegacyInvestmentContinuation = ({ location, navigate, data, ready, setS
 };
 
 const InvestmentOverlays = ({ page }) => {
-  const { data, goals, user, setupOpen, setupGoalId, setSetupOpen, clearSetupGoal, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction } = page;
+  const { data, goals, user, setupOpen, setupGoalId, setupRdnId, setSetupOpen, clearSetupGoal, onCreateRdn, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction } = page;
   return <Suspense fallback={<LazyActionFallback surface="modal" title="Investasi" label="Menyiapkan aksi Investasi..." />}>
     {setupOpen ? <InvestmentSetupDialog
       instruments={data.instruments || []}
       portfolios={data.portfolios || []}
       owner={user?.role === "owner"}
       initialGoalId={setupGoalId}
+      initialRdnAccountId={setupRdnId}
+      onCreateRdn={onCreateRdn}
       onClose={() => { setSetupOpen(false); clearSetupGoal(); }}
       onSuccess={onSetupSuccess}
     /> : null}
@@ -95,14 +97,14 @@ const EmptyInvestmentState = ({ onAdd }) => <section className={styles.emptyInve
       <div className={styles.firstInvestmentVisual} aria-hidden="true"><span /><span /><span /></div>
       <div>
         <h2 id="investment-first-title">Mulai catat aset investasi</h2>
-        <p>Tambahkan saham atau reksa dana yang sudah Anda miliki. Catat aset langsung tanpa setup tambahan.</p>
+        <p>Catat investasi yang sudah dimiliki atau pembelian baru, tanpa mengirim order ke broker.</p>
       </div>
     </div>
     <div className={styles.firstInvestmentChips} aria-label="Yang dapat dicatat"><span>Saham LQ45</span><span>Reksa Dana</span></div>
     <div className={styles.firstInvestmentSetup}>
       <span className={styles.firstInvestmentEyebrow}>Belum ada investasi</span>
       <h3>Mulai dari aset pertama Anda</h3>
-      <p>Catat posisi yang sudah dimiliki, lalu pantau nilai dan aktivitasnya dari satu tempat.</p>
+      <p>Mulai dari posisi lama atau catat pembelian baru melalui RDN. Pilih sesuai kondisi sebenarnya.</p>
       <Button variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={onAdd}>Tambah investasi</Button>
     </div>
   </div>
@@ -131,6 +133,7 @@ const InvestmentsPage = () => {
   const goalResource = useApiResource("goals.list");
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupGoalId, setSetupGoalId] = useState("");
+  const [setupRdnId] = useState(() => String(readInvestmentContinuation(location.state)?.payload?.rdnAccountId || ""));
   const [dialog, setDialog] = useState(null);
   const workflowHandled = useRef("");
   const [holdingDetail, setHoldingDetail] = useState(null);
@@ -142,13 +145,14 @@ const InvestmentsPage = () => {
 
   const openAction = (mode, portfolio, options = {}) => setDialog({ mode, portfolio, ...options });
   const clearSetupGoal = () => setSetupGoalId("");
+  const onCreateRdn = () => { setSetupOpen(false); navigate("/rekening", { state: investmentRdnAccountSetupState() }); };
   const openSetup = (goalId = "") => { setSetupGoalId(String(goalId || "")); setSetupOpen(true); };
-  const onSetupSuccess = (saved, asset) => {
+  const onSetupSuccess = (saved, asset, intent) => {
     clearSetupGoal();
     notify({
       message: saved?.goal_id
         ? `${asset?.ticker || "Aset investasi"} berhasil ditambahkan dan terhubung ke Target.`
-        : `${asset?.ticker || "Aset investasi"} berhasil ditambahkan.`,
+        : intent === "purchase" ? `Pembelian ${asset?.ticker || "aset investasi"} berhasil dicatat dan saldo RDN diperbarui.` : `${asset?.ticker || "Aset investasi"} berhasil ditambahkan sebagai posisi awal.`,
       tone: "success",
       dedupeKey: saved?.goal_id ? "investments:asset:create:goal" : "investments:asset:create",
     });
@@ -187,13 +191,13 @@ const InvestmentsPage = () => {
   if (overview.status === "loading") return <NativePageSkeleton kind="investments" label="Memuat investasi…" />;
   if (overview.status === "error") return <ErrorState error={overview.error} onRetry={overview.reload} />;
 
-  const page = { data, goals, user, setupOpen, setupGoalId, setSetupOpen, clearSetupGoal, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction };
+  const page = { data, goals, user, setupOpen, setupGoalId, setupRdnId, setSetupOpen, clearSetupGoal, onCreateRdn, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction };
   return <div className={`page-stack ${styles.page}`}>
     <RefreshWarning error={overview.refreshError || goalResource.error || goalResource.refreshError} onRetry={() => Promise.allSettled([overview.reload(), goalResource.reload()])} />
     <PageHeader
       title="Investasi"
       actions={hasInvestmentHistory ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup()} aria-label="Tambah investasi">Tambah investasi</Button> : null}
-      help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak memindahkan saldo rekening, dan tidak mengambil harga pasar live."
+      help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak mengirim transfer bank otomatis, dan tidak mengambil harga pasar live. Beli/Jual pada portfolio dengan RDN eksplisit memperbarui cash RDN tercatat; aset dengan rekening internal tetap hanya pencatatan posisi."
     />
     {!hasInvestmentHistory ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>
       <InvestmentOverview data={data} onHolding={(portfolio, holding) => setHoldingDetail({ portfolio, holding })} />

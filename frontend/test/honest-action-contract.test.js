@@ -85,7 +85,7 @@ test("surface normal menjaga vocabulary Kebutuhan dan Investasi asset-centric", 
   assert.doesNotMatch(loginPresentation, /Atur anggaran/);
   assert.match(navigation, /Pantau saham, reksa dana, nilai aset, dan aktivitas investasi/);
   assert.doesNotMatch(navigation, /Kelola Saldo RDN/);
-  assert.match(investments, /Catat aset langsung tanpa setup tambahan/);
+  assert.match(investments, /Catat investasi yang sudah dimiliki atau pembelian baru, tanpa mengirim order ke broker/);
   assert.doesNotMatch(investments, /Tidak perlu membuat broker, portfolio, atau RDN/);
   assert.doesNotMatch(alerts, /anggaran terlampaui|sisa anggaran|Portfolio akan dipilih otomatis/i);
   assert.doesNotMatch(budgetPresentation, /Melebihi anggaran|Anggaran habis/);

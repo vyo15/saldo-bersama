@@ -46,6 +46,7 @@ const resolveTransactionPresentation = ({
   submitLabel,
   submittingLabel,
   submitting,
+  transferApprovalRequired,
   outcomeUnknown,
   confirmation,
   onClose,
@@ -69,7 +70,7 @@ const resolveTransactionPresentation = ({
   }
 
   const resolvedTitle = title || (transaction ? "Edit transaksi" : "Catat transaksi");
-  const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : submitLabel || "Simpan transaksi";
+  const idleSubmitLabel = confirmation ? "Simpan tetap" : transaction ? "Simpan perubahan" : transferApprovalRequired ? "Ajukan transfer" : submitLabel || "Simpan transaksi";
   const progressLabel = submitting ? submittingLabel || "Menyimpan..." : outcomeUnknown ? "Coba lagi data yang sama" : idleSubmitLabel;
   const desktopTitle = (
     <span className={styles.modalTitle}>
@@ -258,6 +259,7 @@ const transactionFields = ({ state, derived, actions, lockType, lockPlanningSele
   visibleCategories: derived.data.visibleCategories,
   isIncome: derived.isIncome,
   isTransfer: derived.isTransfer,
+  transferApprovalRequired: derived.transferApprovalRequired,
   compatibleDestinationAccounts: derived.compatibleDestinationAccounts,
   compatibleEnvelopes: derived.compatibleEnvelopes,
   allocationCandidates: derived.allocationCandidates,
@@ -352,7 +354,7 @@ const TransactionForm = ({
   const draftLifecycle = useTransactionDraftLifecycle({ open, postSave: state.postSave, onClose, onDirtyChange });
   const actions = useTransactionFormActions({ state, data: derived.data, isTransfer: derived.isTransfer, outcomeUnknown: derived.outcomeUnknown, transaction, allocationCandidates: derived.allocationCandidates, planningIntent: planning.intent, markDirty: draftLifecycle.markDirty });
   const setters = { setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote };
-  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, planningIntent: planning.intent, forceOverspendNote: state.forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
+  const handleSubmit = useTransactionSubmit({ form: state.form, transaction, confirmation: state.confirmation, isIncome: derived.isIncome, transferApprovalRequired: derived.transferApprovalRequired, envelopes: derived.data.envelopes, allocationCandidates: derived.allocationCandidates, allocationMode: state.allocationMode, planningIntent: planning.intent, forceOverspendNote: state.forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave: state.setPostSave, setters, idempotencyKeyRef: state.idempotencyKeyRef });
   const submitting = state.submitState.status === "submitting";
   const outcomeUnknown = derived.outcomeUnknown;
 
@@ -367,7 +369,7 @@ const TransactionForm = ({
   };
   const fields = transactionFields({ state, derived, actions, lockType: lockType || planning.locked, lockPlanningSelection: planning.locked, planningDateMin: planning.dateMin, planningDateMax: planning.dateMax, submitting, transaction, unresolvedIntentPresent, onReviewTransactions: reviewTransactions });
   const quickRecordBack = quickRecordBackPresentation({ onBack, requestModalClose, submitting, outcomeUnknown, mobileTransferMode: derived.mobileTransferMode });
-  const modal = resolveTransactionPresentation({ mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout, headerBackAction: quickRecordBack.headerBackAction });
+  const modal = resolveTransactionPresentation({ mobileTransferMode: derived.mobileTransferMode, transaction, title, description, submitLabel, submittingLabel, submitting, transferApprovalRequired: derived.transferApprovalRequired, outcomeUnknown: derived.outcomeUnknown, confirmation: state.confirmation, onClose: requestModalClose, amountRef: state.amountRef, mobileLayout, headerBackAction: quickRecordBack.headerBackAction });
   const addAnother = () => {
     resetForAnotherTransaction({ postSave: state.postSave, accounts: derived.data.accounts, setForm: state.setForm, setErrors: state.setErrors, setConfirmation: state.setConfirmation, setSubmitState: state.setSubmitState, setForceOverspendNote: state.setForceOverspendNote, setAllocationMode: state.setAllocationMode, setPostSave: state.setPostSave, idempotencyKeyRef: state.idempotencyKeyRef, amountRef: state.amountRef });
     if (!planning.locked) return;
@@ -381,8 +383,7 @@ const TransactionForm = ({
   return (
     <TransactionEditorModal
       open={open}
-      modal={modal}
-      draftLifecycle={draftLifecycle}
+      modal={modal} draftLifecycle={draftLifecycle}
       submitting={submitting}
       outcomeUnknown={outcomeUnknown}
       handleSubmit={handleSubmit}

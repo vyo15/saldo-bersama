@@ -6,6 +6,7 @@ import { todayInJakarta } from "../../domain/dates.js";
 import { validateTransactionInput } from "../../domain/validation.js";
 import { canRepresentAccountTransfer } from "../../domain/ownership.js";
 import { createTransaction, updateTransaction } from "./transactions.api.js";
+import { requestTransferApproval } from "./transferRequests.api.js";
 import { parseTransactionAmount } from "./transactionImpact.js";
 import { clearTransactionFieldErrors } from "./transactionFormFieldErrors.js";
 import { transactionFieldErrorsFromApiError } from "./transactionErrorPresentation.js";
@@ -205,7 +206,7 @@ const finalizeTransactionSave = async ({ saved, transaction, form, continuation,
   return false;
 };
 
-export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, envelopes, allocationCandidates = [], allocationMode = "auto", planningIntent = null, forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
+export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome, transferApprovalRequired = false, envelopes, allocationCandidates = [], allocationMode = "auto", planningIntent = null, forceOverspendNote, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, onClose, setPostSave, setters, idempotencyKeyRef }) => async (event) => {
   event.preventDefault();
   const formElement = event.currentTarget;
   if (!planningIntentMatchesForm({ planningIntent, form })) {
@@ -233,6 +234,14 @@ export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome
   }
   setters.setErrors({}); setters.setSubmitState({ status: "submitting", error: null });
   try {
+    if (!transaction && transferApprovalRequired) {
+      await requestTransferApproval(validation.value, { idempotencyKey: idempotencyKeyRef.current });
+      invalidate(["transferRequests.list", "notifications.center"]);
+      setters.setSubmitState({ status: "success", error: null });
+      notify({ message: "Pengajuan transfer dikirim. Saldo belum berubah sampai Administrator menyetujui." });
+      onClose();
+      return;
+    }
     const saveTransaction = transaction ? updateTransaction : createTransaction;
     const saved = await saveTransaction(validation.value, { idempotencyKey: idempotencyKeyRef.current, rowVersion: transaction?.row_version });
     const keepOpen = await finalizeTransactionSave({ saved, transaction, form, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters });
@@ -272,6 +281,9 @@ const transferRouteFor = (routes, sourceAccountId, destinationAccountId) => (rou
 
 export const transactionDerivedData = ({ data, form, isTransfer }) => {
   const sourceAccount = data.accounts.find((item) => item.account_id === form.source_account_id) || null;
+  const selectedTransferRoute = (isTransfer && sourceAccount && form.destination_account_id)
+    ? transferRouteFor(data.transferRoutes, sourceAccount.account_id, form.destination_account_id)
+    : null;
   const routeEligibleDestinations = isTransfer && sourceAccount
     ? data.readableAccounts.filter((account) => transferRouteFor(data.transferRoutes, sourceAccount.account_id, account.account_id))
     : data.accounts;
@@ -279,7 +291,7 @@ export const transactionDerivedData = ({ data, form, isTransfer }) => {
   const compatibleEnvelopes = sourceAccount
     ? data.envelopes.filter((item) => item.source_account_id === sourceAccount.account_id && item.can_record_expense === true)
     : [];
-  return { compatibleDestinationAccounts, compatibleEnvelopes };
+  return { compatibleDestinationAccounts, compatibleEnvelopes, transferApprovalRequired: selectedTransferRoute?.mode === "approval_required" };
 };
 
 export const useMobileTransferDestination = ({ open, enabled, destinationAccountId, compatibleDestinationAccounts, setForm, setErrors }) => {

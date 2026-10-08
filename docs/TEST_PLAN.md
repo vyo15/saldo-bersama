@@ -30,7 +30,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 25 sebelum runtime current menerima traffic.
+- Schema Production harus versi 26 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -143,18 +143,20 @@ Minimum contract:
 - Read model pendukung yang membentuk pilihan/dedup/status tidak boleh gagal diam-diam menjadi false-empty. Atur Dana menunggu Alokasi + Kebutuhan + Jadwal + Kewajiban pada initial load sebelum membentuk daftar **Aktif**; Rekening/Target/Investasi/Jadwal/Notifikasi/Transaksi/Pengaturan menampilkan retry untuk resource pendukung yang gagal sementara data utama yang masih sah tetap dapat dibaca.
 - Pembayaran KPR/cicilan dengan `remaining_principal` menghitung pokok = saldo sebelum - saldo sesudah dan bunga/biaya = pembayaran - pokok. Tanpa sisa pokok, pembayaran tetap valid tetapi `principal_known=0` dan UI/report wajib menandainya perlu diperbarui.
 - Arisan mengurangi sisa setoran lewat occurrence pembayaran, dapat mencatat penerimaan income terpisah sampai maksimal nilai hak Arisan, dan penerimaan tidak menutup sisa setoran yang masih berjalan.
-- UI tidak menawarkan Autodebet pada Kewajiban/Jadwal Rutin; kolom legacy tetap readable dan write baru selalu `false`. Khusus Jadwal managed Kewajiban yang menaut ke Kebutuhan + Alokasi aktif, scheduler mulai **tanggal jatuh tempo** mencatat pembayaran canonical otomatis hanya bila sisa Kebutuhan dan Alokasi sama-sama cukup. Jika dana baru siap setelah lewat jatuh tempo, occurrence overdue harus dapat dikejar otomatis tepat sekali. Tidak ada partial debit; bila syarat tidak terpenuhi, saldo tidak berubah. Cicilan flat terakhir tidak boleh overpay dan nominal otomatis dibatasi pada sisa pokok + bunga flat periode itu.
+- UI tidak menawarkan Autodebet pada Kewajiban/Jadwal Rutin; kolom legacy tetap readable dan write baru selalu `false`. Khusus Jadwal managed Kewajiban yang menaut ke Kebutuhan + Alokasi aktif, scheduler mulai **tanggal jatuh tempo** dan pada overdue hanya mengasesmen kesiapan dana Kebutuhan, Alokasi, serta saldo rekening aktual; **tidak** membuat pembayaran otomatis. Konfirmasi pengguna melalui `recurring.payOccurrence` menjadi satu-satunya sumber catatan pembayaran. Pastikan kandidat di belakang lebih dari 100 jadwal belum siap tetap dievaluasi, kesalahan sebuah occurrence tidak menghentikan seluruh antrean, dan dana rekening yang sama tidak dihitung dua kali. Nominal jauh melebihi tagihan perlu konfirmasi eksplisit.
 - Laporan bulanan memisahkan aktivitas Kewajiban (pembayaran kewajiban, pokok teridentifikasi, bunga/biaya, pokok belum diketahui, setoran/penerimaan Arisan) tanpa mengubah arus kas canonical.
 - Reminder manual terikat entity aktif, satu scheduled reminder per entity/user, dan dispatch nonterminal mencegah duplikasi.
 
 ## Investasi dan RDN
 
 - UI utama asset-centric: saham/reksa dana, bukan hierarchy broker/RDN.
-- Direct opening position dan Buy/Sell current bersifat accounting-only (`cash_effect_enabled=0`) dan tidak mengubah Saldo RDN.
+- Direct opening position dan Buy/Sell pada rekening internal tersembunyi bersifat accounting-only (`cash_effect_enabled=0`); Buy/Sell pada RDN eksplisit mengubah cash RDN (`cash_effect_enabled=1`) tanpa ordinary income/expense, Buy wajib menolak cash negatif, dan histori lama tidak diretro-debit.
 - Histori legacy cash-enabled tetap readable dan diproyeksikan oleh `investment_account_events`.
 - Oversell, invalid fee/date, stale version, dan ownership mismatch ditolak.
 - Valuation/reconciliation/correction append-only sesuai authorization.
 - `accounts.list` tidak mengekspos hidden compatibility account.
+- Tambah Investasi di mobile/desktop harus memilih **Sudah punya / Belum punya** terlebih dahulu; pemilihan saham/reksa dana memakai `InlineSelectionPicker` canonical identik dengan pemilihan Rekening/ATM (logo, nama, search saat dibuka, radio, keyboard, focus, light/dark, dan state kosong). Katalog tidak memenuhi form sebelum dipilih. Saat jenis aset berganti, pilihan lama dikosongkan; aset yang sudah dimiliki dan ticker tanpa izin tidak dapat ditambah lagi.
+- Form Tambah Investasi menjaga presisi unit/NAB/modal/nilai broker; catatan opsional dapat dibuka jika dibutuhkan, preview nominal saat mengisi tetap ringkas, dan review final tetap memperlihatkan seluruh dampak RDN tanpa mengubah mutation atau snapshot historis. Uji pada viewport 320/360/390/430px termasuk nama panjang dan layar Tinjau.
 - Backup/restore menjaga quantity, cost basis, P/L, flag cash effect, hidden account marker, dan history authoritative.
 
 ## Dashboard, laporan, dan rekonsiliasi
@@ -244,7 +246,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 25 sebelum deployment current menerima traffic.
+- Schema Production harus versi 26 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 

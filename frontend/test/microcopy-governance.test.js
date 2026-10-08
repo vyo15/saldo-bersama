@@ -17,10 +17,14 @@ test("microcopy edukatif tetap satu-sumber setelah picker Investasi bermigrasi k
     read("src/features/approvals/ApprovalCenterPage.jsx"),
   ]);
 
-  assert.match(setup, /Pilih saham atau reksa dana, lalu catat posisi yang Anda miliki saat ini\./);
-  assert.match(setup, /Tidak ada saldo rekening yang dipindahkan dan tidak ada order yang dikirim ke broker/);
-  assert.match(picker, /saham LQ45 tersedia di katalog/);
-  assert.match(picker, /reksa dana tersedia di katalog/);
+  assert.match(setup, /Apakah Anda sudah memiliki investasi ini\?/);
+  assert.match(setup, /Sudah punya/);
+  assert.match(setup, /Belum punya/);
+  assert.match(setup, /Posisi awal tidak memotong RDN/);
+  assert.match(setup, /Saldo RDN dalam Saldo Bersama akan berkurang; tidak ada order beli sungguhan/);
+  assert.match(picker, /Pilih saham/);
+  assert.match(picker, /Pilih reksa dana/);
+  assert.doesNotMatch(picker, /tersedia di katalog/);
   assert.doesNotMatch(picker, /Daftar dibatasi pada saham LQ45 yang disediakan prototype/);
   assert.doesNotMatch(picker, /Bursa dan ukuran lot sudah ditetapkan otomatis/);
 

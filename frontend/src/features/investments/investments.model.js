@@ -1,51 +1,13 @@
-const MUTUAL_FUND_TICKERS = new Set(["IHAJJ", "CAPFIX"]);
-
-const isMutualFundInstrument = (instrument = {}) => {
-  const ticker = String(instrument.ticker || "").trim().toUpperCase();
-  return instrument.asset_type === "mutual_fund"
-    || String(instrument.exchange || "").trim().toUpperCase() === "REKSADANA"
-    || MUTUAL_FUND_TICKERS.has(ticker);
-};
-
-const finiteInteger = (value) => {
-  const number = Number(value);
-  return Number.isSafeInteger(number) ? number : null;
-};
-
-const positiveIntegerError = (value, label) => {
-  const number = finiteInteger(value);
-  if (number == null || number <= 0) return `${label} harus berupa bilangan bulat lebih dari 0.`;
-  return "";
-};
-
-const positiveDecimalError = (value, label, maximumFractionDigits = 2) => {
-  const raw = String(value ?? "").trim();
-  const number = Number(raw);
-  if (!raw || !Number.isFinite(number) || number <= 0) return `${label} harus lebih dari 0.`;
-  const decimalPart = raw.includes(".") ? raw.split(".").at(-1) : "";
-  if (decimalPart.length > maximumFractionDigits) return `${label} maksimal ${maximumFractionDigits} angka di belakang desimal.`;
-  return "";
-};
-
-const nonNegativeIntegerError = (value, label) => {
-  const number = finiteInteger(value);
-  if (number == null || number < 0) return `${label} harus berupa bilangan bulat 0 atau lebih.`;
-  return "";
-};
-
-const signedIntegerError = (value, label) => {
-  if (finiteInteger(value) == null) return `${label} harus berupa bilangan bulat.`;
-  return "";
-};
-
-const todayJakarta = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
-
+import { isMutualFundInstrument } from "./investmentInstrumentType.js";
+import { investmentOpeningPositionPreview } from "./investmentOpeningPositionPreview.js";
+import { positiveIntegerError, positiveDecimalError, nonNegativeIntegerError, signedIntegerError, todayJakarta } from "./investmentValidationPrimitives.js";
+export { investmentOpeningPositionPreview } from "./investmentOpeningPositionPreview.js";
 
 const investmentQuantityError = (value, instrument, label) => {
   const quantity = Number(value);
   if (!Number.isFinite(quantity) || quantity <= 0) return `${label} harus lebih dari 0.`;
   if (isMutualFundInstrument(instrument || {})) {
-    if (!Number.isSafeInteger(quantity)) return `${label} harus berupa bilangan bulat.`;
+    if (positiveDecimalError(value, label)) return `${label} maksimal dua angka desimal.`;
     return "";
   }
   const lotSize = Number(instrument?.lot_size || 100);
@@ -68,7 +30,7 @@ export const selectInvestmentInstruments = (instruments = [], holdings = [], mod
   if (mode === "sell") return instruments.filter((item) => {
     const holding = holdingsById.get(item.instrument_id);
     const lotSize = Number(item.lot_size || holding?.lot_size || 100);
-    return holding && Number(holding.shares || 0) >= lotSize;
+    return holding && Number(holding.shares || 0) >= (isMutualFundInstrument(item) ? 0.01 : lotSize);
   });
   if (mode === "price") return instruments.filter((item) => heldIds.has(item.instrument_id));
   if (mode === "reconcile") return instruments.filter((item) => item.status === "active" || heldIds.has(item.instrument_id));
@@ -83,7 +45,7 @@ export const investmentTradePreview = (mode, form = {}, instruments = []) => {
   const pricePerShare = Number(form.price_per_share || 0);
   const feeAmount = 0;
   const shares = lots * lotSize;
-  const grossAmount = shares * pricePerShare;
+  const grossAmount = Math.round(shares * pricePerShare);
   const rdnAmount = mode === "sell" ? grossAmount - feeAmount : grossAmount + feeAmount;
   return { instrument, lotSize, lots, shares, pricePerShare, feeAmount, grossAmount, rdnAmount };
 };
@@ -101,27 +63,6 @@ export const investmentProjectedAverage = (form = {}, instruments = [], portfoli
 };
 
 
-const safeIntegerProduct = (left, right) => {
-  const product = Number(left) * Number(right);
-  if (!Number.isFinite(product) || product < 0 || product > Number.MAX_SAFE_INTEGER) return 0;
-  const rounded = Math.round(product);
-  return Number.isSafeInteger(rounded) ? rounded : 0;
-};
-
-export const investmentOpeningPositionPreview = (form = {}, instruments = []) => {
-  const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
-  const mutualFund = isMutualFundInstrument(instrument || {});
-  const quantity = Number(form.opening_quantity || 0);
-  const lotSize = Number(instrument?.lot_size || (mutualFund ? 1 : 100));
-  const shares = mutualFund ? quantity : quantity * lotSize;
-  const averagePrice = Number(form.average_price || 0);
-  const currentPrice = Number(form.reference_price || 0);
-  const costBasis = safeIntegerProduct(shares, averagePrice);
-  const marketValue = safeIntegerProduct(shares, currentPrice);
-  const unrealizedPl = marketValue - costBasis;
-  const returnPercent = costBasis > 0 ? (unrealizedPl / costBasis) * 100 : null;
-  return { instrument, mutualFund, quantity, lotSize, shares, averagePrice, currentPrice, costBasis, marketValue, unrealizedPl, returnPercent };
-};
 
 
 export {
@@ -180,8 +121,9 @@ const validateTrade = (mode, form, context) => {
   const labels = tradeInstrumentLabels(instrument);
   if (!instrument) errors.instrument_id = "Pilih aset yang tersedia.";
 
-  const lotsError = positiveIntegerError(form.lots, labels.quantity);
-  const priceError = positiveIntegerError(form.price_per_share, labels.price);
+  const fund = isMutualFundInstrument(instrument || {});
+  const lotsError = fund ? positiveDecimalError(form.lots, labels.quantity) : positiveIntegerError(form.lots, labels.quantity);
+  const priceError = fund ? positiveDecimalError(form.price_per_share, labels.price) : positiveIntegerError(form.price_per_share, labels.price);
   const dateError = requiredDateError(form.trade_date, "Tanggal transaksi", today);
   if (lotsError) errors.lots = lotsError;
   if (priceError) errors.price_per_share = priceError;
@@ -203,9 +145,12 @@ const validateTrade = (mode, form, context) => {
 const validatePrice = (form, context) => {
   const errors = {};
   if (!instrumentForMode("price", form, context.instruments, context.portfolio)) errors.instrument_id = "Pilih saham yang tersedia.";
-  const priceError = positiveIntegerError(form.price_per_share, "Harga per saham");
+  const instrument = instrumentForMode("price", form, context.instruments, context.portfolio);
+  const priceError = isMutualFundInstrument(instrument || {}) ? positiveDecimalError(form.price_per_share, "NAB per unit") : positiveIntegerError(form.price_per_share, "Harga per saham");
+  const marketValueError = form.market_value === "" || form.market_value == null ? "" : nonNegativeIntegerError(form.market_value, "Total nilai aktual");
   const dateError = requiredDateError(form.valuation_date, "Tanggal harga", context.today);
   if (priceError) errors.price_per_share = priceError;
+  if (marketValueError) errors.market_value = marketValueError;
   if (dateError) errors.valuation_date = dateError;
   return errors;
 };
@@ -219,7 +164,7 @@ const reconcileQuantityError = ({ form, item, holdings }) => {
   const fallback = mutualFund ? holdingShares : holdingShares / lotSize;
   const quantity = Number(form[key] ?? fallback);
   const shares = mutualFund ? quantity : quantity * lotSize;
-  const valid = Number.isFinite(quantity) && quantity >= 0 && Number.isSafeInteger(shares);
+  const valid = Number.isFinite(quantity) && quantity >= 0 && (mutualFund ? /^\d+(?:\.\d{1,2})?$/.test(String(form[key] ?? fallback)) : Number.isSafeInteger(shares));
   return valid ? null : [key, `${item.ticker || item.name} · ${mutualFund ? "unit" : "lot"} aktual tidak valid.`];
 };
 
@@ -321,7 +266,7 @@ const openingPositionAssetErrors = (form, context) => {
     isMutualFundInstrument(instrument || {}) ? "Jumlah unit" : "Jumlah lot",
   );
   const averageError = positiveDecimalError(form.average_price, "Harga rata-rata beli");
-  const priceError = positiveIntegerError(form.reference_price, "Harga sekarang");
+  const priceError = isMutualFundInstrument(instrument || {}) ? positiveDecimalError(form.reference_price, "NAB saat ini") : positiveIntegerError(form.reference_price, "Harga sekarang");
   if (quantityError) errors.opening_quantity = quantityError;
   if (averageError) errors.average_price = averageError;
   if (priceError) errors.reference_price = priceError;
@@ -361,33 +306,73 @@ export const validateInvestmentOperation = (mode, form = {}, options = {}) => {
   return operationValidators[mode]?.(form, context) || {};
 };
 
-const assetPositionFieldErrors = (form, instrument, today) => {
-  const errors = {};
+const optionalIntegerError = (value, label, validator) => value === "" || value === undefined || value === null ? "" : validator(value, label);
+
+const assetPositionNumericErrors = (form, instrument) => {
   const mutualFund = isMutualFundInstrument(instrument || {});
-  const quantityError = investmentQuantityError(form.opening_quantity, instrument || {}, mutualFund ? "Jumlah unit" : "Jumlah lot");
-  const averageError = positiveDecimalError(form.average_price, mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham");
-  const referenceError = positiveIntegerError(form.reference_price, mutualFund ? "Nilai per unit saat ini" : "Harga saham saat ini");
-  const dateError = requiredDateError(form.position_date, "Tanggal posisi", today);
+  return {
+    opening_quantity: investmentQuantityError(form.opening_quantity, instrument || {}, mutualFund ? "Jumlah unit" : "Jumlah lot"),
+    average_price: positiveDecimalError(form.average_price, mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"),
+    reference_price: mutualFund ? positiveDecimalError(form.reference_price, "Nilai per unit saat ini") : positiveIntegerError(form.reference_price, "Harga saham saat ini"),
+    cost_basis: optionalIntegerError(form.cost_basis, "Total modal aktual", positiveIntegerError),
+    market_value: optionalIntegerError(form.market_value, "Total nilai aktual", nonNegativeIntegerError),
+  };
+};
+
+const assetPositionFieldErrors = (form, instrument, today) => {
+  const errors = Object.fromEntries(Object.entries(assetPositionNumericErrors(form, instrument)).filter(([, message]) => Boolean(message)));
   if (!instrument || !String(form.ticker || instrument?.ticker || "").trim()) errors.ticker = "Pilih saham atau reksa dana yang ingin dicatat.";
-  if (quantityError) errors.opening_quantity = quantityError;
-  if (averageError) errors.average_price = averageError;
-  if (referenceError) errors.reference_price = referenceError;
+  const dateError = requiredDateError(form.position_date, "Tanggal posisi", today);
   if (dateError) errors.position_date = dateError;
   if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
   return errors;
 };
 
 const assetPositionOverflow = (form, instrument, errors) => {
-  if (!instrument || errors.opening_quantity || errors.average_price || errors.reference_price) return false;
+  if (!instrument || errors.opening_quantity || errors.average_price || errors.reference_price || errors.cost_basis || errors.market_value) return false;
   const quantity = Number(form.opening_quantity);
   const shares = isMutualFundInstrument(instrument) ? quantity : quantity * Number(instrument.lot_size || 100);
-  const costBasis = shares * Number(form.average_price);
-  const marketValue = shares * Number(form.reference_price);
-  return !Number.isSafeInteger(shares) || !Number.isSafeInteger(costBasis) || !Number.isSafeInteger(marketValue);
+  const costBasis = form.cost_basis !== "" && form.cost_basis !== undefined ? Number(form.cost_basis) : Math.round(shares * Number(form.average_price));
+  const marketValue = form.market_value !== undefined && String(form.market_value).trim() !== ""
+    ? Number(form.market_value) : Math.round(shares * Number(form.reference_price));
+  return !Number.isFinite(shares) || shares <= 0 || !Number.isSafeInteger(costBasis) || !Number.isSafeInteger(marketValue);
 };
 
 export const validateInvestmentAssetPosition = (form = {}, instrument = null, options = {}) => {
   const errors = assetPositionFieldErrors(form, instrument, options.today || todayJakarta());
   if (assetPositionOverflow(form, instrument, errors)) errors._form = "Jumlah atau nilai investasi terlalu besar untuk disimpan dengan aman.";
+  return errors;
+};
+
+// A first purchase is a cash movement, not an opening balance. Never infer its
+// cost from historical average/market-value fields.
+const purchaseNumericErrors = (form, asset) => {
+  const fund = isMutualFundInstrument(asset || {});
+  const quantity = fund ? positiveDecimalError(form.opening_quantity, "Jumlah unit") : positiveIntegerError(form.opening_quantity, "Jumlah lot");
+  const price = fund ? positiveDecimalError(form.average_price, "NAB pembelian") : positiveIntegerError(form.average_price, "Harga beli per saham");
+  const fee = nonNegativeIntegerError(form.fee_amount || 0, "Biaya pembelian");
+  return Object.fromEntries(Object.entries({ opening_quantity: quantity, average_price: price, fee_amount: fee }).filter(([, message]) => Boolean(message)));
+};
+
+const purchaseTotalError = (form, asset, goalId) => {
+  const fund = isMutualFundInstrument(asset || {});
+  const shares = Number(form.opening_quantity) * (fund ? 1 : Number(asset.lot_size || 100));
+  const total = Math.round(shares * Number(form.average_price)) + Number(form.fee_amount || 0);
+  if (!Number.isSafeInteger(total) || total <= 0) return ["_form", "Nilai pembelian tidak valid atau terlalu kecil."];
+  if (goalId && !Number.isInteger(shares)) return ["opening_quantity", "Unit pecahan belum dapat dihubungkan langsung ke Target."];
+  return null;
+};
+
+export const validateInvestmentAssetPurchase = (form = {}, asset = null, accounts = [], options = {}) => {
+  const errors = purchaseNumericErrors(form, asset);
+  if (!asset || !form.ticker) errors.ticker = "Pilih aset yang ingin dibeli.";
+  const dateError = requiredDateError(form.position_date, "Tanggal pembelian", options.today || todayJakarta());
+  if (dateError) errors.position_date = dateError;
+  if (!accounts.some((account) => account.account_id === form.rdn_account_id && account.account_type === "investment" && account.status === "active")) errors.rdn_account_id = "Pilih rekening RDN aktif yang dapat Anda gunakan.";
+  if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
+  if (!Object.keys(errors).length) {
+    const totalError = purchaseTotalError(form, asset, options.goalId);
+    if (totalError) errors[totalError[0]] = totalError[1];
+  }
   return errors;
 };

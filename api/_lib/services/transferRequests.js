@@ -113,6 +113,8 @@ export const reviewTransferRequest = async (db, context) => {
       status: current.requester_status,
     };
     await normalizeTransaction(db, { ...context, actor: requester, action: "transferRequests.request", payload: requestedPayload }, requestedPayload);
+    // The approval authorizes precisely the snapshotted request, not a new
+    // free-form transfer. The owner is the posting authority, not requester.
     transaction = await createTransactionInternal(db, {
       ...context,
       action: "transactions.create",

@@ -106,6 +106,14 @@
 
 # Changelog
 
+## 2026-10-08 — Investment decimal & exact broker values (candidate)
+
+- Additive schema v26: investasi reksa dana mendukung unit dan NAV dua desimal di backend dan frontend; saham tetap lembarnya bulat tetapi harga rata-rata posisi awal boleh pecahan.
+- Tambahkan modal aktual dan nilai pasar aktual broker sebagai input opsional independen; screenshot Ajaib dapat dicatat tanpa memaksa pembulatan hasil unit×NAB. Harga/unit tidak di-reprice dari integer lama.
+- Perbarui rekonsiliasi holding pecahan, laporan integrity, modal cost-basis, posting RDN eksplisit, dan regresi contoh BBCA + dua reksa dana.
+- Belum mendukung alokasi unit reksa dana pecahan ke Target berlandaskan integer (fail-closed); migrasi Production memerlukan verified backup dan staged prod:update.
+
+
 ## 2026-09-23 — Hierarchical navigation & deterministic Back
 - Menetapkan tiga level navigasi mobile: root tanpa Back universal, detail/sub-route memakai `ContextBack` ke parent deterministic, dan modal canonical memakai `×` pada root serta `←` pada subview. `navigate(-1)` di Notifikasi dipensiunkan.
 - Notifikasi sekarang membawa return context internal yang aman dengan fallback Beranda; **Pastikan Saldo Sesuai** membawa fallback Rekening dan mempertahankan konteks asal Dashboard/Notifikasi/Rekening. Bottom navigation tetap menandai parent domain (`Notifikasi → Beranda`, `Pastikan Saldo Sesuai → Lainnya`).

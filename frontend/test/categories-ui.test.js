@@ -74,8 +74,10 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(page, /CategoryVisualIntro/);
   assert.match(visualIntro, /category-picker\.avif/);
   assert.match(styles, /\.categoryList[\s\S]*grid-template-columns: repeat\(auto-fill, minmax\(8\.75rem, 1fr\)\)/);
-  assert.match(styles, /native rows[\s\S]*@media \(max-width: 820px\)[\s\S]*?\.categoryList \{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/i);
-  assert.match(styles, /@media \(max-width: 36\.25rem\)[\s\S]*?\.categoryList \{ grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(styles, /compact:[\s\S]*@media \(max-width: 820px\)[\s\S]*?\.categoryList \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/i);
+  assert.match(styles, /@media \(max-width: 36\.25rem\)[\s\S]*?\.categoryList \{ grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 20rem\)[\s\S]*?\.categoryList \{ grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(styles, /On mobile categories are native rows/i);
   assert.match(styles, /\.categoryMenuTrigger \{[\s\S]*?width: 44px;[\s\S]*?height: 44px;/);
   assert.match(styles, /\.categoryMenu[\s\S]*position: fixed[\s\S]*mobile-navigation-height/);
   assert.doesNotMatch(styles, /\.categoryStatusActive/);

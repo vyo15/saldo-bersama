@@ -1,5 +1,6 @@
 import { appError, nowIso, sanitizeText, todayJakarta } from "../core.js";
 import { accountBalanceAsOf } from "../readModels.js";
+import { safeRupiahFromCentsAndUnits, proportionalCost } from "./investmentPrecision.js";
 
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 const INTEGER_PATTERN = /^-?\d+$/;
@@ -36,7 +37,7 @@ export const exchangeValue = (value) => {
   return exchange;
 };
 
-export const portfolioRow = async (db, portfolioId) => db.one(`SELECT p.*,a.account_id,a.name AS rdn_account_name,a.account_type,a.owner_scope,a.owner_user_id,a.allow_negative,a.initial_balance,a.initial_balance_date,a.status AS rdn_status
+export const portfolioRow = async (db, portfolioId) => db.one(`SELECT p.*,a.account_id,a.name AS rdn_account_name,a.account_type,a.owner_scope,a.owner_user_id,a.allow_negative,a.is_system_hidden,a.initial_balance,a.initial_balance_date,a.status AS rdn_status
   FROM investment_portfolios p JOIN accounts a ON a.account_id=p.rdn_account_id WHERE p.portfolio_id=?`, [String(portfolioId || "")]);
 
 export const assertPortfolioReadable = (portfolio) => {
@@ -80,10 +81,10 @@ export const assertActivityAfterReconciliation = async (db, portfolioId, activit
 export const normalizeEvents = async (db, portfolioId, cutoffDate = null) => {
   const cutoff = cutoffDate ? " AND trade_date<=?" : "";
   const correctionCutoff = cutoffDate ? " AND correction_date<=?" : "";
-  return db.all(`SELECT trade_date AS event_date,created_at,'trade' AS event_kind,trade_type AS event_type,trade_id AS event_id,instrument_id,trade_type,lots,share_quantity,price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,0 AS cash_delta,notes,0 AS event_priority,rowid AS source_order
+  return db.all(`SELECT trade_date AS event_date,created_at,'trade' AS event_kind,trade_type AS event_type,trade_id AS event_id,instrument_id,trade_type,lots,COALESCE(unit_quantity_hundredths/100.0,share_quantity) AS share_quantity,COALESCE(price_cents/100.0,price_per_share) AS price_per_share,fee_amount,gross_amount,cash_amount,0 AS share_delta,0 AS cost_basis_delta,0 AS cash_delta,0 AS average_price,notes,0 AS event_priority,rowid AS source_order
     FROM investment_trades WHERE portfolio_id=?${cutoff}
     UNION ALL
-    SELECT correction_date AS event_date,created_at,'correction' AS event_kind,correction_type AS event_type,correction_id AS event_id,instrument_id,'' AS trade_type,0 AS lots,0 AS share_quantity,reference_price AS price_per_share,0 AS fee_amount,0 AS gross_amount,0 AS cash_amount,share_delta,cost_basis_delta,cash_delta,notes,1 AS event_priority,rowid AS source_order
+    SELECT correction_date AS event_date,created_at,'correction' AS event_kind,correction_type AS event_type,correction_id AS event_id,instrument_id,'' AS trade_type,0 AS lots,0 AS share_quantity,COALESCE(reference_price_cents/100.0,reference_price) AS price_per_share,0 AS fee_amount,0 AS gross_amount,0 AS cash_amount,COALESCE(unit_delta_hundredths/100.0,share_delta) AS share_delta,cost_basis_delta,cash_delta,COALESCE(average_price_cents/100.0,0) AS average_price,notes,1 AS event_priority,rowid AS source_order
     FROM investment_corrections WHERE portfolio_id=?${correctionCutoff}
     ORDER BY event_date,created_at,event_priority,source_order`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId]);
 };
@@ -94,13 +95,13 @@ export const latestKnownPrices = async (db, portfolioId, cutoffDate = null) => {
   const valuationCutoff = cutoffDate ? " AND valuation_date<=?" : "";
   const tradeCutoff = cutoffDate ? " AND trade_date<=?" : "";
   const correctionCutoff = cutoffDate ? " AND correction_date<=?" : "";
-  const rows = await db.all(`SELECT instrument_id,valuation_date AS price_date,price_per_share,created_at,'valuation' AS price_source,3 AS price_priority,rowid AS source_order
+  const rows = await db.all(`SELECT instrument_id,valuation_date AS price_date,COALESCE(price_cents/100.0,price_per_share) AS price_per_share,created_at,'valuation' AS price_source,3 AS price_priority,rowid AS source_order,market_value_rupiah
     FROM investment_valuations WHERE portfolio_id=?${valuationCutoff}
     UNION ALL
-    SELECT instrument_id,trade_date AS price_date,price_per_share,created_at,'trade' AS price_source,2 AS price_priority,rowid AS source_order
+    SELECT instrument_id,trade_date AS price_date,COALESCE(price_cents/100.0,price_per_share) AS price_per_share,created_at,'trade' AS price_source,2 AS price_priority,rowid AS source_order,NULL AS market_value_rupiah
     FROM investment_trades WHERE portfolio_id=?${tradeCutoff}
     UNION ALL
-    SELECT instrument_id,correction_date AS price_date,reference_price AS price_per_share,created_at,'opening_position' AS price_source,1 AS price_priority,rowid AS source_order
+    SELECT instrument_id,correction_date AS price_date,COALESCE(reference_price_cents/100.0,reference_price) AS price_per_share,created_at,'opening_position' AS price_source,1 AS price_priority,rowid AS source_order,market_value_rupiah
     FROM investment_corrections WHERE portfolio_id=? AND correction_type='opening_position' AND reference_price>0${correctionCutoff}
     ORDER BY price_date DESC,created_at DESC,price_priority DESC,source_order DESC`, cutoffDate ? [portfolioId, cutoffDate, portfolioId, cutoffDate, portfolioId, cutoffDate] : [portfolioId, portfolioId, portfolioId]);
   const latest = new Map();
@@ -118,6 +119,9 @@ const emptyHoldingState = (instrumentId) => ({
   activity_count: 0,
   first_activity_date: "",
   last_activity_date: "",
+  last_trade_created_at: "",
+  last_trade_date: "",
+  display_average_price: 0,
 });
 
 const holdingStateFor = (states, instrumentId) => {
@@ -133,42 +137,46 @@ const touchHoldingActivity = (state, eventDate) => {
 };
 
 const applyBuyEvent = (state, event) => {
-  state.shares += Number(event.share_quantity);
+  state.shares = Math.round((state.shares + Number(event.share_quantity)) * 100) / 100;
   state.cost_basis += Number(event.cash_amount);
+  state.display_average_price = 0;
 };
 
-const sellCostBasis = (state, quantity) => quantity === state.shares
+const sellCostBasis = (state, quantity) => Math.abs(quantity - state.shares) < 0.00000001
   ? state.cost_basis
-  : Number((BigInt(state.cost_basis) * BigInt(quantity)) / BigInt(state.shares));
+  : proportionalCost(state.cost_basis, quantity, state.shares);
 
 const applySellEvent = (state, event) => {
   const quantity = Number(event.share_quantity);
-  if (quantity > state.shares) throw appError("INVESTMENT_INTEGRITY_ERROR", "Riwayat jual melebihi kepemilikan yang tersedia.", 500, { instrumentId: event.instrument_id, eventId: event.event_id });
+  if (quantity > state.shares + 0.00000001) throw appError("INVESTMENT_INTEGRITY_ERROR", "Riwayat jual melebihi kepemilikan yang tersedia.", 500, { instrumentId: event.instrument_id, eventId: event.event_id });
   const removedCost = sellCostBasis(state, quantity);
   const proceeds = Number(event.cash_amount);
   const realized = proceeds - removedCost;
-  state.shares -= quantity;
+  state.shares = Math.round((state.shares - quantity) * 100) / 100;
   state.cost_basis -= removedCost;
   state.realized_pl += realized;
   state.realized_cost_basis += removedCost;
   state.sale_proceeds += proceeds;
+  state.display_average_price = 0;
   return { cost_basis_released: removedCost, realized_pl: realized, sale_proceeds: proceeds };
 };
 
 const applyCorrectionEvent = (state, event) => {
-  const nextShares = state.shares + Number(event.share_delta || 0);
+  const nextShares = Math.round((state.shares + Number(event.share_delta || 0)) * 100) / 100;
   const nextCost = state.cost_basis + Number(event.cost_basis_delta || 0);
   if (nextShares < 0 || nextCost < 0 || (nextShares === 0 && nextCost !== 0)) {
     throw appError("INVESTMENT_INTEGRITY_ERROR", "Koreksi menghasilkan kepemilikan atau cost basis yang tidak valid.", 500, { instrumentId: event.instrument_id, eventId: event.event_id });
   }
   state.shares = nextShares;
   state.cost_basis = nextCost;
+  state.display_average_price = event.event_type === "opening_position" && Number(event.average_price) > 0 ? Number(event.average_price) : 0;
 };
 
 const applyHoldingEvent = (states, event) => {
   if (!event.instrument_id) return null;
   const state = holdingStateFor(states, event.instrument_id);
   touchHoldingActivity(state, String(event.event_date || ""));
+  if (event.event_kind === "trade") { state.last_trade_created_at = String(event.created_at || ""); state.last_trade_date = String(event.event_date || ""); }
   if (event.event_kind === "trade" && event.trade_type === "buy") {
     applyBuyEvent(state, event);
     return null;
@@ -178,17 +186,33 @@ const applyHoldingEvent = (states, event) => {
   return null;
 };
 
-const positionFromState = (state, valuation) => {
+const tradeIsAfterSnapshot = (state, snapshotDate, snapshotCreated) => state.last_trade_date > snapshotDate || (state.last_trade_date === snapshotDate && state.last_trade_created_at >= snapshotCreated);
+
+const marketValuationForState = (state, valuation) => {
   const price = Number(valuation?.price_per_share || 0);
-  const marketValue = state.shares > 0 && price ? safeMultiply(state.shares, price, "Nilai pasar") : 0;
+  const calculatedValue = state.shares > 0 && price
+    ? safeRupiahFromCentsAndUnits(Math.round(state.shares * 100), Math.round(price * 100), "Nilai pasar") : 0;
+  // Broker snapshots override rounded NAV x units only until another trade.
+  const reported = valuation?.market_value_rupiah;
+  const snapshotDate = String(valuation?.valuation_date || "");
+  const snapshotCreated = String(valuation?.created_at || "");
+  const tradedAfterSnapshot = tradeIsAfterSnapshot(state, snapshotDate, snapshotCreated);
+  const snapshotFresh = valuation?.price_source !== "trade" && snapshotDate >= String(state.last_activity_date || "") && !tradedAfterSnapshot;
+  const useSnapshot = state.shares > 0 && snapshotFresh && reported !== null && reported !== undefined;
+  return { price, marketValue: useSnapshot ? Number(reported) : calculatedValue, marketValueSource: useSnapshot ? "broker_snapshot" : "calculated" };
+};
+
+const positionFromState = (state, valuation) => {
+  const { price, marketValue, marketValueSource } = marketValuationForState(state, valuation);
   return {
     ...state,
     is_closed: state.shares === 0 && state.activity_count > 0,
-    average_cost: state.shares ? state.cost_basis / state.shares : 0,
+    average_cost: state.shares ? (state.display_average_price || state.cost_basis / state.shares) : 0,
     price_per_share: price,
     valuation_date: valuation?.valuation_date || "",
     price_source: valuation?.price_source || "",
     market_value: marketValue,
+    market_value_source: marketValueSource,
     unrealized_pl: state.shares > 0 ? marketValue - state.cost_basis : 0,
   };
 };

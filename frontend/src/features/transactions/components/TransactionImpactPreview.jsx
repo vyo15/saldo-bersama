@@ -93,7 +93,7 @@ const impactStats = ({ impact, accounts, budgetAfter, envelopeAfter, safeBefore,
   return stats;
 };
 
-const TransactionImpactPreview = ({ impact }) => {
+const TransactionImpactPreview = ({ impact, transferApprovalRequired = false }) => {
   if (!impact || Number(impact.amount || 0) <= 0) return null;
   const accounts = changedAccounts(impact);
   const budgetAfter = Number(impact.budgetRemainingAfter || 0);
@@ -107,7 +107,7 @@ const TransactionImpactPreview = ({ impact }) => {
   return (
     <div className={`form-grid__full ${styles.impactPreview}`} aria-live="polite">
       <div className={styles.impactHeader}>
-        <span className={styles.impactTitle}>Setelah disimpan</span>
+        <span className={styles.impactTitle}>{transferApprovalRequired ? "Proyeksi jika disetujui Administrator" : "Setelah disimpan"}</span>
         {amountLabel ? <strong className={`${styles.impactAmount} ${amountToneClass(impact)}`.trim()}>{amountLabel}</strong> : null}
       </div>
       {stats.length ? (
@@ -115,7 +115,7 @@ const TransactionImpactPreview = ({ impact }) => {
           {stats.map((item) => <ImpactStat key={item.key} {...item} />)}
         </div>
       ) : null}
-      {footnote ? <small className={styles.impactFootnote}>{footnote}</small> : null}
+      {transferApprovalRequired ? <small className={styles.impactFootnote}>Pengajuan tidak langsung memindahkan dana. Saldo hanya berubah apabila Administrator menyetujui dan transaksi berhasil dicatat.</small> : footnote ? <small className={styles.impactFootnote}>{footnote}</small> : null}
     </div>
   );
 };

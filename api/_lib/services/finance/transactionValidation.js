@@ -230,7 +230,9 @@ const resolveTransactionAccounts = async (db, context, { type, sourceId, destina
   if (type === "transfer") {
     const routeMode = transferRouteMode(context.actor, source, destination);
     if (routeMode === "denied") throw appError("SAME_TRANSFER_ACCOUNT", "Rekening sumber dan tujuan harus berbeda.", 400);
-
+    if (routeMode === "approval_required" && context.action !== "transferRequests.request") {
+      throw appError("TRANSFER_APPROVAL_REQUIRED", "Transfer dari rekening Bersama ke rekening pribadi harus diajukan ke Administrator.", 409);
+    }
   }
   if (source) assertAccountDate(source, transactionDate);
   if (destination) assertAccountDate(destination, transactionDate);

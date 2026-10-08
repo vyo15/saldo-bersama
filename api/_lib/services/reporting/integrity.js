@@ -156,14 +156,16 @@ const investmentIntegrityStatement = () => ({
     FROM investment_portfolios p
     JOIN accounts a ON a.account_id=p.rdn_account_id
     LEFT JOIN (
-      SELECT t.trade_date AS event_date,t.created_at,'trade' AS event_kind,t.trade_id AS event_id,t.instrument_id,t.trade_type,t.share_quantity,t.cash_amount,0 AS share_delta,0 AS cost_basis_delta,
-        CASE WHEN t.share_quantity<>(t.lots*i.lot_size)
-          OR t.gross_amount<>(t.share_quantity*t.price_per_share)
+      SELECT t.trade_date AS event_date,t.created_at,'trade' AS event_kind,t.trade_id AS event_id,t.instrument_id,t.trade_type,COALESCE(t.unit_quantity_hundredths/100.0,t.share_quantity) AS share_quantity,t.cash_amount,0 AS share_delta,0 AS cost_basis_delta,
+        CASE WHEN (t.unit_quantity_hundredths IS NULL AND t.share_quantity<>(t.lots*i.lot_size))
+          OR (t.unit_quantity_hundredths IS NOT NULL AND t.unit_quantity_hundredths<=0)
+          OR (t.price_cents IS NULL AND t.gross_amount<>(t.share_quantity*t.price_per_share))
+          OR (t.price_cents IS NOT NULL AND t.gross_amount<>CAST((t.unit_quantity_hundredths*t.price_cents+5000)/10000 AS INTEGER))
           OR (t.trade_type='buy' AND t.cash_amount<>(t.gross_amount+t.fee_amount))
           OR (t.trade_type='sell' AND t.cash_amount<>(t.gross_amount-t.fee_amount)) THEN 1 ELSE 0 END AS arithmetic_invalid
       FROM investment_trades t JOIN investment_instruments i ON i.instrument_id=t.instrument_id
       UNION ALL
-      SELECT correction_date,created_at,'correction',correction_id,instrument_id,'',0,0,share_delta,cost_basis_delta,0
+      SELECT correction_date,created_at,'correction',correction_id,instrument_id,'',0,0,COALESCE(unit_delta_hundredths/100.0,share_delta),cost_basis_delta,0
       FROM investment_corrections
     ) e ON e.event_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM investment_trades t WHERE e.event_kind='trade' AND t.trade_id=e.event_id AND t.portfolio_id=p.portfolio_id

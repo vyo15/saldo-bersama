@@ -171,6 +171,11 @@ export const payOccurrence = async (db, context) => {
   const amount = positiveInteger(p.amount, "Nominal aktual");
   const remaining = Math.max(0, Number(occurrence.expected_amount) - Number(occurrence.actual_amount));
   if (!remaining) throw appError("OCCURRENCE_ALREADY_COMPLETE", "Occurrence sudah selesai dibayar.", 409);
+  // Guard unusual keyboard slips without rejecting legitimate late fees or
+  // larger actual bills when the user explicitly verifies the discrepancy.
+  if (amount > remaining * 1.25 && amount - remaining >= 100_000 && p.confirm_overpayment !== true) {
+    throw appError("OVERPAYMENT_CONFIRMATION_REQUIRED", "Nominal aktual jauh lebih besar daripada sisa tagihan. Periksa dan konfirmasi nominal sebelum mencatat.", 409, { remainingAmount: remaining, enteredAmount: amount });
+  }
   const activeBudget = await resolveRecurringBudgetForPeriod(db, rule, occurrence.period_key);
   const transactionDate = p.transaction_date || todayJakarta();
   const managedEnvelope = await resolveManagedOccurrenceEnvelope(db, { rule, activeBudget, transactionDate, account, payload: p });

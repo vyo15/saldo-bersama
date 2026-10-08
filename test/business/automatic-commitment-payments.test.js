@@ -88,7 +88,7 @@ test("KPR yang sudah berjalan memakai saldo sekarang tanpa membuat histori palsu
   }
 });
 
-test("Kewajiban yang Kebutuhannya sudah didanai dicatat otomatis tepat sekali saat jatuh tempo", async () => {
+test("Dana Kewajiban yang siap tidak boleh dianggap dibayar tanpa konfirmasi", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -112,10 +112,19 @@ test("Kewajiban yang Kebutuhannya sudah didanai dicatat otomatis tepat sekali sa
     const managedRule = await db.one("SELECT * FROM recurring_rules WHERE commitment_id=?", [created.commitment_id]);
     await db.execute("UPDATE recurring_rules SET row_version=7 WHERE recurring_rule_id=?", [managedRule.recurring_rule_id]);
     const first = await processFundedCommitmentPayments(db, { today });
-    assert.equal(first.settled, 1, "scheduler memakai row-version occurrence, bukan row-version rule yang dapat berbeda");
-    assert.equal(first.amount, 3_750_000);
+    assert.equal(first.ready, 1, "jadwal siap dibayar tetapi menunggu konfirmasi bank");
+    assert.equal(first.ready_amount, 3_750_000);
+    assert.equal(first.settled, 0);
+    assert.equal(first.amount, 0);
+    assert.equal(await db.one("SELECT COUNT(*) AS count FROM transactions WHERE commitment_id=?", [created.commitment_id]).then((r) => Number(r.count)), 0);
+    const occurrence = await db.one("SELECT * FROM recurring_occurrences WHERE recurring_rule_id=? AND due_date<=? ORDER BY due_date LIMIT 1", [managedRule.recurring_rule_id, today]);
+    assert.ok(occurrence);
+    const confirmed = await db.transaction((tx) => payOccurrence(tx, context("recurring.payOccurrence", {
+      occurrence_id: occurrence.occurrence_id, row_version: occurrence.row_version, account_id: "bank-main",
+      amount: 3_750_000, transaction_date: today, envelope_period_id: funded.periodId,
+    }, occurrence.row_version)));
+    assert.ok(confirmed.transaction?.transaction_id);
     const transaction = await db.one("SELECT * FROM transactions WHERE commitment_id=? AND status='active'", [created.commitment_id]);
-    assert.ok(transaction);
     assert.equal(transaction.amount, 3_750_000);
     assert.equal(transaction.budget_id, funded.budgetId);
     assert.equal(transaction.envelope_period_id, funded.periodId);
@@ -123,7 +132,7 @@ test("Kewajiban yang Kebutuhannya sudah didanai dicatat otomatis tepat sekali sa
     assert.equal(current.current_balance, 287_500_000, "pembayaran otomatis KPR tidak menebak penurunan pokok");
 
     const second = await processFundedCommitmentPayments(db, { today });
-    assert.equal(second.settled, 0, "scheduler tidak boleh mendebit occurrence yang sama dua kali");
+    assert.equal(second.ready, 0, "occurrence yang dikonfirmasi tidak dihitung siap lagi");
     assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions WHERE commitment_id=? AND status='active'", [created.commitment_id])).count), 1);
   } finally {
     db.close();
@@ -210,7 +219,7 @@ test("projection Jadwal Rutin memakai rolling horizon agar kewajiban panjang tet
 });
 
 
-test("Kewajiban overdue ikut dibayar otomatis saat Alokasi baru siap setelah jatuh tempo", async () => {
+test("Kewajiban overdue tetap menunggu konfirmasi walau Alokasi kemudian siap", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -237,16 +246,16 @@ test("Kewajiban overdue ikut dibayar otomatis saat Alokasi baru siap setelah jat
     assert.equal(overdue.status, "overdue");
 
     const result = await processFundedCommitmentPayments(db, { today });
-    assert.equal(result.settled, 1, "scheduler hari ini harus mengejar kewajiban overdue yang dananya sudah siap");
+    assert.equal(result.ready, 1, "jadwal overdue harus tetap terbaca ketika dana siap");
+    assert.equal(result.settled, 0, "jatuh tempo bukan bukti transfer di bank");
     const transaction = await db.one("SELECT * FROM transactions WHERE commitment_id=? AND status='active'", [created.commitment_id]);
-    assert.equal(transaction?.amount, 3_750_000);
-    assert.equal(transaction?.transaction_date, overdueDate, "catch-up mempertahankan tanggal ledger jatuh tempo agar Kebutuhan/Alokasi periode lama tetap konsisten");
+    assert.equal(transaction, null);
   } finally {
     db.close();
   }
 });
 
-test("cicilan flat non-KPR tetap membatasi pembayaran terakhir ke sisa pokok plus bunga bulan itu", async () => {
+test("penilaian dana cicilan flat membatasi saran pembayaran terakhir tanpa posting", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seed(db);
@@ -268,13 +277,120 @@ test("cicilan flat non-KPR tetap membatasi pembayaran terakhir ke sisa pokok plu
     }));
 
     const result = await processFundedCommitmentPayments(db, { today });
-    assert.equal(result.settled, 1);
-    assert.equal(result.amount, 600_000, "final normal payment = sisa pokok 500 ribu + bunga flat 100 ribu");
+    assert.equal(result.ready, 1);
+    assert.equal(result.ready_amount, 600_000, "saran akhir = sisa pokok 500 ribu + bunga flat 100 ribu");
+    assert.equal(result.settled, 0);
     const transaction = await db.one("SELECT * FROM transactions WHERE commitment_id=? AND status='active'", [created.commitment_id]);
-    assert.equal(transaction?.amount, 600_000);
+    assert.equal(transaction, null);
     const current = await db.one("SELECT current_balance,status FROM commitments WHERE commitment_id=?", [created.commitment_id]);
-    assert.equal(current.current_balance, 0);
-    assert.equal(current.status, "completed");
+    assert.equal(current.current_balance, 500_000);
+    assert.equal(current.status, "active");
+  } finally {
+    db.close();
+  }
+});
+
+test("scheduler memeriksa occurrence siap di belakang lebih dari 100 tunggakan lama", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const funded = await seedFundedNeed(db);
+    const today = todayJakarta();
+    const created = await createCommitment(db, context("commitments.create", {
+      commitment_type: "loan", name: "Cicilan Aman", original_amount: 12_000_000,
+      current_balance: 12_000_000, installment_amount: 3_750_000, total_installments: 4,
+      default_account_id: "bank-main", category_id: "expense-home", budget_id: funded.budgetId,
+      due_day: Number(today.slice(-2)), start_date: today,
+    }));
+    const rule = await db.one("SELECT recurring_rule_id FROM recurring_rules WHERE commitment_id=?", [created.commitment_id]);
+    const original = await db.one("SELECT occurrence_id FROM recurring_occurrences WHERE recurring_rule_id=? AND due_date<=? LIMIT 1", [rule.recurring_rule_id, today]);
+    assert.ok(original, "jadwal bulan berjalan harus tersedia");
+    // Simulasikan tunggakan lama dengan periode tanpa Kebutuhan/Alokasi aktif.
+    // Sebelumnya SELECT LIMIT 100 membuat item sehat setelahnya terabaikan.
+    const now = new Date().toISOString();
+    for (let index = 0; index < 105; index += 1) {
+      const date = new Date(Date.UTC(2019, 0, 1 + index)).toISOString().slice(0, 10);
+      await db.execute("INSERT INTO recurring_occurrences(occurrence_id,recurring_rule_id,period_key,due_date,expected_amount,actual_amount,status,transaction_ids_json,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", [
+        `stale-${index}`, rule.recurring_rule_id, date.slice(0, 7), date, 3_750_000, 0, "overdue", "[]", 1, now, now,
+      ]);
+    }
+    const result = await processFundedCommitmentPayments(db, { today });
+    assert.ok(result.candidates >= 106);
+    assert.equal(result.ready, 1, "jadwal periode terkini tidak boleh starve di belakang antrean lama");
+    assert.ok(result.skipped >= 105);
+    assert.equal(result.settled, 0);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions WHERE commitment_id=?", [created.commitment_id])).count), 0);
+  } finally {
+    db.close();
+  }
+});
+
+test("pembayaran nominal tidak wajar ditolak sebelum menulis ledger tanpa konfirmasi eksplisit", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const created = await createCommitment(db, context("commitments.create", {
+      commitment_type: "loan", name: "Pinjaman", original_amount: 20_000_000,
+      current_balance: 20_000_000, installment_amount: 1_000_000, total_installments: 20,
+      default_account_id: "bank-main", category_id: "expense-home",
+      due_day: Number(todayJakarta().slice(-2)), start_date: todayJakarta(),
+    }));
+    const rule = await db.one("SELECT recurring_rule_id FROM recurring_rules WHERE commitment_id=?", [created.commitment_id]);
+    const occurrence = await db.one("SELECT * FROM recurring_occurrences WHERE recurring_rule_id=? AND due_date<=? LIMIT 1", [rule.recurring_rule_id, todayJakarta()]);
+    assert.ok(occurrence);
+    await assert.rejects(() => payOccurrence(db, context("recurring.payOccurrence", {
+      occurrence_id: occurrence.occurrence_id, row_version: occurrence.row_version,
+      account_id: "bank-main", amount: 10_000_000, transaction_date: todayJakarta(),
+    }, occurrence.row_version)), (error) => error.code === "OVERPAYMENT_CONFIRMATION_REQUIRED");
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions WHERE recurring_occurrence_id=?", [occurrence.occurrence_id])).count), 0);
+    assert.equal(Number((await db.one("SELECT actual_amount FROM recurring_occurrences WHERE occurrence_id=?", [occurrence.occurrence_id])).actual_amount), 0);
+  } finally {
+    db.close();
+  }
+});
+
+test("alokasi funded tidak dianggap siap jika cash rekening aktual tidak cukup", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const funded = await seedFundedNeed(db);
+    const today = todayJakarta();
+    const created = await createCommitment(db, context("commitments.create", {
+      commitment_type: "mortgage", name: "KPR Rumah", provider: "BTN",
+      original_amount: 300_000_000, current_balance: 300_000_000,
+      installment_amount: 3_750_000, total_installments: 120,
+      default_account_id: "bank-main", category_id: "expense-home", budget_id: funded.budgetId,
+      due_day: Number(today.slice(-2)), start_date: today,
+    }));
+    await db.execute("UPDATE accounts SET initial_balance=2000000 WHERE account_id='bank-main'");
+    const result = await processFundedCommitmentPayments(db, { today });
+    assert.equal(result.ready, 0);
+    assert.equal(result.skip_reasons.ACCOUNT_FUNDS_NOT_READY, 1);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions WHERE commitment_id=?", [created.commitment_id])).count), 0);
+  } finally {
+    db.close();
+  }
+});
+
+
+test("dua kewajiban tidak dapat memakai kapasitas Kebutuhan dan Alokasi yang sama dua kali", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seed(db);
+    const funded = await seedFundedNeed(db, { amount: 3_750_000 });
+    const today = todayJakarta();
+    for (const index of [1, 2]) {
+      await createCommitment(db, context("commitments.create", {
+        commitment_type: "loan", name: `Cicilan ${index}`, original_amount: 20_000_000,
+        current_balance: 20_000_000, installment_amount: 3_750_000, total_installments: 12,
+        default_account_id: "bank-main", category_id: "expense-home", budget_id: funded.budgetId,
+        due_day: Number(today.slice(-2)), start_date: today,
+      }));
+    }
+    const result = await processFundedCommitmentPayments(db, { today });
+    assert.equal(result.ready, 1, "saldo bank cukup tetapi funded Kebutuhan dan Alokasi cuma untuk satu cicilan");
+    assert.equal(result.skip_reasons.FUNDED_CAPACITY_RESERVED, 1);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions WHERE status='active'")).count), 0);
   } finally {
     db.close();
   }

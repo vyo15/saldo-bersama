@@ -88,6 +88,7 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
   "sessions.revokeAllOwn": unique(AUDIT, ["sessions.listOwn"]),
 
   "investments.assets.create": unique(INVESTMENT_DEPENDENCIES, ["investments.instruments.list"]),
+  "investments.assets.recordPurchase": unique(INVESTMENT_DEPENDENCIES, ["investments.instruments.list", "transactions.list", "accounts.previewLifecycle"]),
   "investments.portfolios.create": INVESTMENT_DEPENDENCIES,
   "investments.instruments.upsert": unique(INVESTMENT_DEPENDENCIES, ["investments.instruments.list"]),
   "investments.trades.buy": INVESTMENT_DEPENDENCIES,

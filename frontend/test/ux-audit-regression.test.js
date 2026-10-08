@@ -23,7 +23,7 @@ test("Dashboard menampilkan ringkasan Investasi dari contract overview yang bena
   assert.match(page, /onRetry=\{investments\.reload\}/);
 });
 
-test("form Investasi memakai inline validation, focus error, dan onboarding posisi awal tanpa transfer RDN", async () => {
+test("form Investasi memakai validasi inline, pilihan posisi atau pembelian RDN dan retry aman", async () => {
   const [dialog, setup, field, model, continuation] = await Promise.all([
     read("src/features/investments/InvestmentDialog.jsx"),
     read("src/features/investments/InvestmentSetupDialog.jsx"),
@@ -37,14 +37,17 @@ test("form Investasi memakai inline validation, focus error, dan onboarding posi
   assert.match(setup, /validateInvestmentAssetPosition/);
   assert.match(setup, /isOutcomeUnknownError/);
   assert.match(setup, /Coba lagi data yang sama/);
-  assert.match(setup, /const InvestmentPositionFields =/);
-  assert.match(setup, /fieldset className=\{styles\.intentFieldset\} disabled=\{outcomeUnknown\}/);
+  assert.match(setup, /const AssetFields =/);
+  assert.match(setup, /className=\{`\$\{styles\.intentFieldset\} \$\{styles\.setupFields\}`\} disabled=\{outcomeUnknown\}/);
   assert.match(setup, /dismissible=\{!busy && !outcomeUnknown\}/);
   assert.match(setup, /title="Tambah investasi"/);
   assert.match(setup, /InvestmentAssetPicker/);
-  assert.match(setup, /Tidak ada saldo rekening yang dipindahkan dan tidak ada order yang dikirim ke broker/);
+  assert.match(setup, /Sudah punya/);
+  assert.match(setup, /Belum punya/);
+  assert.match(setup, /recordInvestmentAssetPurchase\(payload\)/);
   assert.match(setup, /createInvestmentAssetPosition\(payload\)/);
-  assert.doesNotMatch(setup, /Buat RDN|auto_create_rdn|Rekening RDN/);
+  assert.match(setup, /Sumber dana RDN/);
+  assert.doesNotMatch(setup, /auto_create_rdn/);
   assert.match(continuation, /accountPrefill: \{ account_type: "investment" \}/);
   assert.match(field, /aria-invalid/);
   assert.match(field, /aria-describedby/);

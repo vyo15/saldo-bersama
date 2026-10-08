@@ -75,7 +75,7 @@ test("styling Investasi memakai token tema dan kontrak responsive mobile canonic
   assert.doesNotMatch(styles, /#[0-9a-f]{3,8}/i);
 });
 
-test("Tambah investasi mencatat posisi aset langsung tanpa membuat broker atau RDN dari UI", async () => {
+test("Tambah investasi membedakan posisi lama dan pembelian RDN baru", async () => {
   const [setup, api, model] = await Promise.all([
     read("src/features/investments/InvestmentSetupDialog.jsx"),
     read("src/features/investments/investments.api.js"),
@@ -87,16 +87,22 @@ test("Tambah investasi mencatat posisi aset langsung tanpa membuat broker atau R
   assert.match(setup, /Harga rata-rata per saham/);
   assert.match(setup, /Harga saham saat ini/);
   assert.match(setup, /Tanggal posisi/);
-  assert.match(setup, /Tidak ada saldo rekening yang dipindahkan dan tidak ada order yang dikirim ke broker/);
+  assert.match(setup, /Sudah punya/);
+  assert.match(setup, /Belum punya/);
+  assert.match(setup, /recordInvestmentAssetPurchase\(payload\)/);
   assert.match(setup, /createInvestmentAssetPosition\(payload\)/);
+  assert.match(setup, /Saldo RDN tercatat akan berkurang/);
+  assert.match(setup, /Tidak memotong RDN/);
   assert.match(setup, /initialGoalId/);
   assert.match(setup, /\.\.\.\(goalId \? \{ goal_id: goalId \} : \{\}\)/);
   assert.match(api, /investments\.assets\.create/);
   assert.match(model, /validateInvestmentAssetPosition/);
-  assert.doesNotMatch(setup, /Rekening RDN|Buat RDN|source_label|auto_create_rdn/i);
+  assert.match(api, /investments\.assets\.recordPurchase/);
+  assert.match(model, /validateInvestmentAssetPurchase/);
+  assert.doesNotMatch(setup, /auto_create_rdn/);
 });
 
-test("picker Tambah investasi memakai katalog saham LQ45 dan reksa dana dengan identitas visual", async () => {
+test("picker Tambah investasi menggunakan pola pilih rekening dengan katalog saham dan reksa dana", async () => {
   const [setup, picker, stockCatalog, assetCatalog, visuals, holding, pickerStyles] = await Promise.all([
     read("src/features/investments/InvestmentSetupDialog.jsx"),
     read("src/features/investments/InvestmentAssetPicker.jsx"),
@@ -108,7 +114,10 @@ test("picker Tambah investasi memakai katalog saham LQ45 dan reksa dana dengan i
   ]);
   assert.match(setup, /InvestmentAssetPicker/);
   assert.doesNotMatch(setup, /label="Ticker"|label="Bursa"|label="Nama saham"|label="Lembar per lot"/);
-  assert.match(picker, /Saham LQ45/);
+  assert.match(picker, /InlineSelectionPicker/);
+  assert.match(picker, /instrumentOptionVisual\(item\)/);
+  assert.match(picker, /placeholder=\{mutualFund \? "Pilih reksa dana" : "Pilih saham"\}/);
+  assert.match(picker, /searchable/);
   assert.match(picker, /Reksa Dana/);
   assert.match(picker, /allowedTickers/);
   assert.match(picker, /existingInstruments/);
@@ -117,7 +126,8 @@ test("picker Tambah investasi memakai katalog saham LQ45 dan reksa dana dengan i
   assert.match(assetCatalog, /asset_type: "mutual_fund"/);
   assert.match(visuals, /investmentAssetLogo\(instrument\.ticker\)/);
   assert.match(holding, /<InvestmentAssetLogo ticker=\{holding\.ticker\}/);
-  assert.match(pickerStyles, /\.option \{[\s\S]*?min-height:\s*4\.25rem;/);
+  assert.match(pickerStyles, /\.kindSwitch \{/);
+  assert.doesNotMatch(pickerStyles, /\.option \{/);
 });
 
 test("Member tidak mendapat dead-end: katalog dibatasi ke instrumen aktif yang sudah terdaftar", async () => {
@@ -150,14 +160,17 @@ test("detail aset memakai modal, cost basis, nilai manual, dan aktivitas tanpa k
   assert.doesNotMatch(`${overview}\n${holdingDetail}`, /Saldo RDN|Top up|Tarik ke rekening/i);
 });
 
-test("Buy Sell Investasi adalah pencatatan manual dan tidak memindahkan saldo rekening", async () => {
+test("Buy Sell Investasi menjelaskan perbedaan cash RDN eksplisit dan pencatatan internal", async () => {
   const [page, dialog, detail] = await Promise.all([
     read("src/features/investments/InvestmentsPage.jsx"),
     read("src/features/investments/InvestmentDialog.jsx"),
     read("src/features/investments/InvestmentHoldingDetail.jsx"),
   ]);
-  assert.match(page, /tidak mengirim order beli\/jual, tidak memindahkan saldo rekening/);
-  assert.match(dialog, /Ini hanya pencatatan\. Saldo Bersama tidak mengirim order ke broker dan tidak memindahkan saldo rekening\./);
+  assert.match(page, /tidak mengirim order beli\/jual/);
+  assert.match(page, /RDN eksplisit memperbarui cash RDN tercatat/);
+  assert.match(dialog, /Cash RDN tercatat akan berkurang/);
+  assert.match(dialog, /Cash RDN tercatat akan bertambah/);
+  assert.match(dialog, /rekening internal hanya menambah catatan posisi/);
   assert.match(dialog, /Catat pembelian/);
   assert.match(dialog, /Catat penjualan/);
   assert.match(dialog, /Perbarui nilai/);
@@ -178,4 +191,26 @@ test("setup dan aksi Investasi mengunci intent ketika outcome mutation belum pas
   }
   assert.match(setup, /disabled=\{outcomeUnknown\}/);
   assert.match(dialog, /disabled=\{state\.outcomeUnknown\}/);
+});
+
+test("form tambah investasi ringkas tanpa mengubah intent dan perhitungan RDN", async () => {
+  const [setup, styles, picker, sharedPicker] = await Promise.all([
+    read("src/features/investments/InvestmentSetupDialog.jsx"),
+    read("src/features/investments/InvestmentForm.module.css"),
+    read("src/features/investments/InvestmentAssetPicker.jsx"),
+    read("src/components/common/InlineSelectionPicker.jsx"),
+  ]);
+  assert.match(setup, /className=\{`\$\{styles\.form\} \$\{styles\.setupForm\}`\}/);
+  assert.match(setup, /setupOptional/);
+  assert.match(setup, /setupImpact/);
+  assert.match(setup, /PurchaseSummary form=\{form\} asset=\{asset\} account=/);
+  assert.match(setup, /PositionSummary form=\{form\} asset=\{asset\}/);
+  assert.match(picker, /InlineSelectionPicker/);
+  assert.match(picker, /existingTickers\.has\(item\.ticker\)/);
+  assert.match(picker, /allowedTickerSet\.has\(item\.ticker\)/);
+  assert.match(picker, /onSelect\?\.\(selected\)/);
+  assert.match(sharedPicker, /role="combobox"/);
+  assert.match(sharedPicker, /role="listbox"/);
+  assert.match(styles, /\.setupForm \.reviewGrid > div/);
+  assert.match(styles, /@media \(min-width: 430px\) and \(max-width: 620px\)/);
 });
