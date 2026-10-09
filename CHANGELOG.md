@@ -1,6 +1,14 @@
 ## 2026-10-06 — Flow human-error hardening final pass
 - Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.
 
+
+## 2026-10-09 — UI/UX refinement dan investasi decimal/fee parity
+- Memperbaiki regression test Rekening yang mengunci border sebelum desain borderless sehingga `npm run zip` tidak lagi gagal pada assertion lama.
+- Menyatukan field desimal investasi memakai formatter `id-ID` saat mengetik dan mempertahankan nilai canonical untuk validasi dan API; memperbaiki paste, caret, serta pembedaan kuantitas reksa dana vs lot saham.
+- Menambahkan biaya broker opsional ke Beli/Jual investasi menggunakan field dan kontrak backend yang sudah tersedia, menyelaraskan preview bruto/bersih RDN serta average cost, dan menambahkan validasi fail-fast untuk biaya jual, pembulatan kecil dan pecahan Target.
+- Merapikan hero Kategori/Alokasi agar border dekoratif tidak mendominasi light/dark mode dan mengurangi asosiasi warna merah dengan kelompok pengeluaran normal.
+- Menambah test dan checklist UI/financial parity; tidak mengubah API, schema, migration, auth/session, atau riwayat ledger.
+
 ## 6 Oktober 2026 - CI history-rewrite recovery dan pre-push diagnostic
 - Memperbaiki GitHub **Quality / Check changed whitespace** agar tidak gagal palsu dengan `fatal: bad object` ketika `github.event.before` atau base SHA sudah orphan setelah amend/force-push. CI sekarang memverifikasi object commit dengan `git cat-file -e` sebelum `git diff --check`, lalu fallback eksplisit ke `HEAD^..HEAD` bila base tidak lagi tersedia.
 - Memperbaiki managed pre-push pada kasus Git tidak mengirim ref update (mis. push non-fast-forward sudah tidak eligible): hook tidak lagi menampilkan error misleading **Push harus mengubah tepat satu ref**, tidak menjalankan verification palsu, dan menyerahkan diagnosis akhir ke Git. Push yang benar-benar mengirim ref tetap fail-closed untuk branch/ref/SHA/dirty tree/non-fast-forward.

@@ -97,7 +97,7 @@
 }
 
 .settingsDesktopSubmenuItem.isActive {
-  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  border-color: transparent;
   color: var(--primary-strong);
   background: var(--primary-soft);
 }
@@ -421,7 +421,7 @@
 .settingsList {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-control);
@@ -503,14 +503,14 @@
   min-width: 0;
   width: 100%;
   padding: var(--space-5);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   gap: var(--space-4);
   color: var(--text);
-  background: var(--surface);
+  background: var(--surface-section);
   text-align: left;
   box-shadow: var(--shadow-sm);
 }
@@ -627,7 +627,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   font-weight: var(--font-weight-semibold);
   transition: color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing);
 }
-.auditFilter[aria-pressed="true"] { border-color: color-mix(in srgb, var(--primary) 42%, var(--border)); color: var(--primary-strong); background: var(--primary-soft); }
+.auditFilter[aria-pressed="true"] { border-color: transparent; color: var(--primary-strong); background: var(--primary-soft); }
 .auditFilter:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .auditFilter:hover { border-color: var(--primary); } }
 
@@ -712,13 +712,13 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .notificationDeviceCard {
   min-width: 0;
   padding: var(--space-4);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
-  background: var(--surface);
+  background: var(--surface-section);
 }
 
 .notificationDeviceIcon,
@@ -750,7 +750,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .cadenceList {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   display: grid;
   background: var(--surface);
@@ -1076,7 +1076,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .maintenanceTabs {
   width: min(100%, 26rem);
   padding: .25rem;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1178,13 +1178,13 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   min-width: 0;
   min-height: 9rem;
   padding: var(--space-4);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: var(--space-3);
   color: var(--text);
-  background: var(--surface);
+  background: var(--surface-section);
   box-shadow: var(--shadow-control);
   transition:
     border-color var(--motion-fast) var(--motion-easing),

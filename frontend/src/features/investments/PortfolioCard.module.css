@@ -88,7 +88,7 @@
 .rdnPanel {
   margin: 0 var(--space-5) var(--space-3);
   padding: var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -262,9 +262,9 @@
   width: 100%;
   min-height: 4.15rem;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--surface-section);
   color: var(--text);
   text-align: start;
   cursor: pointer;

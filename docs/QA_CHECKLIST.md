@@ -28,6 +28,8 @@
 - [ ] Rupiah tetap integer; timezone/currency canonical tidak berubah diam-diam.
 - [ ] Transfer tetap netral terhadap income/expense dan memakai source/destination valid.
 - [ ] Saldo, Dana Tersedia, Dialokasikan, RDN, dan investasi tidak double-count atau tertukar.
+- [ ] Form transaksi investasi Beli/Jual memperlihatkan bruto, biaya broker, dan nilai bersih; fee masuk ke cost basis/RDN sesuai server. Bandingkan nominal tersimpan dengan review; jangan menghitung fee dua kali. Uji record legacy dengan fee nol.
+- [ ] Input desimal investasi dapat mengetik `5.021,50`, mengedit karakter di tengah, paste dan hapus, tanpa loncatan caret/auto-zoom keyboard; input Rupiah biasa tetap integer dan tidak berubah.
 - [ ] Mutation menjaga validation, idempotency, row-version/concurrency, authorization, dan audit sesuai scope.
 - [ ] `OUTCOME_UNKNOWN` tidak menghasilkan intent/payload kedua secara diam-diam.
 - [ ] Delete/import/restore/reset/migration mengikuti preview/backup/confirmation/integrity policy yang relevan.

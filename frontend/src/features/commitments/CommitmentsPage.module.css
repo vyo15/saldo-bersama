@@ -2,13 +2,13 @@
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .header h2 { margin: 0; font-size: 20px; }
 .header p { margin: 5px 0 0; color: var(--text-muted); font-size: 13px; }
-.summary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; padding: 16px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-elevated); }
+.summary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; padding: 16px; border: 1px solid transparent; border-radius: 18px; background: var(--surface-elevated); }
 .summary div { display: grid; gap: 4px; }
 .summary span,.amountBlock span,.meta dt { color: var(--text-muted); font-size: 12px; }
 .summary strong { font-size: 20px; }
 .summary small,.amountBlock small { color: var(--text-soft); font-size: 12px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,28rem),1fr)); gap: 12px; }
-.card { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-elevated); box-shadow: var(--shadow-sm); }
+.card { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 16px; border: 1px solid transparent; border-radius: 18px; background: var(--surface-elevated); box-shadow: var(--shadow-sm); }
 .cardIcon { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-size: 19px; }
 .cardTitle span { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .cardTitle h3 { margin: 3px 0 0; font-size: 16px; }
@@ -33,12 +33,12 @@
 .manageMenu > summary {
   min-height: var(--control-height-md);
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--control-radius);
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: var(--surface);
+  background: var(--surface-section);
   color: var(--text-soft);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
@@ -56,7 +56,7 @@
   z-index: 14;
   width: 210px;
   padding: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 14px;
   display: grid;
   gap: 4px;
@@ -73,13 +73,13 @@
 .mortgageProgress {
   min-height: 66px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--control-radius);
   display: grid;
   grid-template-columns: minmax(0,1fr) auto;
   align-items: center;
   gap: 12px;
-  background: var(--surface);
+  background: var(--surface-section);
 }
 .mortgageProgressCopy { min-width: 0; display: grid; gap: 2px; }
 .mortgageProgressCopy > span { color: var(--text-muted); font-size: 12px; }
@@ -104,7 +104,7 @@
 }
 .mortgageProgressInputs input:focus { border-color: var(--primary); outline: 3px solid var(--focus-ring); outline-offset: 1px; }
 .mortgageProgressInputs b { color: var(--text-muted); font-size: 12px; }
-.loanDetails { border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--surface); overflow: hidden; }
+.loanDetails { border: 1px solid transparent; border-radius: var(--control-radius); background: var(--surface-section); overflow: hidden; }
 .loanDetails > summary { min-height: 44px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; list-style: none; font-size: 12px; font-weight: 650; }
 .loanDetails > summary::-webkit-details-marker { display: none; }
 .loanDetails > summary::after { content: "›"; color: var(--text-muted); font-size: 17px; transform: rotate(90deg); transition: transform var(--motion-fast) var(--motion-easing); }
@@ -200,9 +200,9 @@
 /* Compact create flow: choose the user's goal first, then reveal only the fields for that step. */
 .typeList { display: grid; gap: 7px; }
 .typeOption {
-  width: 100%; min-height: 58px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 14px;
+  width: 100%; min-height: 58px; padding: 9px 10px; border: 1px solid transparent; border-radius: 14px;
   display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px;
-  background: var(--surface); color: var(--text); text-align: left; cursor: pointer;
+  background: var(--surface-section); color: var(--text); text-align: left; cursor: pointer;
   transition: border-color var(--motion-fast) var(--motion-easing), background var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
 }
 .typeOption:hover { border-color: color-mix(in srgb, var(--primary) 42%, var(--border)); background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }

@@ -16,20 +16,20 @@
 .shell {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 14px;
-  background: var(--surface);
+  background: var(--surface-section-strong);
   box-shadow: var(--shadow-control);
   transition: border-color var(--motion-fast) var(--motion-easing), box-shadow var(--motion-fast) var(--motion-easing);
 }
 
 .shell.expanded {
-  border-color: color-mix(in srgb, var(--primary) 68%, var(--border));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent), var(--shadow-control);
+  border-color: transparent;
+  box-shadow: var(--shadow-control);
 }
 
 .shell.locked {
-  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  border-color: transparent;
   background: color-mix(in srgb, var(--primary-soft) 54%, var(--surface));
 }
 

@@ -9,6 +9,7 @@ import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import InvestmentAssetLogo from "./InvestmentAssetLogo.jsx";
 import InvestmentFormField from "./InvestmentFormField.jsx";
+import InvestmentDecimalInput from "./InvestmentDecimalInput.jsx";
 import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
 import { bulkUpdateInvestmentValuations, invalidateInvestmentReads } from "./investments.api.js";
 
@@ -73,7 +74,7 @@ const AssetPriceRow = ({ row, value, error, disabled, onChange }) => {
       <span>Sebelumnya</span>
       <strong><InvestmentUnitPrice value={holding.price_per_share} /></strong>
     </div>
-    {mutualFund ? <InvestmentFormField id={`investment-valuation-${key.replace(/[^a-zA-Z0-9_-]/g, "-")}`} label="NAB per unit" required error={error}><input min="0.01" step="0.01" type="number" inputMode="decimal" disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} /></InvestmentFormField> : <MoneyInput
+    {mutualFund ? <InvestmentFormField id={`investment-valuation-${key.replace(/[^a-zA-Z0-9_-]/g, "-")}`} label="NAB per unit" required error={error}><InvestmentDecimalInput disabled={disabled} value={value} onChange={(value) => onChange(value)} /></InvestmentFormField> : <MoneyInput
       id={`investment-valuation-${key.replace(/[^a-zA-Z0-9_-]/g, "-")}`}
       label={mutualFund ? "NAB per unit" : "Harga per lembar"}
       required

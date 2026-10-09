@@ -12,6 +12,7 @@ import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import InvestmentAssetPicker from "./InvestmentAssetPicker.jsx";
+import InvestmentDecimalInput from "./InvestmentDecimalInput.jsx";
 import InvestmentFormField from "./InvestmentFormField.jsx";
 import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
 import { createInvestmentAssetPosition, invalidateInvestmentReads, recordInvestmentAssetPurchase } from "./investments.api.js";
@@ -99,7 +100,7 @@ const createPurchasePayload = (form, asset, instruments, goalId = "") => {
 
 const PurchaseDetails = ({ form, asset, mutualFund, fieldErrors, onFieldChange, rdnAccounts, accountsStatus }) => <>
   {mutualFund ? <InvestmentFormField id="investment-position-average" label="NAB beli per unit" required error={fieldErrors.average_price}>
-    <input min="0.01" step="0.01" inputMode="decimal" type="number" value={form.average_price} onChange={(event) => onFieldChange("average_price", event.target.value)} />
+    <InvestmentDecimalInput value={form.average_price} onChange={(value) => onFieldChange("average_price", value)} />
   </InvestmentFormField> : <MoneyInput id="investment-position-average" label="Harga beli per saham" required value={form.average_price} error={fieldErrors.average_price} onChange={(value) => onFieldChange("average_price", value)} />}
   <MoneyInput id="investment-position-fee" label="Biaya transaksi (opsional)" value={form.fee_amount} error={fieldErrors.fee_amount} onChange={(value) => onFieldChange("fee_amount", value)} />
   <InlineSelectionPicker label="Sumber dana RDN" required error={fieldErrors.rdn_account_id}
@@ -112,9 +113,9 @@ const PurchaseDetails = ({ form, asset, mutualFund, fieldErrors, onFieldChange, 
 
 const OpeningDetails = ({ form, mutualFund, fieldErrors, onFieldChange, asset }) => <>
   <InvestmentFormField id="investment-position-average" label={mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"} required error={fieldErrors.average_price}>
-    <input min="0.01" step="0.01" inputMode="decimal" type="number" value={form.average_price} onChange={(event) => onFieldChange("average_price", event.target.value)} />
+    <InvestmentDecimalInput value={form.average_price} onChange={(value) => onFieldChange("average_price", value)} />
   </InvestmentFormField>
-  {mutualFund ? <InvestmentFormField id="investment-position-current" label="NAB per unit saat ini" required error={fieldErrors.reference_price}><input min="0.01" step="0.01" inputMode="decimal" type="number" value={form.reference_price} onChange={(event) => onFieldChange("reference_price", event.target.value)} /></InvestmentFormField> : <MoneyInput id="investment-position-current" label="Harga saham saat ini" required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />}
+  {mutualFund ? <InvestmentFormField id="investment-position-current" label="NAB per unit saat ini" required error={fieldErrors.reference_price}><InvestmentDecimalInput value={form.reference_price} onChange={(value) => onFieldChange("reference_price", value)} /></InvestmentFormField> : <MoneyInput id="investment-position-current" label="Harga saham saat ini" required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />}
   <MoneyInput id="investment-position-capital" label="Total diinvestasikan (opsional)" value={form.cost_basis} error={fieldErrors.cost_basis} onChange={(value) => onFieldChange("cost_basis", value)} />
   <MoneyInput id="investment-position-market-value" label="Total nilai saat ini dari broker (opsional)" value={form.market_value} error={fieldErrors.market_value} onChange={(value) => onFieldChange("market_value", value)} />
   <small className={styles.formHint}>Salin modal dan nilai aktual sesuai Ajaib. Perbedaan akibat pembulatan harga yang tampil tetap tersimpan.</small>
@@ -128,7 +129,7 @@ const AssetFields = ({ form, asset, heldTickers, allowedTickers, outcomeUnknown,
     {asset ? <>
       <div className={styles.formRow}>
         <InvestmentFormField id="investment-position-quantity" label={mutualFund ? "Jumlah unit" : "Jumlah lot"} required error={fieldErrors.opening_quantity}>
-          <input min={mutualFund ? "0.01" : "1"} step={mutualFund ? "0.01" : "1"} inputMode={mutualFund ? "decimal" : "numeric"} type="number" value={form.opening_quantity} onChange={(event) => onFieldChange("opening_quantity", event.target.value)} />
+          {mutualFund ? <InvestmentDecimalInput value={form.opening_quantity} onChange={(value) => onFieldChange("opening_quantity", value)} /> : <input min="1" step="1" inputMode="numeric" type="number" value={form.opening_quantity} onChange={(event) => onFieldChange("opening_quantity", event.target.value)} />}
         </InvestmentFormField>
         <InvestmentFormField id="investment-position-date" label={intent === "purchase" ? "Tanggal beli" : "Tanggal posisi"} required error={fieldErrors.position_date}>
           <TemporalInput type="date" max={TODAY()} value={form.position_date} onChange={(event) => onFieldChange("position_date", event.target.value)} />

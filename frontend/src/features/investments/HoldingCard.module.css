@@ -150,7 +150,7 @@
   flex: 0 0 auto;
   min-height: var(--mobile-hit-target);
   padding: .45rem .75rem;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: var(--surface-soft);
   color: var(--text-muted);

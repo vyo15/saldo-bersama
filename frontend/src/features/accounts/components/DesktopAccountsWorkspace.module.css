@@ -18,7 +18,7 @@
 .ownershipFilter {
   min-height: 2.75rem;
   padding: 0 .9rem;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: var(--surface-soft);
   color: var(--text-muted);
@@ -64,7 +64,7 @@
 .trendPanel,
 .distributionPanel {
   min-width: 0;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
   box-shadow: var(--shadow-control);
 }

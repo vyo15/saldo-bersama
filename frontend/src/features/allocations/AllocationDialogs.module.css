@@ -7,7 +7,7 @@
 
 .allocation-action-sheet__balance {
   padding: 13px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -49,7 +49,7 @@
 }
 
 .allocation-advanced {
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 14px;
   background: var(--surface-soft);
   overflow: hidden;
@@ -146,7 +146,7 @@
 
 .allocation-create-funding {
   padding: 12px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 14px;
   display: grid;
   gap: 7px;
@@ -244,7 +244,7 @@
   width: 100%;
   min-height: 76px;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 16px;
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto;

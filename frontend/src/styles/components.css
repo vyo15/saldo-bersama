@@ -42,7 +42,7 @@
   .icon-button:hover { border-color: var(--ui-primary); color: var(--ui-primary); background: var(--ui-interactive-hover); }
 }
 .icon-button:active:not(:disabled) { background: var(--ui-interactive-hover); transform: scale(.96); }
-.card { background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--radius-surface); box-shadow: none; }
+.card { background: var(--ui-surface); border: 1px solid transparent; border-radius: var(--radius-surface); box-shadow: none; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .page-header__copy { min-width: 0; }
 .page-header__title-row { min-width: 0; display: flex; align-items: center; gap: 2px; }
@@ -163,7 +163,7 @@ input[type="file"] {
 
 .spinner { width: 28px; height: 28px; border: 3px solid var(--surface-strong); border-top-color: var(--primary); border-radius: 50%; animation: spin var(--motion-spinner) linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.empty-state, .error-state { min-height: 300px; padding: 36px; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; background: var(--surface); border: 1px dashed var(--border); border-radius: 18px; }
+.empty-state, .error-state { min-height: 300px; padding: 36px; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; background: var(--surface); border: 1px solid transparent; border-radius: 18px; }
 .empty-state > svg, .error-state > svg { width: 36px; height: 36px; color: var(--primary); }
 .error-state > svg { color: var(--negative); }
 
@@ -192,7 +192,7 @@ input[type="file"] {
 
 .money-entry { display: grid; gap: 8px; align-content: start; }
 .quick-amounts { display: flex; flex-wrap: wrap; gap: 6px; }
-.quick-amounts button { min-height: 44px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.quick-amounts button { min-height: 44px; padding: 5px 9px; border: 1px solid transparent; border-radius: var(--radius-pill); background: var(--surface-soft); color: var(--text-soft); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .quick-amounts button:focus-visible,
 .quick-amounts button:active { border-color: var(--primary); color: var(--primary-strong); background: var(--primary-soft); }
 @media (hover: hover) and (pointer: fine) {
@@ -288,7 +288,7 @@ input[type="file"] {
 .install-app-card > div { display: grid; gap: 5px; }
 .install-app-card h2, .install-app-card p { margin: 0; }
 .install-app-card p:last-child { color: var(--text-soft); line-height: 1.5; }
-.install-app-card__hint { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-soft); font-weight: var(--font-weight-semibold); white-space: nowrap; }
+.install-app-card__hint { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid transparent; border-radius: var(--radius-md); background: var(--surface-section); color: var(--text-soft); font-weight: var(--font-weight-semibold); white-space: nowrap; }
 .install-app-card__hint svg { width: 18px; height: 18px; color: var(--primary); }
 .floating-add:disabled, .mobile-navigation__add:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
 

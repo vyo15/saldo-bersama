@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { investmentActivityForInstrument, investmentActivityLabel, investmentOpeningPositionPreview, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentAssetPosition, validateInvestmentOperation } from "../../frontend/src/features/investments/investments.model.js";
+import { investmentActivityForInstrument, investmentActivityLabel, investmentOpeningPositionPreview, investmentProjectedAverage, investmentOwnershipLabel, investmentPriceSourceLabel, investmentProfitLossLabel, investmentReturnPercent, investmentTradePreview, selectInvestmentInstruments, validateInvestmentAssetPosition, validateInvestmentOperation } from "../../frontend/src/features/investments/investments.model.js";
 import { formatInvestmentUnitPrice } from "../../frontend/src/features/investments/investmentPresentation.js";
 
 const active = { instrument_id: "active", ticker: "BBCA", status: "active" };
@@ -27,13 +27,42 @@ test("trade preview hanya menghitung estimasi dari input dan lot size instrumen"
   const sell = investmentTradePreview("sell", form, [{ ...active, name: "Bank Central Asia", lot_size: 100 }]);
   assert.equal(buy.shares, 200);
   assert.equal(buy.grossAmount, 1_820_000);
-  assert.equal(buy.rdnAmount, 1_820_000);
-  assert.equal(sell.rdnAmount, 1_820_000);
-  assert.equal(buy.feeAmount, 0);
-  assert.equal(sell.feeAmount, 0);
+  assert.equal(buy.rdnAmount, 1_822_500);
+  assert.equal(sell.rdnAmount, 1_817_500);
+  assert.equal(buy.feeAmount, 2500);
+  assert.equal(sell.feeAmount, 2500);
   assert.equal(buy.instrument.ticker, "BBCA");
 });
 
+
+test("fee broker memperbarui pengurang RDN dan average cost sesuai kontrak server", () => {
+  const stock = { ...active, lot_size: 100 };
+  const form = { instrument_id: "active", lots: "1", price_per_share: "5000", fee_amount: "1250", trade_date: "2026-09-02" };
+  const preview = investmentTradePreview("buy", form, [stock]);
+  assert.equal(preview.grossAmount, 500_000);
+  assert.equal(preview.rdnAmount, 501_250);
+  const sell = investmentTradePreview("sell", form, [stock]);
+  assert.equal(sell.rdnAmount, 498_750);
+  const weighted = investmentProjectedAverage(form, [stock], { holdings: [{ instrument_id: "active", shares: 100, cost_basis: 450_000 }] });
+  assert.equal(weighted.nextAverage, (450_000 + 501_250) / 200);
+  const options = { instruments: [stock], portfolio: { holdings: [{ instrument_id: "active", shares: 200 }] }, today: "2026-09-02" };
+  assert.deepEqual(validateInvestmentOperation("buy", form, options), {});
+  assert.match(validateInvestmentOperation("sell", { ...form, fee_amount: 500_000 }, options).fee_amount, /lebih kecil/);
+  assert.match(validateInvestmentOperation("buy", { ...form, fee_amount: -1 }, options).fee_amount, /Biaya broker/);
+  assert.match(validateInvestmentOperation("buy", { ...form, fee_amount: "1.25" }, options).fee_amount, /Biaya broker/);
+});
+
+test("preview pecahan memakai pembulatan Rupiah yang sama dengan backend", () => {
+  const fund = { instrument_id: "fund", ticker: "CAPFIX", exchange: "REKSADANA", lot_size: 1, status: "active" };
+  const form = { instrument_id: "fund", lots: "0.25", price_per_share: "5001.50", fee_amount: 50, trade_date: "2026-09-02" };
+  const preview = investmentTradePreview("buy", form, [fund]);
+  assert.equal(preview.grossAmount, 1250);
+  assert.equal(preview.rdnAmount, 1300);
+  const options = { instruments: [fund], portfolio: { holdings: [{ instrument_id: "fund", shares: 1 }] }, today: "2026-09-02" };
+  assert.deepEqual(validateInvestmentOperation("buy", form, options), {});
+  assert.match(validateInvestmentOperation("buy", { ...form, goal_id: "goal" }, { ...options, goals: [{ goal_id: "goal", status: "active", funding_mode: "investment" }] }).goal_id, /pecahan/);
+  assert.match(validateInvestmentOperation("buy", { ...form, lots: "0.01", price_per_share: "0.01" }, options).price_per_share, /minimal Rp1/);
+});
 
 test("harga satuan investasi mempertahankan dua desimal dan average price pecahan", () => {
   assert.equal(formatInvestmentUnitPrice(5_021), "Rp5.021,00");
@@ -85,7 +114,7 @@ test("validasi presentasi Investasi memberi inline error tanpa mengambil alih ot
   assert.equal(missing.instrument_id, "Pilih aset yang tersedia.");
   assert.match(missing.lots, /lebih dari 0/);
   assert.match(missing.price_per_share, /lebih dari 0/);
-  assert.equal(missing.fee_amount, undefined);
+  assert.match(missing.fee_amount, /Biaya broker/);
   assert.match(missing.trade_date, /masa depan/);
 
   const sell = validateInvestmentOperation("sell", { instrument_id: "active", lots: 3, price_per_share: 9000, fee_amount: 0, trade_date: "2026-09-02" }, options);

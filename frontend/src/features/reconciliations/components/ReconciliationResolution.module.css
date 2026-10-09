@@ -12,7 +12,7 @@
 .eyebrow { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .07em; text-transform: uppercase; }
 .heroAmount, .heroAmount :global(.money) { color: var(--text); font-size: clamp(1.8rem, 6vw, 2.4rem); font-weight: var(--font-weight-bold); letter-spacing: -.04em; }
 .resolvedTitle { color: var(--text); font-size: clamp(1.35rem, 4vw, 1.8rem); letter-spacing: -.03em; }
-.summary { margin: 0; padding: 12px 14px; display: grid; gap: 8px; border: 1px solid var(--border); border-radius: 15px; background: color-mix(in srgb, var(--surface-soft) 72%, var(--surface)); }
+.summary { margin: 0; padding: 12px 14px; display: grid; gap: 8px; border: 1px solid transparent; border-radius: 15px; background: color-mix(in srgb, var(--surface-soft) 72%, var(--surface)); }
 .summary > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3); }
 .summary dt { color: var(--text-muted); font-size: var(--font-size-sm); }
 .summary dd { margin: 0; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; text-align: right; }

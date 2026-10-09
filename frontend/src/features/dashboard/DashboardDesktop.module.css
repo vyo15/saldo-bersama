@@ -327,7 +327,7 @@
   overflow: hidden;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 13px;
 }
 .shared-investment-widget dl > div {
@@ -517,7 +517,7 @@
   .desktop-planning-section { display: none; }
 }
 
-:global(.dashboard-deferred-card) { min-height: 5.5rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-soft); opacity: .7; }
+:global(.dashboard-deferred-card) { min-height: 5.5rem; border: 1px solid transparent; border-radius: var(--radius-lg); background: var(--surface-soft); opacity: .7; }
 
 /* Desktop analytical workspace v2: keep the curved AppShell dock, enrich only the content canvas. */
 @media (min-width: 821px) {
@@ -1202,13 +1202,13 @@
     min-width: 0;
     min-height: 66px;
     padding: 10px 14px;
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
     border-radius: 16px;
     display: grid;
     grid-template-columns: 42px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
-    background: var(--surface);
+    background: var(--surface-section);
     box-shadow: var(--shadow-control);
     text-decoration: none;
   }
@@ -1296,14 +1296,14 @@
     min-width: 0;
     min-height: 70px;
     padding: 10px 14px;
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
     border-radius: 16px;
     display: grid;
     grid-template-columns: 42px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
     color: inherit;
-    background: var(--surface);
+    background: var(--surface-section);
     box-shadow: var(--shadow-control);
     text-decoration: none;
   }

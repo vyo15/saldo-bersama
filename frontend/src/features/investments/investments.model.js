@@ -1,7 +1,9 @@
 import { isMutualFundInstrument } from "./investmentInstrumentType.js";
 import { investmentOpeningPositionPreview } from "./investmentOpeningPositionPreview.js";
+import { investmentTradePreview } from "./investmentTradePreview.js";
 import { positiveIntegerError, positiveDecimalError, nonNegativeIntegerError, signedIntegerError, todayJakarta } from "./investmentValidationPrimitives.js";
 export { investmentOpeningPositionPreview } from "./investmentOpeningPositionPreview.js";
+export { investmentTradePreview, investmentProjectedAverage } from "./investmentTradePreview.js";
 
 const investmentQuantityError = (value, instrument, label) => {
   const quantity = Number(value);
@@ -37,33 +39,6 @@ export const selectInvestmentInstruments = (instruments = [], holdings = [], mod
   if (mode === "opening_position") return instruments.filter((item) => item.status === "active" && !heldIds.has(item.instrument_id));
   return instruments;
 };
-
-export const investmentTradePreview = (mode, form = {}, instruments = []) => {
-  const instrument = instruments.find((item) => item.instrument_id === form.instrument_id) || null;
-  const lotSize = Number(instrument?.lot_size || 100);
-  const lots = Number(form.lots || 0);
-  const pricePerShare = Number(form.price_per_share || 0);
-  const feeAmount = 0;
-  const shares = lots * lotSize;
-  const grossAmount = Math.round(shares * pricePerShare);
-  const rdnAmount = mode === "sell" ? grossAmount - feeAmount : grossAmount + feeAmount;
-  return { instrument, lotSize, lots, shares, pricePerShare, feeAmount, grossAmount, rdnAmount };
-};
-
-export const investmentProjectedAverage = (form = {}, instruments = [], portfolio = {}) => {
-  const preview = investmentTradePreview("buy", form, instruments);
-  const holding = (portfolio?.holdings || []).find((item) => item.instrument_id === preview.instrument?.instrument_id) || null;
-  const currentShares = Number(holding?.shares || 0);
-  const currentCostBasis = Number(holding?.cost_basis || 0);
-  const currentAverage = currentShares > 0 ? currentCostBasis / currentShares : 0;
-  const nextShares = currentShares + Number(preview.shares || 0);
-  const nextCostBasis = currentCostBasis + Number(preview.grossAmount || 0);
-  const nextAverage = nextShares > 0 ? nextCostBasis / nextShares : 0;
-  return { currentAverage, nextAverage, currentShares, nextShares, holding, ...preview };
-};
-
-
-
 
 export {
   investmentActivityForInstrument,
@@ -114,6 +89,25 @@ const validateTradeGoal = (mode, form, context, holding, errors) => {
   if (!allocation) errors.goal_id = "Aset ini tidak memiliki porsi yang terhubung ke Target tersebut.";
 };
 
+const tradeFinancialErrors = (mode, form, instruments, instrument, lotsError, priceError) => {
+  const errors = {};
+  const feeError = nonNegativeIntegerError(form.fee_amount || 0, "Biaya broker");
+  if (feeError) errors.fee_amount = feeError;
+  if (feeError || !instrument || lotsError || priceError) return errors;
+  const preview = investmentTradePreview(mode, form, instruments);
+  if (!Number.isSafeInteger(preview.grossAmount) || !Number.isSafeInteger(preview.rdnAmount)) {
+    errors.price_per_share = "Nilai transaksi melebihi batas Rupiah yang aman.";
+  } else if (preview.grossAmount <= 0) {
+    errors.price_per_share = "Total transaksi minimal Rp1 setelah pembulatan.";
+  } else if (mode === "sell" && preview.feeAmount >= preview.grossAmount) {
+    errors.fee_amount = "Biaya jual harus lebih kecil dari nilai bruto penjualan.";
+  }
+  if (form.goal_id && isMutualFundInstrument(instrument) && !Number.isInteger(preview.shares)) {
+    errors.goal_id = "Unit reksa dana pecahan belum dapat ditautkan ke Target. Catat tanpa Target dahulu.";
+  }
+  return errors;
+};
+
 const validateTrade = (mode, form, context) => {
   const { instruments, portfolio, today } = context;
   const errors = {};
@@ -128,6 +122,7 @@ const validateTrade = (mode, form, context) => {
   if (lotsError) errors.lots = lotsError;
   if (priceError) errors.price_per_share = priceError;
   if (dateError) errors.trade_date = dateError;
+  Object.assign(errors, tradeFinancialErrors(mode, form, instruments, instrument, lotsError, priceError));
   if (String(form.notes || "").length > 500) errors.notes = "Catatan maksimal 500 karakter.";
 
   const holding = instrument ? (portfolio?.holdings || []).find((item) => item.instrument_id === instrument.instrument_id) : null;

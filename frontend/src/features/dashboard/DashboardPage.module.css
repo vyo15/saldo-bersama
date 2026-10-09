@@ -26,7 +26,7 @@
   z-index: 1;
   margin-top: 14px;
   padding: 15px 16px 14px;
-  border: 1px solid color-mix(in srgb, var(--glass-border) 84%, transparent);
+  border: 1px solid transparent;
   border-radius: 20px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--glass-surface) 78%, var(--secondary) 8%), color-mix(in srgb, var(--glass-surface) 92%, transparent));
   box-shadow: 0 12px 30px color-mix(in srgb, var(--shadow-ink) 15%, transparent);
@@ -140,11 +140,11 @@
 .mobile-transaction-item:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--focus-ring); outline-offset: -3px; }
 
 .mobile-dashboard-transaction-detail { display: grid; gap: 16px; }
-.mobile-dashboard-transaction-detail > header { padding: 14px; border: 1px solid var(--border); border-radius: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; background: var(--surface-soft); }
+.mobile-dashboard-transaction-detail > header { padding: 14px; border: 1px solid transparent; border-radius: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; background: var(--surface-soft); }
 .mobile-dashboard-transaction-detail > header > div { min-width: 0; display: grid; gap: 6px; }
 .mobile-dashboard-transaction-detail > header > div > span:first-child { color: var(--text-muted); font-size: var(--font-size-xs); }
 .mobile-dashboard-transaction-detail > header :global(.money), .mobile-dashboard-transaction-detail > header .masked-money { font-size: 22px; }
-.mobile-dashboard-transaction-detail dl { display: grid; gap: 0; margin: 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.mobile-dashboard-transaction-detail dl { display: grid; gap: 0; margin: 0; border: 1px solid transparent; border-radius: 14px; overflow: hidden; }
 .mobile-dashboard-transaction-detail dl > div { padding: 11px 12px; display: grid; grid-template-columns: minmax(92px, .7fr) minmax(0, 1.3fr); gap: 12px; border-bottom: 1px solid var(--border); }
 .mobile-dashboard-transaction-detail dl > div:last-child { border-bottom: 0; }
 .mobile-dashboard-transaction-detail dt { color: var(--text-muted); font-size: var(--font-size-xs); }

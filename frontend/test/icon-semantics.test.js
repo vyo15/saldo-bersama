@@ -102,7 +102,7 @@ test("filter cepat transaksi mobile memakai segmented control, ikon arah yang je
   assert.match(source, /value: "transfer"[\s\S]*value: "refund"[\s\S]*value: "adjustment"/);
   assert.match(source, /<TemporalInput type="month"/);
   assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) var\(--mobile-control-height\) var\(--mobile-control-height\)/);
-  assert.match(styles, /\.typeScroller \{[^}]*border: 1px solid var\(--border\);[^}]*border-radius: 15px;[^}]*overflow: hidden;/s);
+  assert.match(styles, /\.typeScroller \{[^}]*border: 1px solid transparent;[^}]*border-radius: 15px;[^}]*overflow: hidden;/s);
   assert.match(styles, /\.iconFilter \{[^}]*width: var\(--mobile-control-height\); height: var\(--mobile-control-height\)/);
   assert.match(styles, /\.typeChip,[\s\S]*\.typeChipActive \{[^}]*min-height: var\(--mobile-control-height\);[^}]*border: 0;/);
 });

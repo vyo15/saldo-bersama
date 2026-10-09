@@ -19,7 +19,7 @@
 .accountChooser { min-width: 0; }
 
 .contextAccount { min-width: 0; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border)); border-radius: var(--radius-control); display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }
-.contextAccountVisual { width: 38px; height: 38px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--primary); background: var(--surface); }
+.contextAccountVisual { width: 38px; height: 38px; overflow: hidden; border: 1px solid transparent; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--primary); background: var(--surface-section); }
 .contextAccountVisual img { width: 100%; height: 100%; object-fit: contain; padding: 5px; }
 .contextAccountVisual svg { width: 18px; height: 18px; }
 .contextAccountCopy { min-width: 0; display: grid; gap: 2px; }

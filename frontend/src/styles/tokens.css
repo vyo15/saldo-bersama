@@ -91,7 +91,7 @@
   --surface-section: color-mix(in srgb, var(--primary-soft) 58%, var(--surface));
   --surface-section-strong: color-mix(in srgb, var(--primary-soft) 74%, var(--surface));
   --surface-translucent: rgba(255, 255, 255, 0.88);
-  --divider-soft: color-mix(in srgb, var(--primary) 12%, transparent);
+  --divider-soft: color-mix(in srgb, var(--primary) 9%, transparent);
   --divider-strong: color-mix(in srgb, var(--primary) 20%, transparent);
   --page-glow-primary: color-mix(in srgb, var(--primary) 10%, transparent);
   --page-glow-secondary: color-mix(in srgb, var(--secondary) 7%, transparent);
@@ -102,7 +102,7 @@
   --text-soft: #4f6270;
   --text-muted: #566979;
   --muted: #566979;
-  --border: #d4e4e6;
+  --border: #e0eae9;
   --border-strong: #8296a5;
   --primary: #087c80;
   --primary-strong: #066066;
@@ -309,7 +309,7 @@
   --surface-section: color-mix(in srgb, var(--surface-soft) 78%, var(--surface));
   --surface-section-strong: color-mix(in srgb, var(--surface-strong) 64%, var(--surface-soft));
   --surface-translucent: rgba(12, 30, 42, 0.86);
-  --divider-soft: color-mix(in srgb, var(--primary) 16%, transparent);
+  --divider-soft: color-mix(in srgb, var(--primary) 11%, transparent);
   --divider-strong: color-mix(in srgb, var(--primary) 25%, transparent);
   --page-glow-primary: color-mix(in srgb, var(--primary) 7%, transparent);
   --page-glow-secondary: color-mix(in srgb, var(--secondary) 5%, transparent);
@@ -320,7 +320,7 @@
   --text-soft: #b6c3cd;
   --text-muted: #9fb0bb;
   --muted: #9fb0bb;
-  --border: #244962;
+  --border: #193440;
   --border-strong: #5e788b;
   --primary: #35c3b9;
   --primary-strong: #69d8d0;

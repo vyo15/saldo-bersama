@@ -21,7 +21,7 @@
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  border: 1px solid var(--border-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   background: var(--surface-elevated);
   box-shadow: var(--shadow-floating);
@@ -83,7 +83,7 @@
   min-width: var(--control-height-md);
   height: var(--control-height-md);
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--control-radius);
   display: inline-grid;
   place-items: center;

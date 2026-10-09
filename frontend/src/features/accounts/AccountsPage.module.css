@@ -39,7 +39,7 @@
   display: grid;
   gap: .65rem;
   padding: .9rem;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   background: var(--surface-soft);
 }

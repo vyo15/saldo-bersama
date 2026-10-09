@@ -45,9 +45,9 @@
 .filterButton {
   min-height: var(--control-height-md);
   padding: 0 var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
-  background: var(--surface);
+  background: var(--surface-section);
   color: var(--text-soft);
   display: inline-flex;
   align-items: center;
@@ -101,7 +101,7 @@
   align-items: center;
   gap: 3px;
   padding: 3px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: var(--surface-soft);
 }
@@ -434,7 +434,7 @@
 
 .managePanel {
   padding: var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--surface-soft);
   display: grid;

@@ -42,7 +42,7 @@
   justify-content: center;
   gap: 7px;
   padding: 10px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 14px;
   background: linear-gradient(155deg, var(--surface-soft), color-mix(in srgb, var(--input) 95%, var(--primary) 5%));
   color: var(--text-soft);

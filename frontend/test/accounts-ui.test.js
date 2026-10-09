@@ -472,7 +472,7 @@ ${accountEditors}`;
   assert.match(mobileTransferStyles, /\.mobileTransferQuickAction \{[^}]*min-height:\s*3\.7rem;[^}]*flex-direction:\s*column;/s);
   assert.match(accountsPageStyles, /impactSummary/);
   assert.match(pageStyles, /\.mobileRecentHeading h2 \{[^}]*font-size:\s*1\.04rem;/s);
-  assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid var\(--border\);[^}]*background:\s*var\(--surface-soft\);/s);
+  assert.match(pageStyles, /\.impactSummary \{[^}]*border:\s*1px solid transparent;[^}]*background:\s*var\(--surface-soft\);/s);
   assert.match(pageStyles, /\.impactSummary strong \{ color:\s*var\(--text\);/);
   assert.match(pageStyles, /mobileAccountExperience[\s\S]*background:/);
   assert.match(pageStyles, /mobileBalanceSummary[\s\S]*mobileAccountSummarySheen/);

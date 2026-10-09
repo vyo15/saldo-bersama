@@ -13,7 +13,7 @@
 .heading h1 { margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.025em; }
 .heading p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--font-size-xs); }
 .filterBar { margin-top: var(--space-4); }
-.filters { width: fit-content; min-width: 28rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
+.filters { width: fit-content; min-width: 28rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid transparent; border-radius: 14px; background: var(--surface-soft); }
 .filter { min-width: 0; min-height: var(--mobile-control-height); padding: 0 var(--space-3); border: 1px solid transparent; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-muted); background: transparent; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); white-space: nowrap; }
 .filter[data-active="true"] { border-color: color-mix(in srgb, var(--primary) 28%, var(--border)); color: var(--primary-strong); background: var(--surface); box-shadow: var(--shadow-sm); }
 .filterLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -22,7 +22,7 @@
 .content { min-width: 0; }
 .group { margin-top: var(--space-5); }
 .group h2 { margin: 0 4px var(--space-2); color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: .06em; text-transform: uppercase; }
-.list { overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.list { overflow: hidden; border: 1px solid transparent; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-sm); }
 .swipeCollapse { min-height: 0; display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows var(--motion-standard) var(--ease-exit), opacity var(--motion-fast) var(--ease-exit); }
 .swipeCollapse[data-collapsing="true"] { grid-template-rows: 0fr; opacity: 0; }
 .swipeItem { min-height: 0; position: relative; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--surface); }
