@@ -4,7 +4,7 @@ import { FiArrowRight, FiCheck, FiCheckCircle, FiEdit2, FiHeart, FiPlus, FiShopp
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
-import SelectionField from "../../components/common/SelectionField.jsx";
+import SelectionField, { SelectionControl } from "../../components/common/SelectionField.jsx";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -200,7 +200,7 @@ const WishlistPage = () => {
   if (resource.status === "loading" && !resource.data) return <NativePageSkeleton />;
   if (resource.status === "error" && !resource.data) return <ErrorState error={resource.error} onRetry={resource.reload} />;
   return <div className={styles.page}>
-    <PageHeader eyebrow="Rencana & Insight" title="Wishlist" description="Simpan keinginan, atur prioritas, dan rencanakan uang sebelum membeli." actions={<Button variant="primary" icon={FiPlus} onClick={() => setEditor({})}>Tambah keinginan</Button>} />
+    <PageHeader eyebrow="Rencana & Insight" title="Wishlist" description="Simpan keinginan, atur prioritas, dan rencanakan uang sebelum membeli." actions={<Button variant="primary" className={styles.addAction} aria-label="Tambah keinginan" icon={FiPlus} onClick={() => setEditor({})}>Tambah keinginan</Button>} />
     {resource.refreshError ? <RefreshWarning error={resource.refreshError} onRetry={resource.reload} /> : null}
     {feedback ? <p className={styles.error} role="alert">{feedback}</p> : null}
     <section className={styles.overview} aria-label="Ringkasan Wishlist">
@@ -210,7 +210,10 @@ const WishlistPage = () => {
     </section>
     <div className={styles.toolbar}>
       <div className={styles.pills} role="group" aria-label="Filter pemilik">{[["all", "Semua"], ["personal", "Pribadi"], ["shared", "Bersama"]].map(([value, label]) => <button key={value} type="button" aria-pressed={scope === value} onClick={() => setScope(value)}>{label}</button>)}</div>
-      <div className={styles.pills} role="group" aria-label="Filter prioritas">{[["all", "Semua prioritas"], ...Object.entries(priorityLabels)].map(([value, label]) => <button key={value} type="button" aria-pressed={priority === value} onClick={() => setPriority(value)}>{label}</button>)}</div>
+      <div className={`${styles.pills} ${styles.desktopPriority}`} role="group" aria-label="Filter prioritas">{[["all", "Semua prioritas"], ...Object.entries(priorityLabels)].map(([value, label]) => <button key={value} type="button" aria-pressed={priority === value} onClick={() => setPriority(value)}>{label}</button>)}</div>
+      <div className={styles.mobilePriority}>
+        <SelectionControl ariaLabel="Filter prioritas" compact value={priority} onChange={setPriority} options={selectionOptions({ all: "Semua prioritas", ...priorityLabels })} />
+      </div>
     </div>
     {selected.length ? <div className={styles.simToolbar}><span>{selected.length} barang dipilih · {formatRupiah(selected.reduce((sum, item) => sum + Number(item.estimated_amount), 0))}</span><div><Button type="button" onClick={() => setSelectedIds([])}>Batal pilih</Button><Button type="button" variant="primary" onClick={() => setShowSimulator(true)}>Simulasi total</Button></div></div> : null}
     <section className={styles.board} aria-label="Daftar keinginan">

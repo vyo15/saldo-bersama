@@ -166,6 +166,7 @@
 ## Wishlist purchase planning — manual smoke v27
 
 - [ ] Login sebagai Administrator dan Member, cek menu Wishlist pada desktop dan grup Rencana & Insight mobile; tab bottom navigation tetap lima slot.
+- [ ] Pada mobile 320/360/390/430px (light & dark): CTA Tambah di header hanya ikon 44px tetapi tetap bernama aksesibel; ringkasan 3 metrik menyatu ringkas, pemilik tetap pills, prioritas memakai SelectionControl app-owned compact dengan focus-visible; empty state dan daftar tidak terlalu tinggi, tidak overflow ke kanan, serta tidak tertutup bottom navigation. Desktop harus tetap memakai action berlabel dan kedua filter pills.
 - [ ] Uji light/dark, lebar 320/360/390px dan desktop: ringkasan nominal penuh, daftar compact tidak horizontal overflow, field tampak jelas, tombol punya target sentuh wajar.
 - [ ] Tambah Wishlist personal dan Bersama (nama, harga, HTTPS, catatan), lalu wajibkan target tanggal/nominal bulanan bila pilih bertahap/gabungan; input Rupiah memformat saat mengetik. Pilihan prioritas, strategi, rekening, kategori memakai SelectionField; tanggal memakai TemporalInput, bukan native browser picker.
 - [ ] Pemilik personal hanya melihat data sendiri; Administrator tidak dapat membuka Wishlist personal anggota lain. Shared visible semua, hanya pembuat/Administrator dapat mengedit/arsip.

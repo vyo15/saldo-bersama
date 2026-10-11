@@ -1,5 +1,7 @@
 ## Unreleased — Wishlist purchase planning (schema v27)
 
+- Mobile Wishlist UI: menyamakan header dengan aksi tambah ikon 44px yang tetap punya accessible name, menyatukan tiga metrik dalam satu surface ringkas, mengubah filter prioritas menjadi SelectionControl app-owned compact (desktop tetap pill), mengurangi tinggi empty state/list serta mempertahankan safe area bottom navigation. Tidak mengubah payload API, perhitungan dana, transaksi, migration, ataupun tata letak desktop.
+
 - Quality/regression UI: mengganti native select dan date picker Wishlist dengan SelectionField/TemporalInput canonical, memakai ikon rencana non-dollar, memperbaiki CSS Module dan microtext, serta memperbarui kontrak navigasi desktop/mobile untuk route Wishlist.
 
 - Quality hotfix: memecah validasi rencana dan pembelian Wishlist menjadi helper kecil tanpa mengubah aturan bisnis, agar ESLint complexity ≤20 dan `npm run zip` tidak terblokir.
