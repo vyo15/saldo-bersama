@@ -1,3 +1,15 @@
+## Unreleased — Wishlist purchase planning (schema v27)
+
+- Quality/regression UI: mengganti native select dan date picker Wishlist dengan SelectionField/TemporalInput canonical, memakai ikon rencana non-dollar, memperbaiki CSS Module dan microtext, serta memperbarui kontrak navigasi desktop/mobile untuk route Wishlist.
+
+- Quality hotfix: memecah validasi rencana dan pembelian Wishlist menjadi helper kecil tanpa mengubah aturan bisnis, agar ESLint complexity ≤20 dan `npm run zip` tidak terblokir.
+- Migration safety: menolak pemanggilan ambigu `npm run db:migrate --production` (flag npm menargetkan Development secara diam-diam), dengan petunjuk `npm run prod:update`; menambah regression guard dan dokumentasi operator.
+
+- Hotfix Production: mengganti `FiWallet` yang tidak diekspor `react-icons/fi` di halaman Wishlist dengan `FiDollarSign` yang valid, sehingga tidak memblokir Vite build dan operasi update database Production. Schema, migrasi, dan business logic tidak berubah; validasi `react-icons/fi` tetap dijaga oleh `frontend/test/ui-foundation.test.js`.
+- Wishlist Pribadi dan Bersama dengan rencana pendanaan wajib, prioritas, input estimasi dan target/bulanan, tidak memotong saldo ketika menyimpan.
+- Pembelian Wishlist memakai transaksi expense canonical atomik, saldo guard, optimistic concurrency, cancellation/reopen; audit dan scope privacy.
+- Route/sidebar/menu compact responsive; backup/restore/reset/export dan docs/QA/schema diselaraskan; regression baru.
+
 ## 2026-10-06 — Flow human-error hardening final pass
 - Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.
 

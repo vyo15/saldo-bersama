@@ -51,6 +51,7 @@ Gunakan index ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 |---|---|---|
 | UI/layout/responsive | `UI_DESIGN_SYSTEM.md`, `TEST_PLAN.md` | frontend regression + browser smoke dalam `npm run verify` + manual device QA bila relevan |
 | Rekening/transaksi/saldo/laporan | `product/PRODUCT_REQUIREMENTS.md`, `API_CONTRACT.md`, `DATA_DICTIONARY.md`, `TEST_PLAN.md` | business/domain regression + `npm run verify` |
+| Wishlist/rencana pembelian | `product/PRODUCT_REQUIREMENTS.md`, `API_CONTRACT.md`, `AUTHORIZATION_MATRIX.md`, `DATA_DICTIONARY.md` | wishlist workflow, transaction invariants, schema/backup/restore dan frontend responsive smoke |
 | Alokasi/Kebutuhan/Jadwal | `product/PRODUCT_REQUIREMENTS.md`, `product/GLOSSARY.md`, `API_CONTRACT.md`, `TEST_PLAN.md` | planning/business regression + funding/account-balance regression + `npm run verify` |
 | Investasi/RDN | `product/PRODUCT_REQUIREMENTS.md`, `API_CONTRACT.md`, `AUTHORIZATION_MATRIX.md`, `TURSO_SCHEMA.md`, `RECOVERY_RUNBOOK.md`, `adr/0011-manual-investment-rdn-ledger.md` | investment/integrity/backup regression + `npm run verify` |
 | Auth/session/role | `SECURITY_MODEL.md`, `AUTHORIZATION_MATRIX.md`, `ENVIRONMENT_VARIABLES.md` | auth/security regression + real login journey bila relevan |

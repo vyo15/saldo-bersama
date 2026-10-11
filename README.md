@@ -2,6 +2,9 @@
 
 Aplikasi keuangan privat untuk dua akun Google, dipakai dari ponsel, tablet, dan desktop. Turso adalah **source of truth** untuk saldo dan data finansial. Google Sheets hanya mirror laporan satu arah, Google Calendar untuk pengingat bersama, Google Drive untuk backup teknis, dan Excel untuk export pengguna.
 
+
+**Wishlist (Rencana & Insight):** rencanakan pembelian barang Pribadi/Bersama dengan prioritas dan strategi pendanaan wajib; total adalah estimasi, bukan saldo tersisih. Checkout satu barang dicatat via transaksi pengeluaran canonical. Fitur baru memerlukan migration schema v27 melalui workflow Production `npm run prod:update`, setelah verified backup dan integrity.
+
 ## Mulai untuk anggota tim atau ChatGPT baru
 
 Baca berurutan:
@@ -107,6 +110,8 @@ Production schema/runtime diperbarui dengan satu workflow canonical:
 ```bash
 npm run prod:update
 ```
+
+**Hindari `npm run db:migrate --production`: tanpa spasi, `--production` adalah flag npm dan bukan target database.** Gunakan `npm run prod:update` untuk Production atau `npm run db:migrate -- development` untuk Development. Tooling menolak penggunaan ambigu ketika `NODE_ENV=production` tetapi target tidak diberikan.
 
 `prod:update` menjalankan staged Vercel Production build dari source yang sama, membaca schema database aktual, membuat **backup verified fresh** dari schema aktif, menerapkan seluruh migration pending dalam **satu transaksi atomik** sampai schema runtime current, menjalankan integrity sebelum commit lalu verifikasi final, dan mempromosikan candidate yang sama ke domain Production dan memverifikasi health live. `npm run db:migrate -- production` dipertahankan sebagai alias kompatibilitas ke workflow yang sama agar operator lama tidak lagi meninggalkan database dan runtime pada versi berbeda. Credential Sensitive tetap berada di Vercel; `.env.production.local` bukan prasyarat untuk update runtime/database.
 

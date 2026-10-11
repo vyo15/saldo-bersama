@@ -37,6 +37,7 @@ import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../servic
 import { listTransferRequests, requestSharedToPersonalTransfer, reviewTransferRequest } from "../services/transferRequests.js";
 import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
 import { operationalHealthStatement, presentOperationalHealth, presentSchedulerHealth } from "../services/operationalHealth.js";
+import { listWishlist, createWishlist, updateWishlist, changeWishlistState, purchaseWishlist, reopenWishlist } from "../services/wishlist/index.js";
 import { shoppingByTransaction, shoppingDetail, shoppingSuggestions, createShoppingList, createShoppingItem, updateShoppingItem, setShoppingItemState, removeShoppingItem, checkoutShoppingList } from "../services/shopping.js";
 
 import { readSyncState } from "../syncRevisions.js";
@@ -138,6 +139,12 @@ const ACTION_HANDLERS = Object.freeze({
   "transactions.update": updateTransaction,
   "transactions.cancel": cancelTransaction,
   "transactions.restore": restoreTransaction,
+  "wishlist.list": listWishlist,
+  "wishlist.create": createWishlist,
+  "wishlist.update": updateWishlist,
+  "wishlist.state": changeWishlistState,
+  "wishlist.purchase": purchaseWishlist,
+  "wishlist.reopen": reopenWishlist,
   "shopping.detail": shoppingDetail,
   "shopping.suggestions": shoppingSuggestions,
   "shopping.byTransaction": shoppingByTransaction,

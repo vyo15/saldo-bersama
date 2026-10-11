@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadMigrations, migrationTargetSchemaVersion } from "../../scripts/db-migrate.mjs";
+import { assertExplicitProductionMigrationTarget, loadMigrations, migrationTargetSchemaVersion } from "../../scripts/db-migrate.mjs";
 import { runProductionUpdate, waitForProductionRuntime } from "../../scripts/production-update.mjs";
 
+
+test("migrasi fail-closed bila --production dikonsumsi npm sebagai flag bukan argumen script", () => {
+  assert.throws(
+    () => assertExplicitProductionMigrationTarget({ argv: [], nodeEnv: "production", remoteProduction: false }),
+    (error) => error.code === "MIGRATION_TARGET_EXPLICIT_REQUIRED" && error.message.includes("npm run prod:update"),
+  );
+  assert.doesNotThrow(() => assertExplicitProductionMigrationTarget({ argv: ["production"], nodeEnv: "production", remoteProduction: false }));
+  assert.doesNotThrow(() => assertExplicitProductionMigrationTarget({ argv: ["development"], nodeEnv: "production", remoteProduction: false }));
+  assert.doesNotThrow(() => assertExplicitProductionMigrationTarget({ argv: [], nodeEnv: "development", remoteProduction: false }));
+  assert.doesNotThrow(() => assertExplicitProductionMigrationTarget({ argv: [], nodeEnv: "production", remoteProduction: true }));
+});
 
 test("migration target memakai schema_version SQL dan tidak menganggap prefix 017 sebagai v17", () => {
   assert.equal(migrationTargetSchemaVersion("UPDATE system_config SET value='19' WHERE key='schema_version';", "017_budget_lifecycle_history.sql"), 19);
@@ -17,8 +28,8 @@ test("migration target memakai schema_version SQL dan tidak menganggap prefix 01
 
 test("seluruh migration chain memisahkan migration ID dari target schema secara monoton", async () => {
   const migrations = await loadMigrations();
-  assert.deepEqual(migrations.map((item) => item.migrationId), Array.from({ length: 24 }, (_, index) => index + 1));
-  assert.deepEqual(migrations.map((item) => item.targetSchemaVersion), Array.from({ length: 24 }, (_, index) => index + 3));
+  assert.deepEqual(migrations.map((item) => item.migrationId), Array.from({ length: 25 }, (_, index) => index + 1));
+  assert.deepEqual(migrations.map((item) => item.targetSchemaVersion), Array.from({ length: 25 }, (_, index) => index + 3));
   const expectedTail = [
     ["017_budget_lifecycle_history.sql", 19],
     ["018_envelope_decoration.sql", 20],
@@ -28,6 +39,7 @@ test("seluruh migration chain memisahkan migration ID dari target schema secara 
     ["022_goal_investment_funding.sql", 24],
     ["023_shopping_lists.sql", 25],
     ["024_investment_fractional_precision.sql", 26],
+    ["025_wishlist_purchase_planning.sql", 27],
   ];
   assert.deepEqual(migrations.slice(-expectedTail.length).map((item) => [item.file, item.targetSchemaVersion]), expectedTail);
 });

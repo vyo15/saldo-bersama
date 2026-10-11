@@ -56,3 +56,10 @@ Wajib untuk perubahan auth, role, permission, ownership, schema, transaction, im
 - Rekening/kategori arsip serta anggota nonaktif dipulihkan melalui action eksplisit yang diaudit.
 - Audit append-only tetap dipertahankan ketika rekening belum dipakai dihapus.
 - UI tidak melakukan optimistic removal untuk destructive write dan tidak menyediakan generic purge.
+
+
+## Wishlist privacy dan transaksi
+
+- Data Wishlist `personal` hanya boleh diakses oleh pemilik (`owner_user_id`) termasuk bagi Administrator lain; `shared` boleh dibaca semua anggota keluarga, tetapi diedit pembuat atau Administrator sesuai kebijakan.
+- API tidak mempercayai `owner_user_id` dari client; role/scope berasal dari session dan record server. `wishlist.purchase` mewajibkan rekening aktif dengan scope sesuai record dan untuk personal pemilik yang sama, lalu seluruh validasi transaksi canonical.
+- Produk URL hanya HTTPS tanpa embedded credentials. Update/status/purchase memakai optimistic concurrency `row_version`, write idempotency dari gateway, dan audit. Tidak ada reservasi atau mutasi ledger ketika merencanakan Wishlist.

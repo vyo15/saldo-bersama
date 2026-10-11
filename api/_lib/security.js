@@ -193,6 +193,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
     "categories.list", "categories.create", "categories.update", "categories.previewArchive", "categories.archive", "categories.restore", "categories.deleteUnused",
     "masterDataRequests.list", "masterDataRequests.review", "transferRequests.list", "transferRequests.review",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel", "transactions.restore",
+    "wishlist.list", "wishlist.create", "wishlist.update", "wishlist.state", "wishlist.purchase", "wishlist.reopen",
     "shopping.detail", "shopping.suggestions", "shopping.byTransaction", "shopping.create", "shopping.itemCreate", "shopping.itemUpdate", "shopping.itemState", "shopping.itemRemove", "shopping.checkout",
     "envelopes.list", "envelopes.create", "envelopes.createWithNeeds", "envelopes.adjustAllocation", "envelopes.move", "envelopes.close", "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule", "envelopes.reverseMovement",
     "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.previewRuleLifecycle", "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.payOccurrence", "recurring.reversePayment", "recurring.restoreRule",
@@ -205,6 +206,7 @@ export const ACTION_PERMISSIONS = Object.freeze({
   member: new Set([
     "system.health", "sync.state", "app.initialState", "bootstrap.get", "sessions.listOwn", "sessions.revokeOwn", "sessions.revokeAllOwn", "dashboard.overview", "investments.overview", "investments.instruments.list", "investments.assets.create", "investments.assets.recordPurchase", "investments.portfolios.create", "investments.trades.buy", "investments.trades.sell", "investments.valuations.update", "investments.reconciliations.create", "investments.openingPositions.create", "accounts.list", "accounts.requestCreate", "categories.list", "categories.requestCreate", "masterDataRequests.list", "transferRequests.list", "transferRequests.request",
     "transactions.list", "transactions.create", "transactions.update", "transactions.cancel",
+    "wishlist.list", "wishlist.create", "wishlist.update", "wishlist.state", "wishlist.purchase", "wishlist.reopen",
     "shopping.detail", "shopping.suggestions", "shopping.byTransaction", "shopping.create", "shopping.itemCreate", "shopping.itemUpdate", "shopping.itemState", "shopping.itemRemove", "shopping.checkout",
     "envelopes.list", "envelopes.create", "envelopes.createWithNeeds", "envelopes.adjustAllocation", "envelopes.move", "envelopes.reverseMovement", "recurring.list", "recurring.createRule", "recurring.updateRule", "recurring.payOccurrence", "recurring.reversePayment",
     "commitments.list", "commitments.create", "commitments.update", "commitments.recordReceipt",

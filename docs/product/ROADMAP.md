@@ -49,3 +49,10 @@ Bagian ini hanya menjaga keterlacakan keputusan; item berikut **bukan pekerjaan 
 - Full-transparency keluarga adalah keputusan produk current; granular personal privacy yang ditolak tidak diperlakukan sebagai pekerjaan tertunda.
 - Compatibility data lama dipertahankan sesuai schema/recovery contract, tetapi tidak otomatis menjadi flow UI yang perlu dikembangkan kembali.
 - Fitur yang sudah Implemented dan hanya membutuhkan evidence release dicatat sebagai verification di bagian **Now**, bukan sebagai proyek implementasi baru.
+
+
+## Wishlist follow-up (future, bukan runtime current)
+
+- Multi-item purchase canonical atomic dengan ongkir/diskon sharing dan item-level linkage; simulator estimasi multi-item sudah tersedia dan tidak membuat transaksi.
+- Smart priority advisor lanjutan yang memakai lebih banyak konteks; versi sederhana berbasis urgensi/manfaat dan persetujuan manual sudah tersedia tanpa pemeringkatan black box.
+- Pendanaan benar-benar dialokasikan dari Atur Dana/Target existing, approval komitmen dana Bersama, dan dukungan goal personal setelah review permission.

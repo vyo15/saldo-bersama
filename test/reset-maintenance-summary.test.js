@@ -17,6 +17,7 @@ import {
 const rowCount = (count) => [{ count }];
 
 const trialSummaryKeys = Object.freeze({
+  wishlist_items: "wishlistItems",
   shopping_items: "shoppingItems",
   shopping_checkouts: "shoppingCheckouts",
   shopping_lists: "shoppingLists",
@@ -51,6 +52,7 @@ const trialSummaryKeys = Object.freeze({
 });
 
 const fullSummaryKeys = Object.freeze({
+  wishlist_items: "wishlistItems",
   shopping_items: "shoppingItems",
   shopping_checkouts: "shoppingCheckouts",
   shopping_lists: "shoppingLists",

@@ -194,7 +194,23 @@ export const runLocalDatabaseMigration = async ({ databaseEnvironment, projectRo
   return { environment: databaseEnvironment, version: finalVersion, pendingApplied: applied.length, pendingRemaining: 0 };
 };
 
+// `npm run db:migrate --production` is an npm flag, not a script argument.
+// npm silently sets NODE_ENV=production and would otherwise target Development.
+export const assertExplicitProductionMigrationTarget = ({
+  argv = process.argv.slice(2),
+  nodeEnv = process.env.NODE_ENV,
+  remoteProduction = isRemoteProductionContext(),
+} = {}) => {
+  if (!remoteProduction && argv.length === 0 && String(nodeEnv || "").toLowerCase() === "production") {
+    throw Object.assign(new Error(
+      "Perintah migrasi ambigu: flag npm --production tidak memilih database Production. " +
+      "Gunakan `npm run prod:update` untuk Production, atau `npm run db:migrate -- development` untuk Development.",
+    ), { code: "MIGRATION_TARGET_EXPLICIT_REQUIRED" });
+  }
+};
+
 export const runDatabaseMigration = async ({ argv = process.argv.slice(2), projectRoot = root } = {}) => {
+  assertExplicitProductionMigrationTarget({ argv });
   const databaseEnvironment = resolveDatabaseProfileTarget({ argv });
   if (databaseEnvironment === "production" && !isRemoteProductionContext()) {
     const { runProductionUpdate } = await import("./production-update.mjs");

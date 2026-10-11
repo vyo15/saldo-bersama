@@ -67,12 +67,13 @@ const exportData = async (db) => {
     db.all("SELECT r.reconciliation_id,r.reconciled_at,a.name AS account_name,r.system_balance,r.actual_balance,r.difference,r.notes,r.status FROM reconciliations r JOIN accounts a ON a.account_id=r.account_id ORDER BY r.reconciled_at DESC"),
     db.all("SELECT timestamp,actor_email,action,entity_type,entity_id,result FROM audit_log ORDER BY timestamp DESC LIMIT 10000"),
   ]);
-  const [shoppingLists, shoppingItems, shoppingCheckouts] = await Promise.all([
+  const [shoppingLists, shoppingItems, shoppingCheckouts, wishlistItems] = await Promise.all([
     db.all(`SELECT l.shopping_list_id,l.name,l.status,l.budget_id,b.name AS budget_name,b.period_key,l.created_at,l.updated_at FROM shopping_lists l JOIN budgets b ON b.budget_id=l.budget_id ORDER BY b.period_key DESC,l.updated_at DESC`),
     db.all(`SELECT i.shopping_item_id,i.shopping_list_id,i.name,i.quantity_milli,i.unit_key,i.estimated_unit_price,i.estimated_amount,i.actual_amount,i.note,i.group_name,i.status,i.created_at,i.updated_at FROM shopping_items i ORDER BY i.shopping_list_id,i.sort_order,i.created_at`),
     db.all(`SELECT c.shopping_checkout_id,c.shopping_list_id,c.transaction_id,c.total_amount,c.item_count,c.checkout_date,c.created_at FROM shopping_checkouts c ORDER BY c.checkout_date DESC,c.created_at DESC`),
+    db.all(`SELECT w.wishlist_item_id,w.scope,w.owner_user_id,COALESCE(u.name,'') AS owner_name,w.name,w.estimated_amount,w.priority,w.funding_strategy,w.target_date,w.monthly_plan,w.product_url,w.note,w.status,w.purchase_transaction_id,w.purchased_amount,CASE WHEN t.status='active' THEN t.amount ELSE w.purchased_amount END AS actual_amount_current,w.row_version,w.created_at,w.updated_at FROM wishlist_items w LEFT JOIN users u ON u.user_id=w.owner_user_id LEFT JOIN transactions t ON t.transaction_id=w.purchase_transaction_id ORDER BY w.created_at DESC`),
   ]);
-  return { Ringkasan: [{ exported_at: nowIso(), schema_version: DATABASE_SCHEMA_VERSION, timezone: "Asia/Jakarta", currency: "IDR", note: "Excel adalah export baca, bukan file restore." }], Transaksi: transactions, Rekening: accounts, Kategori: categories, Anggaran: budgets, Kantong: envelopes, Tagihan: recurring, Target: goals, DaftarBelanja: shoppingLists, BarangBelanja: shoppingItems, CheckoutBelanja: shoppingCheckouts, Rekonsiliasi: reconciliations, Audit: audit };
+  return { Ringkasan: [{ exported_at: nowIso(), schema_version: DATABASE_SCHEMA_VERSION, timezone: "Asia/Jakarta", currency: "IDR", note: "Excel adalah export baca, bukan file restore." }], Transaksi: transactions, Rekening: accounts, Kategori: categories, Anggaran: budgets, Kantong: envelopes, Tagihan: recurring, Target: goals, Wishlist: wishlistItems, DaftarBelanja: shoppingLists, BarangBelanja: shoppingItems, CheckoutBelanja: shoppingCheckouts, Rekonsiliasi: reconciliations, Audit: audit };
 };
 
 export default async function handler(request, response) {

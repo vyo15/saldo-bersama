@@ -217,3 +217,13 @@ Dekorasi kartu Alokasi Dana diturunkan otomatis dari `decoration_key=auto`; flow
 
 
 - Human-error hardening final: create anggota dengan email aktif harus berhenti tanpa silent update; privilege Administrator baru/perubahan role wajib direview; Shopping Undo mengembalikan status sebelum dihapus dan tidak kedaluwarsa saat restore; editor Shopping, Rekening, Kategori, Target, Rekonsiliasi, lifecycle Transaksi, Anggota, dan Jadwal Rutin mempertahankan exact-retry saat outcome mutation belum pasti; Target baru/edit tidak menerima tanggal masa lalu.
+
+
+## Wishlist — Rencana Pembelian
+
+1. Wishlist berisi barang Pribadi (hanya pemilik) dan Bersama (readable anggota). Entry point di Rencana & Insight; Wishlist terpisah dari Daftar Belanja kebutuhan operasional.
+2. Barang aktif wajib memiliki nominal estimasi positif serta strategi pendanaan (`available`, `gradual`, atau `combined`). Strategi bertahap/gabungan wajib target tanggal atau nominal bulanan. Menyimpan rencana TIDAK mengalokasikan uang, mengurangi dana bebas, atau membuat transaksi.
+3. Pengguna memilih prioritas manual: Segera, Direncanakan, Nanti. Saran (bila ada) hanya informasi, tidak boleh mengubah prioritas tanpa persetujuan. Total Wishlist adalah estimasi kebutuhan, BUKAN dana tersedia/terkumpul.
+4. Pemilik mengubah item personal. Item Bersama dapat diubah oleh pembuat/Administrator, tetap mengacu permission ledger ketika checkout. Pembelian memvalidasi scope rekening, kategori, saldo, alokasi dan idempotency transaksi existing, lalu menautkan satu transaksi expense canonical secara atomik.
+5. Barang purchased hanya dapat diaktifkan kembali ketika transaksi pembelian sudah cancelled. Edit/archive item purchased ditolak sampai payment dibatalkan. Semua perubahan penting diaudit dengan optimistic concurrency row_version.
+6. Restore/backup/reset/export menyertakan `wishlist_items`; migrasi production harus sesuai schema v27 dan gate integrity. Tidak ada auto-fund, goal pribadi otomatis, multi-item purchase atomic, atau approval khusus Wishlist dalam current release.

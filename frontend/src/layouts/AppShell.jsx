@@ -38,6 +38,7 @@ const DESKTOP_LOCAL_CREATE_ROUTES = new Set([
   "/rekening",
   "/perencanaan",
   "/target",
+  "/wishlist",
   "/kategori",
   "/investasi",
 ]);

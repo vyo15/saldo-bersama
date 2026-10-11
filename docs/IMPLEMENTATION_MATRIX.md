@@ -68,9 +68,16 @@ Status **Implemented** berarti source tersedia; bukan bukti deployment productio
 |---|---|---|---|
 | Reset data testing & full reset | Implemented | Trial Reset Administrator-only pada database Development/Production terikat; unbound tetap fail-closed; preset aktivitas, optional saldo Rp0 + row_version, full data reset guarded, verified safety backup, reconciliation status, integrity/audit | Restore drill nyata setelah full reset pada salinan terisolasi |
 
+## Wishlist dan rencana pembelian
+
+- DB: `025_wishlist_purchase_planning.sql`, schema v27; ownership personal/bersama, rencana wajib, audit, optimistic concurrency dan FK pembelian.
+- API: `wishlist.list/create/update/state/purchase/reopen`; satu operasi purchase memakai transaksi canonical; personal actor-only, shared kolaborasi dengan hak edit pembuat/Administrator.
+- UI: entry point Rencana & Insight + desktop Atur Dana, modal 2 langkah, filter scope/prioritas, ringkasan estimasi dan pembayaran.
+- Ops: backup, restore, reset, export, cache/sync, regression SQL dan financial safety. Tidak ada reserved-fund atau goal personal otomatis.
+
 ## Daftar Belanja
 
-- DB: migration `024_investment_fractional_precision.sql`, schema v26.
+- DB: Daftar Belanja diperkenalkan pada migration `023_shopping_lists.sql` (v25); schema runtime current v27.
 - API: shopping detail/suggestion/item mutations/atomic checkout/by-transaction.
 - UI: capability opt-in per Kebutuhan melalui switch create/edit/batch; entry point hanya muncul saat aktif, responsive list, item editor, shopping mode, checkout, success, transaction detail.
 - Ops: cache/sync invalidation, backup/restore/reset/export, lifecycle dependency.

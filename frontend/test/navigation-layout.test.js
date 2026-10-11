@@ -29,7 +29,7 @@ test("desktop mempertahankan module dock Saldo Bersama melengkung dengan entry p
   assert.match(source, /data-label=\{label\}/);
 
   assert.match(navigation, /export const DESKTOP_NAVIGATION = Object\.freeze\(\[[\s\S]*navigationByPath\.get\("\/"\)[\s\S]*navigationByPath\.get\("\/transaksi"\)/);
-  assert.match(navigation, /id: "planning"[\s\S]*items: pickNavigation\("\/perencanaan", "\/target"\)/);
+  assert.match(navigation, /id: "planning"[\s\S]*items: pickNavigation\("\/perencanaan", "\/target", "\/wishlist"\)/);
   assert.match(navigation, /id: "finance"[\s\S]*label: "Keuangan"[\s\S]*items: pickNavigation\("\/rekening", "\/kategori", "\/investasi"\)/);
   assert.match(navigation, /id: "management"[\s\S]*label: "Kelola"[\s\S]*ownerOnly: true[\s\S]*items: pickNavigation\("\/anggota"\)/);
   const desktopBlock = navigation.match(/export const DESKTOP_NAVIGATION = Object\.freeze\(\[([\s\S]*?)\n\]\);/)?.[1] || "";
@@ -286,7 +286,7 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   assert.match(source, /to: "\/perencanaan", label: "Atur Dana"/);
   assert.doesNotMatch(source, /to: "\/anggaran", label: "Anggaran"/);
   assert.doesNotMatch(source, /to: "\/(?:alokasi|tagihan)"/);
-  assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target"\)/);
+  assert.match(source, /items: pickNavigation\("\/perencanaan", "\/target", "\/wishlist"\)/);
   assert.match(source, /label: "Keuangan"/);
   assert.match(source, /items: pickNavigation\("\/rekening", "\/investasi", "\/kategori"\)/);
   assert.doesNotMatch(source, /label: "Kontrol saldo"|items: pickNavigation\("\/rekonsiliasi"\)/);
@@ -297,7 +297,7 @@ test("navigasi Perencanaan memusatkan Kebutuhan di Alokasi dan menyembunyikan du
   assert.doesNotMatch(mobileSecondaryBlock, /label: "Kelola"/);
   assert.match(source, /MOBILE_SECONDARY_GROUPS/);
   assert.match(source, /pickNavigation\("\/", "\/perencanaan", "\/transaksi"\)/);
-  assert.match(source, /id: "planning-insight", label: "Rencana & Insight", items: pickNavigation\("\/target", "\/laporan"\)/);
+  assert.match(source, /id: "planning-insight", label: "Rencana & Insight", items: pickNavigation\("\/target", "\/wishlist", "\/laporan"\)/);
   assert.doesNotMatch(source, /PRIMARY_NAVIGATION\[\d+\]/);
 });
 

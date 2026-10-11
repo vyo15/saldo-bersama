@@ -30,7 +30,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 26 sebelum runtime current menerima traffic.
+- Schema Production harus versi 27 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -248,7 +248,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 26 sebelum deployment current menerima traffic.
+- Schema Production harus versi 27 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 
@@ -290,3 +290,13 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 
 
 - Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.
+
+
+## Wishlist dan perencanaan pembelian (v27)
+
+- `node --test test/shopping/wishlist-workflow.test.js`: validasi rencana wajib/URL HTTPS; privacy Pribadi/Bersama; izin edit; optimistic concurrency; pembuatan rencana tanpa mutasi saldo; pembelian atomic dari rekening scope sesuai; insufficient balance; pencegahan pembelian ganda; cancellation/reopen.
+- Regression schema, reset maintenance, restore logical backup dan export lengkap harus mempertahankan tabel `wishlist_items` dan FK pembayaran.
+- QA manual responsive: light/dark desktop/mobile; modal 2 langkah dan tombol back, prioritas, filter, item arsip, browser navigation, network lost/unknown mutation outcome, akses pribadi antar akun, pembelian gagal.
+- UI regresi wajib mempertahankan pemilihan app-owned SelectionField (prioritas/strategi/rekening/kategori), TemporalInput untuk tanggal, icon semantics non-dollar, dan class CSS Module yang ada; regression test navigasi mencakup Wishlist pada desktop dan mobile.
+- `node --test test/tooling/production-update.test.js`: migrasi Producton menolak `npm run db:migrate --production` yang dikonsumsi npm sebagai flag, sementara `npm run prod:update` tetap alur canonical.
+- Perilaku di luar patch: tidak ada auto-reservation, auto-funding, Target pribadi otomatis atau multi-item checkout atomik; semua pembayaran melalui transaksi canonical.

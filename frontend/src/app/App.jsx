@@ -26,6 +26,7 @@ import {
   loadPeriodControlPage,
   loadPlanningPage,
   loadShoppingPage,
+  loadWishlistPage,
   loadReconciliationsPage,
   loadRecoveryPage,
   loadReportsPage,
@@ -40,6 +41,7 @@ const DashboardPage = lazy(loadDashboardPage);
 const TransactionsPage = lazy(loadTransactionsPage);
 const PlanningPage = lazy(loadPlanningPage);
 const ShoppingPage = lazy(loadShoppingPage);
+const WishlistPage = lazy(loadWishlistPage);
 const GoalsPage = lazy(loadGoalsPage);
 const ReportsPage = lazy(loadReportsPage);
 const AccountsPage = lazy(loadAccountsPage);
@@ -108,6 +110,7 @@ const App = () => (
         <Route path="alokasi" element={<LegacyPlanningRedirect to="/perencanaan/kantong" />} />
         <Route path="tagihan" element={<LegacyPlanningRedirect to="/perencanaan/jadwal" />} />
         <Route path="target" element={routeElement(GoalsPage)} />
+        <Route path="wishlist" element={routeElement(WishlistPage)} />
         <Route path="laporan" element={routeElement(ReportsPage)} />
         <Route path="rekening" element={routeElement(AccountsPage)} />
         <Route path="investasi" element={routeElement(InvestmentsPage)} />

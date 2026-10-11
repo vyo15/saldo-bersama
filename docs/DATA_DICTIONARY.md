@@ -5,7 +5,7 @@
 > **Update when:** Makna field/table atau lifecycle data berubah.  
 > **Boundary:** Tipe/constraint authoritative berada di migration; kronologi migration berada di Git/CHANGELOG.
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `022_goal_investment_funding.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `025_wishlist_purchase_planning.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -48,6 +48,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `investment_corrections` | Event correction/opening-position append-only dengan share/cost-basis/cash delta, `cash_effect_enabled`, alasan, dan reference price. | Tinggi | Tidak rewrite trade history; ikut backup/restore |
 | `envelope_movements` | Realokasi atau mutasi Alokasi Dana yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `budgets` | Kebutuhan operasional per periode terbuka, termasuk metadata penghentian dan total dana yang sudah dilepas. | Sedang | User-facing remove memilih delete history-free atau ended/archive; row periode tertutup dipadatkan |
+| `wishlist_items` | Rencana pembelian pribadi/bersama, estimasi biaya, prioritas, strategi dan target dana, satu tautan transaksi pembayaran bila dibeli. Menyimpan rencana tidak mengurangi saldo dan tidak menciptakan dana terkunci. | Tinggi | User create/update/archive; purchased melalui transaction canonical, cancelled payment bisa reopen; backup/restore/export/reset |
 | `shopping_lists` | Daftar belanja operasional yang terhubung ke satu Kebutuhan dan memakai optimistic concurrency. | Sedang | Service shopping; ikut backup/restore/export/reset |
 | `shopping_items` | Barang checklist dengan quantity milli-unit, estimasi/aktual, kelompok, dan status operasional. | Sedang | Bukan ledger/transaction line; purchased hanya melalui checkout |
 | `shopping_checkouts` | Snapshot checkout yang menautkan satu sesi belanja ke satu transaksi canonical. | Tinggi | Transaction ID unik; dibuat atomik bersama transaksi |
@@ -141,7 +142,7 @@ Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API cont
 
 ## Current schema marker
 
-Versi runtime aktif: `26`. Latest migration canonical: `024_investment_fractional_precision.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
+Versi runtime aktif: `27`. Latest migration canonical: `025_wishlist_purchase_planning.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
 
 Compatibility penting yang tetap current:
 

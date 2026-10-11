@@ -26,6 +26,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "commitments.list": 30_000,
   "budgets.list": 30_000,
   "budgets.previewLifecycle": 0,
+  "wishlist.list": 30_000,
   "shopping.detail": 30_000,
   "shopping.suggestions": 30_000,
   "shopping.byTransaction": 60_000,

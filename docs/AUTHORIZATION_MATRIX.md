@@ -79,6 +79,12 @@
 | `transactions.update` | Ya | Ya |
 | `transactions.cancel` | Ya | Ya |
 | `transactions.restore` | Ya | Tidak |
+| `wishlist.list` | Ya | Ya |
+| `wishlist.create` | Ya | Ya |
+| `wishlist.update` | Ya | Ya |
+| `wishlist.state` | Ya | Ya |
+| `wishlist.purchase` | Ya | Ya |
+| `wishlist.reopen` | Ya | Ya |
 | `envelopes.list` | Ya | Ya |
 | `envelopes.create` | Ya | Ya |
 | `envelopes.createWithNeeds` | Ya | Ya |

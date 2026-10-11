@@ -116,9 +116,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v25 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v27 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "26");
+  assert.equal(result.schema_version, "27");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);

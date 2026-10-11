@@ -586,3 +586,13 @@ Daftar Belanja mewarisi token, primitive, typography Manrope, sidebar, dan botto
 
 
 - Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.
+
+
+## Wishlist (Rencana & Insight)
+
+- Gunakan header/shell/navigation existing; entry desktop pada Atur Dana dan mobile Rencana & Insight, tanpa tab bottom navigation keenam.
+- List item compact, permukaan natural berbasis token light/dark (tanpa wrapper/border bersarang); prioritaskan nama barang, estimasi, scope, prioritas dan rencana bulanan.
+- Tambah/edit memakai 2 langkah `Barang` lalu `Rencana dana`; harga wajib, link/catatan opsional; format Rupiah pada MoneyInput terjadi saat mengetik. Form bertahap mensyaratkan target tanggal atau nominal per bulan.
+- Label Total Wishlist harus berbunyi estimasi, bukan saldo atau dana siap pakai. Konfirmasi pembelian menampilkan nominal nyata, ongkir, diskon, rekening, kategori dan tanggal; tak ada mutasi finansial saat mengetik.
+- Semua pilihan terstruktur Wishlist memakai `SelectionField` (bukan `<select>` native), tanggal memakai `TemporalInput` (bukan native picker); ikon rencana dana tidak memakai simbol dolar, mikro-teks minimal 12px, dan setiap CSS Module harus dideklarasikan.
+- Semua form dan filter usable pada mobile/dark mode, label controls dan state busy/error/unknown outcome tidak boleh tersembunyi.

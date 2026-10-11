@@ -161,3 +161,19 @@
 
 
 - Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.
+
+
+## Wishlist purchase planning — manual smoke v27
+
+- [ ] Login sebagai Administrator dan Member, cek menu Wishlist pada desktop dan grup Rencana & Insight mobile; tab bottom navigation tetap lima slot.
+- [ ] Uji light/dark, lebar 320/360/390px dan desktop: ringkasan nominal penuh, daftar compact tidak horizontal overflow, field tampak jelas, tombol punya target sentuh wajar.
+- [ ] Tambah Wishlist personal dan Bersama (nama, harga, HTTPS, catatan), lalu wajibkan target tanggal/nominal bulanan bila pilih bertahap/gabungan; input Rupiah memformat saat mengetik. Pilihan prioritas, strategi, rekening, kategori memakai SelectionField; tanggal memakai TemporalInput, bukan native browser picker.
+- [ ] Pemilik personal hanya melihat data sendiri; Administrator tidak dapat membuka Wishlist personal anggota lain. Shared visible semua, hanya pembuat/Administrator dapat mengedit/arsip.
+- [ ] Pilih saran prioritas opsional, cek prioritas tidak berubah sampai `Gunakan saran`; uji filter scope/prioritas dan arsip/reactivate.
+- [ ] Pilih beberapa item untuk simulasi total ongkir/voucher. Pastikan simulasi tidak mengubah saldo atau membuat transaksi.
+- [ ] Checkout personal/shared hanya menampilkan rekening scope cocok; cek harga + ongkir − diskon, pilih kategori dan tanggal, cek insufficient balance dan saldo teralokasi.
+- [ ] Pembayaran sukses membuat satu transaksi canonical, pembelian ganda ditolak; batalkan transaksi, cek status perubahan realtime lalu `Buka rencana lagi`.
+- [ ] Buat backup dengan Wishlist active dan purchased, lakukan restore drill di salinan Development terisolasi; pastikan FK transaksi/owner tetap valid. Periksa XLSX Administrator sheet `Wishlist` dan hasil Trial/Full Reset.
+- [ ] Uji dua perangkat: edit konflik `row_version`, cache refresh setelah transaksi dibatalkan, dan network outage setelah mengirim mutation (jangan retry dengan item baru).
+- [ ] Pastikan operator memakai `npm run prod:update` saat schema Production v26 menuju v27; `db:integrity -- production` sebelum migrasi memang gagal sesuai ekspektasi, dan `db:migrate --production` (tanpa spasi setelah `--`) harus ditolak oleh guard.
+- [ ] Jangan klaim Production-ready sampai `npm run lint`, `npm run verify`, browser smoke, restore drill dan real-account smoke semuanya PASS dalam lingkungan dengan dependensi lengkap.
