@@ -306,5 +306,6 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 
 ### Wishlist compact V2 — regression frontend
 - `frontend/test/wishlist-mobile-layout.test.js`: tab pemilik segmented yang aksesibel, advanced filter dalam modal, simulasi opt-in, dan mobile safe area.
+- `frontend/test/wishlist-mobile-layout.test.js` juga mengunci lazy boundary `WishlistDialogLayer` dan fallback modal sehingga daftar tidak memuat komponen finansial sebelum diperlukan; cek route chunk gzip tetap <=8 KiB pada build budget canonical.
 - `frontend/test/motion-system.test.js`: validasi properti transition per CSS declaration (bukan konkatenasi file), tanpa animasi width/height, serta menghormati prefers-reduced-motion.
 - Manual smoke viewport 320–430px + desktop, light/dark, filter yang diganti cepat, simulasi lintas filter, daftar kosong, menu aksesibel, checkout yang tetap terpisah.

@@ -60,3 +60,18 @@ test("Wishlist simulation remains opt-in and keeps checkout separate", async () 
   assert.match(css, /\.itemPurchaseRow\{[^}]*flex-wrap:wrap/s);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
 });
+
+test("Wishlist loads financial forms on demand without increasing route bundle budget", async () => {
+  const [page, layer] = await Promise.all([
+    read("src/features/wishlist/WishlistPage.jsx"),
+    read("src/features/wishlist/WishlistDialogLayer.jsx"),
+  ]);
+  assert.match(page, /const WishlistDialogLayer = lazy\(\(\) => import\("\.\/WishlistDialogLayer\.jsx"\)\)/);
+  assert.match(page, /<Suspense fallback=\{<LazyActionFallback surface="modal"/);
+  assert.doesNotMatch(page, /import (MoneyInput|SelectionField|TemporalInput) from/);
+  assert.match(layer, /const WishlistEditor =/);
+  assert.match(layer, /const WishlistCheckout =/);
+  assert.match(layer, /const WishlistSimulator =/);
+  assert.match(layer, /useGuardedMutation\(\)/);
+  assert.match(layer, /purchaseWishlist\(/);
+});

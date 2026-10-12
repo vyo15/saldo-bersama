@@ -192,4 +192,5 @@
 - [ ] Dalam dialog filter, ubah prioritas/arsip lalu tutup lewat X/Back: perubahan draft batal; tombol Tampilkan hasil baru menerapkan perubahan.
 - [ ] Pada mode normal tidak ada checkbox per barang; Dibeli tetap lewat checkout canonical. Saat mode simulasi, checkbox baru muncul, total terpilih akurat lintas pemilik/priority, dan Dibeli sementara disembunyikan.
 - [ ] Nominal dan nama panjang tidak terpotong pada mobile 320px; menu overflow dan CTA punya hit target 44px, memakai keyboard/focus-visible serta reduced-motion tanpa animasi.
+- [ ] Buka Tambah, Edit, Dibeli, dan Simulasi untuk pertama kali setelah refresh/slow network: fallback modal terlihat sebentar, kemudian form benar tampil dan focus/Back tidak terjebak; ulangi sesudah menutup untuk memverifikasi lazy chunk sudah dimuat.
 - [ ] Jalankan lint + seluruh regression frontend termasuk motion-system + build + browser smoke di lingkungan dengan dependency platform benar sebelum klaim production-ready.
