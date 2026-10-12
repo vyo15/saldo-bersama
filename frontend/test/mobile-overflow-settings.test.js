@@ -282,7 +282,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(allocations, /aria-label="Muat ulang Alokasi Dana"/);
   assert.match(allocations, /PageHeader title="Alokasi Dana"/);
   assert.match(allocations, /allocation-funding-summary/);
-  assert.match(allocations, /allocation-filters/);
+  assert.match(allocations, /QuickSegmentedFilter/);
   assert.match(allocations, /planning-active-row/);
   assert.match(allocations, /aria-label=\{`Buka detail \$\{item\.name\}`\}/);
   assert.doesNotMatch(allocations, /allocation-card__expand|allocation-card__fund/);
@@ -301,7 +301,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(goalStyles, /\.goal-action-menu:only-child\s*\{[\s\S]*?grid-column:\s*2;/);
   assert.doesNotMatch(allocationStyles, /allocation-refresh-action/);
   assert.doesNotMatch(allocationStyles, /allocation-header-actions--with-move|allocation-move-action/);
-  assert.match(allocationStyles, /\.allocation-filters button\s*\{[^}]*min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(await read("src/components/common/QuickSegmentedFilter.module.css"), /min-height:\s*var\(--mobile-hit-target\);/);
   assert.doesNotMatch(allocationStyles, /allocation[^\n{]*\{[^}]*font-size:\s*9px/);
   assert.match(reportStyles, /@media \(max-width: 820px\)/);
   assert.doesNotMatch(reportStyles, /font-size:\s*9px/);

@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   FiAlertTriangle, FiArchive, FiArrowRight, FiBell, FiCalendar, FiCheckCircle, FiChevronDown, FiChevronUp,
   FiClock, FiEdit2, FiMoreHorizontal, FiRepeat, FiRotateCcw,
 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
+import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
 import Money from "../../components/common/Money.jsx";
 import StatusBadge from "../../components/common/StatusBadge.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
@@ -271,17 +272,22 @@ export const ScheduleSummary = ({ items, onAttention, expenseOnly = false }) => 
 };
 
 const ScheduleFilters = ({ filter, setFilter, items }) => {
+  const advancedRef = useRef(null);
   const counts = useMemo(() => Object.fromEntries(FILTERS.map(({ id }) => [id, items.filter((item) => scheduleMatchesFilter(item, id)).length])), [items]);
-  return (
-    <div className={styles.filterBar} aria-label="Filter status jadwal">
-      {FILTERS.map((item) => (
-        <button key={item.id} type="button" className={`${styles.filterButton} ${filter === item.id ? styles.filterActive : ""}`} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>
-          <span>{item.label}</span>
-          <small>{counts[item.id]}</small>
-        </button>
-      ))}
-    </div>
-  );
+  const quick = FILTERS.slice(0, 3).map(({ id, label }) => ({ value: id, label, count: counts[id] }));
+  const advanced = FILTERS.slice(3);
+  const selectedAdvanced = advanced.find(({ id }) => id === filter);
+  return <div className={styles.compactStatusToolbar}>
+    <QuickSegmentedFilter label="Filter status jadwal" compact options={quick} value={filter} onChange={setFilter} />
+    <details ref={advancedRef} className={styles.statusMore}>
+      <summary aria-label={`Filter status lainnya${selectedAdvanced ? `: ${selectedAdvanced.label}` : ""}`} title="Filter status lainnya"><FiMoreHorizontal aria-hidden="true" /><span className="sr-only">Filter lainnya</span>{selectedAdvanced ? <span className={styles.statusMoreDot} aria-hidden="true" /> : null}</summary>
+      <div className={styles.statusMoreOptions} role="group" aria-label="Status jadwal lainnya">
+        {advanced.map(({ id, label }) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => { setFilter(id); advancedRef.current?.removeAttribute("open"); }}>{label}<span>{counts[id]}</span></button>)}
+        {selectedAdvanced ? <button type="button" onClick={() => { setFilter("all"); advancedRef.current?.removeAttribute("open"); }}>Reset filter</button> : null}
+      </div>
+    </details>
+    {selectedAdvanced ? <span className={styles.selectedStatusLabel}>{selectedAdvanced.label}</span> : null}
+  </div>;
 };
 
 export const SchedulePeriodSection = ({ items, allItems, kind, setKind, filter, setFilter, actions, expandedId, setExpandedId, accounts, categories, budgets, canCreate, expenseOnly = false }) => {

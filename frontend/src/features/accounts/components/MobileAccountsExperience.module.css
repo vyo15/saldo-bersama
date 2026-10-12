@@ -4,6 +4,7 @@
 }
 
 @media (max-width: 820px) {
+  .mobileOwnershipCompact { margin: .85rem var(--mobile-page-gutter) 0; }
   .mobileAccountExperience {
     min-width: 0;
     margin-inline: calc(0px - var(--mobile-page-gutter));
@@ -146,55 +147,11 @@
     }
   }
 
-  .mobileOwnershipFilters {
-    margin: .85rem var(--mobile-page-gutter) 0;
-    padding: .25rem;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: .125rem;
-    border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
-    border-radius: 1.1rem;
-    background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
-  }
-
-  .mobileOwnershipFilter {
-    min-width: 0;
-    min-height: 2.75rem;
-    padding: 0 .35rem;
-    border: 0;
-    border-radius: .85rem;
-    background: transparent;
-    color: var(--text-soft);
-    font: inherit;
-    font-size: var(--font-size-body-sm);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: -.01em;
-    line-height: 1;
-    cursor: pointer;
-    touch-action: manipulation;
-    transition:
-      transform var(--motion-control) var(--ease-standard),
-      background-color var(--motion-control) var(--ease-standard),
-      color var(--motion-control) var(--ease-standard),
-      box-shadow var(--motion-control) var(--ease-standard);
-  }
-
-  .mobileOwnershipFilter[aria-pressed="true"] {
-    background: var(--surface);
-    color: var(--primary);
-    font-weight: var(--font-weight-semibold);
-    box-shadow: 0 .12rem .5rem color-mix(in srgb, var(--shadow-ink) 7%, transparent);
-  }
-
-  .mobileOwnershipFilter:active {
-    transform: scale(.98);
-  }
-
-  .mobileOwnershipFilter:focus-visible {
-    outline: 3px solid var(--focus-ring);
-    outline-offset: 1px;
-  }
-
+  
+  
+  
+  
+  
   .mobileStackStage {
     height: clamp(15.75rem, 65vw, 18rem);
     margin-top: .35rem;
@@ -632,31 +589,8 @@
     background: transparent;
   }
 
-  .mobileOwnershipFilters {
-    padding: 0;
-    border: 0;
-    border-bottom: 1px solid var(--mobile-divider);
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .mobileOwnershipFilter { border-radius: 0; }
-  .mobileOwnershipFilter[aria-pressed="true"] {
-    position: relative;
-    background: transparent;
-    box-shadow: none;
-  }
-  .mobileOwnershipFilter[aria-pressed="true"]::after {
-    content: "";
-    height: 2px;
-    position: absolute;
-    left: 24%;
-    right: 24%;
-    bottom: -1px;
-    border-radius: var(--radius-pill);
-    background: var(--primary);
-  }
-
+  
+      
   .mobileBalanceSummary { border-radius: var(--mobile-radius-object); }
 
   .mobileQuickActions {
@@ -698,11 +632,7 @@
     border-radius: .95rem;
   }
 
-  .mobileOwnershipFilter {
-    min-height: var(--mobile-control-height);
-    font-size: var(--font-size-xs);
-  }
-
+  
   .mobileStackCard {
     width: min(82vw, 20.8rem);
   }

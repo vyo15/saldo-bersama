@@ -126,7 +126,7 @@ const NotificationsPage = () => {
       </header>
 
       <div className={styles.filterBar}>
-        <div className={styles.filters} aria-label="Filter notifikasi">
+        <div className={styles.filters} role="group" aria-label="Filter notifikasi">
           {FILTERS.map((item) => <button key={item.id} type="button" className={styles.filter} data-active={filter === item.id ? "true" : "false"} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}><span className={styles.filterLabel}>{item.label}</span><span className={styles.filterCount}>{filterCounts[item.id]}</span></button>)}
         </div>
       </div>

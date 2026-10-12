@@ -14,8 +14,8 @@
 .heading p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--font-size-xs); }
 .filterBar { margin-top: var(--space-4); }
 .filters { width: fit-content; min-width: 28rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid transparent; border-radius: 14px; background: var(--surface-soft); }
-.filter { min-width: 0; min-height: var(--mobile-control-height); padding: 0 var(--space-3); border: 1px solid transparent; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-muted); background: transparent; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); white-space: nowrap; }
-.filter[data-active="true"] { border-color: color-mix(in srgb, var(--primary) 28%, var(--border)); color: var(--primary-strong); background: var(--surface); box-shadow: var(--shadow-sm); }
+.filter { min-width: 0; min-height: var(--mobile-control-height); padding: 0 var(--space-3); border: 1px solid transparent; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-muted); background: transparent; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); white-space: nowrap; transition: color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard); }
+.filter[data-active="true"] { border-color: transparent; color: var(--primary-strong); background: var(--primary-soft); box-shadow: none; }
 .filterLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .filterCount { min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); display: grid; place-items: center; color: var(--text-muted); background: var(--surface-strong); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
 .filter[data-active="true"] .filterCount { color: var(--primary-strong); background: var(--primary-soft); }
@@ -146,3 +146,5 @@
 @media (prefers-reduced-motion: reduce) {
   .swipeCollapse, .row { transition: none; }
 }
+
+@media (prefers-reduced-motion: reduce) { .filter { transition: none; } }

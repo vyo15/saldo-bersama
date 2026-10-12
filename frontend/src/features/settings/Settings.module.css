@@ -608,28 +608,11 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .auditFilters {
   min-width: 0;
   padding: .65rem var(--space-4);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: .45rem;
-  overflow-x: auto;
-  scrollbar-width: none;
+  border-bottom: 0;
+  display: block;
 }
-.auditFilters::-webkit-scrollbar { display: none; }
-.auditFilter {
-  min-height: var(--mobile-hit-target);
-  padding: .45rem .8rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  flex: 0 0 auto;
-  color: var(--text-soft);
-  background: var(--surface);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  transition: color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing), background-color var(--motion-fast) var(--motion-easing);
-}
-.auditFilter[aria-pressed="true"] { border-color: transparent; color: var(--primary-strong); background: var(--primary-soft); }
-.auditFilter:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) { .auditFilter:hover { border-color: var(--primary); } }
+
+@media (hover: hover) and (pointer: fine) { }
 
 .auditDesktopTable { min-width: 0; overflow-x: auto; }
 .auditDesktopTable table { margin: 0; }
@@ -1489,8 +1472,7 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
   .auditSystemIcon { width: 2.35rem; height: 2.35rem; }
   .auditActivityHeader { padding: var(--space-3); }
   .auditFilters { padding-inline: var(--space-3); }
-  .auditFilter { min-height: 2.75rem; }
-  .auditDesktopTable { display: none; }
+    .auditDesktopTable { display: none; }
   .auditTimeline { display: grid; }
   .auditDayGroup > h4 { padding-inline: var(--space-3); }
   .auditActivityRow { min-height: 5.25rem; padding: .8rem var(--space-3); }

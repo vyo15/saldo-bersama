@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { FiActivity, FiMinus, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import Card from "../../components/common/Card.jsx";
+import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
 import Money from "../../components/common/Money.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
@@ -97,18 +98,14 @@ const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
 const assetRowsForPortfolios = (portfolios = []) => portfolios.flatMap((portfolio) => (portfolio.holdings || []).map((holding) => ({ portfolio, holding })));
 const positionRowsForPortfolios = (portfolios = []) => portfolios.flatMap((portfolio) => (portfolio.positions || portfolio.holdings || []).map((holding) => ({ portfolio, holding })));
 
-const AssetPanel = ({ portfolios, filter, onHolding }) => {
+const AssetPanel = ({ portfolios, filter, onFilter, onHolding }) => {
   const rows = useMemo(() => assetRowsForPortfolios(portfolios).filter(({ holding }) => {
     if (filter === "stock") return !isMutualFundInstrument(holding);
     if (filter === "fund") return isMutualFundInstrument(holding);
     return true;
   }), [filter, portfolios]);
   return <Card className={holdingStyles.assetListCard}>
-    <div className={holdingStyles.assetFilters} role="group" aria-label="Filter jenis aset">
-      <button type="button" aria-pressed={filter === "all"} data-filter="all">Semua</button>
-      <button type="button" aria-pressed={filter === "stock"} data-filter="stock">Saham</button>
-      <button type="button" aria-pressed={filter === "fund"} data-filter="fund">Reksa Dana</button>
-    </div>
+    <QuickSegmentedFilter label="Filter jenis aset" options={[{ value: "all", label: "Semua" }, { value: "stock", label: "Saham" }, { value: "fund", label: "Reksa Dana" }]} value={filter} onChange={onFilter} />
     <div className={holdingStyles.holdings}>
       {rows.length ? rows.map(({ portfolio, holding }) => <AssetRow key={`${portfolio.portfolio_id}:${holding.instrument_id}`} portfolio={portfolio} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} />) : <p className={sharedStyles.inlineEmpty}>Belum ada aset aktif pada kategori ini. Posisi yang sudah selesai tetap tersedia di tab Aktivitas.</p>}
     </div>
@@ -185,7 +182,7 @@ const InvestmentOverview = ({ data, onHolding }) => {
       <button ref={activityTabRef} id="investment-tab-activity" data-tab="activity" className={activeTab === "activity" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "activity"} aria-controls="investment-panel-activity" tabIndex={activeTab === "activity" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("activity")}>Aktivitas {activityCount ? <span>{Math.min(activityCount, 99).toLocaleString("id-ID")}{activityCount > 99 ? "+" : ""}</span> : null}</button>
     </div>
     {activeTab === "assets"
-      ? <div id="investment-panel-assets" role="tabpanel" aria-labelledby="investment-tab-assets" onClick={(event) => { const next = event.target.closest("button[data-filter]")?.dataset.filter; if (next) setAssetFilter(next); }}><AssetPanel portfolios={data.portfolios} filter={assetFilter} onHolding={onHolding} /></div>
+      ? <div id="investment-panel-assets" role="tabpanel" aria-labelledby="investment-tab-assets"><AssetPanel portfolios={data.portfolios} filter={assetFilter} onFilter={setAssetFilter} onHolding={onHolding} /></div>
       : <div id="investment-panel-activity" role="tabpanel" aria-labelledby="investment-tab-activity"><InvestmentActivityPanel portfolios={data.portfolios} onHolding={onHolding} /></div>}
   </div>;
 };

@@ -34,6 +34,7 @@ import {
 } from "../../../shared/presentation/transaction.js";
 import { AccountVisual } from "./AccountFinancialCard.jsx";
 import { reconciliationStatusLabel } from "../../../shared/presentation/reconciliation.js";
+import QuickSegmentedFilter from "../../../components/common/QuickSegmentedFilter.jsx";
 import styles from "./DesktopAccountsWorkspace.module.css";
 
 const RECENT_TRANSACTION_LIMIT = 6;
@@ -286,9 +287,7 @@ const DesktopAccountsWorkspace = ({ accounts, allAccounts, selectedAccount, owne
 
   return (
     <div className={styles.desktopAccountsArea}>
-      <div className={styles.ownershipFilters} role="group" aria-label="Filter kepemilikan rekening">
-        {OWNERSHIP_FILTERS.map(([value, label]) => <button key={value} type="button" className={styles.ownershipFilter} aria-pressed={ownershipFilter === value} onClick={() => onOwnershipFilterChange(value)}>{label}</button>)}
-      </div>
+      <QuickSegmentedFilter className={styles.ownershipCompact} label="Filter kepemilikan rekening" compact options={OWNERSHIP_FILTERS.map(([value, label]) => ({ value, label }))} value={ownershipFilter} onChange={onOwnershipFilterChange} />
       <div className={styles.desktopWorkspace}>
         <div className={styles.leftColumn}>
           <SelectedAccountHero accounts={accounts} account={selectedAccount} ownerMode={ownerMode} onSelectAccount={onSelectAccount} onEditAccount={onEditAccount} onArchiveAccount={onArchiveAccount} onViewInvestment={onViewInvestment} onEnsureBalance={onEnsureBalance} reconciliation={reconciliationLookup?.[selectedAccount.account_id]} reconciliationLoaded={reconciliationLookup !== null} />

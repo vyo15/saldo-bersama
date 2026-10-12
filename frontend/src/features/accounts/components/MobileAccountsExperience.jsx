@@ -11,6 +11,7 @@ import {
 import { AccountVisual } from "./AccountFinancialCard.jsx";
 import { accountAmbientTone, useMobileStackController } from "./useMobileAccountStack.js";
 import { reconciliationStatusLabel } from "../../../shared/presentation/reconciliation.js";
+import QuickSegmentedFilter from "../../../components/common/QuickSegmentedFilter.jsx";
 import styles from "./MobileAccountsExperience.module.css";
 
 const MobileAccountActivity = lazy(() => import("./MobileAccountActivity.jsx"));
@@ -89,9 +90,7 @@ const MobileAccountsExperience = ({ accounts, allAccounts = accounts, selectedAc
         </div>
       </header>
 
-      <div className={styles.mobileOwnershipFilters} role="group" aria-label="Filter kepemilikan rekening">
-        {OWNERSHIP_FILTERS.map(([value, label]) => <button key={value} type="button" className={styles.mobileOwnershipFilter} aria-pressed={ownershipFilter === value} onClick={() => onOwnershipFilterChange(value)}>{label}</button>)}
-      </div>
+      <QuickSegmentedFilter className={styles.mobileOwnershipCompact} label="Filter kepemilikan rekening" compact options={OWNERSHIP_FILTERS.map(([value, label]) => ({ value, label }))} value={ownershipFilter} onChange={onOwnershipFilterChange} />
 
       <div className={styles.mobileTotalBalance} aria-label="Total saldo seluruh rekening non-investasi">
         <span>Total saldo rekening</span><strong><PrivateMoney hidden={hidden} value={totalAccountBalance} /></strong>

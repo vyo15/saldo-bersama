@@ -3,6 +3,7 @@ import { FiArrowLeft, FiCheck, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus,
 import { useNavigate, useParams } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
+import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
@@ -189,7 +190,7 @@ const PlanningWorkspace = ({ data, activeItems, purchasedItems, showItems, onlin
 
 const ShoppingModeView = ({ activeItems, cartItems, purchasedItems, pendingItems, showItems, progress, shoppingFilter, online, canManage, busyId, onFilter, onToggle, onEdit, onRemove }) => <div className={styles.shoppingMode}>
   <div className={styles.progressBlock}><div><span>{cartItems.length + purchasedItems.length} dari {activeItems.length} barang</span><strong>{progress}%</strong></div><ProgressBar value={progress} max={100} label="Progress belanja" showValue={false} compact /></div>
-  <div className={styles.filterPills} role="group" aria-label="Filter barang"><button type="button" className={shoppingFilter === "all" ? styles.activePill : ""} aria-pressed={shoppingFilter === "all"} onClick={() => onFilter("all")}>Semua <b>{activeItems.length}</b></button><button type="button" className={shoppingFilter === "pending" ? styles.activePill : ""} aria-pressed={shoppingFilter === "pending"} onClick={() => onFilter("pending")}>Belum <b>{pendingItems.length}</b></button><button type="button" className={shoppingFilter === "done" ? styles.activePill : ""} aria-pressed={shoppingFilter === "done"} onClick={() => onFilter("done")}>Selesai <b>{cartItems.length + purchasedItems.length}</b></button></div>
+  <QuickSegmentedFilter label="Filter barang" compact options={[{ value: "all", label: "Semua", count: activeItems.length }, { value: "pending", label: "Belum", count: pendingItems.length }, { value: "done", label: "Selesai", count: cartItems.length + purchasedItems.length }]} value={shoppingFilter} onChange={onFilter} />
   <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} disabled={!online || !canManage || Boolean(busyId)} />
 </div>;
 

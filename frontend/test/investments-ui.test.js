@@ -22,9 +22,10 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.match(overview, /Total investasi tercatat/);
   assert.match(overview, />Aset <span>/);
   assert.match(overview, />Aktivitas /);
-  assert.match(overview, />Semua<\/button>/);
-  assert.match(overview, />Saham<\/button>/);
-  assert.match(overview, />Reksa Dana<\/button>/);
+  assert.match(await read("src/components/common/QuickSegmentedFilter.module.css"), /min-height:\s*var\(--mobile-hit-target\)/);
+  assert.match(overview, /value: "all", label: "Semua"/);
+  assert.match(overview, /value: "stock", label: "Saham"/);
+  assert.match(overview, /value: "fund", label: "Reksa Dana"/);
   assert.match(overview, /<strong><Money value=\{holding\.market_value\} \/><\/strong>/);
   assert.match(overview, /<Money value=\{unrealized\} \/>\{returnPercent != null \? ` \(\$\{percentLabel\(returnPercent\)\}\)`/);
   assert.doesNotMatch(overview, /FiChevronRight|holdingMetrics|assetType/);
@@ -69,7 +70,7 @@ test("styling Investasi memakai token tema dan kontrak responsive mobile canonic
   assert.match(styles, /@media \(max-width: 900px\)/);
   assert.match(styles, /\.holdingValueBlock \{[\s\S]*?justify-items:\s*end;/);
   assert.match(styles, /\.segment \{[\s\S]*?display:\s*flex;/);
-  assert.match(styles, /\.assetFilters/);
+  assert.match(await read("src/components/common/QuickSegmentedFilter.module.css"), /min-height:\s*var\(--mobile-hit-target\)/);
   assert.match(styles, /font-size:\s*var\(--mobile-native-control-font-size\);/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(styles, /#[0-9a-f]{3,8}/i);

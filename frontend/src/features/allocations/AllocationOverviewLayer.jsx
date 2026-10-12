@@ -3,6 +3,7 @@ import { NavLink } from "react-router";
 import { FiArrowRight, FiHome, FiPlus, FiRepeat, FiSearch, FiUsers } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
+import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
@@ -204,7 +205,7 @@ const PlanningToolbar = ({ query, setQuery, ownership, allocationFilter, setAllo
     <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari rencana, kewajiban, atau jadwal..." aria-label="Cari rencana aktif" />
   </label>
   <div className={allocationClass("allocation-toolbar__meta")}>
-    {ownership.showFilter ? <div className={allocationClass("allocation-filters")} role="group" aria-label="Filter dana aktif">{ACTIVE_FILTERS.map((filter) => <button type="button" key={filter.value} className={allocationClass(allocationFilter === filter.value ? "is-active" : "")} aria-pressed={allocationFilter === filter.value} onClick={() => setAllocationFilter(filter.value)}>{filter.label}</button>)}</div> : null}
+    {ownership.showFilter ? <QuickSegmentedFilter label="Filter dana aktif" options={ACTIVE_FILTERS} value={allocationFilter} onChange={setAllocationFilter} /> : null}
     <span className={allocationClass("allocation-toolbar__count")}>{resultCount} item</span>
   </div>
 </div>;

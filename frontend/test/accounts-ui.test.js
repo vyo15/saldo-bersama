@@ -326,7 +326,8 @@ ${accountEditors}`;
   assert.match(desktopStyles, /transactionList/);
   assert.match(desktopStyles, /distributionList/);
   assert.match(desktopWorkspace, /<progress className=\{styles\.distributionProgress\}/);
-  assert.match(desktopStyles, /\.ownershipFilters \{[^}]*overflow-x:\s*auto;/s);
+  assert.match(desktopWorkspace, /QuickSegmentedFilter/);
+  assert.match(desktopStyles, /\.ownershipCompact/);
   assert.doesNotMatch(desktopStyles, /scroll-snap-type/);
   const referencedDesktopClasses = new Set([...desktopWorkspace.matchAll(/styles\.([A-Za-z0-9_]+)/g)].map((match) => match[1]));
   const declaredDesktopClasses = new Set([...desktopStyles.matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)].map((match) => match[1]));
@@ -373,7 +374,7 @@ ${accountEditors}`;
   assert.doesNotMatch(accountPageSource, /paymentHistoryPeriod|paymentHistoryResource|sheet === "history"/);
   assert.match(accountPageSource, /mobileStackCardRefs/);
   assert.match(accountPageSource, /carouselStyleAtDifference/);
-  assert.match(mobileExperienceStyles, /\.mobileOwnershipFilters[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(mobileExperience, /QuickSegmentedFilter className=\{styles\.mobileOwnershipCompact\}/);
   assert.match(mobileExperience, /PageInfoButton title="Tentang Rekening" label="Tentang Rekening"/);
   assert.equal((mobileExperience.match(/<PageInfoButton/g) || []).length, 1, "Satu surface mobile Rekening hanya boleh memiliki satu trigger bantuan edukatif.");
   assert.doesNotMatch(mobileExperience, /PageInfoButton title="Tentang saldo rekening"/);
@@ -406,7 +407,7 @@ ${accountEditors}`;
   assert.match(mobileExperience, /Sembunyikan seluruh nominal/);
   assert.match(mobileExperience, /<span>Dialokasikan<\/span>/);
   assert.match(mobileExperience, /Filter kepemilikan rekening/);
-  for (const className of ["mobileOwnershipFilters", "mobileOwnershipFilter", "mobileCarouselDots", "mobileBalanceSummary", "mobileBalanceStats", "mobileQuickActions", "mobileQuickAction"]) {
+  for (const className of ["mobileOwnershipCompact", "mobileCarouselDots", "mobileBalanceSummary", "mobileBalanceStats", "mobileQuickActions", "mobileQuickAction"]) {
     assert.match(mobileExperience, new RegExp(String.raw`styles\.${className}\b`));
     assert.match(mobileExperienceStyles, new RegExp(String.raw`\.${className}\b`));
   }

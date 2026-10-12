@@ -49,7 +49,7 @@ test("reconciliation and account mobile shells stay flat while financial objects
   assert.match(reconciliation, /\.mobileHistoryCard \{[^}]*padding:\s*14px 0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);
 
   assert.equal((accounts.match(/@media \(max-width: 820px\)/g) ?? []).length, 1, "accounts keeps one canonical mobile breakpoint");
-  assert.match(accounts, /\.mobileOwnershipFilters \{[^}]*border:\s*0;[^}]*border-bottom:\s*1px solid var\(--mobile-divider\);[^}]*border-radius:\s*0;/);
+  assert.match(accounts, /\.mobileOwnershipCompact \{[^}]*margin:/);
   assert.match(accounts, /\.mobileQuickActions \{[^}]*border-top:\s*1px solid var\(--mobile-divider\);[^}]*border-bottom:\s*1px solid var\(--mobile-divider\);/);
   assert.match(accounts, /\.mobileQuickActions > \* \+ \* \{ border-left:\s*1px solid var\(--mobile-divider\); \}/);
   assert.match(transferAction, /\.mobileTransferQuickAction \{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/);

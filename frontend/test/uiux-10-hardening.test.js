@@ -46,7 +46,7 @@ test("mobile interaction contract exposes one 44px hit-target token and compact 
   }
   assert.match(shopping, /\.checkButton\s*\{[^}]*width:var\(--mobile-hit-target\);[^}]*height:var\(--mobile-hit-target\)/s);
   assert.match(shopping, /\.suggestionSearch button\s*\{[^}]*width:var\(--mobile-hit-target\);[^}]*height:var\(--mobile-hit-target\)/s);
-  assert.match(investments, /\.assetFilters button\s*\{[^}]*min-height:\s*var\(--mobile-hit-target\)/s);
+  assert.match(await read("src/components/common/QuickSegmentedFilter.module.css"), /min-height:\s*var\(--mobile-hit-target\)/);
   assert.match(budgetBatch, /\.trashButton,\.compactRemove\s*\{[^}]*width:\s*var\(--mobile-hit-target\)/s);
   assert.match(budgetBatch, /\.addButton\s*\{[^}]*min-height:\s*var\(--mobile-hit-target\)/s);
 });

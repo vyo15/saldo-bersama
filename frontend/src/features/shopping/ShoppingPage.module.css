@@ -51,9 +51,6 @@
 .shoppingMode { max-width:720px; width:100%; margin-inline:auto; display:grid; gap:14px; border:1px solid transparent; background:var(--surface-section); border-radius:var(--radius-surface); padding:16px; box-shadow:var(--shadow-sm); }
 .progressBlock { display:grid; gap:7px; }
 .progressBlock > div:first-child { display:flex; justify-content:space-between; color:var(--text-soft); font-size:12px; }
-.filterPills { display:flex; gap:6px; overflow:auto; }
-.filterPills button { min-height:var(--mobile-hit-target); white-space:nowrap; padding:7px 10px; border:0; border-radius:999px; background:var(--surface-soft); color:var(--text-soft); font:inherit; font-size: 12px; cursor:pointer; }
-.filterPills .activePill { background:var(--primary-soft); color:var(--primary-strong); box-shadow:none; }
 .stickyAction { position:fixed; z-index:30; left:50%; transform:translateX(-50%); bottom:18px; min-width:min(460px,calc(100vw - 40px)); padding:8px; border:1px solid transparent; border-radius:16px; background:color-mix(in srgb,var(--surface) 94%,transparent); box-shadow:var(--shadow-md); backdrop-filter:blur(14px); display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .stickyAction > div { display:grid; gap:1px; padding-left:6px; }
 .stickyAction > div span { font-size: 12px; color:var(--text-soft); }

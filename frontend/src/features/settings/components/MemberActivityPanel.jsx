@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { FiExternalLink } from "react-icons/fi";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FiExternalLink, FiSliders } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import Button from "../../../components/common/Button.jsx";
 import Modal from "../../../components/common/Modal.jsx";
+import QuickSegmentedFilter from "../../../components/common/QuickSegmentedFilter.jsx";
 import Money from "../../../components/common/Money.jsx";
 import StatusBadge from "../../../components/common/StatusBadge.jsx";
 import UserAvatar from "../../../components/common/UserAvatar.jsx";
@@ -41,10 +42,23 @@ const creatorExpense = (report, memberId) => (report.data?.creatorExpenses ?? []
 
 const MemberProfile = ({ member, profile }) => <><section className={activityStyles.memberActivityProfile} aria-label={`Profil ${member.name || member.email}`}><UserAvatar user={profile} className={activityStyles.memberActivityAvatar} /><div><h2>{member.name || member.email}</h2><p>{member.email}</p><span className="status-badge status-badge--info">{roleLabel(member.role)}</span></div></section><p className={activityStyles.memberActivityExplanation}>Aktivitas pencatatan menunjukkan siapa yang memasukkan transaksi. Data ini bukan ukuran siapa yang memakai, membayar, atau menanggung biaya.</p></>;
 
-const ActivityFilters = ({ period, setPeriod, type, setType }) => <div className={activityStyles.memberActivityFilters}>
-  <label className={`field field--compact ${activityStyles.memberActivityPeriod}`}><span>Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label>
-  <div className={activityStyles.memberActivityTypeFilters} role="group" aria-label="Jenis transaksi">{TYPE_FILTERS.map((option) => <button key={option.value} type="button" className={type === option.value ? activityStyles.memberActivityTypeActive : activityStyles.memberActivityType} aria-pressed={type === option.value} onClick={() => setType(option.value)}>{option.label}</button>)}</div>
-</div>;
+const ActivityFilters = ({ period, setPeriod, type, setType }) => {
+  const advancedRef = useRef(null);
+  const quick = TYPE_FILTERS.slice(0, 3);
+  const advanced = TYPE_FILTERS.slice(3);
+  const selectedAdvanced = advanced.find((option) => option.value === type);
+  return <div className={activityStyles.memberActivityFilters}>
+    <label className={`field field--compact ${activityStyles.memberActivityPeriod}`}><span>Periode</span><TemporalInput type="month" max={currentMonthInJakarta()} value={period} onChange={(event) => setPeriod(event.target.value)} /></label>
+    <div className={activityStyles.memberActivityCompactFilters}>
+      <QuickSegmentedFilter compact label="Jenis transaksi" options={quick} value={type} onChange={setType} />
+      <details ref={advancedRef} className={activityStyles.memberActivityMore}>
+        <summary aria-label={`Filter jenis transaksi lainnya${selectedAdvanced ? `: ${selectedAdvanced.label}` : ""}`} title="Filter jenis transaksi lainnya"><FiSliders aria-hidden="true" />{selectedAdvanced ? <span className={activityStyles.memberActivityMoreDot} aria-hidden="true" /> : null}</summary>
+        <div className={activityStyles.memberActivityMoreOptions} role="group" aria-label="Jenis transaksi lainnya">{advanced.map((option) => <button key={option.value} type="button" aria-pressed={type === option.value} onClick={() => { setType(option.value); advancedRef.current?.removeAttribute("open"); }}>{option.label}</button>)}{selectedAdvanced ? <button type="button" onClick={() => { setType("all"); advancedRef.current?.removeAttribute("open"); }}>Reset filter</button> : null}</div>
+      </details>
+    </div>
+    {selectedAdvanced ? <span className={activityStyles.memberActivitySelectedType}>Jenis: {selectedAdvanced.label}</span> : null}
+  </div>;
+};
 
 const ActivityMetrics = ({ type, transactions, report, expenseSummary }) => <section className={activityStyles.memberActivityMetrics} aria-label="Ringkasan aktivitas"><div><span>{type === "all" ? "Transaksi dicatat" : "Transaksi pada filter"}</span><strong>{transactions.data?.total ?? "—"}</strong></div><div><span>Pengeluaran dicatat</span>{report.data ? <Money value={expenseSummary?.amount || expenseSummary?.value || 0} /> : <strong>—</strong>}</div></section>;
 

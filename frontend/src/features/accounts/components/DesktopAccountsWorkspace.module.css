@@ -4,39 +4,10 @@
   gap: var(--space-4);
 }
 
-.ownershipFilters {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
 
-.ownershipFilters::-webkit-scrollbar { display: none; }
 
-.ownershipFilter {
-  min-height: 2.75rem;
-  padding: 0 .9rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-}
 
-.ownershipFilter[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
-  background: var(--primary-soft);
-  color: var(--primary);
-}
 
-.ownershipFilter:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
 
 .desktopWorkspace {
   min-width: 0;
@@ -330,3 +301,5 @@
 }
 
 .reconciliationStatus { margin-top: .35rem; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
+
+.ownershipCompact { max-width: 32rem; }

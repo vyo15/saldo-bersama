@@ -194,3 +194,11 @@
 - [ ] Nominal dan nama panjang tidak terpotong pada mobile 320px; menu overflow dan CTA punya hit target 44px, memakai keyboard/focus-visible serta reduced-motion tanpa animasi.
 - [ ] Buka Tambah, Edit, Dibeli, dan Simulasi untuk pertama kali setelah refresh/slow network: fallback modal terlihat sebentar, kemudian form benar tampil dan focus/Back tidak terjebak; ulangi sesudah menutup untuk memverifikasi lazy chunk sudah dimuat.
 - [ ] Jalankan lint + seluruh regression frontend termasuk motion-system + build + browser smoke di lingkungan dengan dependency platform benar sebelum klaim production-ready.
+
+### Konsistensi filter data antar halaman
+
+- [ ] Bandingkan Transaksi dan Wishlist dengan filter Rekening (mobile/desktop), Atur Dana Aktif, Shopping, Investasi, dan Log Audit: active-tone, radius, hit target 44 px, ikon/jumlah jika relevan, serta motion yang tenang.
+- [ ] Rekening tetap memisahkan Semua/Saya/Pasangan/Bersama; Atur Dana tetap memakai entitlements `all/shared/mine` tanpa melepas batas izin server.
+- [ ] Jadwal Rutin tetap menawarkan Perlu perhatian/Belum selesai/Selesai/Dilewati. Aktivitas Anggota tetap menawarkan Pemasukan/Pengeluaran/Transfer/Refund/Penyesuaian; filter lanjutan terpilih ditandai dan dapat di-reset.
+- [ ] Notifikasi serta filter Kebutuhan detail Alokasi tetap konsisten dengan tema. Navigasi Keluarga/Detail Anggota/Akun Saya: Tab, Shift+Tab, ArrowLeft/Right, Home/End, panel ID, dan `aria-labelledby` benar.
+- [ ] Viewport 320/360/390/430px, tablet 820/821px, desktop, light/dark, reduced-motion, long labels, rapid filter switch, no results, dan keyboard-focus tidak mengalami overflow atau data stale.

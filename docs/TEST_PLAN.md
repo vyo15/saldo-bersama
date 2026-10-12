@@ -309,3 +309,9 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 - `frontend/test/wishlist-mobile-layout.test.js` juga mengunci lazy boundary `WishlistDialogLayer` dan fallback modal sehingga daftar tidak memuat komponen finansial sebelum diperlukan; cek route chunk gzip tetap <=8 KiB pada build budget canonical.
 - `frontend/test/motion-system.test.js`: validasi properti transition per CSS declaration (bukan konkatenasi file), tanpa animasi width/height, serta menghormati prefers-reduced-motion.
 - Manual smoke viewport 320–430px + desktop, light/dark, filter yang diganti cepat, simulasi lintas filter, daftar kosong, menu aksesibel, checkout yang tetap terpisah.
+
+### Filter convergence / accessibility regression
+
+- Perubahan fixed segmented harus mempertahankan semua opsi dan callback domain masing-masing, termasuk rekening `partner`, Alokasi `mine`, Shopping `pending/done`, Investasi `stock/fund`, Jadwal `cancelled`, dan aktivitas anggota `transfer/refund/adjustment`. Pastikan filter lanjutan tidak mengubah data saat hanya dibuka dan menutup setelah memilih.
+- `frontend/test/filter-convergence.test.js` mengunci minimum touch target, indikator transform/reduced-motion, mapping kepemilikan, dan keyboard tab. Jalankan juga regresi ownership, Wishlist, navigation, dan transaction/scope backend.
+- QA browser lintas light/dark dan viewport 320/360/390/430/820/821px wajib menguji perubahan cepat, filter kosong, focus keyboard, screen reader, filter advanced aktif, dan tidak ada horizontal overflow.

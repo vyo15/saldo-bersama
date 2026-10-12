@@ -88,7 +88,7 @@ test("overview menyatukan objek aktif dan hanya menampilkan filter ownership ket
   assert.match(overview, /buildPlanningActiveItems/);
   assert.match(overview, /planningActiveOwnership/);
   assert.match(overview, /filterPlanningActiveItems/);
-  assert.match(overview, /ownership\.showFilter \? <div className=\{allocationClass\("allocation-filters"\)\}/);
+  assert.match(overview, /ownership\.showFilter \? <QuickSegmentedFilter/);
   assert.match(overview, />Aktif<\/h2>/);
   assert.match(overview, /Alokasikan dana/);
   assert.match(overview, /onOpenFunding\?\.\(\{ chooseDestination: true \}\)/);

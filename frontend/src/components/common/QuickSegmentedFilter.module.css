@@ -1,0 +1,66 @@
+.root {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px;
+  display: grid;
+  grid-template-columns: repeat(var(--segment-count, 3), minmax(0, 1fr));
+  gap: 2px;
+  border-radius: var(--mobile-radius-control, var(--radius-lg));
+  background: var(--surface-soft);
+}
+.root[data-count="2"] { --segment-count: 2; }
+.root[data-count="3"] { --segment-count: 3; }
+.root[data-count="4"] { --segment-count: 4; }
+.root::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 10px) / 3);
+  border-radius: calc(var(--mobile-radius-control, var(--radius-lg)) - 3px);
+  background: var(--primary-soft);
+  transform: translateX(0);
+  transition: transform var(--motion-control) var(--ease-standard);
+  pointer-events: none;
+}
+.root[data-active-index="-1"]::before { opacity: 0; }
+.root[data-count="2"]::before { width: calc((100% - 8px) / 2); }
+.root[data-count="4"]::before { width: calc((100% - 12px) / 4); }
+.root[data-active-index="1"]::before { transform: translateX(calc(100% + 2px)); }
+.root[data-active-index="2"]::before { transform: translateX(calc(200% + 4px)); }
+.root[data-active-index="3"]::before { transform: translateX(calc(300% + 6px)); }
+.segment {
+  position: relative;
+  min-width: 0;
+  min-height: var(--mobile-hit-target);
+  padding: 0 .5rem;
+  border: 0;
+  border-radius: var(--mobile-radius-control, var(--radius-lg));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color var(--motion-control) var(--ease-standard);
+}
+.segment[aria-pressed="true"] { color: var(--primary-strong); }
+.segment:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
+.segment:disabled { opacity: .5; cursor: not-allowed; }
+.icon { width: 1rem; height: 1rem; flex: 0 0 auto; }
+.label { min-width: 0; overflow-wrap: anywhere; }
+.count { font-size: var(--font-size-xs); opacity: .75; font-variant-numeric: tabular-nums; }
+.compact .segment { padding-inline: .25rem; }
+@media (prefers-reduced-motion: reduce) {
+  .root::before, .segment { transition: none; }
+}

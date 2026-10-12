@@ -246,6 +246,7 @@
   gap: 5px;
   background: transparent;
   color: var(--text-muted);
+  transition: color var(--motion-control) var(--ease-standard), background-color var(--motion-control) var(--ease-standard);
   font: inherit;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
@@ -258,9 +259,9 @@
 }
 
 .allocation-needs-filter__button.is-active {
-  background: var(--surface-elevated);
-  color: var(--text);
-  box-shadow: var(--shadow-control);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  box-shadow: none;
 }
 
 .allocation-needs-filter__button:focus-visible {
@@ -1162,3 +1163,5 @@
   .allocation-limit-row__icon svg { width: 15px; height: 15px; }
   .allocation-limit-row__pattern { max-width: 6.5rem; }
 }
+
+@media (prefers-reduced-motion: reduce) { .allocation-needs-filter__button { transition: none; } }

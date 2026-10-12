@@ -320,7 +320,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(components, /\.icon-button \{ width:\s*44px; height:\s*44px;/);
   assert.match(components, /\.quick-amounts button \{ min-height:\s*44px;/);
   assert.match(feedback, /\.close \{ width:\s*2\.75rem; height:\s*2\.75rem;/);
-  assert.match(pages, /\.allocation-filters button\s*\{[^}]*min-height:\s*44px;/);
+  assert.match(await readFile(new URL("../src/components/common/QuickSegmentedFilter.module.css", import.meta.url), "utf8"), /min-height:\s*var\(--mobile-hit-target\);/);
   assert.match(pages, /\.planning-active-row\s*\{[^}]*min-height:\s*76px;/);
   assert.match(contextBack, /\.back \{[^}]*width:\s*max-content;[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
   assert.match(dashboard, /\.shared-account-pagination button \{ width:\s*44px; height:\s*44px;/);
@@ -337,7 +337,7 @@ test("kontrol app-owned menjaga target minimum 44px dan teks operasional tidak t
   assert.match(transactionForm, /@media \(max-width: 820px\)[\s\S]*scrollbar-width:\s*none/s);
   assert.doesNotMatch(transactionForm, /impactDetails|Lihat dampak lengkap/);
   assert.match(transactions, /\.filterChip\s*\{[^}]*min-height:\s*var\(--control-height-md\);/);
-  assert.match(desktopAccounts, /\.ownershipFilter \{[^}]*min-height:\s*2\.75rem;/s);
+  assert.match(await readFile(new URL("../src/components/common/QuickSegmentedFilter.module.css", import.meta.url), "utf8"), /min-height:\s*var\(--mobile-hit-target\);/);
   assert.match(desktopAccounts, /\.carouselArrow \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
   assert.match(desktopAccounts, /\.carouselDot \{[^}]*width:\s*2\.75rem;[^}]*height:\s*2\.75rem;/s);
   assert.match(desktopAccounts, /\.textAction \{[^}]*min-height:\s*2\.75rem;/s);

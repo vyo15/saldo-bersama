@@ -3,6 +3,7 @@ import { FiInbox } from "react-icons/fi";
 import Money from "../../components/common/Money.jsx";
 import UserAvatar from "../../components/common/UserAvatar.jsx";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
+import { handleRovingTabKeyDown } from "../../components/common/rovingTabKeyboard.js";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
@@ -91,8 +92,8 @@ const MyAccountPage = () => {
 
   return <section className={`${memberStyles.memberDetail} ${memberStyles.myAccountDetail}`} aria-label="Akun Saya">
     <div className={memberStyles.memberDetailHero}><UserAvatar user={profile} className={memberStyles.memberDetailAvatar} /><div className={memberStyles.memberDetailIdentity}><h2>{accountDisplayName(actor)}</h2><p>{actor.email}</p><div className={memberStyles.memberDetailBadges}><span className={memberStyles.memberRole}>{roleLabel(actor.role)}</span><span className="status-badge status-badge--active">Aktif</span></div></div></div>
-    <div className={memberStyles.memberDetailTabs} role="tablist" aria-label="Akun Saya">{TABS.map((item) => <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} className={tab === item.key ? memberStyles.memberDetailTabActive : memberStyles.memberDetailTab} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
-    <div className={memberStyles.memberDetailPanel} role="tabpanel"><MyAccountTabPanel tab={tab} actor={actor} finance={finance} requestCount={requestCount} memberMode={memberMode} masterRequests={masterRequests} transferRequests={transferRequests} accounts={accounts} activityMember={activityMember} profile={profile} /></div>
+    <div className={memberStyles.memberDetailTabs} role="tablist" aria-label="Akun Saya" onKeyDown={(event) => handleRovingTabKeyDown(event, TABS.map((item) => item.key), tab, setTab)}>{TABS.map((item) => <button key={item.key} id={`my-account-tab-${item.key}`} aria-controls="my-account-tab-panel" tabIndex={tab === item.key ? 0 : -1} type="button" role="tab" aria-selected={tab === item.key} className={tab === item.key ? memberStyles.memberDetailTabActive : memberStyles.memberDetailTab} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
+    <div id="my-account-tab-panel" className={memberStyles.memberDetailPanel} role="tabpanel" aria-labelledby={`my-account-tab-${tab}`} tabIndex={0}><MyAccountTabPanel tab={tab} actor={actor} finance={finance} requestCount={requestCount} memberMode={memberMode} masterRequests={masterRequests} transferRequests={transferRequests} accounts={accounts} activityMember={activityMember} profile={profile} /></div>
   </section>;
 };
 

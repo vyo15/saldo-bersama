@@ -5,6 +5,7 @@ import {
 } from "react-icons/fi";
 import { BalanceIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
 import { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
@@ -181,9 +182,7 @@ const AuditPage = () => {
             <div><h3 id="audit-activity-heading">Aktivitas terbaru</h3><p>50 aktivitas terakhir, diurutkan dari yang paling baru.</p></div>
             <FiShield aria-hidden="true" />
           </div>
-          <div className={styles.auditFilters} role="group" aria-label="Filter aktivitas audit">
-            {AUDIT_FILTERS.map(([value, label]) => <button type="button" key={value} className={styles.auditFilter} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>)}
-          </div>
+          <div className={styles.auditFilters}><QuickSegmentedFilter label="Filter aktivitas audit" compact options={AUDIT_FILTERS.map(([value, label]) => ({ value, label }))} value={filter} onChange={setFilter} /></div>
 
           {auditResource.status === "loading" ? <p className="empty-inline-message" role="status">Memuat aktivitas...</p> : null}
           {auditResource.status === "error" ? <div className="notice notice--danger" role="alert"><span>{auditResource.error?.message || "Audit belum dapat dimuat."}</span></div> : null}

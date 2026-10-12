@@ -649,7 +649,7 @@ test("route dan lapisan Alokasi dimuat lazy agar planning punya headroom bundle"
   assert.doesNotMatch(workspace, /from "\.\/AllocationDialogLayer\.jsx";/);
   assert.doesNotMatch(workspace, /from "\.\/AllocationOverviewLayer\.jsx";/);
   for (const modal of ["CreateEnvelopeModal", "MoveEnvelopeModal", "AllocationModals"]) assert.match(layer, new RegExp(`const ${modal}`));
-  for (const marker of ["AllocationFundingSummary", "allocation-funding-summary__actions", "allocation-filters", "planning-active-row", "Buka detail"]) assert.match(overview, new RegExp(marker));
+  for (const marker of ["AllocationFundingSummary", "allocation-funding-summary__actions", "QuickSegmentedFilter", "planning-active-row", "Buka detail"]) assert.match(overview, new RegExp(marker));
 });
 
 

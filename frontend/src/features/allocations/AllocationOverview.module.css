@@ -80,59 +80,14 @@
   gap: 10px;
 }
 
-.allocation-filters {
-  min-width: 0;
-  display: flex;
-  gap: 7px;
-  overflow-x: auto;
-  padding: 1px 1px 3px;
-  scrollbar-width: none;
-}
 
-.allocation-filters::-webkit-scrollbar {
-  display: none;
-}
 
-.allocation-filters button {
-  min-height: 44px;
-  padding-inline: 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  background: var(--surface-section);
-  color: var(--text-soft);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition:
-    border-color var(--motion-fast) var(--motion-easing),
-    background-color var(--motion-fast) var(--motion-easing),
-    color var(--motion-fast) var(--motion-easing),
-    transform var(--motion-fast) var(--motion-easing);
-}
 
-.allocation-filters button:active {
-  transform: scale(.98);
-}
 
-.allocation-filters button:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
 
-.allocation-filters button.is-active {
-  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
-  background: var(--primary-soft);
-  color: var(--primary);
-}
 
 @media (hover: hover) and (pointer: fine) {
-  .allocation-filters button:hover:not(.is-active) {
-    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
-    color: var(--primary);
   }
-}
 
 /* Hero: saldo/CTA on the left, character art dominant on the right. */
 .allocation-funding-summary {
@@ -767,10 +722,7 @@
     display: none;
   }
 
-  .allocation-filters button {
-    min-height: var(--mobile-control-height);
-  }
-
+  
   .allocation-funding-summary {
     border-radius: var(--mobile-card-radius);
     box-shadow: none;
