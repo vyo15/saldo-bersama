@@ -3,7 +3,7 @@
 Aplikasi keuangan privat untuk dua akun Google, dipakai dari ponsel, tablet, dan desktop. Turso adalah **source of truth** untuk saldo dan data finansial. Google Sheets hanya mirror laporan satu arah, Google Calendar untuk pengingat bersama, Google Drive untuk backup teknis, dan Excel untuk export pengguna.
 
 
-**Wishlist (Rencana & Insight):** rencanakan pembelian barang Pribadi/Bersama dengan prioritas dan strategi pendanaan wajib; total adalah estimasi, bukan saldo tersisih. Checkout satu barang dicatat via transaksi pengeluaran canonical. Fitur baru memerlukan migration schema v27 melalui workflow Production `npm run prod:update`, setelah verified backup dan integrity.
+**Wishlist (Rencana & Insight):** catat barang Pribadi/Bersama dengan harga perkiraan, prioritas, dan target pembelian opsional (toggle). Total adalah estimasi, bukan saldo tersisih. Checkout satu barang dicatat via transaksi pengeluaran canonical. Fitur target opsional memerlukan migration schema v28 melalui workflow Production `npm run prod:update`, setelah verified backup dan integrity.
 
 ## Mulai untuk anggota tim atau ChatGPT baru
 

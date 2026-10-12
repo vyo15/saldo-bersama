@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `025_wishlist_purchase_planning.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `026_wishlist_optional_planning.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -28,7 +28,7 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `commitments` — domain internal Kewajiban KPR/cicilan/pinjaman/Arisan; satu Kewajiban aktif memiliki satu Jadwal Rutin canonical.
 - `commitment_movements` — ledger progres pembayaran/penerimaan Kewajiban dan snapshot pokok/bunga.
 - `budgets` — Kebutuhan operasional periode terbuka.
-- `wishlist_items` — Wishlist personal/bersama dengan rencana dana wajib, prioritas manual, estimasi, target/bulanan, status dan link satu transaksi pembelian canonical; menyimpan rencana tidak mengunci uang.
+- `wishlist_items` — Wishlist personal/bersama dengan target dana opsional, prioritas manual, estimasi, target/bulanan opsional, flag `planning_enabled` (v28), status dan link satu transaksi pembelian canonical; menyimpan rencana tidak mengunci uang.
 - `shopping_lists` — daftar belanja operasional yang terhubung ke satu Kebutuhan.
 - `shopping_items` — barang/checklist operasional; bukan transaction line item.
 - `shopping_checkouts` — link satu checkout belanja ke tepat satu transaksi canonical.
@@ -75,7 +75,7 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `master_data_requests` dan `transfer_requests` menyimpan status lifecycle + `row_version`; request pending tidak boleh di-hard-delete sebagai jalan pintas review.
 - `commitments.commitment_type` dibatasi ke `mortgage`, `installment`, `loan`, `arisan`, atau `other`; `status` ke `active`, `completed`, atau `archived`. Jadwal terkait disimpan melalui `recurring_rules.commitment_id` yang unik.
 - `transactions.commitment_flow` hanya `payment`/`receipt` bila `commitment_id` terisi; `commitment_movements` menjaga link transaksi/occurrence, principal/interest split, reversal, dan balance before/after. Penyelesaian atau aksi UI **Hentikan kewajiban** menghentikan future occurrence reproducible tanpa menghapus histori transaksi; reversal pembayaran terakhir dapat mengaktifkan kembali jadwal secara internal.
-- `wishlist_items` mewajibkan kepemilikan personal atau shared valid, nominal estimasi positif, strategi dana `gradual`/`available`/`combined`, prioritas `soon`/`planned`/`later`, row version dan purchase transaction FK. Rencana bukan ledger, tidak ada saldo cadangan otomatis.
+- `wishlist_items` mewajibkan kepemilikan personal atau shared valid, nominal estimasi positif, strategi dana `gradual`/`available`/`combined` serta flag `planning_enabled` (0 tanpa target; 1 target aktif), prioritas `soon`/`planned`/`later`, row version dan purchase transaction FK. Rencana bukan ledger, tidak ada saldo cadangan otomatis.
 - `transactions.cost_share_mode` hanya `unspecified`, `equal`, atau `percentage`; `transactions.cost_share_json` menyimpan snapshot split integer untuk expense shared dan default `[]` untuk histori/non-split.
 - Tabel bisnis memakai `STRICT`.
 - Foreign key diaktifkan pada setiap koneksi dan diverifikasi oleh integrity check.
@@ -127,9 +127,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `27`
+Versi aktif: `28`
 
-Latest migration: `025_wishlist_purchase_planning.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `026_wishlist_optional_planning.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 

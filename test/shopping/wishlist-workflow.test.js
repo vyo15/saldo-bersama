@@ -32,7 +32,11 @@ test("canonical action policy, role allowlist, and sync invalidations include Wi
 });
 
 test("plan validation rejects missing funding, invalid amount, unsafe URL and unexpected choices", () => {
-  assert.throws(() => wishlistPlan(plan("personal", { funding_strategy: "gradual", monthly_plan: 0 })), (e) => e.code === "WISHLIST_PLAN_REQUIRED");
+  assert.throws(() => wishlistPlan(plan("personal", { funding_strategy: "gradual", planning_enabled: 1, monthly_plan: 0 })), (e) => e.code === "WISHLIST_PLAN_REQUIRED");
+  assert.equal(wishlistPlan({ name: "Monitor", estimated_amount: 2_000_000 }).planning_enabled, 0);
+  assert.throws(() => wishlistPlan({ name: "Monitor", estimated_amount: 2_000_000, funding_strategy: "gradual", planning_enabled: 0, target_date: "2027-01-01" }), (e) => e.code === "WISHLIST_PLAN_CONFLICT");
+  assert.throws(() => wishlistPlan({ name: "Monitor", estimated_amount: 2_000_000, funding_strategy: "gradual", planning_enabled: 0, monthly_plan: 10_000 }), (e) => e.code === "WISHLIST_PLAN_CONFLICT");
+  assert.equal(wishlistPlan(plan("personal", { funding_strategy: "gradual", monthly_plan: 0, target_date: "2027-02-01" })).target_date, "2027-02-01");
   assert.throws(() => wishlistPlan(plan("personal", { estimated_amount: -2 })), (e) => e.code === "INVALID_AMOUNT");
   assert.throws(() => wishlistPlan(plan("personal", { product_url: "javascript:alert(1)" })), (e) => e.code === "WISHLIST_URL_INVALID");
   assert.throws(() => wishlistPlan(plan("personal", { priority: "forced" })), (e) => e.code === "WISHLIST_INVALID_CHOICE");
@@ -77,5 +81,53 @@ test("personal privacy, shared ownership, planning no ledger, OCC, archive and p
     assert.equal(reopened.item.purchase_transaction_id, "");
     const archived = await db.transaction((tx) => changeWishlistState(tx, ctx(member, "wishlist.state", { wishlist_item_id: personal.item.wishlist_item_id, row_version: 1, status: "archived" })));
     assert.equal(archived.item.status, "archived");
+  } finally { db.close(); }
+});
+
+
+test("Wishlist optional target: create without schedule, enable target, disable, and purchase without reserving funds", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await setup(db);
+    const member = users[1];
+    const record = await db.transaction((tx) => createWishlist(tx, ctx(member, "wishlist.create", {
+      scope: "personal", name: "Monitor", estimated_amount: 2_000_000, priority: "planned",
+    })));
+    assert.equal(record.item.planning_enabled, 0);
+    assert.equal(record.item.monthly_plan, 0);
+    assert.equal(record.item.target_date, "");
+    assert.equal((await db.one("SELECT COUNT(*) AS n FROM transactions")).n, 0);
+    const scheduled = await db.transaction((tx) => updateWishlist(tx, ctx(member, "wishlist.update", {
+      wishlist_item_id: record.item.wishlist_item_id, row_version: 1,
+      funding_strategy: "gradual", planning_enabled: 1, target_date: "2027-04-30", monthly_plan: 0,
+    })));
+    assert.equal(scheduled.item.target_date, "2027-04-30");
+    assert.equal(scheduled.item.planning_enabled, 1);
+    const unscheduled = await db.transaction((tx) => updateWishlist(tx, ctx(member, "wishlist.update", {
+      wishlist_item_id: record.item.wishlist_item_id, row_version: 2,
+      funding_strategy: "gradual", planning_enabled: 0, target_date: null, monthly_plan: 0,
+    })));
+    assert.equal(unscheduled.item.planning_enabled, 0);
+    assert.equal(unscheduled.item.target_date, "");
+    assert.equal((await listWishlist(db, ctx(member, "wishlist.list"))).items[0].planning_enabled, 0);
+    await assert.rejects(db.transaction((tx) => updateWishlist(tx, ctx(member, "wishlist.update", {
+      wishlist_item_id: record.item.wishlist_item_id, row_version: 3, funding_strategy: "gradual", planning_enabled: 0, target_date: "2027-10-10",
+    }))), (error) => error.code === "WISHLIST_PLAN_CONFLICT");
+    assert.equal((await db.one("SELECT COUNT(*) AS n FROM transactions")).n, 0);
+    // An older client that does not send planning_enabled can still add a schedule.
+    const legacyClientUpdate = await db.transaction((tx) => updateWishlist(tx, ctx(member, "wishlist.update", {
+      wishlist_item_id: record.item.wishlist_item_id, row_version: 3, funding_strategy: "gradual", target_date: "2027-11-01",
+    })));
+    assert.equal(legacyClientUpdate.item.planning_enabled, 1);
+    const turnedOffAgain = await db.transaction((tx) => updateWishlist(tx, ctx(member, "wishlist.update", {
+      wishlist_item_id: record.item.wishlist_item_id, row_version: 4, planning_enabled: 0, target_date: "", monthly_plan: 0,
+    })));
+    assert.equal(turnedOffAgain.item.planning_enabled, 0);
+    const purchased = await db.transaction((tx) => purchaseWishlist(tx, ctx(member, "wishlist.purchase", {
+      wishlist_item_id: record.item.wishlist_item_id, row_version: 5, amount: 120_000,
+      transaction_date: "2026-10-11", source_account_id: "personal-wish-account", category_id: "wish-expense",
+    })));
+    assert.equal(purchased.item.status, "purchased");
+    assert.equal((await db.one("SELECT COUNT(*) AS n FROM transactions")).n, 1);
   } finally { db.close(); }
 });

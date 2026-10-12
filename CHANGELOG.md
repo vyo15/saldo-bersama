@@ -1,3 +1,11 @@
+## 2026-10-12 — Wishlist compact dan target opsional (schema v28)
+
+- Form Tambah/Edit Wishlist langkah pertama dibuat compact: pemilik segmented, nama+harga wajib, detail marketplace/catatan pada disclosure.
+- Langkah kedua memakai prioritas ringkas dan toggle target OFF secara default; `planning_enabled=0` menyimpan Wishlist tanpa tanggal/nominal bulanan. Dana tidak dialokasikan saat menyimpan Wishlist.
+- List mobile/desktop mempertahankan tombol Dibeli dan pilihan simulasi; Edit/Arsip/Marketplace ada dalam menu aksi; penjelasan dipadatkan.
+- Migration `026_wishlist_optional_planning.sql` menambah flag `planning_enabled` melalui ALTER ADD COLUMN non-destruktif; row lama tetap enabled (1), schema version 28; Production wajib upgrade menggunakan runbook resmi sebelum deploy runtime terbaru.
+- Regression: strategi tanpa target, mengaktifkan/menonaktifkan target, pembelian dengan saldo canonical, migrasi data existing, FK, dan indeks.
+
 ## Unreleased — Wishlist purchase planning (schema v27)
 
 - Mobile Wishlist UI: menyamakan header dengan aksi tambah ikon 44px yang tetap punya accessible name, menyatukan tiga metrik dalam satu surface ringkas, mengubah filter prioritas menjadi SelectionControl app-owned compact (desktop tetap pill), mengurangi tinggi empty state/list serta mempertahankan safe area bottom navigation. Tidak mengubah payload API, perhitungan dana, transaksi, migration, ataupun tata letak desktop.

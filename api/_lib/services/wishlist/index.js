@@ -22,13 +22,14 @@ const productLink = (input) => {
 };
 // Keep the original validation order while selecting an edited value only when supplied.
 // Centralising this fallback also avoids hiding branching in a large form validator.
-const planValue = (payload, current, key, fallback) => payload[key] ?? current?.[key] ?? fallback;
-const validateFundingSchedule = (strategy, targetDate, monthlyPlan) => {
-  if (strategy === "gradual" && !targetDate && !monthlyPlan) {
-    throw appError("WISHLIST_PLAN_REQUIRED", "Isi target tanggal atau dana bulanan agar rencana bertahap terukur.", 400);
+const planValue = (payload, current, key, fallback) => Object.hasOwn(payload, key) ? payload[key] : current?.[key] ?? fallback;
+const validateFundingSchedule = (enabled, strategy, targetDate, monthlyPlan) => {
+  if (!enabled) {
+    if (targetDate || monthlyPlan) throw appError("WISHLIST_PLAN_CONFLICT", "Target tidak boleh tersimpan ketika rencana pembelian dimatikan.", 400);
+    return;
   }
-  if (strategy === "combined" && !targetDate && !monthlyPlan) {
-    throw appError("WISHLIST_PLAN_REQUIRED", "Isi target tanggal atau dana bulanan untuk bagian dana yang belum tersedia.", 400);
+  if (["gradual", "combined"].includes(strategy) && !targetDate && !monthlyPlan) {
+    throw appError("WISHLIST_PLAN_REQUIRED", "Pilih tanggal target atau tabungan bulanan untuk rencana bertahap.", 400);
   }
 };
 export const wishlistPlan = (payload, current = null) => {
@@ -36,13 +37,22 @@ export const wishlistPlan = (payload, current = null) => {
   if (!name) throw appError("WISHLIST_NAME_REQUIRED", "Nama barang wajib diisi.", 400);
   const estimated_amount = positiveInteger(planValue(payload, current, "estimated_amount"), "Perkiraan harga");
   const priority = cleanChoice(planValue(payload, current, "priority", "planned"), priorities, "Prioritas");
-  const funding_strategy = cleanChoice(planValue(payload, current, "funding_strategy", "gradual"), strategies, "Cara menyiapkan dana");
+  const requestedStrategy = cleanChoice(planValue(payload, current, "funding_strategy", "gradual"), strategies, "Cara menyiapkan dana");
   const target_date = optionalDate(planValue(payload, current, "target_date"));
   const monthly_plan = nonNegativeInteger(planValue(payload, current, "monthly_plan", 0), "Rencana bulanan");
   const product_url = productLink(planValue(payload, current, "product_url"));
   const note = sanitizeText(planValue(payload, current, "note"), 400);
-  validateFundingSchedule(funding_strategy, target_date, monthly_plan);
-  return { name, estimated_amount, priority, funding_strategy, target_date, monthly_plan, product_url, note };
+  // Old clients can enable planning by sending a schedule without the new flag.
+  // Migrated existing rows keep planning_enabled=1; explicit toggle OFF still wins.
+  const inferredEnabled = Boolean(target_date || monthly_plan || requestedStrategy !== "gradual");
+  const rawEnabled = Object.hasOwn(payload, "planning_enabled")
+    ? payload.planning_enabled
+    : (current?.planning_enabled === 1 || inferredEnabled ? 1 : 0);
+  if (![0, 1, false, true].includes(rawEnabled)) throw appError("WISHLIST_INVALID_CHOICE", "Target pembelian tidak valid.", 400);
+  const planning_enabled = rawEnabled ? 1 : 0;
+  validateFundingSchedule(planning_enabled, requestedStrategy, target_date, monthly_plan);
+  const funding_strategy = planning_enabled ? requestedStrategy : "gradual";
+  return { name, estimated_amount, priority, funding_strategy, target_date, monthly_plan, product_url, note, planning_enabled };
 };
 const canEdit = (row, actor) => row.scope === "personal" ? row.owner_user_id === actor.user_id : row.created_by === actor.user_id || actor.role === "owner";
 const readable = (row, actor) => row.scope === "shared" || row.owner_user_id === actor.user_id;
@@ -85,7 +95,7 @@ export const updateWishlist = async (db, context) => {
   if (current.status !== "active") throw appError("WISHLIST_READ_ONLY", "Hanya keinginan aktif yang dapat diedit.", 409);
   const plan = wishlistPlan(context.payload || {}, current);
   const next = { ...current, ...plan, row_version: current.row_version + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
-  const result = await db.execute(`UPDATE wishlist_items SET name=?,estimated_amount=?,priority=?,funding_strategy=?,target_date=?,monthly_plan=?,product_url=?,note=?,row_version=?,updated_by=?,updated_at=? WHERE wishlist_item_id=? AND row_version=?`,
+  const result = await db.execute(`UPDATE wishlist_items SET name=?,estimated_amount=?,priority=?,funding_strategy=?,target_date=?,monthly_plan=?,product_url=?,note=?,planning_enabled=?,row_version=?,updated_by=?,updated_at=? WHERE wishlist_item_id=? AND row_version=?`,
     [...Object.values(plan), next.row_version, next.updated_by, next.updated_at, current.wishlist_item_id, current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Keinginan sudah berubah di perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "wishlist_item", entityId: current.wishlist_item_id, previous: present(current), next: present(next) });

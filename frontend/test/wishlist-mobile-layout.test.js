@@ -29,15 +29,34 @@ test("Wishlist mobile merges summary into a compact surface and uses the shell b
   assert.match(responsive, /\.app-content\s*\{[^}]*padding:\s*16px var\(--mobile-page-gutter\) calc\(var\(--mobile-navigation-height\) \+ env\(safe-area-inset-bottom\)/);
 });
 
-test("Wishlist mobile priority filter is bounded, accessible, and works at narrow widths", async () => {
+test("Wishlist mobile uses an animated, accessible segmented ownership filter and bounded advanced modal", async () => {
   const [page, css] = await Promise.all([
     read("src/features/wishlist/WishlistPage.jsx"),
     read("src/features/wishlist/WishlistPage.module.css"),
   ]);
-  assert.match(page, /className=\{styles\.mobilePriority\}/);
-  assert.match(page, /<SelectionControl ariaLabel="Filter prioritas" compact value=\{priority\} onChange=\{setPriority\}/);
-  assert.match(css, /\.desktopPriority\{display:none\}/);
-  assert.match(css, /\.mobilePriority :global\(\[role="combobox"\]\)\{[^}]*min-height:var\(--mobile-hit-target\)/s);
-  assert.match(css, /\.mobilePriority :global\(\[data-selection-panel\]\)\{position:absolute/);
-  assert.match(css, /@media\(max-width:380px\)\{[^}]*\.toolbar\{flex-wrap:wrap\}/s);
+  assert.match(page, /className=\{styles\.scopeFilters\} data-scope=\{scope\} role="group" aria-label="Filter pemilik Wishlist"/);
+  assert.match(page, /aria-pressed=\{scope === value\}/);
+  assert.match(page, /aria-haspopup="dialog" onClick=\{\(\) => setFilterOpen\(true\)\}/);
+  assert.match(page, /<WishlistFilterModal priority=\{priority\} showArchive=\{showArchive\}/);
+  assert.match(page, /<Modal open onClose=\{onClose\} size="sm" title="Filter Wishlist">/);
+  assert.match(page, /const \[draftPriority, setDraftPriority\] = useState\(priority\)/);
+  assert.match(css, /\.scopeFilters\[data-scope="shared"\]::before\{transform:translateX\(200%\)\}/);
+  assert.match(css, /transition:transform var\(--motion-normal\)/);
+  assert.match(css, /\.mobileFilterButton\{[^}]*width:var\(--mobile-hit-target\)/s);
+  assert.match(css, /@media\(max-width:360px\)/);
+});
+
+test("Wishlist simulation remains opt-in and keeps checkout separate", async () => {
+  const [page, css] = await Promise.all([
+    read("src/features/wishlist/WishlistPage.jsx"),
+    read("src/features/wishlist/WishlistPage.module.css"),
+  ]);
+  assert.match(page, /const \[simulationMode, setSimulationMode\] = useState\(false\)/);
+  assert.match(page, /simulationMode && item.status === "active"/);
+  assert.match(page, /!simulationMode \? <button type="button" className=\{styles\.buyAction\}/);
+  assert.match(page, /selected = active\.filter/);
+  assert.match(page, /const exitSimulation = \(\) => \{ setSimulationMode\(false\); setSelectedIds\(\[\]\); setShowSimulator\(false\); \}/);
+  assert.match(page, /simulationMode && showSimulator && selected.length/);
+  assert.match(css, /\.itemPurchaseRow\{[^}]*flex-wrap:wrap/s);
+  assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
 });

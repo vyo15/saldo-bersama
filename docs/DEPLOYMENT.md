@@ -33,7 +33,7 @@ Sebelum perubahan schema/data-sensitive:
 
 ## 3. Migration current schema
 
-Runtime source saat ini memakai schema v27. **Schema v27 Production harus selesai dan tervalidasi sebelum runtime v27 menerima traffic.** Latest migration canonical ditentukan oleh `database/migrations/` + `DATABASE_SCHEMA_VERSION`, bukan oleh nama section runbook ini.
+Runtime source saat ini memakai schema v28. **Schema v28 Production harus selesai dan tervalidasi sebelum runtime v28 menerima traffic.** Latest migration canonical ditentukan oleh `database/migrations/` + `DATABASE_SCHEMA_VERSION`, bukan oleh nama section runbook ini.
 
 Operator tidak perlu mengorkestrasi migration dan promotion satu-satu. Jalankan:
 

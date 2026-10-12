@@ -158,7 +158,7 @@ Keputusan dan trade-off canonical dicatat di `docs/adr/`. Perubahan guarded/lint
 `Atur Dana -> Kebutuhan -> Daftar Belanja` adalah contextual workflow **opt-in per Kebutuhan**. Preference tidak menambah kolom ledger baru: keberadaan shopping list non-archived menjadi metadata capability yang diproyeksikan oleh `budgets.list` sebagai `shopping_enabled`/count. Backend `shopping` mengorkestrasi metadata belanja, sedangkan ledger tetap dimiliki finance service. Pada checkout, service memanggil `createTransactionInternal` dalam transaction action dispatcher yang sama, lalu mengikat `shopping_checkouts.transaction_id` dan mengubah item keranjang ke `purchased`. Karena itu tidak ada saldo shadow atau business rule keuangan duplikat di domain shopping. Period compaction tetap menulis snapshot `budget_history`, lalu mempertahankan row budget arsip hanya bila masih menjadi parent FK shopping; query report mengutamakan snapshot history agar anchor tidak double-count. Reopen mengaktifkan kembali anchor yang berasal dari budget aktif tanpa membuat schema shadow.
 
 
-## Wishlist purchase planning (v27)
+## Wishlist purchase planning (v27–v28)
 
 - `wishlist_items` adalah metadata rencana pembelian Pribadi/Bersama, terpisah dari `shopping_lists` operasional yang melekat pada Kebutuhan.
 - Write/read via `api/_lib/services/wishlist/index.js` dan action registry/policy. Membuat/memperbarui rencana tidak mengubah `transactions`, saldo rekening, envelope atau Target.

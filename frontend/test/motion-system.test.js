@@ -57,7 +57,13 @@ test("motion runtime menghormati reduced-motion dan tidak menghidupkan kembali l
   assert.match(motion, /semanticMotionDurationMs/);
   assert.match(motion, /getComputedStyle\(document\.documentElement\)/);
   assert.match(hook, /APP_MEDIA\.reducedMotion/);
-  assert.doesNotMatch(css, /transition\s*:[^;]*(?:width|height)/);
+  // Check actual transition values only. Never concatenate independent CSS files:
+  // declarations without trailing semicolons can otherwise match a width in the next file.
+  for (const file of cssFiles) {
+    for (const match of file.source.matchAll(/\btransition\s*:\s*([^;}]+)/g)) {
+      assert.doesNotMatch(match[1], /\b(?:width|height)\b/, `${file.url.pathname}: transitions must not animate layout size`);
+    }
+  }
   assert.doesNotMatch(css, /(?:login-money-fall|fatal-error-fly|success-money-fall|success-brand-pulse)[^;]*infinite/);
 });
 

@@ -163,18 +163,33 @@
 - Human-error flow hardening: create anggota tidak boleh mengubah anggota existing secara diam-diam; Administrator baru/perubahan role wajib review akses; Shopping Undo harus mengembalikan status sebelum dihapus dan mempertahankan Undo selama restore; editor Shopping dan mutation finansial yang hasilnya belum pasti mengunci payload untuk retry data yang sama; Target baru tidak menerima tanggal masa lalu.
 
 
-## Wishlist purchase planning — manual smoke v27
+## Wishlist purchase planning — manual smoke v28
 
 - [ ] Login sebagai Administrator dan Member, cek menu Wishlist pada desktop dan grup Rencana & Insight mobile; tab bottom navigation tetap lima slot.
-- [ ] Pada mobile 320/360/390/430px (light & dark): CTA Tambah di header hanya ikon 44px tetapi tetap bernama aksesibel; ringkasan 3 metrik menyatu ringkas, pemilik tetap pills, prioritas memakai SelectionControl app-owned compact dengan focus-visible; empty state dan daftar tidak terlalu tinggi, tidak overflow ke kanan, serta tidak tertutup bottom navigation. Desktop harus tetap memakai action berlabel dan kedua filter pills.
+- [ ] Pada mobile 320/360/390/430px (light & dark): CTA Tambah di header hanya ikon 44px tetapi tetap bernama aksesibel; ringkasan 3 metrik menyatu ringkas, filter pemilik menggunakan segmented control 3 pilihan dengan ikon dan highlight bergerak; prioritas/arsip ada pada dialog Filter Wishlist app-owned dengan focus-visible; empty state dan daftar tetap ringkas, tidak overflow ke kanan, serta tidak tertutup bottom navigation. Desktop tetap memakai action berlabel dan filter prioritas yang terlihat.
 - [ ] Uji light/dark, lebar 320/360/390px dan desktop: ringkasan nominal penuh, daftar compact tidak horizontal overflow, field tampak jelas, tombol punya target sentuh wajar.
-- [ ] Tambah Wishlist personal dan Bersama (nama, harga, HTTPS, catatan), lalu wajibkan target tanggal/nominal bulanan bila pilih bertahap/gabungan; input Rupiah memformat saat mengetik. Pilihan prioritas, strategi, rekening, kategori memakai SelectionField; tanggal memakai TemporalInput, bukan native browser picker.
+- [ ] Tambah Wishlist personal dan Bersama (nama, harga, HTTPS, catatan) tanpa target tetap bisa disimpan. Jika target diaktifkan, tanggal atau nominal bulanan diperlukan untuk menabung bertahap/gabungan; input Rupiah memformat saat mengetik. Pilihan strategi/rekening/kategori memakai SelectionField; tanggal memakai TemporalInput, bukan native browser picker.
 - [ ] Pemilik personal hanya melihat data sendiri; Administrator tidak dapat membuka Wishlist personal anggota lain. Shared visible semua, hanya pembuat/Administrator dapat mengedit/arsip.
 - [ ] Pilih saran prioritas opsional, cek prioritas tidak berubah sampai `Gunakan saran`; uji filter scope/prioritas dan arsip/reactivate.
-- [ ] Pilih beberapa item untuk simulasi total ongkir/voucher. Pastikan simulasi tidak mengubah saldo atau membuat transaksi.
+- [ ] Aktifkan mode Simulasi belanja (checkbox tidak terlihat pada mode normal), pilih beberapa item lintas filter, periksa hitung total + ongkir/voucher dan Bersihkan/Selesai. Barang archived/purchased tidak dapat dipilih, pilihan yang tersembunyi saat mengganti filter tetap terhitung, dan mode keluar mereset pilihan. Simulasi tidak mengubah saldo atau membuat transaksi.
 - [ ] Checkout personal/shared hanya menampilkan rekening scope cocok; cek harga + ongkir − diskon, pilih kategori dan tanggal, cek insufficient balance dan saldo teralokasi.
 - [ ] Pembayaran sukses membuat satu transaksi canonical, pembelian ganda ditolak; batalkan transaksi, cek status perubahan realtime lalu `Buka rencana lagi`.
 - [ ] Buat backup dengan Wishlist active dan purchased, lakukan restore drill di salinan Development terisolasi; pastikan FK transaksi/owner tetap valid. Periksa XLSX Administrator sheet `Wishlist` dan hasil Trial/Full Reset.
 - [ ] Uji dua perangkat: edit konflik `row_version`, cache refresh setelah transaksi dibatalkan, dan network outage setelah mengirim mutation (jangan retry dengan item baru).
-- [ ] Pastikan operator memakai `npm run prod:update` saat schema Production v26 menuju v27; `db:integrity -- production` sebelum migrasi memang gagal sesuai ekspektasi, dan `db:migrate --production` (tanpa spasi setelah `--`) harus ditolak oleh guard.
+- [ ] Pastikan operator memakai `npm run prod:update` saat schema Production v27 menuju v28; `db:integrity -- production` sebelum migrasi memang gagal sesuai ekspektasi, dan `db:migrate --production` (tanpa spasi setelah `--`) harus ditolak oleh guard.
 - [ ] Jangan klaim Production-ready sampai `npm run lint`, `npm run verify`, browser smoke, restore drill dan real-account smoke semuanya PASS dalam lingkungan dengan dependensi lengkap.
+
+### Wishlist compact/opsional (v28)
+- [ ] Pada mobile 320–430px serta desktop, coba langkah pertama: Pribadi/Bersama, format input ribuan, Detail tambahan buka/tutup tanpa kehilangan isian, kembali dari langkah kedua.
+- [ ] Simpan Wishlist tanpa target; nyalakan toggle tanpa tanggal -> pesan validasi singkat; isi tanggal -> estimasi/bulan; matikan toggle -> tanggal/bulanan tidak lagi tersimpan.
+- [ ] Edit Wishlist lama dengan strategi available/combined/gradual; periksa catatan, pembelian, arsip, dan simulasi multi-item.
+- [ ] Light/dark, keyboard, screen-reader labels, reduced-motion dan popup aksi item, termasuk daftar panjang.
+- [ ] Production: backup tervalidasi dan migration 026 via `npm run prod:update`, cek schema v28/integrity sebelum menerima traffic runtime baru; jangan jalankan migrasi otomatis dari ZIP.
+
+### Wishlist compact V2 — filter, motion, dan mode simulasi
+- [ ] Bandingkan filter kepemilikan Wishlist dengan filter cepat Transaksi: satu surface segmented, ikon kecil, highlight bergerak memakai transform; 320/360/390/430px tetap satu baris tanpa overflow.
+- [ ] Ubah filter berturut-turut secara cepat, bandingkan jumlah hasil, pemilik, prioritas dan empty state; reset filter mengembalikan state benar.
+- [ ] Dalam dialog filter, ubah prioritas/arsip lalu tutup lewat X/Back: perubahan draft batal; tombol Tampilkan hasil baru menerapkan perubahan.
+- [ ] Pada mode normal tidak ada checkbox per barang; Dibeli tetap lewat checkout canonical. Saat mode simulasi, checkbox baru muncul, total terpilih akurat lintas pemilik/priority, dan Dibeli sementara disembunyikan.
+- [ ] Nominal dan nama panjang tidak terpotong pada mobile 320px; menu overflow dan CTA punya hit target 44px, memakai keyboard/focus-visible serta reduced-motion tanpa animasi.
+- [ ] Jalankan lint + seluruh regression frontend termasuk motion-system + build + browser smoke di lingkungan dengan dependency platform benar sebelum klaim production-ready.

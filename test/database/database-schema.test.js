@@ -116,9 +116,9 @@ const validateWithSqlite = async () => {
   }
 };
 
-test("schema Turso/SQLite v27 dapat dibuat lengkap dan foreign key aktif", async () => {
+test("schema Turso/SQLite v28 dapat dibuat lengkap dan foreign key aktif", async () => {
   const result = await validateWithSqlite();
-  assert.equal(result.schema_version, "27");
+  assert.equal(result.schema_version, "28");
   assert.ok(result.table_count >= 30);
   assert.equal(result.foreign_keys, 1);
   assert.equal(result.strict_transactions, true);
@@ -508,4 +508,32 @@ test("migration v25 menambahkan daftar belanja tanpa cascade delete dan menjaga 
   assert.match(sql, /transaction_id TEXT NOT NULL UNIQUE/);
   assert.match(sql, /value='25'/);
   assert.doesNotMatch(sql, /ON DELETE CASCADE/);
+});
+
+
+test("migration 026 preserves legacy Wishlist rows, purchase FK and indexes while allowing unplanned", async () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("PRAGMA foreign_keys=ON");
+    db.exec(await migrationSqlThrough("025_wishlist_purchase_planning.sql"));
+    const now = "2026-10-12T01:00:00.000Z";
+    db.prepare("INSERT INTO users(user_id,firebase_uid,email,name,role,status,row_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+      .run("wish-migration-owner", "firebase-wish-migration", "wish@example.com", "Wishlist Owner", "owner", "active", 1, now, now);
+    db.prepare("INSERT INTO wishlist_items(wishlist_item_id,scope,owner_user_id,name,estimated_amount,priority,funding_strategy,target_date,monthly_plan,product_url,note,status,purchased_amount,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .run("wish-legacy", "personal", "wish-migration-owner", "Monitor lama", 2_000_000, "planned", "gradual", null, 100_000, "", "catatan", "active", 0, 4, "wish-migration-owner", now, "wish-migration-owner", now);
+    const migration = await readFile(new URL("026_wishlist_optional_planning.sql", migrationDirectory), "utf8");
+    db.exec(migration.replaceAll("-- migrate:split", ""));
+    assert.equal(db.prepare("SELECT value FROM system_config WHERE key='schema_version'").get().value, "28");
+    const original = db.prepare("SELECT * FROM wishlist_items WHERE wishlist_item_id='wish-legacy'").get();
+    assert.equal(original.name, "Monitor lama");
+    assert.equal(original.monthly_plan, 100_000);
+    assert.equal(original.row_version, 4);
+    assert.equal(original.note, "catatan");
+    assert.equal(original.planning_enabled, 1, "existing v27 plan remains enabled");
+    assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_wishlist_purchase_transaction'").get());
+    db.prepare("UPDATE wishlist_items SET planning_enabled=0,target_date=NULL,monthly_plan=0 WHERE wishlist_item_id='wish-legacy'").run();
+    assert.equal(db.prepare("SELECT planning_enabled FROM wishlist_items WHERE wishlist_item_id='wish-legacy'").get().planning_enabled, 0);
+    assert.throws(() => db.prepare("UPDATE wishlist_items SET planning_enabled=2 WHERE wishlist_item_id='wish-legacy'").run());
+  } finally { db.close(); }
 });
