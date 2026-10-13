@@ -101,8 +101,10 @@ test("Goal achievement tampil setelah penambahan dana Target sukses di server, f
   assert.match(page, /GoalAchievementPostcard/);
   assert.match(component, /role="status"/);
   assert.match(component, /aria-live="polite"/);
-  assert.match(component, /setTimeout\(\(\) => onClose\?\.\(\), duration\)/);
-  assert.doesNotMatch(component, /<button|useFocusTrap/);
+  assert.match(component, /presentation\.kind !== "deposit"/);
+  assert.match(component, /setTimeout\(\(\) => onClose\?\.\(\), 6_000\)/);
+  assert.match(component, /<button[^>]*onClick=\{onClose\}/);
+  assert.doesNotMatch(component, /useFocusTrap/);
   assert.match(css, /pointer-events:\s*none/);
   assert.match(css, /goal-achievement-rise/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);

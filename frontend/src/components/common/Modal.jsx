@@ -4,6 +4,7 @@ import { FiArrowLeft, FiX } from "react-icons/fi";
 import Button from "./Button.jsx";
 import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import { useMobileSwipeDismiss } from "./useMobileSwipeDismiss.js";
+import { useModalPresence } from "./useModalPresence.js";
 import { ModalSubviewContext } from "./ModalSubviewContext.js";
 import styles from "./Modal.module.css";
 import { getModalHistoryCoordinator } from "./modalHistoryCoordinator.js";
@@ -129,15 +130,14 @@ const resolveHistoryClose = ({ discardOpen, discardGuard, subview, setSubview, o
   return onClose;
 };
 
-const useModalController = ({ open, onClose, dismissible, mobileSwipeToClose, initialFocusRef, discardGuard }) => {
-  const containerRef = useRef(null);
+const useModalController = ({ open, historyOpen, onClose, dismissible, mobileSwipeToClose, initialFocusRef, discardGuard, containerRef, exiting, swipeExitFinishedRef }) => {
   const closeRef = useRef(null);
   const [subview, setSubview] = useState(null);
   const canDismiss = modalCanDismiss(dismissible, onClose);
   const discardOpen = Boolean(discardGuard?.promptOpen);
   const closeSubview = () => setSubview(null);
   const historyClose = resolveHistoryClose({ discardOpen, discardGuard, subview, setSubview, onClose });
-  const requestHistoryClose = useModalHistoryDismiss({ open, onClose: historyClose, dismissible: Boolean(discardOpen || subview || canDismiss) });
+  const requestHistoryClose = useModalHistoryDismiss({ open: historyOpen, onClose: historyClose, dismissible: Boolean(discardOpen || subview || canDismiss) });
   const requestClose = () => requestHistoryClose();
   const subviewApi = useMemo(() => ({ openSubview: setSubview, closeSubview }), []);
 
@@ -149,8 +149,8 @@ const useModalController = ({ open, onClose, dismissible, mobileSwipeToClose, in
   }, [open]);
 
   const effectiveCanDismiss = Boolean(discardOpen || canDismiss);
-  const swipeEnabled = Boolean(mobileSwipeToClose && canDismiss && !subview && !discardOpen);
-  const swipe = useMobileSwipeDismiss({ enabled: swipeEnabled, containerRef, onClose: requestClose });
+  const swipeEnabled = Boolean(mobileSwipeToClose && canDismiss && !subview && !discardOpen && !discardGuard?.dirty);
+  const swipe = useMobileSwipeDismiss({ enabled: swipeEnabled, containerRef, onClose: requestClose, onSwipeExitFinished: () => { swipeExitFinishedRef.current = Date.now(); } });
   const runtime = modalRuntimeState({
     subview: discardOpen ? null : subview,
     initialFocusRef,
@@ -166,7 +166,7 @@ const useModalController = ({ open, onClose, dismissible, mobileSwipeToClose, in
     open,
     containerRef,
     initialFocusRef: runtime.initialFocusRef,
-    onEscape: discardOpen ? discardGuard.cancelDiscard : runtime.onEscape,
+    onEscape: exiting ? undefined : discardOpen ? discardGuard.cancelDiscard : runtime.onEscape,
     bodyClassName: "modal-open",
   });
 
@@ -180,7 +180,7 @@ const handleBackdropDismiss = ({ event, discardOpen, discardGuard, subview, clos
   else if (canDismiss) closeModal();
 };
 
-const ModalDialog = ({ controller, titleId, descriptionId, title, description, footer, children, size, className, CloseIcon, closeLabel, discardGuard, discardSubject, headerBackAction }) => {
+const ModalDialog = ({ controller, titleId, descriptionId, title, description, footer, children, size, className, CloseIcon, closeLabel, discardGuard, discardSubject, headerBackAction, exiting }) => {
   const {
     containerRef, closeRef, subview, closeSubview, subviewApi, canDismiss, discardOpen,
     swipeEnabled, runtime, closeModal, dragging, dismissing, swipeHandlers,
@@ -188,11 +188,11 @@ const ModalDialog = ({ controller, titleId, descriptionId, title, description, f
   const presentation = discardOpen
     ? discardPresentation(discardGuard)
     : modalPresentation({ subview, title, description, CloseIcon, closeLabel, canDismiss, closeModal, closeSubview });
-  const dialogClassName = modalClassName({ sizeStyle: modalSizeStyle(size), swipeEnabled, dragging, dismissing, size, className });
+  const dialogClassName = `${modalClassName({ sizeStyle: modalSizeStyle(size), swipeEnabled, dragging, dismissing, size, className })} ${exiting ? styles.dialogExiting : ""}`.trim();
   const onBackdropPointerDown = (event) => handleBackdropDismiss({ event, discardOpen, discardGuard, subview, closeSubview, canDismiss, closeModal });
 
   return (
-    <div className={`${styles.backdrop} ${dismissing ? styles.backdropDismissing : ""} modal-backdrop`.trim()} role="presentation" onPointerDown={onBackdropPointerDown}>
+    <div className={`${styles.backdrop} ${dismissing || exiting ? styles.backdropDismissing : ""} modal-backdrop`.trim()} data-exiting={exiting ? "true" : undefined} role="presentation" onPointerDown={exiting ? undefined : onBackdropPointerDown}>
       <section
         className={dialogClassName}
         role="dialog"
@@ -252,8 +252,10 @@ const Modal = ({
 }) => {
   const titleId = useId();
   const descriptionId = useId();
-  const controller = useModalController({ open, onClose, dismissible, mobileSwipeToClose, initialFocusRef, discardGuard });
-  if (!open) return null;
+  const swipeExitFinishedRef = useRef(0);
+  const presence = useModalPresence(open, swipeExitFinishedRef);
+  const controller = useModalController({ open: presence.present, historyOpen: open, onClose, dismissible, mobileSwipeToClose, initialFocusRef, discardGuard, containerRef: presence.dialogRef, exiting: presence.exiting, swipeExitFinishedRef });
+  if (!presence.present) return null;
 
   return createPortal(
     <ModalDialog
@@ -270,6 +272,7 @@ const Modal = ({
       discardGuard={discardGuard}
       discardSubject={discardSubject}
       headerBackAction={headerBackAction}
+      exiting={presence.exiting}
     >
       {children}
     </ModalDialog>,

@@ -20,8 +20,8 @@ import TemporalInput from "../../../components/common/TemporalInput.jsx";
 const MEMBER_ACTIVITY_LIMIT = 8;
 const TYPE_FILTERS = Object.freeze([
   { value: "all", label: "Semua" },
-  { value: "income", label: "Pemasukan" },
-  { value: "expense", label: "Pengeluaran" },
+  { value: "income", label: "Pemasukan", tone: "income" },
+  { value: "expense", label: "Pengeluaran", tone: "expense" },
   { value: "transfer", label: "Transfer" },
   { value: "refund", label: "Refund" },
   { value: "adjustment", label: "Penyesuaian" },

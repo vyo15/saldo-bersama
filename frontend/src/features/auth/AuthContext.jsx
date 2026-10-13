@@ -5,7 +5,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getPublicConfigErrors } from "../../config/env.js";
 import { apiClient } from "../../services/api/client.js";
-import { disablePushNotifications } from "../../services/notifications.js";
+// Device push cleanup is only needed on session loss/logout; keep it out of startup JS.
+const disablePushNotifications = async (options = {}) => {
+  try {
+    const { disablePushNotifications: disable } = await import("../../services/notifications.js");
+    return await disable(options);
+  } catch (error) {
+    if (options.bestEffort) return { disabled: false, errorCode: error?.code || "PUSH_DISABLE_FAILED" };
+    throw error;
+  }
+};
 
 const AuthContext = createContext(null);
 

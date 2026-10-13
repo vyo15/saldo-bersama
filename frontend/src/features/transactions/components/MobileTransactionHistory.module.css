@@ -65,19 +65,38 @@
 .filterBar { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--mobile-control-height) var(--mobile-control-height); align-items: center; gap: 6px; }
 .typeScroller {
   min-width: 0;
+  position: relative;
+  isolation: isolate;
   min-height: var(--mobile-control-height);
-  padding: 1px;
+  padding: 2px;
   border: 1px solid transparent;
   border-radius: 15px;
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
   overflow: hidden;
   background: color-mix(in srgb, var(--surface-soft) 78%, var(--surface));
 }
+/* One teal sliding pill (like Wishlist); type semantics belong to icon and selected text only. */
+.typeScroller::before {
+  content: "";
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  width: calc((100% - 4px) / 3);
+  border-radius: 13px;
+  background: var(--primary-soft);
+  transform: translateX(0);
+  transition: transform var(--motion-normal) var(--ease-standard), opacity var(--motion-control) var(--ease-standard);
+  pointer-events: none;
+}
+.typeScroller[data-active-type="expense"]::before { transform: translateX(100%); }
+.typeScroller[data-active-type="income"]::before { transform: translateX(200%); }
+.typeScroller:not([data-active-type="all"]):not([data-active-type="expense"]):not([data-active-type="income"])::before { opacity: 0; }
 .typeChip,
-.typeChipActive { min-width: 0; min-height: var(--mobile-control-height); padding: 0 7px; border: 0; border-radius: var(--mobile-radius-control); flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--text-soft); background: transparent; font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); white-space: nowrap; cursor: pointer; transition: background-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing); }
-.typeChipActive { color: var(--primary-strong); background: var(--primary-soft); box-shadow: none; }
+.typeChipActive { position: relative; z-index: 1; min-width: 0; min-height: var(--mobile-control-height); padding: 0 7px; border: 0; border-radius: var(--mobile-radius-control); display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--text-soft); background: transparent; font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); white-space: nowrap; cursor: pointer; transition: background-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing); }
+.typeChipActive { color: var(--primary-strong); background: transparent; box-shadow: none; }
+.typeChipActive[data-tone="expense"] { color: var(--negative); }
+.typeChipActive[data-tone="income"] { color: var(--positive); }
 .typeChipIcon { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 8px; display: grid; place-items: center; color: var(--text-muted); background: var(--surface); }
 .typeChipIcon svg { width: 13px; height: 13px; stroke-width: 2.25; }
 .typeChip[data-tone="expense"] .typeChipIcon,
@@ -303,7 +322,7 @@
   .metrics { gap: 5px; font-size: var(--font-size-xs); }
   .metrics strong { font-size: var(--font-size-xs); }
   .filterBar { grid-template-columns: minmax(0, 1fr) var(--mobile-control-height) var(--mobile-control-height); gap: 5px; }
-  .typeScroller { gap: 1px; }
+  .typeScroller { gap: 0; }
   .iconFilter { width: var(--mobile-control-height); height: var(--mobile-control-height); }
   .typeChip,
   .typeChipActive { min-height: var(--mobile-control-height); padding-inline: 5px; gap: 4px; font-size: var(--font-size-xs); }
@@ -317,8 +336,16 @@
   .rowAmount { font-size: var(--type-meta); }
 }
 
+/* Between 391–430px the three cells cannot reliably fit long transaction words;
+   use the same short visible copy as narrower devices (accessible names remain full). */
+@media (min-width: 391px) and (max-width: 430px) {
+  .typeChipLabelLong { display: none; }
+  .typeChipLabelShort { display: inline; }
+}
+
 /* Accessibility overrides stay last so responsive rules cannot re-enable motion. */
 @media (prefers-reduced-motion: reduce) {
   .row { transition: none; }
+  .typeScroller::before, .typeChip, .typeChipActive { transition: none; }
   .chartSkeleton { animation: none; }
 }

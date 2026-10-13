@@ -481,3 +481,47 @@ transition: none;
 @media (prefers-reduced-motion: reduce) {
   .setupOptional > summary::after { transition: none; }
 }
+
+/* Compact finance forms: actions visible; fee, custom date, notes remain discoverable. */
+.sellQuick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.sellQuick button {
+  min-height: var(--mobile-hit-target);
+  padding: .45rem .25rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+.sellQuick button:disabled { opacity: .38; cursor: not-allowed; }
+.sellQuick button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.tradeImpact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .3rem var(--space-2);
+  padding: .6rem 0;
+  border-top: 1px solid var(--mobile-divider);
+}
+.tradeImpact span, .tradeImpact small { color: var(--text-muted); font-size: var(--font-size-xs); }
+.tradeImpact strong { font-size: var(--font-size-body); color: var(--text); }
+.tradeImpact small { grid-column: 1 / -1; }
+.intentFieldset .formRow:has(> :only-child) { grid-template-columns: 1fr; }
+.setupOptional[open] { display: grid; gap: var(--space-2); }
+.setupOptional[open] > :not(summary) { margin-top: 0; }
+@media (max-width: 620px) {
+  .intentFieldset, .form { gap: var(--space-3); }
+  .reviewGrid { grid-template-columns: 1fr; gap: 0; }
+  .reviewGrid > div { display: flex; align-items: start; justify-content: space-between; gap: var(--space-3); padding: .65rem 0; background: transparent; border: 0; border-bottom: 1px solid var(--mobile-divider); }
+  .reviewGrid dd { max-width: 58%; text-align: end; }
+}
+@media (prefers-reduced-motion: reduce) { .sellQuick button { transition: none; } }
+
+.referencePrice { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); min-width: 0; }
+.referencePrice > span { flex: 1; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.35; }
+.referencePrice button { display: inline-flex; align-items: center; gap: .35rem; min-height: var(--mobile-hit-target); padding: .25rem .45rem; background: var(--surface-soft); border: 0; border-radius: var(--radius-sm); color: var(--primary); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.referencePrice button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+@media (max-width: 370px) { .referencePrice { align-items: start; flex-direction: column; } }

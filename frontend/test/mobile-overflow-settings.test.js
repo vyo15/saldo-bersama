@@ -23,7 +23,8 @@ test("modal mobile hanya menggulir vertikal dan gesture dismiss tidak mengunci b
   assert.match(modalSource, /event\.target\.closest\?\.\(INTERACTIVE_GESTURE_TARGET\)/);
   assert.match(modalSource, /const finalizeClose = useCallback/);
   assert.match(modalSource, /if \(!enabled \|\| !isMobileSwipeViewport\(\) \|\| prefersReducedMotion\(\)\) \{ finalizeClose\(\); return; \}/);
-  assert.match(modalSource, /dismissTimerRef\.current = window\.setTimeout\(finalizeClose, SWIPE_DISMISS_DURATION_MS\)/);
+  assert.match(modalSource, /finishMotionPhase\(containerRef\.current/);
+  assert.match(modalSource, /semanticMotionDurationMs\("sheet-exit"\)/);
   assert.match(modalSource, /if \(event\.target !== event\.currentTarget\) return;/);
   assert.match(modalSource, /if \(subview\) closeSubview\(\);/);
   assert.match(modalSource, /onEscape: subview \? closeSubview : \(canDismiss \? closeModal : undefined\)/);
@@ -54,7 +55,7 @@ test("filter transaksi mobile memprioritaskan history, filter cepat, dan dialog 
   assert.match(mobileHistory, /CategoryFilterTile/);
   assert.match(mobileHistory, /<TemporalInput type="month"/);
   assert.match(mobileStyles, /\.filterBar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--mobile-control-height\) var\(--mobile-control-height\);/);
-  assert.match(mobileStyles, /\.typeScroller\s*\{[^}]*display:\s*flex;/);
+  assert.match(mobileStyles, /\.typeScroller\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/);
   assert.match(mobileStyles, /\.filterTypeGrid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(mobileStyles, /\.categoryGrid\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/);
   assert.match(mobileStyles, /@media \(max-width: 390px\)[\s\S]*\.typeChipLabelLong \{ display:\s*none; \}[\s\S]*\.typeChipLabelShort \{ display:\s*inline; \}/);

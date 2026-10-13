@@ -1,6 +1,6 @@
 import { isMutualFundInstrument } from "./investmentInstrumentType.js";
 import { investmentOpeningPositionPreview } from "./investmentOpeningPositionPreview.js";
-import { investmentTradePreview } from "./investmentTradePreview.js";
+import { investmentTradePreview, rupiahFromInvestmentUnits } from "./investmentTradePreview.js";
 import { positiveIntegerError, positiveDecimalError, nonNegativeIntegerError, signedIntegerError, todayJakarta } from "./investmentValidationPrimitives.js";
 export { investmentOpeningPositionPreview } from "./investmentOpeningPositionPreview.js";
 export { investmentTradePreview, investmentProjectedAverage } from "./investmentTradePreview.js";
@@ -352,7 +352,7 @@ const purchaseNumericErrors = (form, asset) => {
 const purchaseTotalError = (form, asset, goalId) => {
   const fund = isMutualFundInstrument(asset || {});
   const shares = Number(form.opening_quantity) * (fund ? 1 : Number(asset.lot_size || 100));
-  const total = Math.round(shares * Number(form.average_price)) + Number(form.fee_amount || 0);
+  const total = rupiahFromInvestmentUnits(shares, form.average_price) + Number(form.fee_amount || 0);
   if (!Number.isSafeInteger(total) || total <= 0) return ["_form", "Nilai pembelian tidak valid atau terlalu kecil."];
   if (goalId && !Number.isInteger(shares)) return ["opening_quantity", "Unit pecahan belum dapat dihubungkan langsung ke Target."];
   return null;

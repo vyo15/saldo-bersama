@@ -446,7 +446,7 @@
 
 :root[data-theme="dark"] .app-shell,
 :root[data-theme="dark"] .desktop-app-header {
-  background: color-mix(in srgb, var(--surface) 97%, transparent);
+  background: var(--page);
 }
 
 /* 2026 premium shell refinement */

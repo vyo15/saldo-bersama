@@ -292,18 +292,8 @@
 
 .managedNote { display: block; max-width: 10rem; color: var(--text-muted); line-height: 1.4; }
 .actions { justify-content: flex-end; }
-.detail { display: grid; gap: .75rem; }
-.detailAmount { min-width: 0; padding: 1.15rem; border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; align-items: flex-start; justify-content: space-between; gap: .85rem; background: var(--surface-soft); }
-.detailAmount > div { min-width: 0; display: grid; gap: .45rem; }
-.detailAmount > div > span:first-child { color: var(--text-muted); font-size: var(--font-size-xs); }
-.detailMoney { display: inline-flex; align-items: center; white-space: nowrap; font-size: 1.45rem; font-weight: var(--font-weight-bold); letter-spacing: -.03em; }
+.detailMoney { min-width: 0; display: inline-flex; flex-wrap: wrap; align-items: center; gap: .12rem; font-size: inherit; font-weight: var(--font-weight-bold); letter-spacing: -.03em; }
 .detailMoney :global(.money) { color: inherit; font-size: inherit; }
-.detail dl { margin: 0; overflow: hidden; border: 1px solid transparent; border-radius: var(--radius-md); }
-.detail dl > div { min-height: 3rem; padding: .75rem; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: .75rem; }
-.detail dl > div:last-child { border-bottom: 0; }
-.detail dt { color: var(--text-muted); font-size: var(--font-size-xs); }
-.detail dd { margin: 0; overflow-wrap: anywhere; color: var(--text); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-align: right; }
-.detail dd small { display: block; margin-top: .2rem; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
 
 :global(.modal).detailDrawer {
   position: fixed;

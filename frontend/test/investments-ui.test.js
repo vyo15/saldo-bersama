@@ -18,10 +18,11 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.match(page, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
   assert.match(overview, /const total = Number\(values\.market_value \|\| 0\)/);
   assert.match(overview, /Modal aktif/);
-  assert.match(overview, /Nilai saat ini/);
+  assert.match(overview, /Nilai dari catatan manual, bukan harga pasar live/);
   assert.match(overview, /Total investasi tercatat/);
-  assert.match(overview, />Aset <span>/);
-  assert.match(overview, />Aktivitas /);
+  assert.match(overview, /value: "activity", label: "Riwayat"/);
+  assert.match(overview, /role="tablist" aria-label="Jelajahi investasi"/);
+  assert.match(overview, /assetGroupTitle/);
   assert.match(await read("src/components/common/QuickSegmentedFilter.module.css"), /min-height:\s*var\(--mobile-hit-target\)/);
   assert.match(overview, /value: "all", label: "Semua"/);
   assert.match(overview, /value: "stock", label: "Saham"/);
@@ -214,4 +215,40 @@ test("form tambah investasi ringkas tanpa mengubah intent dan perhitungan RDN", 
   assert.match(sharedPicker, /role="listbox"/);
   assert.match(styles, /\.setupForm \.reviewGrid > div/);
   assert.match(styles, /@media \(min-width: 430px\) and \(max-width: 620px\)/);
+});
+
+
+test("detail investasi ringkas tidak mewarisi form review satu kolom dan tetap menghormati nilai serta aksi aset", async () => {
+  const [detail, detailCss, reviewCss, priceFormat] = await Promise.all([
+    read("src/features/investments/InvestmentHoldingDetail.jsx"),
+    read("src/features/investments/InvestmentHoldingDetail.module.css"),
+    read("src/features/investments/InvestmentForm.module.css"),
+    read("src/features/investments/InvestmentUnitPrice.jsx"),
+  ]);
+  // Isolasi layout menjaga form review transaksi/setup tidak ikut berubah.
+  assert.match(detail, /import styles from "\.\/InvestmentHoldingDetail\.module\.css"/);
+  assert.match(detail, /<dl className=\{styles\.metrics\}>/);
+  assert.doesNotMatch(detail, /formStyles\.reviewGrid/);
+  assert.match(reviewCss, /\.reviewGrid/);
+  assert.match(detailCss, /\.metrics\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
+  assert.doesNotMatch(detailCss, /\.metrics\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  assert.match(detailCss, /\.metric\s*\{[^}]*border-bottom:\s*1px solid var\(--mobile-divider\)/s);
+  assert.doesNotMatch(detailCss, /#[0-9a-f]{3,8}/i);
+
+  // Detail wajib mendukung 2 jenis aset, posisi aktif/selesai, nilai manual dan histori.
+  assert.match(detail, /isMutualFundInstrument\(holding\)/);
+  assert.match(detail, /mutualFund \? "Unit dimiliki" : "Lot dimiliki"/);
+  assert.match(detail, /mutualFund \? "Sisa unit" : "Sisa lot"/);
+  assert.match(detail, /<Money value=\{closed \? holding\.realized_pl : holding\.market_value\} \/>/);
+  assert.match(detail, /investmentReturnPercent\(returnAmount, closed \? holding\.realized_cost_basis : holding\.cost_basis\)/);
+  assert.match(detail, /Nilai berdasarkan catatan manual atau transaksi terakhir, bukan harga pasar live/);
+  assert.match(detail, /<details className=\{styles\.history\}>/);
+  assert.match(detail, /<summary>/);
+  assert.match(detail, /slice\(0, 10\)/);
+  assert.match(detail, /const canSell = portfolio.can_operate && !closed && \(freeShares/);
+  assert.match(detail, /onAction\("price", portfolio/);
+  assert.match(priceFormat, /formatInvestmentUnitPrice\(value\)/);
+  assert.match(detailCss, /min-height:\s*var\(--mobile-hit-target\)/);
+  assert.match(detailCss, /:focus-visible/);
+  assert.match(detailCss, /prefers-reduced-motion: reduce/);
 });

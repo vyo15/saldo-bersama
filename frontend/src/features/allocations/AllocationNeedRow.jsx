@@ -140,15 +140,23 @@ export const BudgetNeedDetailModal = ({ target, onClose }) => {
         <span className={allocationClass(`allocation-need-detail__status is-${status.key}`)}>{status.key === "completed" ? <FiCheckCircle aria-hidden="true" /> : null}{statusLabel}</span>
         {category?.name ? <span>{category.name}</span> : null}
       </header>
+      <div className={allocationClass("allocation-need-detail__hero")}>
+        <span>Sisa kebutuhan</span>
+        <strong><Money value={remaining} /></strong>
+      </div>
       <dl className={allocationClass("allocation-need-detail__facts")}>
         <div><dt>Rencana</dt><dd><Money value={amount} /></dd></div>
         <div><dt>Terpakai</dt><dd><Money value={used} /></dd></div>
-        <div><dt>Sisa</dt><dd><Money value={remaining} /></dd></div>
-        <div><dt>Pola</dt><dd>{patternLabel}</dd></div>
-        <div><dt>Daftar belanja</dt><dd>{budget.shopping_enabled ? `Aktif${Number(budget.shopping_item_count || 0) > 0 ? ` · ${Number(budget.shopping_item_count)} item` : ""}` : "Tidak digunakan"}</dd></div>
-        {completedAt ? <div><dt>Selesai pada</dt><dd>{completedAt}</dd></div> : null}
-        {schedule?.label ? <div><dt>Jadwal</dt><dd>{schedule.label}</dd></div> : null}
       </dl>
+      <details className={allocationClass("allocation-need-detail__more")}>
+        <summary>Informasi kebutuhan lainnya</summary>
+        <dl className={allocationClass("allocation-need-detail__facts")}>
+          <div><dt>Pola</dt><dd>{patternLabel}</dd></div>
+          <div><dt>Daftar belanja</dt><dd>{budget.shopping_enabled ? `Aktif${Number(budget.shopping_item_count || 0) > 0 ? ` · ${Number(budget.shopping_item_count)} item` : ""}` : "Tidak digunakan"}</dd></div>
+          {completedAt ? <div><dt>Selesai pada</dt><dd>{completedAt}</dd></div> : null}
+          {schedule?.label ? <div><dt>Jadwal</dt><dd>{schedule.label}</dd></div> : null}
+        </dl>
+      </details>
     </article>
   </Modal>;
 };

@@ -148,7 +148,7 @@ const FilterSelectSection = ({ label, children }) => <section className={styles.
   <strong>{label}</strong>
   <div className={styles.filterSelect}>{children}</div>
 </section>;
-const QuickTransactionFilters = ({ filters, setFilters }) => <div className={styles.typeScroller}>
+const QuickTransactionFilters = ({ filters, setFilters }) => <div className={styles.typeScroller} data-active-type={filters.type} role="group" aria-label="Jenis transaksi">
   {QUICK_TYPES.map((item) => {
     const Icon = item.Icon;
     const active = filters.type === item.value;

@@ -11,8 +11,10 @@ const GoalAchievementPostcard = ({ goalBefore, goalAfter, amount, onClose }) => 
 
   useEffect(() => {
     if (!presentation) return undefined;
-    const duration = presentation.kind === "reached" ? 4_400 : 3_400;
-    const timer = setTimeout(() => onClose?.(), duration);
+    // Milestones and completion stay readable until explicitly dismissed.
+    // Routine deposits remain lightweight; the confirmed progress persists in the Target card.
+    if (presentation.kind !== "deposit") return undefined;
+    const timer = setTimeout(() => onClose?.(), 6_000);
     return () => clearTimeout(timer);
   }, [onClose, presentation]);
 
@@ -21,6 +23,7 @@ const GoalAchievementPostcard = ({ goalBefore, goalAfter, amount, onClose }) => 
     <div className={styles.layer}>
       <div className={styles.backdrop} aria-hidden="true" />
       <section className={`${styles.postcard} ${presentation.kind === "reached" ? styles.reached : ""}`} role="status" aria-live="polite" aria-atomic="true">
+        <button className={styles.dismiss} type="button" onClick={onClose} aria-label="Tutup ringkasan setoran Target">Tutup <span aria-hidden="true">×</span></button>
         {presentation.kind === "reached" ? <div className={styles.confetti} aria-hidden="true">{CONFETTI.map((item) => <span key={item} data-piece={item} />)}</div> : null}
         <div className={styles.visual}>
           <span className={`${styles.spark} ${styles.sparkOne}`} aria-hidden="true">✨</span>

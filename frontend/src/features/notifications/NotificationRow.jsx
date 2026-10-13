@@ -8,8 +8,11 @@ import {
   FiPieChart,
   FiRefreshCw,
   FiTarget,
+  FiX,
 } from "react-icons/fi";
 import { APP_MEDIA } from "../../config/layout.js";
+import { formatDateTimeJakarta } from "../../domain/dates.js";
+import { finishMotionPhase, semanticMotionDurationMs } from "../../shared/motion.js";
 import { financialAlertGuidance } from "../../shared/workflows/financialAlerts.js";
 import {
   financialNotificationEntity,
@@ -25,8 +28,6 @@ const FAST_SWIPE_VELOCITY_PX_MS = 0.55;
 const MIN_DISMISS_DISTANCE_PX = 82;
 const MAX_DISMISS_DISTANCE_PX = 118;
 const DISMISS_RATIO = 0.26;
-const EXIT_DURATION_MS = 150;
-const COLLAPSE_DURATION_MS = 200;
 
 const idleGesture = () => ({ tracking: false, dragging: false, rejected: false, pointerId: null });
 const matchesMedia = (query) => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches;
@@ -51,35 +52,66 @@ const notificationTone = (alert) => {
 const useDismissMotion = ({ alert, onDismiss }) => {
   const itemRef = useRef(null);
   const rowRef = useRef(null);
-  const timersRef = useRef([]);
+  const cancelMotionRef = useRef(() => {});
+  const swipeFrameRef = useRef(null);
+  const clearingRef = useRef(false);
   const suppressClickRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [collapsing, setCollapsing] = useState(false);
 
   useEffect(() => () => {
-    for (const timer of timersRef.current) window.clearTimeout(timer);
+    cancelMotionRef.current();
+    if (swipeFrameRef.current !== null) window.cancelAnimationFrame(swipeFrameRef.current);
   }, []);
 
   const setOffset = useCallback((value) => {
     rowRef.current?.style.setProperty("--notification-swipe-x", `${Math.max(0, value)}px`);
   }, []);
 
-  const commitDismiss = useCallback(() => {
-    if (clearing) return;
-    if (prefersReducedMotion()) {
-      onDismiss(alert);
-      return;
+  const finishDismiss = useCallback(() => {
+    // Keyboard focus must never be stranded in a removed notification row.
+    if (itemRef.current && (document.activeElement === rowRef.current || itemRef.current.contains(document.activeElement))) {
+      const wrapper = itemRef.current?.parentElement;
+      const nextRow = wrapper?.nextElementSibling?.querySelector("button[data-native-enter]")
+        || wrapper?.previousElementSibling?.querySelector("button[data-native-enter]")
+        || document.querySelector('[data-notification-filter="true"]');
+      nextRow?.focus();
     }
+    Promise.resolve().then(() => onDismiss(alert)).catch(() => {
+      // A failed server write must restore the locally animated row for retry.
+      clearingRef.current = false;
+      setClearing(false);
+      setCollapsing(false);
+      setOffset(0);
+    });
+  }, [alert, onDismiss, setOffset]);
+
+  const commitDismiss = useCallback(() => {
+    if (clearingRef.current) return;
+    clearingRef.current = true;
+    if (prefersReducedMotion()) { finishDismiss(); return; }
     const width = itemRef.current?.getBoundingClientRect().width || window.innerWidth;
     setDragging(false);
     setClearing(true);
-    setOffset(width + 32);
-    timersRef.current.push(window.setTimeout(() => {
-      setCollapsing(true);
-      timersRef.current.push(window.setTimeout(() => onDismiss(alert), COLLAPSE_DURATION_MS));
-    }, EXIT_DURATION_MS));
-  }, [alert, clearing, onDismiss, setOffset]);
+    // Wait for the drag class (which disables transition) to leave the DOM,
+    // then start the exit. No premature collapse and no permanent GPU layer.
+    swipeFrameRef.current = window.requestAnimationFrame(() => {
+      swipeFrameRef.current = null;
+      rowRef.current?.getBoundingClientRect();
+      setOffset(width + 32);
+      cancelMotionRef.current = finishMotionPhase(rowRef.current, {
+        property: "transform", durationMs: semanticMotionDurationMs("swipe-exit"),
+        onFinish: () => {
+          setCollapsing(true);
+          cancelMotionRef.current = finishMotionPhase(itemRef.current?.parentElement, {
+            property: "grid-template-rows", durationMs: semanticMotionDurationMs("swipe-collapse"),
+            onFinish: finishDismiss,
+          });
+        },
+      });
+    });
+  }, [finishDismiss, setOffset]);
 
   return { itemRef, rowRef, suppressClickRef, dragging, clearing, collapsing, setDragging, setOffset, commitDismiss };
 };
@@ -154,11 +186,20 @@ const useSwipeGesture = ({ itemRef, rowRef, suppressClickRef, clearing, setDragg
   return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
 };
 
+const eventDisplay = (alert) => {
+  const at = alert.source === "event" ? alert.occurredAt || alert.createdAt || alert.updatedAt : null;
+  const date = at ? new Date(at) : null;
+  return date && Number.isFinite(date.getTime())
+    ? { at, short: new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" }).format(date) }
+    : null;
+};
+
 const NotificationRow = ({ alert, read, onOpen, onDismiss }) => {
   const motion = useDismissMotion({ alert, onDismiss });
   const gesture = useSwipeGesture(motion);
   const Icon = notificationIcon(alert.type);
   const tone = notificationTone(alert);
+  const event = eventDisplay(alert);
   const entity = financialNotificationEntity(alert);
   const fact = financialNotificationFact(alert);
   const guidanceAlert = alert.guidanceId ? { ...alert, id: alert.guidanceId } : alert;
@@ -195,13 +236,14 @@ const NotificationRow = ({ alert, read, onOpen, onDismiss }) => {
         >
           <span className={styles.icon}><Icon aria-hidden="true" /></span>
           <span className={styles.copy}>
-            <strong>{financialNotificationTitle(alert)}</strong>
+            <span className={styles.primaryLine}><strong>{financialNotificationTitle(alert)}</strong>{event ? <time className={styles.eventTime} dateTime={event.at} title={formatDateTimeJakarta(event.at)}>{event.short}</time> : null}</span>
             {entity ? <span className={styles.entity}>{entity}</span> : null}
             {fact ? <small>{fact}</small> : null}
             {actionLabel ? <span className={styles.actionLabel}>{actionLabel}</span> : null}
           </span>
           <span className={styles.trailing}>{read ? null : <i className={styles.unreadDot} aria-hidden="true" />}<FiChevronRight aria-hidden="true" /></span>
         </button>
+        <button type="button" className={styles.clearButton} aria-label={`Bersihkan: ${financialNotificationTitle(alert)}`} title="Bersihkan notifikasi" disabled={motion.clearing} onClick={motion.commitDismiss}><FiX aria-hidden="true" /></button>
       </div>
     </div>
   );

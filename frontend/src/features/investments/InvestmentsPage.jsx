@@ -22,12 +22,6 @@ const InvestmentSetupDialog = lazy(() => import("./InvestmentSetupDialog.jsx"));
 const investmentRdnAccountId = (portfolio) => String(portfolio?.rdn_account_id || portfolio?.account_id || "");
 const portfolioForRdn = (portfolios, rdnAccountId) => portfolios.find((item) => investmentRdnAccountId(item) === String(rdnAccountId || "")) || null;
 
-const investmentSuccessMessage = (mode) => ({
-  buy: "Pembelian investasi berhasil dicatat.",
-  sell: "Penjualan investasi berhasil dicatat.",
-  price: "Nilai investasi berhasil diperbarui.",
-})[mode] || "Catatan investasi berhasil disimpan.";
-
 const useLegacyInvestmentContinuation = ({ location, navigate, data, ready, setSetupOpen, setDialog, setHoldingDetail }) => {
   useEffect(() => {
     if (!ready) return;
@@ -137,6 +131,7 @@ const InvestmentsPage = () => {
   const [dialog, setDialog] = useState(null);
   const workflowHandled = useRef("");
   const [holdingDetail, setHoldingDetail] = useState(null);
+  const [latestSavedAsset, setLatestSavedAsset] = useState(null);
   const data = overview.data || { summary: {}, portfolios: [], instruments: [], activity: [] };
   const goals = goalResource.data?.items || [];
   const positionCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.positions || portfolio.holdings || []).length, 0), [data.portfolios]);
@@ -149,6 +144,7 @@ const InvestmentsPage = () => {
   const openSetup = (goalId = "") => { setSetupGoalId(String(goalId || "")); setSetupOpen(true); };
   const onSetupSuccess = (saved, asset, intent) => {
     clearSetupGoal();
+    setLatestSavedAsset({ ticker: asset?.ticker || "", revision: Date.now() });
     notify({
       message: saved?.goal_id
         ? `${asset?.ticker || "Aset investasi"} berhasil ditambahkan dan terhubung ke Target.`
@@ -158,8 +154,11 @@ const InvestmentsPage = () => {
     });
     Promise.allSettled([overview.reload(), goalResource.reload()]);
   };
-  const onInvestmentSuccess = (mode) => {
-    notify({ message: investmentSuccessMessage(mode), tone: "success", dedupeKey: `investments:${mode}` });
+  const onInvestmentSuccess = (mode, _portfolio, _result, instrumentId) => {
+    const asset = (data.instruments || []).find((item) => item.instrument_id === instrumentId);
+    const label = asset?.ticker || "investasi";
+    setLatestSavedAsset({ ticker: asset?.ticker || "", revision: Date.now() });
+    notify({ message: mode === "buy" ? `Pembelian ${label} tercatat. Nilai dan RDN diperbarui.` : mode === "sell" ? `Penjualan ${label} tercatat. Sisa aset dan RDN diperbarui.` : `Nilai ${label} tercatat.`, tone: "success", dedupeKey: `investments:${mode}` });
     Promise.allSettled([overview.reload(), goalResource.reload()]);
   };
 
@@ -200,7 +199,7 @@ const InvestmentsPage = () => {
       help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak mengirim transfer bank otomatis, dan tidak mengambil harga pasar live. Beli/Jual pada portfolio dengan RDN eksplisit memperbarui cash RDN tercatat; aset dengan rekening internal tetap hanya pencatatan posisi."
     />
     {!hasInvestmentHistory ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>
-      <InvestmentOverview data={data} onHolding={(portfolio, holding) => setHoldingDetail({ portfolio, holding })} />
+      <InvestmentOverview latestSavedAsset={latestSavedAsset} data={data} onHolding={(portfolio, holding) => setHoldingDetail({ portfolio, holding })} />
     </Suspense>}
     <InvestmentOverlays page={page} />
   </div>;

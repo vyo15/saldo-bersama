@@ -24,10 +24,21 @@
   border-radius: calc(var(--mobile-radius-control, var(--radius-lg)) - 3px);
   background: var(--primary-soft);
   transform: translateX(0);
-  transition: transform var(--motion-control) var(--ease-standard);
+  transition: transform var(--motion-normal) var(--ease-standard);
   pointer-events: none;
 }
 .root[data-active-index="-1"]::before { opacity: 0; }
+/* One teal selection surface for every status: meaning lives in foreground only. */
+.root[data-active-tone="income"], .root[data-active-tone="positive"] { --selection-ink: var(--positive); }
+.root[data-active-tone="expense"], .root[data-active-tone="negative"] { --selection-ink: var(--negative); }
+.root[data-active-tone="warning"], .root[data-active-tone="attention"] { --selection-ink: var(--warning); }
+.root[data-active-tone="transfer"], .root[data-active-tone="refund"], .root[data-active-tone="info"] { --selection-ink: var(--info); }
+.root[data-active-tone]:not([data-active-tone="neutral"]) .segment[aria-pressed="true"] { color: var(--selection-ink, var(--primary-strong)); }
+.segment[data-tone="income"], .segment[data-tone="positive"] { --icon-tone: var(--positive); --icon-surface: var(--positive-soft); }
+.segment[data-tone="expense"], .segment[data-tone="negative"] { --icon-tone: var(--negative); --icon-surface: var(--negative-soft); }
+.segment[data-tone="warning"], .segment[data-tone="attention"] { --icon-tone: var(--warning); --icon-surface: var(--warning-soft); }
+.segment[data-tone="transfer"], .segment[data-tone="refund"], .segment[data-tone="info"] { --icon-tone: var(--info); --icon-surface: var(--info-soft); }
+.segment .icon { color: var(--icon-tone, var(--primary)); }
 .root[data-count="2"]::before { width: calc((100% - 8px) / 2); }
 .root[data-count="4"]::before { width: calc((100% - 12px) / 4); }
 .root[data-active-index="1"]::before { transform: translateX(calc(100% + 2px)); }

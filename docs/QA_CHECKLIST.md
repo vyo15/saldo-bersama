@@ -23,6 +23,10 @@
 - [ ] Perubahan setelah PASS memicu pengulangan gate relevan.
 - [ ] Tidak ada production code yang diubah hanya untuk memuaskan test stale.
 
+- [ ] Detail Transaksi Beranda dan Transaksi memakai fakta dan badge lifecycle yang sama; nominal privasi tidak bocor, tanggal/status/ID copyable tetap benar.
+- [ ] Detail Rekening mobile menampilkan saldo utama, Dana tersedia, Dialokasikan (kecuali RDN), nomor yang bisa disalin, dan metadata sekunder bisa dibuka di 320–430px.
+- [ ] Detail Kebutuhan menampilkan Sisa, Rencana, dan Terpakai dengan status yang benar tanpa menyembunyikan jadwal/daftar belanja pada disclosure.
+
 ## 3. Financial integrity dan security
 
 - [ ] Rupiah tetap integer; timezone/currency canonical tidak berubah diam-diam.
@@ -58,6 +62,15 @@
 - [ ] Realtime mutation menginvalidasi resource canonical yang benar; device/tab lain tidak perlu hard refresh/restart.
 - [ ] Pull-to-refresh memakai Sync Coordinator, tidak memakai `window.location.reload()`, tidak menghapus draft/form, dan node gesture hanya dirender pada viewport mobile (`<=820px`), bukan disembunyikan belakangan di desktop.
 - [ ] Reconnect/foreground/offline recovery tidak memicu duplicate mutation atau refresh ganda yang tidak perlu.
+
+## Motion & micro-feedback verification
+
+- [ ] Cek semua jalur modal X, Escape, backdrop, Back, subview, swipe; focus kembali benar, history tidak tersangkut, dirty form disetujui eksplisit, dan tidak ada klik menembus backdrop saat exit.
+- [ ] Cek parent yang mount/unmount modal secara kondisional; CSS exit pada `open=false` bukan bukti parent ini sudah mendukung exit.
+- [ ] Swipe notifikasi arah kanan versus scroll vertikal; exit dan collapse tidak overlap salah urutan, fokus Delete berpindah ke baris lain/filter, sukses/gagal diumumkan jujur.
+- [ ] Target biasa bisa lanjut kerja; milestone/100% tetap terbaca dan bisa ditutup. Uji `prefers-reduced-motion` dan mode 320px.
+- [ ] Indikator navigasi dan filter 2/3/4 segmen tidak lompat, hit target 44px, light/dark dan keyboard aman.
+- [ ] Jalankan `npm run lint`, `npm run test`, `npm run build`, `npm run test:browser`, `npm run zip`; catat kegagalan dependency terpisah dari regresi. Profil gesture di perangkat fisik sebelum klaim FPS/10-10.
 
 ## 5. UI/UX dan accessibility
 
@@ -197,8 +210,14 @@
 
 ### Konsistensi filter data antar halaman
 
+- [ ] Kontrak final filter: geser Wishlist Semua/Pribadi/Bersama dan Transaksi Semua/Keluar/Masuk pada light/dark; **seluruh wrap/slider tetap teal** saat bergerak (tidak menjadi merah/hijau), ikon + teks aktif Keluar merah / Masuk hijau. Perpindahan 220ms terasa sama, tidak kedip atau mengubah tinggi.
+- [ ] Cek QuickSegmentedFilter di Rekening, Alokasi Aktif, Investasi, Audit, Anggota (Pemasukan/Pengeluaran), Jadwal (Perlu perhatian), Shopping (Selesai), kemudian Notifikasi (2 pilihan) dan Kebutuhan Detail Alokasi (3 pilihan); ikon/teks sesuai semantik, background indicator tetap teal.
+- [ ] Pada viewport 320/360/390/391/430/431/820px tidak ada chip keluar viewport, label Transaksi compact bila perlu, search/filter tidak terjepit; keyboard focus, rapid tap, advanced Transfer, reduced-motion, `aria-pressed`, dan pembaca layar tetap jelas. Tidak ada change pada query/permissions.
+
 - [ ] Bandingkan Transaksi dan Wishlist dengan filter Rekening (mobile/desktop), Atur Dana Aktif, Shopping, Investasi, dan Log Audit: active-tone, radius, hit target 44 px, ikon/jumlah jika relevan, serta motion yang tenang.
 - [ ] Rekening tetap memisahkan Semua/Saya/Pasangan/Bersama; Atur Dana tetap memakai entitlements `all/shared/mine` tanpa melepas batas izin server.
 - [ ] Jadwal Rutin tetap menawarkan Perlu perhatian/Belum selesai/Selesai/Dilewati. Aktivitas Anggota tetap menawarkan Pemasukan/Pengeluaran/Transfer/Refund/Penyesuaian; filter lanjutan terpilih ditandai dan dapat di-reset.
 - [ ] Notifikasi serta filter Kebutuhan detail Alokasi tetap konsisten dengan tema. Navigasi Keluarga/Detail Anggota/Akun Saya: Tab, Shift+Tab, ArrowLeft/Right, Home/End, panel ID, dan `aria-labelledby` benar.
 - [ ] Viewport 320/360/390/430px, tablet 820/821px, desktop, light/dark, reduced-motion, long labels, rapid filter switch, no results, dan keyboard-focus tidak mengalami overflow atau data stale.
+
+- [ ] Detail transaksi (Beranda + Transaksi), Rekening, Kebutuhan, Audit, Sesi: cek penyajian ringkas dan disclosure metadata tanpa kehilangan informasi atau aksi; pastikan nomor bisa disalin dan status Bahasa Indonesia.

@@ -112,8 +112,9 @@
   display: flex;
   transform: translate3d(calc(var(--login-mobile-base-offset) + var(--login-mobile-drag, 0px)), 0, 0);
   transition: transform var(--motion-emphasized) var(--ease-standard);
-  will-change: transform;
 }
+
+.login-mobile-track.is-dragging { will-change: transform; }
 
 .login-mobile-track.is-slide-0 { --login-mobile-base-offset: 0%; }
 .login-mobile-track.is-slide-1 { --login-mobile-base-offset: -25%; }

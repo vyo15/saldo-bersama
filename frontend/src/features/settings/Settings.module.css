@@ -684,8 +684,10 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .auditDetailSection > span, .auditDetailSection > p { color: var(--text-soft); font-size: var(--font-size-sm); line-height: 1.45; overflow-wrap: anywhere; }
 .auditDetailEntityId { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .auditDetailReason { margin: .25rem 0 0; padding: .65rem .75rem; border-radius: var(--radius-sm); background: var(--warning-soft); }
-.auditTechnicalSection { padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.auditTechnicalSection dl { margin: 0; display: grid; gap: .55rem; }
+.auditTechnicalSection { min-width: 0; border-top: 1px solid var(--divider-soft); }
+.auditTechnicalSection summary { min-height: var(--mobile-control-height); padding: .6rem .2rem; display: flex; align-items: center; color: var(--text-soft); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.auditTechnicalSection summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: .5rem; }
+.auditTechnicalSection dl { margin: .3rem 0 0; display: grid; gap: .55rem; }
 .auditTechnicalSection dl > div { min-width: 0; display: grid; grid-template-columns: minmax(5rem, auto) minmax(0, 1fr); gap: var(--space-3); }
 .auditTechnicalSection dt { color: var(--text-muted); font-size: var(--font-size-xs); }
 .auditTechnicalSection dd { min-width: 0; margin: 0; text-align: right; color: var(--text-soft); font-size: var(--font-size-xs); overflow-wrap: anywhere; }
@@ -1753,3 +1755,11 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
     transition: none;
   }
 }
+
+/* Session list: show the last activity first; preserve lifecycle timestamps on demand. */
+.sessionList .serviceTile { padding: var(--space-3); gap: var(--space-3); box-shadow: none; }
+.sessionList .serviceIcon { width: 2.35rem; height: 2.35rem; }
+.sessionMore { min-width: 0; }
+.sessionMore summary { min-height: var(--mobile-control-height); display: flex; align-items: center; color: var(--text-soft); font-size: var(--font-size-xs); cursor: pointer; }
+.sessionMore summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: .5rem; }
+.sessionMore small { display: block; padding-bottom: .4rem; overflow-wrap: anywhere; }

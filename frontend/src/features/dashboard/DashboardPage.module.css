@@ -139,17 +139,8 @@
 .mobile-transaction-item:active { background: var(--surface-soft); }
 .mobile-transaction-item:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--focus-ring); outline-offset: -3px; }
 
-.mobile-dashboard-transaction-detail { display: grid; gap: 16px; }
-.mobile-dashboard-transaction-detail > header { padding: 14px; border: 1px solid transparent; border-radius: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; background: var(--surface-soft); }
-.mobile-dashboard-transaction-detail > header > div { min-width: 0; display: grid; gap: 6px; }
-.mobile-dashboard-transaction-detail > header > div > span:first-child { color: var(--text-muted); font-size: var(--font-size-xs); }
-.mobile-dashboard-transaction-detail > header :global(.money), .mobile-dashboard-transaction-detail > header .masked-money { font-size: 22px; }
-.mobile-dashboard-transaction-detail dl { display: grid; gap: 0; margin: 0; border: 1px solid transparent; border-radius: 14px; overflow: hidden; }
-.mobile-dashboard-transaction-detail dl > div { padding: 11px 12px; display: grid; grid-template-columns: minmax(92px, .7fr) minmax(0, 1.3fr); gap: 12px; border-bottom: 1px solid var(--border); }
-.mobile-dashboard-transaction-detail dl > div:last-child { border-bottom: 0; }
-.mobile-dashboard-transaction-detail dt { color: var(--text-muted); font-size: var(--font-size-xs); }
-.mobile-dashboard-transaction-detail dd { margin: 0; overflow-wrap: anywhere; color: var(--text); font-size: 12px; font-weight: var(--font-weight-semibold); text-align: right; }
-.mobile-dashboard-transaction-detail dd small { display: block; margin-top: 3px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
+.mobile-detail-secondary-action { display: flex; justify-content: flex-end; }
+.mobile-detail-secondary-action :global(.button) { min-height: var(--mobile-control-height); color: var(--text-soft); background: transparent; }
 .mobile-detail-link { text-decoration: none; }
 
 /* Shared finance desktop dashboard: account-driven overview using existing app shell and curved navigation. */
@@ -438,11 +429,6 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-}
-
-@media (max-width: 520px) {
-  .mobile-dashboard-transaction-detail dl > div { grid-template-columns: 1fr; gap: 4px; }
-  .mobile-dashboard-transaction-detail dd { text-align: left; }
 }
 
 @media (max-width: 370px) {

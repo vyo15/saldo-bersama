@@ -274,7 +274,7 @@ export const ScheduleSummary = ({ items, onAttention, expenseOnly = false }) => 
 const ScheduleFilters = ({ filter, setFilter, items }) => {
   const advancedRef = useRef(null);
   const counts = useMemo(() => Object.fromEntries(FILTERS.map(({ id }) => [id, items.filter((item) => scheduleMatchesFilter(item, id)).length])), [items]);
-  const quick = FILTERS.slice(0, 3).map(({ id, label }) => ({ value: id, label, count: counts[id] }));
+  const quick = FILTERS.slice(0, 3).map(({ id, label }) => ({ value: id, label, count: counts[id], tone: id === "attention" ? "warning" : "neutral" }));
   const advanced = FILTERS.slice(3);
   const selectedAdvanced = advanced.find(({ id }) => id === filter);
   return <div className={styles.compactStatusToolbar}>

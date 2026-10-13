@@ -25,7 +25,8 @@ test("filter scopes and status remain domain-owned after visual convergence", as
   assert.match(accounts, /\["partner", "Pasangan"\]/);
   assert.match(allocation, /\{ value: "mine", label: "Saya" \}/);
   assert.match(shopping, /value: "pending", label: "Belum"/);
-  assert.match(investment, /onFilter=\{setAssetFilter\}/);
+  assert.match(investment, /overviewTabs\.map/);
+  assert.match(investment, /setActiveTab\(tab\.value\)/);
   assert.match(recurring, /\{ id: "cancelled", label: "Dilewati" \}/);
   assert.match(activity, /\{ value: "refund", label: "Refund" \}/);
   assert.match(audit, /QuickSegmentedFilter label="Filter aktivitas audit"/);

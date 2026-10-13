@@ -5,6 +5,21 @@
 > **Update when:** Behavior canonical, invariant, atau test coverage wajib berubah.  
 > **Rule:** Bukan jurnal patch; tanggal, nama hardening, dan hasil run berada di Git/CHANGELOG/CI.
 
+## Soft Midnight Teal — dark theme consistency and build budget
+
+- Soft dark memiliki kenaikan luminansi berurutan dari canvas → surface → soft/raised → strong, bukan canvas hitam dengan warna kartu yang tidak terasa. Dark account mobile gradient harus kembali ke canvas pada midpoint, dan shell serta navigasi mobile memakai token tema bersama.
+- Perubahan background harus mempertahankan WCAG AA pada teks, primary + selected soft, status + tinted soft, border/focus 3:1, hover/danger, hero, dan peralihan light/dark; audit mencakup Atur Dana, dashboard, rekening, transaksi, Target, Investasi, Wishlist, pengaturan, login, modal, dan nav. Test coverage: `frontend/test/theme-accessibility.test.js` + `frontend/test/soft-dark-theme.test.js`.
+- Auth startup tidak boleh mem-bundle notification device code lewat eager import; sesi hilang, unauthorized, dan logout tetap menjalankan device cleanup dengan promise/retry behavior yang sama. Verifikasi lewat lint dan frontend regression, serta ukuran main JS dengan `node scripts/check-build-budget.mjs` setelah production build; tidak boleh menaikkan limit untuk menutupi budget failure.
+
+## Motion lifecycle, reduced-motion, and input safety
+
+- Semua komponen `Modal` yang menerima perubahan `open=true→false` ketika masih mounted harus memainkan exit finite, tidak memicu submit, serta melepas focus/body lock dan history marker setelah siklus yang sesuai; state Back/dirty form yang menolak close tidak memicu exit.
+- Mobile sheet swipe memakai token `--motion-sheet-exit`, event transition + timeout fallback yang bisa dibatalkan dan tidak memainkan exit dua kali. Saat draft `discardGuard.dirty`, swipe dismiss tidak boleh menutupi dialog konfirmasi.
+- Notification Center swipe kanan harus menjalankan exit lalu collapse berurutan, tidak membuka row pada gesture drag, mengembalikan fokus setelah Delete, serta memberi status sukses/gagal dari dismiss yang selesai.
+- Achievement Target milestone atau 100% menunggu tombol Tutup; setoran rutin boleh auto-hide namun saldo/progres aslinya tetap ada di daftar/detail Target. Dekorasi finite dan reduced motion aman.
+- Indikator navigasi mobile memakai transform; nominal editor tidak ditween ketika mengetik. Timer handoff Review transaksi mengikuti token modal dan dibersihkan saat unmount.
+- Uji manual pada parent yang me-*unmount* modal secara kondisional: exit dari komponen bersama tidak berlaku jika modal langsung dilepas oleh parent.
+
 ## Hierarchical navigation & Back
 
 - Root mobile (`/`, `/perencanaan/*` workspace root, `/transaksi`, dan root di Lainnya) tidak mendapat page-level Back universal.
@@ -23,6 +38,12 @@
 - Bug/regression baru harus memiliki test yang gagal sebelum fix dan lulus setelah fix bila feasible.
 - Source, test, dan docs canonical harus menyatakan invariant yang sama.
 - Full gate final berjalan pada tree yang sama dengan artifact/delivery.
+
+## Regression UI detail investasi
+
+- `frontend/test/investments-ui.test.js` memastikan detail investasi menggunakan stylesheet sendiri, metrik tetap dua kolom pada mobile, menu riwayat native, harga desimal canonical dan handler aksi serta capability lama; review Beli/Jual tidak mewarisi perubahan layout detail.
+- Manual device/browser: cek saham/reksa dana/posisi selesai, nilai untung/rugi/impas, tanggal valuasi, nilai sangat panjang, mode light/dark, viewport 320/360/390/820/desktop, scroll riwayat dan safe-area footer, keyboard fokus/Enter/Space serta reduced-motion.
+- Layout compact tidak boleh mengubah perhitungan investasi, posisi, histori, saldo RDN, transaksi atau jalur mutation server.
 
 ## Automated gate canonical
 
@@ -312,6 +333,18 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 
 ### Filter convergence / accessibility regression
 
+- Invariant `frontend/test/segmented-motion-consistency.test.js`: wrapper/slider pada Transaksi, QuickSegmentedFilter, Notifikasi, dan Kebutuhan selalu `--primary-soft`, meski tipe digeser. Ikon/teks dapat berwarna semantik tanpa mengubah latar slider; indikator aktif bergerak memakai transform, bukan background-color animation.
+- Uji Transaksi quick `all / expense / income`, lalu Transfer melalui modal lanjutan (quick index tidak ada): tidak boleh muncul highlight `Semua` semu. Uji focus-visible, `aria-pressed`, reduced-motion, serta viewport 320/360/390/391/430/431/820px di dark/light. Filter lain tetap memakai enum/callback dan permission canonical.
+- `frontend/test/notification-interactive-list.test.js` memverifikasi pencarian berdasarkan teks user-facing, filter Belum dibaca tanpa mengubah state remote, urutan input, dan guard UI pembersihan. Browser QA harus memeriksa animasi list, fokus tombol Bersihkan, target 44px, scroll vertikal vs swipe kanan, serta kegagalan persist dismiss yang memulihkan row pada dark/light, keyboard dan reduced-motion. Search tidak boleh memuat ulang server atau mengubah status baca.
+- Filter Notifikasi 2 opsi dan Kebutuhan Detail Alokasi 3 opsi tetap menghitung seluruh hasil dan menampilkan state aktif via indikator teal, tanpa menambah card/border. Perubahan 4px gap desktop→3px mobile pada Kebutuhan tidak boleh menyebabkan penanda meleset.
+
 - Perubahan fixed segmented harus mempertahankan semua opsi dan callback domain masing-masing, termasuk rekening `partner`, Alokasi `mine`, Shopping `pending/done`, Investasi `stock/fund`, Jadwal `cancelled`, dan aktivitas anggota `transfer/refund/adjustment`. Pastikan filter lanjutan tidak mengubah data saat hanya dibuka dan menutup setelah memilih.
 - `frontend/test/filter-convergence.test.js` mengunci minimum touch target, indikator transform/reduced-motion, mapping kepemilikan, dan keyboard tab. Jalankan juga regresi ownership, Wishlist, navigation, dan transaction/scope backend.
 - QA browser lintas light/dark dan viewport 320/360/390/430/820/821px wajib menguji perubahan cepat, filter kosong, focus keyboard, screen reader, filter advanced aktif, dan tidak ada horizontal overflow.
+
+### Compact detail regression
+
+- Jalankan `frontend/test/compact-financial-detail.test.js` dan seluruh frontend tests.
+- QA manual dark/light di 320/360/390/430/520/820/1024 px: status aktif/dibatalkan, deskripsi/rekening panjang, transaksi dan saldo privasi tersembunyi, transaksi managed, detail belanja, serta keyboard navigation disclosure.
+- Detail akun perlu memvalidasi nomor salin, RDN, ownership, read-only, action edit/archive/lihat transaksi, dan long amount tanpa clipping.
+- Audit dan sesi harus tetap memperlihatkan request ID/timestamp via disclosure; aksi cabut sesi tidak berubah.

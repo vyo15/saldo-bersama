@@ -1,4 +1,5 @@
 import { APP_MEDIA } from "../../config/layout.js";
+import { semanticMotionDurationMs } from "../../shared/motion.js";
 import styles from "./TransactionsPage.module.css";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FiPlus, FiRotateCcw } from "react-icons/fi";
@@ -131,8 +132,12 @@ const TransactionResourceStates = ({ resource, items, filtersActive, openTransac
   </>;
 };
 
-const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, reportResource, setEditingTransaction }) => {
+const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, reportResource, setEditingTransaction, mobileLayout }) => {
   const attentionHandled = useRef(false);
+  const handoffTimerRef = useRef(null);
+  useEffect(() => () => {
+    if (handoffTimerRef.current !== null) window.clearTimeout(handoffTimerRef.current);
+  }, []);
   const [state, setState] = useState(() => attention?.attentionType === "unallocated_expense" ? { active: true, remaining: null, done: false } : { active: false, remaining: null, done: false });
   useEffect(() => {
     if (attentionHandled.current || !attentionFromDashboard || resource.status !== "ready") return;
@@ -149,7 +154,12 @@ const useTransactionReviewQueue = ({ attention, attentionFromDashboard, attentio
     const remaining = Number(nextData?.total || nextItems.length || 0);
     if (!nextEditable) { setState({ active: false, remaining: 0, done: true }); return; }
     setState({ active: true, remaining, done: false });
-    window.setTimeout(() => setEditingTransaction(nextEditable), 220);
+    if (handoffTimerRef.current !== null) window.clearTimeout(handoffTimerRef.current);
+    // Keep the review handoff aligned with the closing modal transition.
+    handoffTimerRef.current = window.setTimeout(() => {
+      handoffTimerRef.current = null;
+      setEditingTransaction(nextEditable);
+    }, semanticMotionDurationMs(mobileLayout ? "sheet-exit" : "dialog-exit"));
   };
   return { state, handleSaved };
 };
@@ -235,7 +245,7 @@ const TransactionsPage = () => {
   const resultProps = { items, categoryLookup, accountLabel, categoryLabel, actions, resource, filters, setFilters, onOpenDetail: setDetailTransaction };
   const modalProps = { ...lifecycle, accountLabel, categoryLabel };
 
-  const reviewQueue = useTransactionReviewQueue({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, reportResource, setEditingTransaction });
+  const reviewQueue = useTransactionReviewQueue({ attention, attentionFromDashboard, attentionEditableTarget, consumeAttention, resource, items, reportResource, setEditingTransaction, mobileLayout });
   const reviewQueueState = reviewQueue.state;
   const handleEditSaved = reviewQueue.handleSaved;
 

@@ -190,7 +190,7 @@ const PlanningWorkspace = ({ data, activeItems, purchasedItems, showItems, onlin
 
 const ShoppingModeView = ({ activeItems, cartItems, purchasedItems, pendingItems, showItems, progress, shoppingFilter, online, canManage, busyId, onFilter, onToggle, onEdit, onRemove }) => <div className={styles.shoppingMode}>
   <div className={styles.progressBlock}><div><span>{cartItems.length + purchasedItems.length} dari {activeItems.length} barang</span><strong>{progress}%</strong></div><ProgressBar value={progress} max={100} label="Progress belanja" showValue={false} compact /></div>
-  <QuickSegmentedFilter label="Filter barang" compact options={[{ value: "all", label: "Semua", count: activeItems.length }, { value: "pending", label: "Belum", count: pendingItems.length }, { value: "done", label: "Selesai", count: cartItems.length + purchasedItems.length }]} value={shoppingFilter} onChange={onFilter} />
+  <QuickSegmentedFilter label="Filter barang" compact options={[{ value: "all", label: "Semua", count: activeItems.length }, { value: "pending", label: "Belum", count: pendingItems.length }, { value: "done", label: "Selesai", count: cartItems.length + purchasedItems.length, tone: "positive" }]} value={shoppingFilter} onChange={onFilter} />
   <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} disabled={!online || !canManage || Boolean(busyId)} />
 </div>;
 

@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { FiActivity, FiMinus, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import Card from "../../components/common/Card.jsx";
-import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
 import Money from "../../components/common/Money.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
@@ -55,27 +54,24 @@ const InvestmentHero = ({ summary, assetCount, positionCount }) => {
               <TrendIcon aria-hidden="true" />
               <span>Hasil direalisasi · <Money value={performance} /></span>
             </span> : <span className={heroStyles.heroReturn}>Belum ada aset tercatat</span>}
-            <span className={heroStyles.heroMeta}>{assetCount.toLocaleString("id-ID")} aset aktif{positionCount > assetCount ? ` · ${positionCount.toLocaleString("id-ID")} pernah dicatat` : ""}</span>
+
           </div>
         </div>
-        <dl className={heroStyles.heroMiniMetrics}>
-          <div><dt>Modal aktif</dt><dd><Money value={values.cost_basis} /></dd></div>
-          <div><dt>Nilai saat ini</dt><dd><Money value={values.market_value} /></dd></div>
-        </dl>
+        <p className={heroStyles.heroCompactBasis}>Modal aktif <Money value={values.cost_basis} /> · {assetCount.toLocaleString("id-ID")} aset aktif</p>
       </div>
       <div className={heroStyles.heroFooter}>
-        <p>Harga memakai catatan manual terakhir, bukan harga pasar live.</p>
+        <p>Nilai dari catatan manual, bukan harga pasar live.</p>
       </div>
     </section>
   );
 };
 
-const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
+const AssetRow = ({ portfolio, holding, onOpenDetail, flash }) => {
   const mutualFund = isMutualFundInstrument(holding);
   const unrealized = Number(holding.unrealized_pl || 0);
   const returnPercent = investmentReturnPercent(unrealized, holding.cost_basis);
   return (
-    <article className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive}`}>
+    <article className={`${holdingStyles.holdingCard} ${holdingStyles.holdingCardInteractive} ${flash ? holdingStyles.holdingCardFlash : ""}`}>
       <button type="button" className={holdingStyles.holdingCardAction} onClick={onOpenDetail} aria-label={`Buka rincian ${holding.ticker || "aset"}`} />
       <div className={holdingStyles.holdingIdentity}>
         <InvestmentAssetLogo ticker={holding.ticker} className={holdingStyles.stockLogo} />
@@ -98,18 +94,22 @@ const AssetRow = ({ portfolio, holding, onOpenDetail }) => {
 const assetRowsForPortfolios = (portfolios = []) => portfolios.flatMap((portfolio) => (portfolio.holdings || []).map((holding) => ({ portfolio, holding })));
 const positionRowsForPortfolios = (portfolios = []) => portfolios.flatMap((portfolio) => (portfolio.positions || portfolio.holdings || []).map((holding) => ({ portfolio, holding })));
 
-const AssetPanel = ({ portfolios, filter, onFilter, onHolding }) => {
+const AssetPanel = ({ portfolios, filter, onHolding, latestSavedAsset }) => {
   const rows = useMemo(() => assetRowsForPortfolios(portfolios).filter(({ holding }) => {
     if (filter === "stock") return !isMutualFundInstrument(holding);
     if (filter === "fund") return isMutualFundInstrument(holding);
     return true;
   }), [filter, portfolios]);
-  return <Card className={holdingStyles.assetListCard}>
-    <QuickSegmentedFilter label="Filter jenis aset" options={[{ value: "all", label: "Semua" }, { value: "stock", label: "Saham" }, { value: "fund", label: "Reksa Dana" }]} value={filter} onChange={onFilter} />
-    <div className={holdingStyles.holdings}>
-      {rows.length ? rows.map(({ portfolio, holding }) => <AssetRow key={`${portfolio.portfolio_id}:${holding.instrument_id}`} portfolio={portfolio} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} />) : <p className={sharedStyles.inlineEmpty}>Belum ada aset aktif pada kategori ini. Posisi yang sudah selesai tetap tersedia di tab Aktivitas.</p>}
-    </div>
-  </Card>;
+  const groups = [
+    { kind: "stock", label: "Saham", items: rows.filter(({ holding }) => !isMutualFundInstrument(holding)) },
+    { kind: "fund", label: "Reksa Dana", items: rows.filter(({ holding }) => isMutualFundInstrument(holding)) },
+  ];
+  return <div className={holdingStyles.assetListCard}>
+    {rows.length ? groups.filter(({ items }) => items.length).map(({ kind, label, items }) => <section key={kind} className={holdingStyles.assetGroup} aria-label={`${label}, ${items.length} aset`}>
+      {filter === "all" ? <h3 className={holdingStyles.assetGroupTitle}>{label} <span>· {items.length}</span></h3> : null}
+      <div className={holdingStyles.holdings}>{items.map(({ portfolio, holding }) => <AssetRow key={`${portfolio.portfolio_id}:${holding.instrument_id}`} portfolio={portfolio} holding={holding} onOpenDetail={() => onHolding(portfolio, holding)} flash={latestSavedAsset?.ticker === holding.ticker} />)}</div>
+    </section>) : <p className={sharedStyles.inlineEmpty}>Belum ada aset aktif pada kategori ini. Posisi selesai tetap tersedia di Riwayat.</p>}
+  </div>;
 };
 
 const ActivityValue = ({ activity }) => {
@@ -157,33 +157,36 @@ const InvestmentActivityPanel = ({ portfolios, onHolding }) => {
   </Card>;
 };
 
-const InvestmentOverview = ({ data, onHolding }) => {
-  const [activeTab, setActiveTab] = useState("assets");
-  const [assetFilter, setAssetFilter] = useState("all");
-  const assetTabRef = useRef(null);
-  const activityTabRef = useRef(null);
+const overviewTabs = [
+  { value: "all", label: "Semua" },
+  { value: "stock", label: "Saham" },
+  { value: "fund", label: "Reksa Dana" },
+  { value: "activity", label: "Riwayat" },
+];
+
+const InvestmentOverview = ({ data, onHolding, latestSavedAsset }) => {
+  const [activeTab, setActiveTab] = useState("all");
+  const tabRefs = useRef([]);
   const assetCount = useMemo(() => assetRowsForPortfolios(data.portfolios).length, [data.portfolios]);
   const positionCount = useMemo(() => positionRowsForPortfolios(data.portfolios).length, [data.portfolios]);
   const activityCount = useMemo(() => activityRowsForPortfolios(data.portfolios).length, [data.portfolios]);
   const selectTabFromKeyboard = (event) => {
-    const tabs = ["assets", "activity"];
-    const currentIndex = tabs.indexOf(event.currentTarget.dataset.tab);
+    const currentIndex = overviewTabs.findIndex(({ value }) => value === event.currentTarget.dataset.tab);
     if (currentIndex < 0 || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
-    const nextTab = tabs[nextIndex];
-    setActiveTab(nextTab);
-    (nextTab === "assets" ? assetTabRef : activityTabRef).current?.focus();
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? overviewTabs.length - 1 : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + overviewTabs.length) % overviewTabs.length;
+    setActiveTab(overviewTabs[nextIndex].value);
+    tabRefs.current[nextIndex]?.focus();
   };
   return <div className={layoutStyles.dashboard}>
     <InvestmentHero summary={data.summary || {}} assetCount={assetCount} positionCount={positionCount} />
-    <div className={layoutStyles.segment} role="tablist" aria-label="Tampilan investasi">
-      <button ref={assetTabRef} id="investment-tab-assets" data-tab="assets" className={activeTab === "assets" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "assets"} aria-controls="investment-panel-assets" tabIndex={activeTab === "assets" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("assets")}>Aset <span>{assetCount.toLocaleString("id-ID")}</span></button>
-      <button ref={activityTabRef} id="investment-tab-activity" data-tab="activity" className={activeTab === "activity" ? layoutStyles.segmentActive : ""} type="button" role="tab" aria-selected={activeTab === "activity"} aria-controls="investment-panel-activity" tabIndex={activeTab === "activity" ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab("activity")}>Aktivitas {activityCount ? <span>{Math.min(activityCount, 99).toLocaleString("id-ID")}{activityCount > 99 ? "+" : ""}</span> : null}</button>
+    <div className={layoutStyles.investmentNav} role="tablist" aria-label="Jelajahi investasi">
+      {overviewTabs.map((tab, index) => <button key={tab.value} ref={(element) => { tabRefs.current[index] = element; }} id={`investment-tab-${tab.value}`} data-tab={tab.value} className={activeTab === tab.value ? layoutStyles.investmentNavActive : ""} type="button" role="tab" aria-selected={activeTab === tab.value} aria-controls="investment-overview-panel" tabIndex={activeTab === tab.value ? 0 : -1} onKeyDown={selectTabFromKeyboard} onClick={() => setActiveTab(tab.value)}>{tab.label}</button>)}
     </div>
-    {activeTab === "assets"
-      ? <div id="investment-panel-assets" role="tabpanel" aria-labelledby="investment-tab-assets"><AssetPanel portfolios={data.portfolios} filter={assetFilter} onFilter={setAssetFilter} onHolding={onHolding} /></div>
-      : <div id="investment-panel-activity" role="tabpanel" aria-labelledby="investment-tab-activity"><InvestmentActivityPanel portfolios={data.portfolios} onHolding={onHolding} /></div>}
+    <div key={activeTab} id="investment-overview-panel" className={layoutStyles.investmentPanelMotion} role="tabpanel" aria-labelledby={`investment-tab-${activeTab}`} tabIndex={0}>
+      {activeTab === "activity" ? <InvestmentActivityPanel portfolios={data.portfolios} onHolding={onHolding} /> : <AssetPanel key={`${activeTab}:${latestSavedAsset?.revision || ""}`} portfolios={data.portfolios} filter={activeTab} onHolding={onHolding} latestSavedAsset={latestSavedAsset} />}
+    </div>
+    {activeTab === "activity" && activityCount >= 30 ? <p className={sharedStyles.inlineEmpty}>Menampilkan maksimal 30 aktivitas terbaru dari data yang tersedia. Riwayat lama tetap disimpan.</p> : null}
   </div>;
 };
 

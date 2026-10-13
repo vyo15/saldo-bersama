@@ -1,5 +1,6 @@
 import { APP_MEDIA } from "../../config/layout.js";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { finishMotionPhase, semanticMotionDurationMs } from "../../shared/motion.js";
 
 const SWIPE_DIRECTION_LOCK_PX = 8;
 const SWIPE_HORIZONTAL_REJECT_PX = 10;
@@ -8,7 +9,6 @@ const SWIPE_MIN_FAST_DISTANCE_PX = 48;
 const SWIPE_MIN_DISMISS_DISTANCE_PX = 96;
 const SWIPE_MAX_DISMISS_DISTANCE_PX = 160;
 const SWIPE_DISMISS_RATIO = 0.22;
-const SWIPE_DISMISS_DURATION_MS = 180;
 const INTERACTIVE_GESTURE_TARGET = "button,a,input,select,textarea,[role='button'],[contenteditable='true']";
 const idleGesture = () => ({ tracking: false, dragging: false, rejected: false, pointerId: null, captureElement: null });
 
@@ -16,9 +16,14 @@ const matchesMedia = (query) => typeof window !== "undefined" && typeof window.m
 const isMobileSwipeViewport = () => matchesMedia(APP_MEDIA.mobile);
 const prefersReducedMotion = () => matchesMedia(APP_MEDIA.reducedMotion);
 
-export const useMobileSwipeDismiss = ({ enabled, containerRef, onClose }) => {
+export const useMobileSwipeDismiss = ({ enabled, containerRef, onClose, onSwipeExitFinished }) => {
   const gestureRef = useRef(idleGesture());
-  const dismissTimerRef = useRef(null);
+  const cancelDismissMotionRef = useRef(() => {});
+  const swipeExitPendingRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  const onSwipeExitFinishedRef = useRef(onSwipeExitFinished);
+  onCloseRef.current = onClose;
+  onSwipeExitFinishedRef.current = onSwipeExitFinished;
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [dismissing, setDismissing] = useState(false);
@@ -30,26 +35,32 @@ export const useMobileSwipeDismiss = ({ enabled, containerRef, onClose }) => {
   }, []);
 
   const finalizeClose = useCallback(() => {
-    if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = null;
+    cancelDismissMotionRef.current();
+    cancelDismissMotionRef.current = () => {};
+    if (swipeExitPendingRef.current) onSwipeExitFinishedRef.current?.();
+    swipeExitPendingRef.current = false;
     resetGesture();
     setDismissing(false);
-    onClose();
-  }, [onClose, resetGesture]);
+    onCloseRef.current?.();
+  }, [resetGesture]);
 
   const closeModal = useCallback(() => {
-    if (dismissTimerRef.current) return;
+    if (swipeExitPendingRef.current) return;
     if (!enabled || !isMobileSwipeViewport() || prefersReducedMotion()) { finalizeClose(); return; }
     const dialogHeight = containerRef.current?.getBoundingClientRect().height || window.innerHeight;
     resetGesture({ snapBack: false });
+    swipeExitPendingRef.current = true;
     setDismissing(true);
     setDragY(Math.max(dialogHeight, window.innerHeight * 0.6));
-    dismissTimerRef.current = window.setTimeout(finalizeClose, SWIPE_DISMISS_DURATION_MS);
   }, [containerRef, enabled, finalizeClose, resetGesture]);
 
-  useEffect(() => () => {
-    if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
-  }, []);
+  useEffect(() => {
+    if (!dismissing) return undefined;
+    cancelDismissMotionRef.current = finishMotionPhase(containerRef.current, {
+      property: "transform", durationMs: semanticMotionDurationMs("sheet-exit"), onFinish: finalizeClose,
+    });
+    return () => cancelDismissMotionRef.current();
+  }, [containerRef, dismissing, finalizeClose]);
 
   const releasePointerCapture = (event) => {
     const captureElement = gestureRef.current.captureElement;

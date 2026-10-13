@@ -205,9 +205,7 @@
     font-size: var(--font-size-xs);
   }
 
-  .heroFooter > p {
-    display: none;
-  }
+  .heroFooter > p { display: block; }
 
 
 }
@@ -219,3 +217,18 @@
 
 }
 
+
+/* Keep only one main amount; modal/value duplication removed. */
+.heroCompactBasis {
+  margin: .25rem 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+.heroCompactBasis :global(.money) { font: inherit; font-weight: var(--font-weight-semibold); color: var(--text); }
+.heroFooter > p { font-size: var(--font-size-xs); }
+@media (max-width: 620px) {
+  .hero { gap: var(--space-1); }
+  .heroReturn { min-height: 1.6rem; padding: .22rem .5rem; }
+  .heroMeta { display: none; }
+}

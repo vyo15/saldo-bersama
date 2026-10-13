@@ -58,8 +58,8 @@ const ActiveSessionItem = ({ session, busy, onSelect }) => (
     <span className={styles.serviceIcon}><FiMonitor aria-hidden="true" /></span>
     <div className={styles.serviceCopy}>
       <h3>{session.device_label || "Perangkat"}</h3>
-      <p>{session.is_current ? "Perangkat ini" : "Sesi perangkat lain"} · terakhir aktif {displayTime(session.last_seen_at)}</p>
-      <small>Login {displayTime(session.issued_at)} · berakhir {displayTime(session.expires_at)}</small>
+      <p>Terakhir aktif {displayTime(session.last_seen_at)}</p>
+      <details className={styles.sessionMore}><summary>Info sesi</summary><small>Login {displayTime(session.issued_at)} · berakhir {displayTime(session.expires_at)}</small></details>
     </div>
     <div className={styles.sessionAction}>
       {session.is_current ? <span className="status-badge status-badge--success">Saat ini</span> : null}

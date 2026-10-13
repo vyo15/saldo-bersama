@@ -167,3 +167,8 @@
     overflow-wrap: anywhere;
   }
 }
+
+@media (max-width: 900px) {
+  .activityCard { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .activityItem { min-height: var(--mobile-hit-target); padding-block: .65rem; }
+}

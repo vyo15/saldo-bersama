@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
 import Modal from "../../../components/common/Modal.jsx";
 import Money from "../../../components/common/Money.jsx";
-import StatusBadge from "../../../components/common/StatusBadge.jsx";
+import CompactTransactionDetail from "../../../components/common/CompactTransactionDetail.jsx";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import {
   formatTransactionDate,
@@ -36,7 +36,20 @@ const TransactionDetailModal = ({ target, onClose, accountLabel, categoryLabel, 
     ? (target.envelope_period_id ? (target.allocation_name || "Menggunakan Alokasi Dana") : "Belum masuk Alokasi Dana")
     : "Tidak berlaku";
   const hasActions = target.status === "cancelled" ? Boolean(target.can_restore) : target.status === "active" && Boolean(linkedModule || canRepeatTransaction(target) || target.can_edit || target.can_cancel);
-  return <Modal open title="Detail transaksi" description={`${TRANSACTION_LABELS[target.transaction_type] || target.transaction_type} · ${formatTransactionDate(target.transaction_date)}`} onClose={onClose} size="sm" className={desktop ? styles.detailDrawer : styles.detailModal} mobileSwipeToClose={!desktop} footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}><article className={styles.detail}><header className={styles.detailAmount}><div><span>Nominal</span><span className={`${styles.detailMoney} money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span></div><StatusBadge status={target.status} /></header><dl><div><dt>Deskripsi</dt><dd>{transactionDisplayTitle(target)}</dd></div><div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}</dd></div><div><dt>Kategori</dt><dd>{categoryLabel(target)}</dd></div><div><dt>Rekening</dt><dd>{accountLabel(target)}</dd></div><div><dt>Alokasi Dana</dt><dd>{allocationLabel}</dd></div><div><dt>Pencatat</dt><dd>{creatorLabel(target)}</dd></div><div><dt>Tanggal</dt><dd>{formatTransactionDate(target.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div><div><dt>Sumber rencana</dt><dd>{planning.label}</dd></div></dl><ShoppingTransactionDetail transactionId={target.transaction_id} /></article></Modal>;
+  return <Modal open title="Detail transaksi" onClose={onClose} size="sm" className={desktop ? styles.detailDrawer : styles.detailModal} mobileSwipeToClose={!desktop} footer={hasActions ? <TransactionActions item={target} linkedModule={linkedModule} {...actions} /> : null}>
+    <CompactTransactionDetail
+      title={transactionDisplayTitle(target)}
+      date={formatTransactionDate(target.transaction_date)}
+      status={target.status}
+      typeLabel={TRANSACTION_LABELS[target.transaction_type] || target.transaction_type}
+      amount={<span className={`${styles.detailMoney} money--${tone}`}>{sign}<Money value={target.amount} tone={tone} /></span>}
+      category={categoryLabel(target)}
+      account={accountLabel(target)}
+      allocation={allocationLabel}
+      extraFacts={[{ label: "Pencatat", value: creatorLabel(target) }, { label: "Sumber rencana", value: planning.label }]}
+      technical={[{ label: "ID transaksi", value: target.transaction_id, copyable: true }]}
+    ><ShoppingTransactionDetail transactionId={target.transaction_id} /></CompactTransactionDetail>
+  </Modal>;
 };
 
 export default TransactionDetailModal;

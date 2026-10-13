@@ -1,21 +1,16 @@
 import { useState } from "react";
 import {
   FiArchive,
-  FiClock,
   FiCopy,
   FiEdit2,
   FiEye,
   FiFileText,
-  FiFlag,
-  FiHash,
-  FiList,
-  FiUsers,
   FiWifi,
 } from "react-icons/fi";
 import cashCard from "../../../assets/account-cards/cash.webp";
 import investmentCard from "../../../assets/account-cards/investment.webp";
 import savingsCard from "../../../assets/account-cards/savings.webp";
-import { BalanceIcon, InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
+import { InvestmentIcon } from "../../../components/common/FinanceChoiceIcons.jsx";
 import { accountTypeIcon } from "../../../components/common/financeChoiceIconRegistry.js";
 import Button from "../../../components/common/Button.jsx";
 import Money from "../../../components/common/Money.jsx";
@@ -142,11 +137,8 @@ export const AccountVisual = ({ account, templateOverride, detail = false, carou
   );
 };
 
-const MobileDetailRow = ({ icon: Icon, label, children }) => (
-  <div className={styles.mobileDetailRow}>
-    <dt><span className={styles.mobileDetailIcon}><Icon aria-hidden="true" /></span><span>{label}</span></dt>
-    <dd>{children}</dd>
-  </div>
+const MobileDetailRow = ({ label, children }) => (
+  <div className={styles.mobileDetailRow}><dt>{label}</dt><dd>{children}</dd></div>
 );
 
 const accountCardModel = (account, ownerMode) => ({
@@ -199,19 +191,38 @@ const MobileAccountNumber = ({ account, copied, onCopy }) => {
   );
 };
 
+const AccountBalanceSummary = ({ account }) => {
+  const investment = account.account_type === "investment";
+  return <>
+    <div className={styles.mobileBalanceHero}>
+      <span>{investment ? "Saldo RDN" : "Saldo rekening"}</span>
+      <strong><Money value={account.balance || 0} /></strong>
+    </div>
+    {!investment ? <dl className={styles.mobileBalanceStats}>
+      <div><dt>Dana tersedia</dt><dd><Money value={account.available_balance ?? account.balance ?? 0} /></dd></div>
+      <div><dt>Dialokasikan</dt><dd><Money value={account.allocated_remaining || 0} /></dd></div>
+    </dl> : null}
+  </>;
+};
+
 const MobileDetailData = ({ account, model, copied, onCopy }) => (
-  <dl className={styles.mobileDetailCard}>
-    <MobileDetailRow icon={FiList} label="Bank / jenis"><span>{model.bankLabel}</span></MobileDetailRow>
-        <MobileDetailRow icon={FiHash} label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
-    <MobileDetailRow icon={FiUsers} label="Pemegang rekening"><span className={styles.detailPill}>{model.ownershipLabel}</span></MobileDetailRow>
-    <MobileDetailRow icon={BalanceIcon} label={account.account_type === "investment" ? "Saldo RDN" : "Saldo rekening"}><strong className={styles.mobileMoney}><Money value={account.balance || 0} /></strong></MobileDetailRow>
-    {account.account_type === "investment" ? <MobileDetailRow icon={InvestmentIcon} label="Tujuan dana"><span>Investasi</span></MobileDetailRow> : <>
-      <MobileDetailRow icon={BalanceIcon} label="Dana tersedia"><span className={styles.mobileFinancialValue}><strong className={styles.mobileMoney}><Money value={account.available_balance ?? account.balance ?? 0} /></strong><small>{ACCOUNT_AVAILABLE_BALANCE_HINT}</small></span></MobileDetailRow>
-      <MobileDetailRow icon={BalanceIcon} label="Dialokasikan"><span className={styles.mobileFinancialValue}><Money value={account.allocated_remaining || 0} /><small>{ACCOUNT_ALLOCATED_BALANCE_HINT}</small></span></MobileDetailRow>
-    </>}
-    <MobileDetailRow icon={FiFlag} label="Saldo awal"><span><Money value={account.initial_balance || 0} /></span></MobileDetailRow>
-    <MobileDetailRow icon={FiClock} label="Diperbarui"><span className={styles.mobileUpdatedAt}>{formatUpdatedAt(account.updated_at)}</span></MobileDetailRow>
-  </dl>
+  <div className={styles.mobileDetailInformation}>
+    <AccountBalanceSummary account={account} />
+    <dl className={styles.mobileDetailCard}>
+      <MobileDetailRow label="Bank / jenis">{model.bankLabel}</MobileDetailRow>
+      <MobileDetailRow label="No. rekening"><MobileAccountNumber account={account} copied={copied} onCopy={onCopy} /></MobileDetailRow>
+      <MobileDetailRow label="Pemegang">{model.ownershipLabel}</MobileDetailRow>
+      {account.account_type === "investment" ? <MobileDetailRow label="Tujuan dana">Investasi</MobileDetailRow> : null}
+    </dl>
+    <details className={styles.mobileDetailMore}>
+      <summary>Informasi rekening lainnya</summary>
+      <dl>
+        <MobileDetailRow label="Saldo awal"><Money value={account.initial_balance || 0} /></MobileDetailRow>
+        <MobileDetailRow label="Diperbarui">{formatUpdatedAt(account.updated_at)}</MobileDetailRow>
+      </dl>
+      {account.account_type !== "investment" ? <p className={styles.mobileBalanceGuidance}>{ACCOUNT_AVAILABLE_BALANCE_HINT} {ACCOUNT_ALLOCATED_BALANCE_HINT}</p> : null}
+    </details>
+  </div>
 );
 
 const MobileDetailActions = ({ account, canManage, onEdit, onArchive, onViewTransactions, onViewInvestment }) => {

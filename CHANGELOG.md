@@ -1,3 +1,45 @@
+## 2026-10-13 — Notifikasi Interactive List yang compact (UI-only)
+
+- Merapikan Notification Center mengikuti tampilan Saldo Bersama dan referensi Interactive List: baris lebih padat dengan informasi satu layar, event bertanggal singkat Jakarta bila tersedia, pencarian opsional, filter belum dibaca, dan clear icon ketika hover/focus desktop.
+- Mempertahankan dua filter semantik, indikator belum dibaca, swipe-kanan, keyboard Delete, native focus, transisi collapse, reduced-motion, dan fingerprint status server. Bila pembersihan gagal di server, row dipulihkan agar aksi dapat dicoba ulang.
+- Tidak menambahkan dependency animasi atau mengubah API, event queue, persetujuan, role, ledger, maupun notifikasi perangkat. Tambahan test memastikan filter lokal tidak mengubah data/status asli.
+
+## 2026-10-13 — Konsistensi detail finansial compact (UI-only)
+
+- Menyatukan presentasi read-only Detail Transaksi antara Beranda dan Transaksi melalui `CompactTransactionDetail`; status memakai `StatusBadge` semantik, nominal Beranda tetap mengikuti kontrol privasi, dan aksi finansial tidak digabung/dimodifikasi.
+- Memprioritaskan judul, tanggal, status, nominal, kategori, rekening, dan Alokasi. ID transaksi, pencatat, sumber rencana, dan waktu sinkron tersedia melalui `Informasi lainnya`, termasuk aksi salin ID bila browser mengizinkan.
+- Menyusun ulang detail Rekening mobile menjadi saldo utama + dua metrik sejajar (Dana tersedia/Dialokasikan), fakta administrasi satu baris, nomor rekening dapat disalin, dan saldo awal/waktu diperbarui di disclosure. Detail Kebutuhan kini menonjolkan Sisa dengan Rencana/Terpakai dua kolom; Audit dan Sesi aktif menyimpan informasi sekunder pada disclosure native yang dapat diakses keyboard.
+- Menjaga tinggi target sentuh 44 px dan tidak mengubah form konfirmasi, perhitungan saldo, skema, API, mutation, atau hak akses. QA browser mobile dan build production tetap diperlukan sebelum release.
+
+## 2026-10-13 — Segmented filter: teal stabil, motion konsisten lintas halaman (UI-only)
+
+- Menyamakan Transaksi dengan Wishlist: satu indikator aktif `transform` 220ms untuk Semua/Keluar/Masuk; warna latar indikator tetap `--primary-soft` (teal) ketika digeser. Warna negatif/positif hanya pada ikon dan teks aktif. Filter lanjutan (Transfer/Refund/Penyesuaian) mematikan highlight quick agar tidak memilih Semua palsu.
+- Menyelaraskan `QuickSegmentedFilter` (Rekening, Alokasi Aktif, Investasi, Jadwal, Shopping, Anggota, Audit) melalui opsi `tone` eksplisit, tetapi tidak mengubah warna latar selected. Warnai ikon dan label hanya jika semantiknya jelas; filter ownership/default tetap teal.
+- Temuan lintas halaman: mengganti pergantian background mendadak pada filter **Notifikasi** dan **Kebutuhan detail Alokasi** dengan indikator teal bergeser; mempertahankan jumlah/filter/permission/handler, focus, dan reduced-motion.
+- Memakai label Keluar/Masuk compact hingga lebar 430px agar tiga chip tidak sesak. Memperbarui regression filter dan dokumentasi canonical; tanpa schema/API/mutation atau ketergantungan baru.
+- Verifikasi environment lokal tercatat pada `docs/FILTER_TEAL_STABLE_PATCH_2026-10-13.md`; lint/build/browser full app tetap wajib dijalankan pada instalasi project dengan dependency lengkap sebelum deployment.
+
+## 2026-10-13 — Detail investasi compact, saham + reksa dana (UI-only)
+
+- Mengubah detail aset menjadi bottom sheet berhierarki ringkas: logo/identitas/status, nilai tercatat utama, hasil kinerja, dan metrik dua kolom pada mobile/desktop. Kartu terpisah untuk masing-masing nilai dihapus hanya di detail ini; review Beli/Jual dan Tambah Investasi tidak diubah.
+- Membedakan label lot saham vs unit reksa dana serta posisi aktif vs selesai; nominal dan harga desimal tetap memakai `Money`/`InvestmentUnitPrice` canonical, termasuk kasus hasil positif/negatif/nol dan tanggal valuasi.
+- Histori aset menjadi disclosure native yang bisa dibuka kapan saja, tetap menampilkan hingga 10 aktivitas terbaru. Aksi Beli, Jual, Perbarui nilai, dan Tutup memakai capability/handler lama; tidak ada mutation, schema, atau API baru.
+- Menambah regression layout detail + accessibility, melengkapi aturan UI dan QA; pengujian perangkat nyata masih diperlukan untuk verifikasi visual akhir.
+
+## 2026-10-13 — Soft Midnight Teal lintas halaman + bootstrap bundle remediation (tanpa schema change)
+
+- Menyamakan lapisan dark mode dari kanvas, shell, header, bottom navigation, input/modal, surface detail, hero Atur Dana, dashboard, dan background immersive Rekening melalui token semantik `frontend/src/styles/tokens.css`; mode terang tetap memakai palet sebelumnya. Warna objek/logo kartu rekening yang harus gelap untuk artwork tidak ditimpa.
+- Menguatkan foreground status `negative/info` dan mengurangi wash primary-soft agar tetap memenuhi kontras WCAG AA pada dark elevated surface yang lebih terang; shadow dark lebih halus tanpa border/card tambahan.
+- Memindahkan service cleanup notifikasi pada `AuthContext` ke dynamic import saat diperlukan sebagai remediasi eager dependency yang menambah main bundle; login/logout/session behavior dipertahankan.
+- Memperbaiki guard responsive Transaksi yang menemukan pemanggilan `matchMedia` non-canonical pada handoff modal; memakai state `mobileLayout` yang sudah tersedia tanpa listener baru.
+- Menambah `soft-dark-theme.test.js`, memperbarui UI design system dan test plan. Build-budget tetap hard gate (ukuran produk harus diverifikasi pada target yang memiliki native Rollup/esbuild sesuai OS).
+
+## 2026-10-13 — Konsolidasi motion UX & accessibility (tanpa schema change)
+
+- Menambahkan semantik exit dialog/sheet, animasi keluar yang menahan portal saat parent mengubah `open=false`, sinkronisasi swipe notifikasi (exit → collapse), pengendalian focus keyboard dan screen reader, serta postcard Target milestone yang tidak hilang sebelum dibaca.
+- Menjaga UI existing: navigasi mobile pakai transform untuk active marker, login track tidak menyimpan `will-change` permanen, nominal Kebutuhan tidak tween font ketika diketik, dan review transaksi memakai durasi token modal.
+- Tes source/motion baru di `frontend/test/motion-polish-regression.test.js`; detail penerapan/batas dan QA perangkat di `docs/MOTION_UX_CHANGELOG_2026-10-13.md`. Tidak mengubah database/API/aturan finansial.
+
 ## 2026-10-12 — Wishlist compact dan target opsional (schema v28)
 
 - Form Tambah/Edit Wishlist langkah pertama dibuat compact: pemilik segmented, nama+harga wajib, detail marketplace/catatan pada disclosure.
@@ -1196,3 +1238,8 @@ Format mengikuti prinsip Keep a Changelog dan commit yang konsisten. Versi produ
 ## 2026-10-06 — Human-error prevention hardening
 - Mengunci checkout Shopping saat outcome mutation tidak pasti, membatalkan konfirmasi duplikat ketika payload berubah, menambah Undo untuk remove reversible, dan memvalidasi quantity sebelum request.
 - Menambah guardrail nominal inline + preview pada funding Target/Alokasi, error saldo inline pada Rekonsiliasi, serta acknowledgement eksplisit saat role anggota existing berubah.
+
+
+### 2026-10-13 — Investment compact UX (candidate)
+
+UI lebih compact dan preview aman; detail ada pada `docs/INVESTMENT_COMPACT_UX.md`.

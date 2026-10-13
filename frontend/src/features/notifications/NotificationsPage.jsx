@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { FiCheckCircle } from "react-icons/fi";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FiCheckCircle, FiSearch, FiX } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
@@ -13,18 +13,18 @@ import { financialAlertSelectionGuard } from "../../shared/workflows/financialAl
 import { contextualNavigationParent, navigationLabelForPath, safeInternalNavigationTarget } from "../../config/navigation.js";
 import {
   mergeNotificationCenterItems,
+  financialNotificationTitle,
   notificationRequiresAction,
   useFinancialNotificationReadState,
 } from "../../shared/workflows/financialNotifications.js";
 import NotificationRow from "./NotificationRow.jsx";
+import { filterNotificationItems } from "./notificationListFilters.js";
 import styles from "./NotificationsPage.module.css";
 
 const FILTERS = Object.freeze([
   { id: "action", label: "Perlu tindakan" },
   { id: "reminder", label: "Pengingat" },
 ]);
-
-const matchesFilter = (alert, filter) => filter === "action" ? notificationRequiresAction(alert) : !notificationRequiresAction(alert);
 
 const NotificationGroup = ({ title, accessibleLabel, alerts, isRead, onOpen, onDismiss }) => {
   if (!alerts.length) return null;
@@ -37,17 +37,17 @@ const NotificationGroup = ({ title, accessibleLabel, alerts, isRead, onOpen, onD
   );
 };
 
-const NotificationEmptyState = ({ filter }) => (
+const NotificationEmptyState = ({ filter, searching = false }) => (
   <div className={styles.empty} role="status">
     <span className={styles.emptyIcon}><FiCheckCircle aria-hidden="true" /></span>
-    <h2>{filter === "action" ? "Semua aman" : "Belum ada pengingat baru"}</h2>
-    <p>{filter === "action" ? "Belum ada hal yang perlu ditindaklanjuti." : "Pengingat dan informasi terbaru akan muncul di sini."}</p>
+    <h2>{searching ? "Tidak ditemukan" : filter === "action" ? "Semua aman" : "Belum ada pengingat baru"}</h2>
+    <p>{searching ? "Coba kata lain atau tampilkan seluruh notifikasi." : filter === "action" ? "Belum ada hal yang perlu ditindaklanjuti." : "Pengingat dan informasi terbaru akan muncul di sini."}</p>
   </div>
 );
 
-const NotificationContent = ({ alerts, filter, isRead, onOpen, onDismiss }) => {
-  const visible = useMemo(() => alerts.filter((alert) => matchesFilter(alert, filter)), [alerts, filter]);
-  if (!visible.length) return <NotificationEmptyState filter={filter} />;
+const NotificationContent = ({ alerts, filter, isRead, query, unreadOnly, onOpen, onDismiss }) => {
+  const visible = useMemo(() => filterNotificationItems(alerts, { filter, query, unreadOnly, isRead }), [alerts, filter, query, unreadOnly, isRead]);
+  if (!visible.length) return <NotificationEmptyState filter={filter} searching={Boolean(query.trim() || unreadOnly)} />;
   return <NotificationGroup title="" accessibleLabel={filter === "action" ? "Notifikasi yang perlu tindakan" : "Pengingat dan informasi terbaru"} alerts={visible} isRead={isRead} onOpen={onOpen} onDismiss={onDismiss} />;
 };
 
@@ -64,6 +64,31 @@ const notificationUnreadCopy = (unreadCount) => ({
   mobile: unreadCount ? `${unreadCount} belum dibaca total` : "Semua sudah dibaca",
 });
 
+const NotificationFilterControls = ({ filter, setFilter, filterCounts, searchOpen, setSearchOpen, query, setQuery, searchRef, unreadOnly, setUnreadOnly }) => (
+  <>
+    <div className={styles.filterBar}>
+        <div className={styles.filters} data-active-index={FILTERS.findIndex((item) => item.id === filter)} role="group" aria-label="Filter notifikasi">
+          {FILTERS.map((item) => <button key={item.id} type="button" className={styles.filter} data-active={filter === item.id ? "true" : "false"} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)} data-notification-filter="true"><span className={styles.filterLabel}>{item.label}</span><span className={styles.filterCount}>{filterCounts[item.id]}</span></button>)}
+        </div>
+    </div>
+
+    {searchOpen ? <div className={styles.searchBox} id="notification-search">
+        <FiSearch aria-hidden="true" />
+        <input ref={searchRef} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari notifikasi…" aria-label="Cari berdasarkan judul, rekening, atau informasi" autoComplete="off" />
+        {query ? <button type="button" onClick={() => { setQuery(""); searchRef.current?.focus(); }} aria-label="Hapus kata pencarian"><FiX aria-hidden="true" /></button> : null}
+    </div> : null}
+    <div className={styles.listToolbar}>
+        <span>{filter === "action" ? "Perlu perhatian" : "Pengingat terbaru"}</span>
+        <div className={styles.listActions}>
+        <button type="button" className={styles.searchToggle} aria-expanded={searchOpen} aria-controls={searchOpen ? "notification-search" : undefined} aria-label={searchOpen ? "Tutup pencarian notifikasi" : "Cari notifikasi"} onClick={() => { setSearchOpen((current) => !current); setQuery(""); }}>
+          {searchOpen ? <FiX aria-hidden="true" /> : <FiSearch aria-hidden="true" />}
+        </button>
+        <button type="button" className={styles.unreadOnly} data-active={unreadOnly ? "true" : "false"} aria-pressed={unreadOnly} onClick={() => setUnreadOnly((current) => !current)}>Belum dibaca</button>
+        </div>
+    </div>
+  </>
+);
+
 const NotificationsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,7 +98,13 @@ const NotificationsPage = () => {
   const { overview, status, error, refreshError, refreshOverview } = useFinance();
   const eventFeed = useApiResource("notifications.center", { limit: 80 });
   const [filter, setFilter] = useState("action");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const searchRef = useRef(null);
+  useEffect(() => { if (searchOpen) searchRef.current?.focus(); }, [searchOpen]);
   const [pendingAction, setPendingAction] = useState(null);
+  const [dismissAnnouncement, setDismissAnnouncement] = useState("");
   const centerItems = useMemo(() => mergeNotificationCenterItems(overview?.alerts || [], eventFeed.data?.items || []), [eventFeed.data?.items, overview?.alerts]);
   const notifications = useFinancialNotificationReadState({ alerts: centerItems, readStates: eventFeed.data?.readStates || [] });
 
@@ -96,9 +127,13 @@ const NotificationsPage = () => {
     navigate(guidance.to, { state: { ...guidance.state, returnTo: "/notifikasi", returnLabel: "Notifikasi" } });
   };
 
-  const dismissNotification = (alert) => {
-    notifications.dismiss(alert).catch(() => eventFeed.reload().catch(() => {}));
-  };
+  const dismissNotification = (alert) => notifications.dismiss(alert)
+      .then(() => setDismissAnnouncement(`${financialNotificationTitle(alert)} dibersihkan dari daftar saat ini.`))
+      .catch(() => {
+        setDismissAnnouncement("Notifikasi belum berhasil dibersihkan. Daftar akan diperbarui.");
+        eventFeed.reload().catch(() => {});
+        throw new Error("Gagal membersihkan notifikasi");
+      });
 
   const actionCount = notifications.alerts.filter(notificationRequiresAction).length;
   const reminderCount = notifications.alerts.length - actionCount;
@@ -125,14 +160,10 @@ const NotificationsPage = () => {
         <button type="button" className={styles.readAll} onClick={() => notifications.markAllRead().catch(() => {})} disabled={!notifications.unreadCount} aria-label="Tandai semua dibaca" title="Tandai semua dibaca"><FiCheckCircle aria-hidden="true" /></button>
       </header>
 
-      <div className={styles.filterBar}>
-        <div className={styles.filters} role="group" aria-label="Filter notifikasi">
-          {FILTERS.map((item) => <button key={item.id} type="button" className={styles.filter} data-active={filter === item.id ? "true" : "false"} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}><span className={styles.filterLabel}>{item.label}</span><span className={styles.filterCount}>{filterCounts[item.id]}</span></button>)}
-        </div>
-      </div>
-
+      <NotificationFilterControls filter={filter} setFilter={setFilter} filterCounts={filterCounts} searchOpen={searchOpen} setSearchOpen={setSearchOpen} query={query} setQuery={setQuery} searchRef={searchRef} unreadOnly={unreadOnly} setUnreadOnly={setUnreadOnly} />
+      <span className="sr-only" role="status" aria-live="polite">{dismissAnnouncement}</span>
       <div className={styles.content}>
-        <NotificationContent alerts={notifications.alerts} filter={filter} isRead={notifications.isRead} onOpen={openNotification} onDismiss={dismissNotification} />
+        <NotificationContent alerts={notifications.alerts} filter={filter} isRead={notifications.isRead} query={query} unreadOnly={unreadOnly} onOpen={openNotification} onDismiss={dismissNotification} />
       </div>
 
       <Modal

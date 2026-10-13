@@ -98,19 +98,19 @@ const AuditDetailModal = ({ entry, memberLookup, onClose }) => {
         <section className={styles.auditDetailSection} aria-labelledby="audit-object-heading">
           <h3 id="audit-object-heading">Yang berubah</h3>
           <strong>{auditEntityLabel(entry.entity_type)}</strong>
-          {entry.entity_id ? <span className={styles.auditDetailEntityId}>{entry.entity_id}</span> : <span>Tidak ada ID objek.</span>}
           {detail ? <p className={styles.auditDetailReason}>{detail}</p> : null}
         </section>
-        <section className={styles.auditTechnicalSection} aria-labelledby="audit-technical-heading">
-          <h3 id="audit-technical-heading">Detail teknis</h3>
+        <details className={styles.auditTechnicalSection}>
+          <summary>Detail teknis</summary>
           <dl>
             <div><dt>Aksi</dt><dd>{entry.action || "-"}</dd></div>
+            <div><dt>ID objek</dt><dd>{entry.entity_id || "-"}</dd></div>
             <div><dt>Entity</dt><dd>{entry.entity_type || "-"}</dd></div>
             <div><dt>Actor</dt><dd>{entry.actor_email || "Sistem"}</dd></div>
             <div><dt>Request</dt><dd>{entry.request_id || "-"}</dd></div>
             <div><dt>Audit ID</dt><dd>{entry.audit_id || "-"}</dd></div>
           </dl>
-        </section>
+        </details>
       </div>
     </Modal>
   );

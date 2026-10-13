@@ -26,7 +26,8 @@ test("transaction history uses flat rows and non-outlined filter surfaces", asyn
   assert.match(history, /\.groupList\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(history, /\.row\s*\{[^}]*border-bottom:\s*1px solid var\(--divider-soft\);/);
   assert.match(history, /\.typeScroller\s*\{[^}]*border:\s*1px solid transparent;/);
-  assert.match(history, /\.typeChipActive\s*\{[^}]*background:\s*var\(--primary-soft\);[^}]*box-shadow:\s*none;/);
+  assert.match(history, /\.typeScroller::before\s*\{[^}]*background:\s*var\(--primary-soft\);/);
+  assert.match(history, /\.typeChipActive\s*\{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/);
   assert.match(transactions, /\.ledger\s*\{[^}]*border:\s*1px solid transparent;/);
 });
 

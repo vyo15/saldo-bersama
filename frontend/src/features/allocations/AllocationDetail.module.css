@@ -225,6 +225,8 @@
 }
 
 .allocation-needs-filter {
+  position: relative;
+  isolation: isolate;
   padding: 4px;
   border: 1px solid transparent;
   border-radius: 13px;
@@ -234,7 +236,25 @@
   background: color-mix(in srgb, var(--surface-soft) 72%, var(--surface));
 }
 
+/* Supports the 4px desktop gap and the 3px compact-mobile gap without width jumps. */
+.allocation-needs-filter::before {
+  content: "";
+  position: absolute;
+  top: var(--needs-segment-pad, 4px);
+  bottom: var(--needs-segment-pad, 4px);
+  left: var(--needs-segment-pad, 4px);
+  width: calc((100% - var(--needs-segment-pad, 4px) - var(--needs-segment-pad, 4px) - var(--needs-segment-gap, 4px) - var(--needs-segment-gap, 4px)) / 3);
+  border-radius: 10px;
+  background: var(--primary-soft);
+  transform: translateX(0);
+  transition: transform var(--motion-normal) var(--ease-standard);
+  pointer-events: none;
+}
+.allocation-needs-filter[data-active-index="1"]::before { transform: translateX(calc(100% + var(--needs-segment-gap, 4px))); }
+.allocation-needs-filter[data-active-index="2"]::before { transform: translateX(calc(200% + var(--needs-segment-gap, 4px) + var(--needs-segment-gap, 4px))); }
 .allocation-needs-filter__button {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: var(--mobile-hit-target);
   padding: 6px 8px;
@@ -259,7 +279,7 @@
 }
 
 .allocation-needs-filter__button.is-active {
-  background: var(--primary-soft);
+  background: transparent;
   color: var(--primary-strong);
   box-shadow: none;
 }
@@ -581,21 +601,24 @@
   height: 14px;
 }
 
+/* The remaining amount is the lead, not a third equal-weight data card. */
+.allocation-need-detail__hero { min-width: 0; display: grid; gap: .2rem; padding: .8rem .95rem; border-radius: var(--radius-md); background: var(--surface-soft); }
+.allocation-need-detail__hero > span { color: var(--text-muted); font-size: var(--font-size-xs); }
+.allocation-need-detail__hero strong { min-width: 0; color: var(--text); font-size: clamp(1.25rem, 5vw, 1.55rem); font-weight: var(--font-weight-bold); overflow-wrap: anywhere; }
+.allocation-need-detail__hero :global(.money) { font-size: inherit; color: inherit; }
+
 .allocation-need-detail__facts {
   margin: 0;
-  border: 1px solid transparent;
-  border-radius: 14px;
-  overflow: hidden;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--border);
+  gap: .6rem;
 }
 
 .allocation-need-detail__facts > div {
   min-width: 0;
-  padding: 11px 12px;
-  background: var(--surface-elevated);
+  padding: .65rem .8rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
 }
 
 .allocation-need-detail__facts dt {
@@ -1059,18 +1082,6 @@
     background: var(--surface-soft);
   }
 
-  .allocation-need-detail__facts {
-    border: 0;
-    border-radius: 0;
-    gap: 0 16px;
-    background: transparent;
-  }
-
-  .allocation-need-detail__facts > div {
-    padding-inline: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-    background: transparent;
-  }
 
   .allocation-detail-panel__header p {
     color: var(--text-soft);
@@ -1130,6 +1141,8 @@
   .allocation-detail-section__count { padding-inline: 7px; }
 
   .allocation-needs-filter {
+    --needs-segment-pad: 3px;
+    --needs-segment-gap: 3px;
     gap: 3px;
     padding: 3px;
   }
@@ -1164,4 +1177,12 @@
   .allocation-limit-row__pattern { max-width: 6.5rem; }
 }
 
-@media (prefers-reduced-motion: reduce) { .allocation-needs-filter__button { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .allocation-needs-filter::before, .allocation-needs-filter__button { transition: none; } }
+
+/* Progressive read-only density: financial figures first, optional metadata on demand. */
+.allocation-need-detail__more { min-width: 0; }
+.allocation-need-detail__more summary { min-height: var(--mobile-control-height); padding: .7rem .25rem; color: var(--text-soft); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.allocation-need-detail__more summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: .5rem; }
+.allocation-need-detail__more .allocation-need-detail__facts { margin-top: .3rem; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.allocation-need-detail__more .allocation-need-detail__facts > div { padding: .55rem 0; border-bottom: 1px solid var(--divider-soft); border-radius: 0; background: transparent; }
+.allocation-need-detail__more .allocation-need-detail__facts > div:last-child { border-bottom: 0; }

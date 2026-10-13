@@ -1,57 +1,29 @@
-import { FiCheckCircle, FiExternalLink, FiPlus } from "react-icons/fi";
+import { FiExternalLink, FiPlus } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
+import CompactTransactionDetail from "../../../components/common/CompactTransactionDetail.jsx";
 import Modal from "../../../components/common/Modal.jsx";
 import { formatTransactionDate, TRANSACTION_LABELS, transactionTone } from "../../../shared/presentation/transaction.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
-const MobileTransactionDetail = ({
-  open,
-  onClose,
-  transaction,
-  title,
-  category,
-  accountLabel,
-  envelope,
-  envelopeNote,
-  lastSyncedAt,
-  balanceVisible,
-  onOpenTransaction,
-}) => (
-  <Modal
-    open={open}
-    onClose={onClose}
-    title="Detail transaksi"
-    description={transaction ? `ID ${transaction.transaction_id}` : "Transaksi tidak tersedia."}
-    size="sm"
-    footer={transaction ? (
-      <>
-        <ButtonLink className={dashboardClass("mobile-detail-link")} to="/transaksi" onClick={onClose} icon={FiExternalLink}>Lihat semua</ButtonLink>
-        <Button variant="primary" icon={FiPlus} onClick={onOpenTransaction}>Catat transaksi</Button>
-      </>
-    ) : null}
-  >
-    {transaction ? (
-      <article className={dashboardClass("mobile-dashboard-transaction-detail")}>
-        <header>
-          <div>
-            <span>Nominal</span>
-            <SensitiveMoney visible={balanceVisible} value={transaction.amount} tone={transactionTone(transaction.transaction_type)} />
-          </div>
-          <span className={dashboardClass("status-badge status-badge--active")}><FiCheckCircle aria-hidden="true" /> {transaction.status || "active"}</span>
-        </header>
-        <dl>
-          <div><dt>Jenis</dt><dd>{TRANSACTION_LABELS[transaction.transaction_type] || transaction.transaction_type}</dd></div>
-          <div><dt>Deskripsi</dt><dd>{title}</dd></div>
-          <div><dt>Kategori</dt><dd>{category}</dd></div>
-          <div><dt>Rekening</dt><dd>{accountLabel}</dd></div>
-          <div><dt>Alokasi Dana</dt><dd>{envelope}<small>{envelopeNote}</small></dd></div>
-          <div><dt>Tanggal</dt><dd>{formatTransactionDate(transaction.transaction_date)}<small>Zona waktu Asia/Jakarta</small></dd></div>
-          <div><dt>Sinkron terakhir</dt><dd>{lastSyncedAt}</dd></div>
-        </dl>
-      </article>
-    ) : <p className={dashboardClass("empty-inline-message")}>Transaksi yang dipilih tidak lagi tersedia pada hasil filter.</p>}
+const MobileTransactionDetail = ({ open, onClose, transaction, title, category, accountLabel, envelope, envelopeNote, lastSyncedAt, balanceVisible, onOpenTransaction }) => (
+  <Modal open={open} onClose={onClose} title="Detail transaksi" size="sm" footer={transaction ? <ButtonLink className={dashboardClass("mobile-detail-link")} to="/transaksi" onClick={onClose} icon={FiExternalLink}>Lihat transaksi</ButtonLink> : null}>
+    {transaction ? <CompactTransactionDetail
+      title={title}
+      date={formatTransactionDate(transaction.transaction_date)}
+      status={transaction.status}
+      typeLabel={TRANSACTION_LABELS[transaction.transaction_type] || transaction.transaction_type}
+      amount={<SensitiveMoney visible={balanceVisible} value={transaction.amount} tone={transactionTone(transaction.transaction_type)} />}
+      category={category}
+      account={accountLabel}
+      allocation={envelope}
+      allocationNote={envelopeNote}
+      extraFacts={[{ label: "Sinkron terakhir", value: lastSyncedAt || "Belum tersedia" }]}
+      technical={[{ label: "ID transaksi", value: transaction.transaction_id, copyable: true }]}
+      detailsFooter={<div className={dashboardClass("mobile-detail-secondary-action")}><Button type="button" icon={FiPlus} onClick={onOpenTransaction}>Catat transaksi baru</Button></div>}
+    />
+      : <p className={dashboardClass("empty-inline-message")}>Transaksi yang dipilih tidak lagi tersedia pada hasil filter.</p>}
   </Modal>
 );
 

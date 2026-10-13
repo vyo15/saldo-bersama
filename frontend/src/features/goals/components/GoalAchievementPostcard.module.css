@@ -20,7 +20,10 @@
   bottom: max(2rem, env(safe-area-inset-bottom));
   width: min(26rem, calc(100vw - 2rem));
   max-height: calc(100dvh - 4rem);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
   border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
   border-radius: 28px;
   background: var(--surface-elevated);
@@ -29,6 +32,30 @@
   transform: translate(-50%, 110%) scale(.965);
   animation: goal-achievement-rise var(--motion-dialog) var(--ease-enter) forwards;
 }
+
+.dismiss {
+  position: absolute;
+  top: .65rem;
+  right: .65rem;
+  z-index: 8;
+  min-height: var(--mobile-hit-target);
+  padding: .45rem .75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-elevated);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.dismiss:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .dismiss:hover { background: var(--surface-strong); } }
 
 .reached {
   border-color: color-mix(in srgb, var(--positive) 28%, var(--border));
@@ -276,4 +303,5 @@
   }
 
   .confetti { display: none; }
+  .dismiss { transition: none; }
 }

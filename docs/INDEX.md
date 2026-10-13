@@ -12,6 +12,7 @@ Gunakan index ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 - `../AGENTS.md` — instruksi AI/coding agent.
 - `DOCUMENT_LIFECYCLE.md` — lifecycle, authority, dan aturan current vs history.
 - `WORKFLOW.md` — workflow review, implementasi, validation, dan delivery.
+- `INVESTMENT_COMPACT_UX.md` — UX Investasi compact, akurasi preview, batasan Target, QA dan status histori.
 - `GIT_WORKFLOW.md` — commit/push canonical.
 - `templates/PATCH_MANIFEST_TEMPLATE.md` — metadata handoff patch paralel/final merge.
 - [`CODE_MAINTAINABILITY.md`](CODE_MAINTAINABILITY.md) — decomposition, facade, comment/JSDoc, dan characterization test.
@@ -127,3 +128,11 @@ Jika perubahan menyentuh lebih dari satu area, gabungkan authority dan test dari
 - `../CHANGELOG.md` — kronologi perubahan source/release.
 
 Historical docs tidak boleh digunakan sebagai authority current behavior kecuali current canonical doc secara eksplisit merujuknya untuk alasan keputusan/recovery.
+
+## Catatan implementasi motion (13 Oktober 2026)
+
+- `MOTION_UX_CHANGELOG_2026-10-13.md` — perubahan motion terpasang, batas parent kondisional, dan daftar uji penerimaan sebelum production.
+
+## Catatan konsistensi filter (13 Oktober 2026)
+
+- `FILTER_TEAL_STABLE_PATCH_2026-10-13.md` — catatan implementasi filter ownership stabil pada desain teal.

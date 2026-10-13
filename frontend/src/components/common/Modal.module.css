@@ -12,6 +12,8 @@
 }
 
 .backdropDismissing { opacity: 0; }
+.backdrop[data-exiting="true"] { pointer-events: auto; }
+.backdrop[data-exiting="true"] .dialog { pointer-events: none; }
 
 .dialog {
   width: min(100%, 42.5rem);
@@ -35,6 +37,9 @@
 .dragging,
 .dismissing {
   animation: none;
+}
+.dialogExiting {
+  animation: modal-dialog-out var(--motion-dialog-exit) var(--ease-exit) both;
 }
 
 .small { width: min(100%, 30rem); }
@@ -157,6 +162,16 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes modal-dialog-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(.35rem) scale(.99); }
+}
+
+@keyframes mobile-sheet-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(100%); }
+}
+
 @keyframes mobile-sheet-in {
   from { opacity: 0.96; transform: translateY(100%); }
   to { opacity: 1; transform: translateY(0); }
@@ -183,6 +198,10 @@
     animation-timing-function: var(--ease-enter);
   }
 
+  .dialogExiting {
+    animation: mobile-sheet-out var(--motion-sheet-exit) var(--ease-exit) both;
+  }
+
   .header,
   .body,
   .footer {
@@ -199,7 +218,7 @@
   }
 
   .swipeEnabled.dismissing {
-    transition-duration: var(--motion-control);
+    transition-duration: var(--motion-sheet-exit);
     transition-timing-function: ease-in;
   }
 
@@ -247,7 +266,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .backdrop,
-  .dialog { animation: none; }
+  .dialog,
+  .dialogExiting { animation: none; }
   .backdrop { transition: none; }
   .swipeEnabled { transition: none; }
 }

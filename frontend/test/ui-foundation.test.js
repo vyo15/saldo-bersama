@@ -648,7 +648,7 @@ test("dashboard parity mempertahankan kontrol semantik tanpa menduplikasi busine
   assert.doesNotMatch(mobile, /mobile-dashboard-filter-button|onOpenFilters/);
   assert.match(mobile, /recentTransactions\.slice\(0, 3\)/);
   assert.match(detail, /<Modal/);
-  assert.match(detail, /<dl>/);
+  assert.match(detail, /<CompactTransactionDetail/);
   assert.doesNotMatch(responsive, /\.premium-/);
 });
 

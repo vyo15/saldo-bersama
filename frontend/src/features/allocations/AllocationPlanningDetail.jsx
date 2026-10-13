@@ -115,7 +115,7 @@ const AllocationNeedsPanel = ({
     </div>
     {linkedBudgets.length ? <>
       <AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} />
-      {showFilters ? <div className={allocationClass("allocation-needs-filter")} role="group" aria-label="Filter kebutuhan">
+      {showFilters ? <div className={allocationClass("allocation-needs-filter")} data-active-index={needFilter === "all" ? 0 : needFilter === "attention" ? 1 : 2} role="group" aria-label="Filter kebutuhan">
         <button type="button" className={allocationClass(`allocation-needs-filter__button ${needFilter === "all" ? "is-active" : ""}`)} aria-pressed={needFilter === "all"} onClick={() => setNeedFilter("all")}>Semua <span>{linkedBudgets.length}</span></button>
         <button type="button" className={allocationClass(`allocation-needs-filter__button ${needFilter === "attention" ? "is-active" : ""}`)} aria-pressed={needFilter === "attention"} onClick={() => setNeedFilter("attention")}>Perhatian <span>{attentionCount}</span></button>
         <button type="button" className={allocationClass(`allocation-needs-filter__button ${needFilter === "unused" ? "is-active" : ""}`)} aria-pressed={needFilter === "unused"} onClick={() => setNeedFilter("unused")}>Belum dipakai <span>{unusedCount}</span></button>

@@ -1,9 +1,8 @@
+import { rupiahFromInvestmentUnits } from "./investmentTradePreview.js";
 import { isMutualFundInstrument } from "./investmentInstrumentType.js";
 
 const safeIntegerProduct = (left, right) => {
-  const product = Number(left) * Number(right);
-  if (!Number.isFinite(product) || product < 0 || product > Number.MAX_SAFE_INTEGER) return 0;
-  const rounded = Math.round(product);
+  const rounded = rupiahFromInvestmentUnits(left, right);
   return Number.isSafeInteger(rounded) ? rounded : 0;
 };
 

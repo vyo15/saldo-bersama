@@ -409,71 +409,35 @@
   gap: var(--space-2);
 }
 
-.mobileDetailCard {
-  margin: 0;
-  padding: .35rem var(--space-4);
-  display: grid;
-  border: 1px solid transparent;
-  border-radius: 1.35rem;
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
-  box-shadow: var(--shadow-control);
-}
-
-.mobileDetailRow {
+/* Compact read-only account facts: money first, administrative metadata second. */
+.mobileDetailInformation { min-width: 0; display: grid; gap: .65rem; }
+.mobileBalanceHero {
   min-width: 0;
-  min-height: 4.35rem;
-  padding-block: .55rem;
   display: grid;
-  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
-  align-items: center;
-  gap: var(--space-3);
-  border-bottom: 1px solid var(--border);
+  gap: .2rem;
+  padding: .8rem .95rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
 }
-
-.mobileDetailRow:last-child {
-  border-bottom: 0;
-}
-
-.mobileDetailRow dt,
-.mobileDetailRow dd {
-  min-width: 0;
-  margin: 0;
-}
-
-.mobileDetailRow dt {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  color: var(--text-soft);
-  font-size: var(--font-size-body-sm);
-  font-weight: var(--font-weight-medium);
-}
-
-.mobileDetailRow dd {
-  overflow-wrap: anywhere;
-  color: var(--text);
-  font-size: var(--font-size-body-sm);
-  font-weight: var(--font-weight-semibold);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.mobileDetailIcon {
-  width: 2.35rem;
-  height: 2.35rem;
-  flex: 0 0 2.35rem;
-  display: grid;
-  place-items: center;
-  border-radius: .8rem;
-  background: var(--primary-soft);
-  color: var(--primary);
-}
-
-.mobileDetailIcon svg {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
+.mobileBalanceHero > span { color: var(--text-muted); font-size: var(--font-size-xs); }
+.mobileBalanceHero strong { min-width: 0; color: var(--text); font-size: clamp(1.25rem, 5vw, 1.55rem); font-weight: var(--font-weight-bold); letter-spacing: -.035em; overflow-wrap: anywhere; }
+.mobileBalanceHero :global(.money) { font-size: inherit; overflow-wrap: anywhere; }
+.mobileBalanceStats { min-width: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.mobileBalanceStats > div { min-width: 0; padding: .65rem .8rem; border-radius: var(--radius-md); background: var(--surface-soft); }
+.mobileBalanceStats dt { color: var(--text-muted); font-size: var(--font-size-xs); }
+.mobileBalanceStats dd { min-width: 0; margin: .2rem 0 0; color: var(--text); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
+.mobileBalanceStats :global(.money) { color: inherit; font-size: inherit; overflow-wrap: anywhere; }
+.mobileDetailCard { min-width: 0; margin: 0; padding: 0; display: grid; }
+.mobileDetailRow { min-width: 0; padding: .65rem 0; display: grid; grid-template-columns: minmax(5.5rem, .8fr) minmax(0, 1.2fr); align-items: center; gap: .65rem; border-bottom: 1px solid var(--divider-soft); }
+.mobileDetailRow:last-child { border-bottom: 0; }
+.mobileDetailRow dt, .mobileDetailRow dd { min-width: 0; margin: 0; font-size: var(--font-size-body-sm); }
+.mobileDetailRow dt { color: var(--text-muted); }
+.mobileDetailRow dd { text-align: right; color: var(--text); font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.mobileDetailMore { min-width: 0; }
+.mobileDetailMore summary { min-height: var(--mobile-control-height); padding: .55rem .1rem; display: flex; align-items: center; color: var(--text-soft); font-size: var(--font-size-body-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
+.mobileDetailMore summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: .7rem; }
+.mobileDetailMore dl { margin: 0; padding: 0; }
+.mobileBalanceGuidance { padding: .45rem 0 .2rem; color: var(--text-muted); font-size: var(--font-size-xs); line-height: 1.55; }
 .mobileCopyNumber {
   max-width: 100%;
   min-height: var(--mobile-control-height);
@@ -500,46 +464,6 @@
     background: var(--primary-soft);
     color: var(--primary);
   }
-}
-
-.detailPill {
-  min-height: 1.9rem;
-  padding: 0 .7rem;
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--radius-pill);
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
-.mobileMoney,
-.mobileMoney :global(.money) {
-  color: var(--primary);
-  font-size: var(--font-size-body);
-}
-
-.mobileUpdatedAt {
-  color: var(--text-soft);
-  font-size: var(--font-size-sm);
-  line-height: 1.45;
-}
-
-.mobileFinancialValue {
-  min-width: 0;
-  display: grid;
-  justify-items: end;
-  gap: .2rem;
-}
-
-.mobileFinancialValue small {
-  max-width: 18rem;
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-regular);
-  line-height: 1.35;
-  text-align: right;
 }
 
 .mobileDetailActions {
@@ -657,20 +581,7 @@
 }
 
 @media (max-width: 370px) {
-  .mobileDetailCard {
-    padding-inline: var(--space-3);
-  }
-
-  .mobileDetailRow {
-    grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
-    gap: var(--space-2);
-  }
-
-  .mobileDetailIcon {
-    width: 2.1rem;
-    height: 2.1rem;
-    flex-basis: 2.1rem;
-  }
+  .mobileDetailRow { grid-template-columns: minmax(5rem, .8fr) minmax(0, 1.2fr); gap: var(--space-2); }
 
   .mobileDetailActions {
     grid-template-columns: minmax(0, 1fr);
