@@ -13,7 +13,7 @@ Dokumen ini adalah kontrak visual dan implementasi UI Saldo Bersama. Tujuannya m
 - Styling canonical menggunakan CSS Modules dan design tokens pada `frontend/src/styles/tokens.css`.
 - Tailwind CSS, utility-class-heavy styling, dan shadcn/ui tidak digunakan.
 - Mantine disetujui sebagai toolkit kandidat untuk kebutuhan kompleks, tetapi dependency tidak dipasang sampai ada shared wrapper component yang benar-benar menggunakannya.
-- Detail read-only compact mengikuti urutan judul/status → satu nilai finansial utama → metrik sekunder dua kolom bila pendek → metadata baris sederhana → disclosure teknis. Rekening mobile dan Kebutuhan mengutamakan nilai saldo/sisa; tidak mengubah hierarki form mutation.
+- Detail read-only compact mengikuti urutan judul/status → satu nilai finansial utama → metrik sekunder dua kolom bila pendek → metadata baris sederhana → disclosure teknis. Rekening mobile dan Kebutuhan mengutamakan nilai saldo/sisa; tidak mengubah hierarki form mutation. **Pengecualian domain investasi:** fakta unit/harga/nominal dengan nilai panjang boleh memakai daftar **satu kolom label–angka** dalam satu surface datar agar nominal tidak terpotong di lebar 320–430px; jangan mengubah layout form/rekap lain secara global.
 - Feature/page tidak boleh mengimpor Mantine secara langsung. Halaman memakai komponen project pada `frontend/src/components/common/` atau komponen domain yang relevan.
 - HTML native dan semantik diprioritaskan untuk input sederhana seperti text/textarea/checkbox. Tanggal, bulan, dan waktu memakai `TemporalInput`/`TemporalPickerField` app-owned; pilihan daftar memakai `SelectionField`/selection view canonical. Keduanya tidak membuka UI native browser agar light/dark, touch, focus, hierarchy, dan behavior lintas platform tetap konsisten. Toolkit digunakan hanya untuk perilaku kompleks yang memang belum dimiliki primitive project.
 
@@ -130,6 +130,14 @@ Styling feature harus colocated pada CSS Module pemiliknya. Global CSS dibatasi 
 14. **Satu canonical mobile cascade:** satu stylesheet feature hanya boleh mempunyai satu blok exact `@media (max-width: 820px)`. Compact exception yang lebih kecil boleh berada sesudahnya bila memang diperlukan. Breakpoint tablet/desktop `>820px` harus mempertahankan ordering/cascade source dan tidak boleh dipindahkan hanya demi cleanup.
 15. **Page-header action grammar:** root app screen memakai action toolbar compact/icon/text di kanan header; full-width filled CTA diperuntukkan bagi completion action workflow/form. Secondary root action tidak boleh otomatis melebar 100% hanya karena viewport mobile.
 16. Direct feature color wajib memakai token semantic/brand. Hex lokal hanya boleh pada exception yang terdokumentasi seperti provider branding, expressive auth illustration, atau celebration artwork; exception harus dijaga allowlist regression.
+
+## Penyelarasan resource desain
+
+- Poster resource desain adalah inspirasi metode, **bukan** palet baru. Manrope Variable, Feather Icons, artwork dan logo bank app-owned tetap source of truth; tidak ada CDN, icon library, font atau foto stok baru.
+- Gradien uang dekoratif pada Login dan `FinancialSuccessOverlay` menggunakan token `--art-note-*` yang sama. Warna artwork **bukan** warna status/nominal, tidak boleh menggantikan `--positive`/`--negative`.
+- `StatusBadge` dan `CompactNotice` menggunakan surface tonal borderless; fokus keyboard, invalid field, dan affordance form tetap mempunyai outline semantik. Isi bantuan `CompactNotice` memakai `--text-soft`, sedangkan judul/ikon tetap warna status.
+- Notifikasi mempertahankan daftar baris flat, indikator teal bergerak, dua filter, interaksi langsung, aksi bersihkan, pencarian, dan status dibaca. Divider hanya untuk memisahkan entri.
+- Review ulang semua 18 rute demo mobile & desktop serta keadaan loading/empty/error secara manual pada fixture login yang aman; demo HTML tidak sama dengan tes runtime authenticated.
 
 ## Harmoni warna dan perimeter dekoratif
 
@@ -633,3 +641,29 @@ Daftar Belanja mewarisi token, primitive, typography Manrope, sidebar, dan botto
 - Fakta primer (`kategori`, `rekening`, `alokasi`) harus mudah dibaca; ID, waktu sinkron, pencatat, dan sumber rencana tersedia melalui disclosure native. Jangan tampilkan raw lifecycle status `active`/`cancelled` sebagai label.
 - Detail Rekening mobile tetap menampilkan saldo, kepemilikan, dan nomor rekening yang bisa disalin; waktu pembaruan/saldo awal menjadi informasi lanjutan. Kebutuhan, sesi aktif, dan log audit mengikuti prinsip disclosure untuk informasi sekunder.
 - Jangan mengubah modal form atau mengurangi minimum hit target 44px hanya demi density.
+
+### Information-density review
+
+- Beranda, Transaksi, Atur Dana, Jadwal, Kewajiban, Target, Wishlist, Investasi, Notifikasi, Kategori, Laporan, dan Pemeriksaan Saldo menggunakan urutan **angka/nama utama → status/tanggal kritis → tindakan → rincian opsional**. Jangan menampilkan penjelasan ulang untuk angka/status yang sudah jelas.
+- **Atur Dana**: `Dana bebas` adalah nominal dari sumber yang eligible, **bukan** jumlah rekening dimiliki. Jangan menampilkan badge nol untuk jumlah sumber. `0 dana bebas` tidak otomatis berarti akun tidak ada, dan `Buat Alokasi` tetap mengikuti capability canonical. Saat tidak ada rekening, arahkan pengguna ke Rekening. Hanya satu ilustrasi besar untuk konteks empty; empty list memakai ikon kecil tanpa primary CTA duplikat.
+- Header aktif pada Atur Dana harus menampilkan pencarian dan filter kepemilikan **saat item ada**, termasuk viewport `<=820px`; filter hanya saat ada pilihan bermakna dan tidak boleh mengganti entitlement. `Alokasi` adalah label state halaman aktif, sedangkan `Jadwal`, `Kewajiban`, dan `Target` adalah tautan navigation.
+- Jadwal/Kewajiban/Target: bagian terdepan cukup identitas, nominal, tanggal/status, dan CTA. Detail rekening, frekuensi, metode, pembayaran, suku bunga/biaya, dan informasi progres lanjutan berada di `<details>` atau menu yang bisa dibuka dengan keyboard. Peringatan `saldo belum pasti`, jatuh tempo, risiko pembayaran, dan konfirmasi tetap **langsung terlihat saat relevan**.
+- Beranda/Wishlist/Laporan/Investasi/Notifikasi: ringkas informasi yang mengulang fakta/angka; jangan menghapus sumber kebenaran data, status manual investasi, atau jejak audit transaksi. Label pencatat tersedia di detail dan pada konteks berbagi yang relevan. Notifikasi tidak mengulang nama entitas bila sudah muncul pada judul/fakta, tetapi action label tetap ada jika butuh tindakan.
+- P0 mobile lintas mode: satu hero dominan dan maksimal satu ilustrasi dominan pada empty state, baris daftar tidak berubah menjadi form lengkap, tanpa font terlalu kecil, nominal tidak terpotong, touch target paling sedikit 44px, focus ring terlihat. Satu media block canonical `820px` per CSS Module sebagaimana governance project. Selalu uji 320/360/390/430px light/dark serta state kosong, satu, banyak, error, loading, blocked/unauthorized, reduced motion.
+- Perubahan density **presentation only**. Jangan mengubah kalkulasi saldo, identitas sumber akun, status transaksi, persetujuan atau mutation. Jangan memindahkan risiko/konfirmasi finansial ke disclosure yang tersembunyi sebelum pengguna mengonfirmasi aksi berisiko.
+
+## Family-first permission experience
+
+- Label role pada UI adalah **Pengelola Keluarga** dan **Anggota Keluarga**; backend tetap menggunakan `owner`/`member` untuk kompatibilitas. Role tidak menentukan pemegang rekening.
+- Kedua role dapat membuat rekening pribadi untuk diri sendiri atau rekening Bersama, mengubah detail rekening yang dapat dioperasikan, dan membuat kategori aktif tanpa pengajuan. Kategori historis yang sudah diajukan tetap dapat diproses pada Keluarga.
+- Edit rekening ditampilkan berdasarkan capability backend `can_manage`, sedangkan aksi lifecycle destruktif hanya tampil dengan `can_archive`; tombol bukan sumber izin, backend tetap memeriksa akses dan row-version.
+- Transfer Bersama → Pribadi oleh Anggota memerlukan pengajuan; tidak ada perpindahan ledger sebelum review. Jangan menampilkan kode permission internal sebagai instruksi utama pengguna.
+- Pengaturan role, koreksi saldo, restore, arsip/hapus permanen, dan backup tetap terpisah dari formulir aktivitas normal.
+
+### Anti-duplikasi tindakan dan keadaan kosong
+
+- **Satu aksi utama per konteks dan viewport.** CTA di header dan empty state tidak tampil bersamaan bila keduanya membuka form yang sama. Saat daftar kosong, empty state memegang satu tombol mulai; ketika sudah ada item, header atau toolbar boleh memegangnya.
+- Jangan tampilkan kartu estimasi `Rp 0`, indikator prioritas nol, hitungan `0 item`, filter, atau catatan edukasi yang mengulang empty state di halaman Wishlist yang belum pernah berisi data. Tetap beri akses riwayat ketika item semuanya telah dibeli/diarsipkan; histori **tidak** dihapus.
+- Daftar Belanja tidak boleh memiliki dua tombol yang sama-sama memanggil tambah barang dalam satu kontrol, atau pencarian palsu yang sebenarnya hanya membuka editor. Aksi `Mulai Belanja` desktop dimiliki panel ringkasan; tombol sticky khusus tablet/mobile. Saat checkout belum selesai, tombol `Selesai Belanja` harus tetap tersedia pada desktop dan mobile.
+- Jangan menghapus bantuan yang melindungi kebenaran finansial: estimasi Wishlist bukan saldo, pembelian butuh transaksi canonical, dan feedback error/retry tidak boleh disembunyikan. Detail lanjutan boleh diakses lewat disclosure.
+- Verifikasi regresi lokal: `node --test frontend/test/duplicate-actions-ux.test.js frontend/test/wishlist-mobile-layout.test.js`. Setelah perubahan lanjutkan lint, test, build, verify.

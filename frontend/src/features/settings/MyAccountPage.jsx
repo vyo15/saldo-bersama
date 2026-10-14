@@ -60,13 +60,13 @@ const MyRequests = ({ masterRequests, transferRequests, accounts }) => {
   const transferItems = transferRequests.data?.items ?? [];
   return <div className={memberStyles.myRequestStack}>
     <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
-    {!masterItems.length && !transferItems.length ? <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Belum ada pengajuan</strong><span>Pengajuan rekening, kategori, atau transfer yang Anda buat akan terkumpul di sini.</span></div> : null}
-    <MasterDataRequestsPanel items={masterItems} title="Rekening dan kategori saya" />
+    {!masterItems.length && !transferItems.length ? <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Belum ada pengajuan</strong><span>Rekening dan kategori baru bisa langsung dibuat. Pengajuan transfer dan permintaan lama ditampilkan di sini.</span></div> : null}
+    <MasterDataRequestsPanel items={masterItems} title="Permintaan lama rekening dan kategori" />
     <TransferRequestsPanel items={transferItems} accounts={accounts} />
   </div>;
 };
 
-const AdminRequestMessage = () => <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Administrator tidak memerlukan pengajuan</strong><span>Administrator membuat rekening, kategori, dan transfer langsung dari menu terkait.</span></div>;
+const AdminRequestMessage = () => <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Tidak ada pengajuan pribadi</strong><span>Rekening dan kategori bisa langsung dibuat. Permintaan transfer dari anggota lain dapat ditinjau melalui Keluarga.</span></div>;
 
 const MyAccountTabPanel = ({ tab, actor, finance, requestCount, memberMode, masterRequests, transferRequests, accounts, activityMember, profile }) => {
   if (tab === "summary") return <MySummary user={actor} finance={finance} requestCount={requestCount} />;

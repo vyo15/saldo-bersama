@@ -175,7 +175,7 @@ const AllocationCreateNeeds = ({ needs, setNeeds, categories, sourceAccount }) =
   const [activeNeedId, setActiveNeedId] = useState(() => needs[0]?.id || "");
   const updateNeed = (id, updates) => setNeeds((current) => current.map((need) => need.id === id ? { ...need, ...updates } : need));
   const categoryCreator = useExpenseCategoryCreator({ onCreated: (categoryId) => { if (categoryId && activeNeedId) updateNeed(activeNeedId, { category_id: categoryId }); } });
-  const categoryCreateLabel = categoryCreator.requestMode ? "Ajukan kategori baru" : "Tambah kategori baru";
+  const categoryCreateLabel = "Tambah kategori baru";
   const total = createNeedsTotal(needs);
   const available = Math.max(0, Number(sourceAccount?.available_balance ?? sourceAccount?.balance ?? 0));
   const shortage = Math.max(0, total - available);

@@ -40,32 +40,32 @@
 }
 
 .body {
-  color: inherit;
+  color: var(--text-soft);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   line-height: 1.45;
 }
 
 .info {
-  border-color: color-mix(in srgb, var(--info) 28%, var(--border));
+  border-color: transparent;
   background: color-mix(in srgb, var(--info-soft) 72%, var(--surface));
   color: var(--info);
 }
 
 .success {
-  border-color: color-mix(in srgb, var(--positive) 30%, var(--border));
+  border-color: transparent;
   background: color-mix(in srgb, var(--positive-soft) 74%, var(--surface));
   color: var(--positive);
 }
 
 .warning {
-  border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
+  border-color: transparent;
   background: color-mix(in srgb, var(--warning-soft) 76%, var(--surface));
   color: var(--warning);
 }
 
 .danger {
-  border-color: color-mix(in srgb, var(--negative) 30%, var(--border));
+  border-color: transparent;
   background: color-mix(in srgb, var(--negative-soft) 76%, var(--surface));
   color: var(--negative);
 }

@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain rekening", async () => {
+test("kategori langsung tersedia bagi anggota dan pengajuan lama tetap dapat ditinjau", async () => {
   const [app, navigation, page, visualIntro, dialogs, iconPicker, styles, presentation, api, accountPage, categoryPresentation, reviewHook, reviewService] = await Promise.all([
     read("src/app/App.jsx"),
     read("src/config/navigation.js"),
@@ -25,11 +25,13 @@ test("kategori menjaga aksi owner dan pengajuan Member tanpa mencampur domain re
   assert.match(app, /path="kategori"/);
   assert.match(navigation, /to: "\/kategori", label: "Kategori"[\s\S]*icon: FiTag/);
   assert.match(page, /title="Kategori"/);
-  assert.match(page, /aria-label=\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}/);
+  assert.match(page, /aria-label="Tambah kategori"/);
   assert.match(page, /useApiResource\("masterDataRequests\.list", \{ request_type: "category" \}, \{ enabled: !ownerMode \}\)/);
-  assert.match(page, /requestCategoryCreation/);
+  assert.doesNotMatch(page, /requestCategoryCreation/);
+  assert.match(page, /await requestCreateCategory\(form, \{\}\)/);
+  assert.doesNotMatch(page, /await requestCategoryCreation/);
   assert.doesNotMatch(page, /useMasterDataRequestReview/);
-  assert.match(page, /Pengajuan kategori saya/);
+  assert.match(page, /Pengajuan lama kategori/);
   assert.match(navigation, /to: "\/anggota", label: "Keluarga"/);
   assert.doesNotMatch(navigation, /to: "\/persetujuan", label: "Persetujuan"/);
   assert.match(reviewHook, /reviewMasterDataRequest/);

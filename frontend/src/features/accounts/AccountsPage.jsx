@@ -160,7 +160,7 @@ const useAccountLifecycleActions = ({ archiveTarget, setArchiveTarget, setDialog
       notify({
         message: preview.canDeleteUnused
           ? "Rekening yang belum pernah digunakan berhasil dihapus. Jejak audit tetap disimpan."
-          : "Rekening berhasil diarsipkan dan dapat dipulihkan oleh Administrator.",
+          : "Rekening berhasil diarsipkan dan dapat dipulihkan oleh Pengelola Keluarga.",
         tone: "success", dedupeKey: preview.canDeleteUnused ? "accounts:delete-unused" : "accounts:archive",
       });
       await reloadAccounts();

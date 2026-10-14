@@ -16,8 +16,8 @@
   white-space: nowrap;
 }
 
-.active { border-color: color-mix(in srgb, var(--positive) 22%, transparent); background: var(--positive-soft); color: var(--positive); }
-.info { border-color: color-mix(in srgb, var(--info) 22%, transparent); background: var(--info-soft); color: var(--info); }
-.danger { border-color: color-mix(in srgb, var(--negative) 22%, transparent); background: var(--negative-soft); color: var(--negative); }
-.warning { border-color: color-mix(in srgb, var(--warning) 22%, transparent); background: var(--warning-soft); color: var(--warning); }
-.neutral { border-color: var(--border); background: var(--surface-strong); color: var(--text-soft); }
+.active { border-color: transparent; background: var(--positive-soft); color: var(--positive); }
+.info { border-color: transparent; background: var(--info-soft); color: var(--info); }
+.danger { border-color: transparent; background: var(--negative-soft); color: var(--negative); }
+.warning { border-color: transparent; background: var(--warning-soft); color: var(--warning); }
+.neutral { border-color: transparent; background: var(--surface-strong); color: var(--text-soft); }

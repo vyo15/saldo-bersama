@@ -446,6 +446,8 @@
 
 /* Canonical responsive cascade: broad mobile rules first, compact exceptions after. */
 @media (max-width: 820px) {
+  .scheduleDisclosure .metaGrid { grid-template-columns:minmax(0,1fr); gap:8px; }
+  .scheduleCard { gap:8px; }
   
   
   .scheduleCard {
@@ -605,3 +607,15 @@
 .statusMoreOptions button { min-height: var(--mobile-hit-target); padding: .5rem .75rem; text-align: left; border: 0; border-radius: var(--mobile-radius-control); display: flex; justify-content: space-between; gap: .75rem; background: transparent; color: var(--text-soft); font: inherit; font-size: var(--font-size-xs); cursor: pointer; }
 .statusMoreOptions button[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary-strong); }
 .selectedStatusLabel { width: 100%; color: var(--text-muted); font-size: var(--font-size-xs); }
+
+/* Show date/amount first. Secondary schedule attributes stay keyboard accessible. */
+.scheduleDue { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:0; color:var(--text-soft); font-size:var(--font-size-body-sm); }
+.scheduleDue svg { width:14px; height:14px; color:var(--primary); }
+.scheduleDue span { color:var(--text-muted); font-size:var(--font-size-xs); }
+.scheduleDisclosure { min-width:0; }
+.scheduleDisclosure > summary { display:flex; align-items:center; min-height:44px; width:max-content; padding:0 3px; color:var(--primary); font-weight:var(--font-weight-semibold); font-size:var(--font-size-body-sm); list-style:none; cursor:pointer; }
+.scheduleDisclosure > summary::-webkit-details-marker { display:none; }
+.scheduleDisclosure > summary::after { content:"⌄"; padding-left:8px; }
+.scheduleDisclosure[open] > summary::after { transform:rotate(180deg); padding-right:8px; padding-left:0; }
+.scheduleDisclosure > summary:focus-visible { outline:2px solid var(--focus-ring); outline-offset:1px; border-radius:4px; }
+.scheduleDisclosure .metaGrid { padding-top:5px; }

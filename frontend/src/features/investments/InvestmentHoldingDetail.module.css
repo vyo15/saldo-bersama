@@ -161,3 +161,95 @@
 @media (prefers-reduced-motion: reduce) {
   .history > summary svg { transition: none; }
 }
+
+/* Approved compact fund factsheet: one readable money-first summary, not stacked cards. */
+.compactHoldingDialog :global(.modal__header) {
+  padding-block: .85rem .65rem;
+  border-bottom: 0;
+}
+.compactHoldingDialog :global(.modal__body) { padding-block: .7rem .85rem; }
+.compactHoldingDialog :global(.modal__footer) { border-color: var(--mobile-divider); }
+.compactHoldingDialog .detail { gap: .85rem; }
+.compactHoldingDialog .identity {
+  padding: .7rem .75rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+.identityPrice {
+  flex: 0 0 auto;
+  display: grid;
+  gap: .18rem;
+  text-align: end;
+  max-width: 40%;
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.identityPrice small {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+}
+.summaryHeading {
+  margin: .15rem 0 -.2rem;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.4;
+}
+.summaryFacts {
+  min-width: 0;
+  padding: .2rem .9rem .35rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-soft) 42%, var(--surface));
+}
+.compactHoldingDialog .metrics {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.compactHoldingDialog .metric {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: var(--space-2);
+  padding: .53rem 0;
+  border-bottom: 0;
+}
+.compactHoldingDialog .metric dt { font-size: var(--font-size-body-sm); }
+.compactHoldingDialog .metric dd {
+  justify-items: end;
+  text-align: end;
+  font-size: var(--font-size-body-sm);
+}
+.compactHoldingDialog .valueBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: .45rem var(--space-2);
+  padding: .75rem 0 .4rem;
+  border-top: 1px solid var(--mobile-divider);
+  border-radius: 0;
+  background: transparent;
+}
+.compactHoldingDialog .valueLabel { align-self: center; font-size: var(--font-size-body-sm); }
+.compactHoldingDialog .value {
+  align-self: center;
+  justify-self: end;
+  text-align: end;
+  font-size: clamp(.95rem, 4vw, 1.18rem);
+}
+.compactHoldingDialog .returnValue {
+  grid-column: 1 / -1;
+  text-align: end;
+  font-size: var(--font-size-body-sm);
+}
+.compactHoldingDialog .manualNote {
+  padding: .65rem .75rem;
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  line-height: 1.45;
+}
+@media (max-width: 360px) {
+  .compactHoldingDialog .identity { gap: .45rem; padding-inline: .55rem; }
+  .compactHoldingDialog .summaryFacts { padding-inline: .65rem; }
+  .identityPrice { max-width: 38%; font-size: var(--font-size-xs); }
+}

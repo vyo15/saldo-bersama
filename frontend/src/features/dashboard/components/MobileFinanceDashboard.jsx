@@ -122,9 +122,9 @@ const MobileTransactionItem = ({ item, categoryLookup, transactionAccountLabel, 
   const title = item.description || item.merchant || category?.name || "Transaksi";
   const sign = balanceVisible ? transactionSign(item.transaction_type) : "";
   const contextLabel = category?.name || transactionAccountLabel(item);
-  return <button type="button" className={dashboardClass("mobile-transaction-item")} data-native-enter data-transaction-id={item.transaction_id} onClick={() => onOpenTransactionDetail(item.transaction_id)} aria-label={`Buka detail ${title}`}>
+  return <button type="button" className={dashboardClass("mobile-transaction-item")} data-native-enter data-transaction-id={item.transaction_id} onClick={() => onOpenTransactionDetail(item.transaction_id)} aria-label={`Buka detail ${title}, dicatat ${transactionCreatorLabel(item)}`}>
     <span className={dashboardClass(`mobile-transaction-icon mobile-transaction-icon--${item.transaction_type || "default"}`)}><Icon aria-hidden="true" /></span>
-    <span className={dashboardClass("mobile-transaction-copy")}><strong>{title}</strong><small>{formatTransactionDate(item.transaction_date)} · {contextLabel} · dicatat {transactionCreatorLabel(item)}</small></span>
+    <span className={dashboardClass("mobile-transaction-copy")}><strong>{title}</strong><small>{formatTransactionDate(item.transaction_date)} · {contextLabel}</small></span>
     <span className={dashboardClass(`mobile-transaction-amount money--${transactionTone(item.transaction_type)}`)}>{sign}{sign ? " " : ""}<SensitiveMoney visible={balanceVisible} value={item.amount} tone={transactionTone(item.transaction_type)} /></span>
     <FiChevronRight className={dashboardClass("mobile-transaction-chevron")} aria-hidden="true" />
   </button>;

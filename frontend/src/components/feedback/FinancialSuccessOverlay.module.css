@@ -204,12 +204,12 @@
 .moneyNote::after { content: ""; position: absolute; inset: 19% 29%; border: 1px solid currentColor; border-radius: 50%; opacity: .12; }
 .moneyNote strong { font-size: .58rem; line-height: 1; }
 .moneyNote small { font-size: .3rem; font-weight: var(--font-weight-semibold); letter-spacing: .09em; }
-.money_red { background: linear-gradient(135deg, #ffd1ca, #e77870); }
-.money_blue { background: linear-gradient(135deg, #d2edff, #72bce8); }
-.money_green { background: linear-gradient(135deg, #dcf1d8, #83c68d); }
-.money_purple { background: linear-gradient(135deg, #eedcf5, #af86c5); }
-.money_gold { background: linear-gradient(135deg, #ffe8bc, #d1ae67); }
-.money_mint { background: linear-gradient(135deg, #d7f5e8, #82cdaa); }
+.money_red { background: var(--art-note-red); }
+.money_blue { background: var(--art-note-blue); }
+.money_green { background: var(--art-note-green); }
+.money_purple { background: var(--art-note-purple); }
+.money_gold { background: var(--art-note-gold); }
+.money_mint { background: var(--art-note-mint); }
 .moneyFar { filter: blur(.8px) saturate(.78) brightness(.84); }
 .moneyNear { filter: blur(.12px) saturate(.9); }
 

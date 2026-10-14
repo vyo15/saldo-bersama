@@ -84,19 +84,19 @@
 
 .login-money-note strong { font-size: clamp(.74rem, 1.15vw, .98rem); line-height: 1; }
 .login-money-note small { font-size: .43rem; font-weight: var(--font-weight-semibold); letter-spacing: .11em; }
-.login-money-note--red { background: linear-gradient(135deg, #ffd1ca, #e77870); }
-.login-money-note--blue { background: linear-gradient(135deg, #d2edff, #72bce8); }
-.login-money-note--green { background: linear-gradient(135deg, #dcf1d8, #83c68d); }
-.login-money-note--purple { background: linear-gradient(135deg, #eedcf5, #af86c5); }
-.login-money-note--gold { background: linear-gradient(135deg, #ffe8bc, #d1ae67); }
-.login-money-note--mint { background: linear-gradient(135deg, #d7f5e8, #82cdaa); }
+.login-money-note--red { background: var(--art-note-red); }
+.login-money-note--blue { background: var(--art-note-blue); }
+.login-money-note--green { background: var(--art-note-green); }
+.login-money-note--purple { background: var(--art-note-purple); }
+.login-money-note--gold { background: var(--art-note-gold); }
+.login-money-note--mint { background: var(--art-note-mint); }
 
 .login-spark {
   position: absolute;
   width: .4rem;
   height: .4rem;
   border-radius: .08rem;
-  background: #e3b83d;
+  background: var(--art-spark-gold);
   opacity: .38;
   transform: rotate(45deg);
   animation: login-spark-twinkle var(--motion-decorative) var(--ease-standard) 1 both;

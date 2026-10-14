@@ -18,7 +18,7 @@ test("UI Investasi asset-centric memakai nilai aset canonical tanpa hierarchy br
   assert.match(page, /aria-label="Tambah investasi">Tambah investasi<\/Button>/);
   assert.match(overview, /const total = Number\(values\.market_value \|\| 0\)/);
   assert.match(overview, /Modal aktif/);
-  assert.match(overview, /Nilai dari catatan manual, bukan harga pasar live/);
+  assert.match(overview, /Harga dicatat manual · bukan data pasar live/);
   assert.match(overview, /Total investasi tercatat/);
   assert.match(overview, /value: "activity", label: "Riwayat"/);
   assert.match(overview, /role="tablist" aria-label="Jelajahi investasi"/);
@@ -214,7 +214,13 @@ test("form tambah investasi ringkas tanpa mengubah intent dan perhitungan RDN", 
   assert.match(sharedPicker, /role="combobox"/);
   assert.match(sharedPicker, /role="listbox"/);
   assert.match(styles, /\.setupForm \.reviewGrid > div/);
-  assert.match(styles, /@media \(min-width: 430px\) and \(max-width: 620px\)/);
+  // Mobile tidak boleh menjejalkan dua input angka/tanggal pada satu baris.
+  assert.match(styles, /\.setupFields \.formRow \{ grid-template-columns: 1fr/);
+  assert.match(styles, /\.selectedAsset/);
+  assert.match(styles, /\.setupInputShell:focus-within/);
+  assert.match(setup, /aria-label="Aset investasi terpilih"/);
+  assert.match(setup, /aria-expanded=\{pickerOpen\}/);
+  assert.match(setup, /setPickerOpen\(false\)/);
 });
 
 
@@ -231,7 +237,9 @@ test("detail investasi ringkas tidak mewarisi form review satu kolom dan tetap m
   assert.doesNotMatch(detail, /formStyles\.reviewGrid/);
   assert.match(reviewCss, /\.reviewGrid/);
   assert.match(detailCss, /\.metrics\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
-  assert.doesNotMatch(detailCss, /\.metrics\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  // Grid bawaan tetap dua kolom; hanya modal fakta investasi compact yang satu kolom.
+  assert.match(detailCss, /\.compactHoldingDialog \.metrics\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  assert.match(detail, /Ringkasan \{mutualFund \? "Reksa Dana" : "Saham"\}/);
   assert.match(detailCss, /\.metric\s*\{[^}]*border-bottom:\s*1px solid var\(--mobile-divider\)/s);
   assert.doesNotMatch(detailCss, /#[0-9a-f]{3,8}/i);
 

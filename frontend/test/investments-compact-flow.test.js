@@ -16,6 +16,21 @@ test("setup dan pembelian awal membulatkan setengah Rupiah ke atas sesuai backen
   assert.equal(rupiahFromInvestmentUnits(1e20, 99), Number.NaN); // invalid-safe inputs
 });
 
+test("preview posisi lama memakai pembulatan otomatis atau override broker tanpa transaksi RDN", () => {
+  const input = { instrument_id: "fund", opening_quantity: "977.56", average_price: "5639.27", reference_price: "5696.59" };
+  const automatic = investmentOpeningPositionPreview(input, [fund]);
+  assert.equal(automatic.shares, 977.56);
+  assert.equal(automatic.marketValue, 5_568_759);
+  const broker = investmentOpeningPositionPreview({ ...input, cost_basis: "5512754", market_value: "5568784" }, [fund]);
+  assert.equal(broker.marketValue, 5_568_784);
+  assert.equal(broker.costBasis, 5_512_754);
+  assert.equal(broker.unrealizedPl, 56_030);
+  assert.equal(broker.shares, automatic.shares);
+  assert.equal(broker.averagePrice, automatic.averagePrice);
+  assert.equal(broker.currentPrice, automatic.currentPrice);
+  assert.equal(investmentOpeningPositionPreview({ ...input, cost_basis: "", market_value: "" }, [fund]).marketValue, automatic.marketValue);
+});
+
 test("jual semua tidak mencampurkan saham bebas dengan saham dua Target", () => {
   const holding = { shares: 1000, unallocated_shares: 300, goal_allocations: [{ goal_id: "g1", shares: 200 }, { goal_id: "g2", shares: 500 }], ticker: "BBCA", lot_size: 100 };
   assert.equal(investmentSellQuickQuantity(holding, stock, "", 1), 3);

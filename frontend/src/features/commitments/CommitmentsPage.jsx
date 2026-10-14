@@ -58,21 +58,19 @@ const CommitmentSummary = ({ items }) => {
   </section>;
 };
 
-const CommitmentMeta = ({ item, arisan }) => <>
+const CommitmentMeta = ({ item, arisan }) => <details className={styles.cardDetails}>
+  <summary>Rincian kewajiban</summary>
   <dl className={styles.meta}>
     <div><dt>{arisan ? "Setoran" : "Cicilan"}</dt><dd>{formatRupiah(item.installment_amount || 0)} / bulan</dd></div>
     <div><dt>Berikutnya</dt><dd>{nextDueLabel(item)}</dd></div>
     <div><dt>Dibayar dari</dt><dd>{item.account_name || "Rekening"}</dd></div>
   </dl>
-  {(item.budget_id || (!arisan && Number(item.flat_principal_amount || 0) > 0) || (arisan && Number(item.received_amount || 0) > 0)) ? <details className={styles.cardDetails}>
-    <summary>Rincian</summary>
-    <dl>
+  {(item.budget_id || (!arisan && Number(item.flat_principal_amount || 0) > 0) || (arisan && Number(item.received_amount || 0) > 0)) ? <dl className={styles.meta}>
       {item.budget_id ? <div><dt>Alokasi</dt><dd>Terhubung ke Kebutuhan</dd></div> : null}
       {!arisan && Number(item.flat_principal_amount || 0) > 0 ? <div><dt>Pokok + bunga/biaya</dt><dd>{formatRupiah(item.flat_principal_amount)} + {formatRupiah(item.flat_interest_amount || 0)}</dd></div> : null}
       {arisan && Number(item.received_amount || 0) > 0 ? <div><dt>Sudah diterima</dt><dd>{formatRupiah(item.received_amount)}</dd></div> : null}
-    </dl>
-  </details> : null}
-</>;
+  </dl> : null}
+</details>;
 
 const commitmentPaymentState = (item) => ({
   workflowSource: "commitment",
@@ -110,8 +108,8 @@ const CommitmentCard = ({ item, onEdit, onStop, compact = false, highlighted = f
   return <article id={`commitment-${item.commitment_id}`} className={commitmentCardClassName({ compact, highlighted })}>
     <div className={styles.cardIcon}>{completed ? <FiCheckCircle aria-hidden="true" /> : arisan ? <FiUsers aria-hidden="true" /> : <FiHome aria-hidden="true" />}</div>
     <div className={styles.cardTitle}><span>{typeLabel(item.commitment_type)}{item.provider ? ` · ${item.provider}` : ""}</span><h3>{item.name}</h3></div>
-    <div className={styles.amountBlock}><span>{arisan ? "Sisa setoran" : "Sisa pokok"}</span><strong>{formatRupiah(item.current_balance || 0)}</strong><small>{completed ? "Lunas / selesai" : arisan ? `${balanceProgress}% selesai` : `${balanceProgress}% pokok lunas`}</small></div>
-    {showInstallmentProgress ? <CommitmentProgress value={completed ? 100 : installments.percent} label={completed ? `${installments.total} dari ${installments.total} cicilan` : `Cicilan berikutnya ke-${installments.next} dari ${installments.total}`} meta={completed ? "Selesai" : `${installments.paid} selesai · ${installments.remaining} tersisa`} /> : <CommitmentProgress value={completed ? 100 : balanceProgress} />}
+    <div className={styles.amountBlock}><span>{arisan ? "Sisa setoran" : "Sisa pokok"}</span><strong>{formatRupiah(item.current_balance || 0)}</strong><small>{completed ? "Selesai" : `Berikutnya · ${nextDueLabel(item)}`}</small></div>
+    {showInstallmentProgress ? <CommitmentProgress value={completed ? 100 : installments.percent} label={completed ? `${installments.total} dari ${installments.total} cicilan` : `Cicilan berikutnya ke-${installments.next} dari ${installments.total}`} /> : <CommitmentProgress value={completed ? 100 : balanceProgress} />}
     {!compact ? <CommitmentMeta item={item} arisan={arisan} /> : null}
     {item.balance_needs_update ? <CompactNotice tone="info" title="Sisa pokok belum pasti">Pembayaran sebelumnya belum memiliki rincian pokok. Periksa kembali sebelum pembayaran berikutnya.</CompactNotice> : null}
     <CommitmentActions item={item} onEdit={onEdit} onStop={onStop} />

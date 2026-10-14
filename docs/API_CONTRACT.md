@@ -102,15 +102,15 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `investments.reconciliations.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `investments.corrections.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `accounts.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
-| `accounts.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `accounts.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.requestCreate` | Tidak | Ya | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
-| `accounts.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `accounts.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.previewLifecycle` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
 | `accounts.archive` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `accounts.deleteUnused` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData.js` |
-| `categories.create` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
+| `categories.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.requestCreate` | Tidak | Ya | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
 | `categories.update` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `categories.previewArchive` | Ya | Tidak | Read | Tidak | `api/_lib/services/masterData.js` |
@@ -344,7 +344,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 - `transactions.create/update` untuk `transfer` memvalidasi rekening sumber sebagai rekening yang dapat dioperasikan actor dan rekening tujuan sebagai rekening aktif yang readable. Sumber dan tujuan tidak boleh sama. Ownership ledger transfer mengikuti rekening sumber/debit, sehingga personal A → personal B dapat direpresentasikan tanpa memberi actor hak debit atas rekening tujuan.
 - Administrator dapat melakukan transfer shared ↔ personal secara langsung bila rekening valid. Member yang memindahkan dana dari **personal miliknya → shared/personal lain** dapat melakukan transfer langsung, tetapi **shared → personal mana pun** wajib membuat `transferRequests.request`; direct `transactions.create` ditolak `TRANSFER_APPROVAL_REQUIRED`. `transferRequests.review` hanya Administrator, memakai `row_version` + idempotency, membaca ulang requester/rekening, dan membuat satu transaksi canonical secara atomik ketika approve.
 - `app.initialState`/bootstrap mengembalikan `transferRoutes` untuk pasangan rekening aktif/readable yang relevan bagi actor dengan `mode=direct|approval_required`; pasangan yang tidak boleh dipakai sebagai source tidak diekspos sebagai route. Field ini hanya mengarahkan affordance/pemilihan mutation frontend. `transactions.create` dan `transferRequests.request/review` tetap melakukan authorization serta revalidation backend dan tidak mempercayai route dari client.
-- `accounts.requestCreate` dan `categories.requestCreate` hanya untuk Member. Payload dinormalisasi backend sebelum disimpan sebagai request; Administrator mereview melalui `masterDataRequests.review`. Approval membuat entity canonical dalam transaksi yang sama, sedangkan reject tidak membuat master data. Pending duplicate intent dikoaleskan oleh request key server-side.
+- `accounts.create`/`accounts.update` dan `categories.create` kini dapat dipanggil kedua role. Server mewajibkan ownership rekening (shared atau personal actor) saat edit dan menolak perubahan kepemilikan rekening existing oleh Member (`ACCOUNT_SCOPE_CHANGE_RESTRICTED`), termasuk rekening Bersama yang belum pernah dipakai. Pembentukan kategori aktif langsung melalui action canonical, dengan validasi duplikat dan audit. `accounts.requestCreate`/`categories.requestCreate` tetap menerima request Member dari client lama sebagai compatibility; pending request lama tetap dapat direview Pengelola melalui `masterDataRequests.review`, tanpa mengalihkan flow pembuatan baru.
 - Transfer **personal A → personal B** memakai ownership rekening sumber A pada row transaksi. `owner_user_id` transaksi selalu merepresentasikan pihak debit/sumber, bukan pemilik rekening tujuan.
 - Member tetap tidak memperoleh hak operasi rekening personal pasangan: rekening tersebut tidak boleh menjadi source/debit Member, walaupun boleh menjadi destination transfer. Owner/role dari client tidak menjadi authority.
 - `goals.move` memakai aturan representability yang sama. Untuk Target shared, sumber setoran boleh rekening shared atau rekening personal actor yang operable; rekening Target tetap harus menjadi destination pada deposit dan source pada withdrawal. Target personal hanya dapat dipasangkan dengan shared atau rekening personal pemilik Target yang sama. Read model `goals.list` hanya memberi `can_withdraw=true` bila ada rekening tujuan lain yang valid untuk actor; bila progress ada tetapi destination tidak tersedia, response membawa alasan presentasi aman dan UI tidak boleh menawarkan penarikan dead-end.

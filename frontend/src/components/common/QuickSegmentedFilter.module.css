@@ -16,7 +16,7 @@
 .root::before {
   content: "";
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   top: 3px;
   bottom: 3px;
   left: 3px;
@@ -46,6 +46,7 @@
 .root[data-active-index="3"]::before { transform: translateX(calc(300% + 6px)); }
 .segment {
   position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: var(--mobile-hit-target);
   padding: 0 .5rem;

@@ -2,7 +2,7 @@ import { cloneElement, isValidElement } from "react";
 
 import styles from "./InvestmentForm.module.css";
 
-const InvestmentFormField = ({ id, label, error = "", hint = "", required = false, children }) => {
+const InvestmentFormField = ({ id, label, error = "", hint = "", required = false, prefix = null, children }) => {
   const describedBy = [hint ? `${id}-hint` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined;
   const control = isValidElement(children) ? cloneElement(children, {
     id,
@@ -14,7 +14,7 @@ const InvestmentFormField = ({ id, label, error = "", hint = "", required = fals
   return (
     <label className={styles.field} htmlFor={id}>
       <span>{label}{required ? " *" : ""}</span>
-      {control}
+      {prefix ? <div className={styles.setupInputShell}><span className={styles.setupInputPrefix} aria-hidden="true">{prefix}</span>{control}</div> : control}
       {hint ? <small className={styles.fieldHint} id={`${id}-hint`}>{hint}</small> : null}
       {error ? <small className={styles.fieldError} id={`${id}-error`}>{error}</small> : null}
     </label>

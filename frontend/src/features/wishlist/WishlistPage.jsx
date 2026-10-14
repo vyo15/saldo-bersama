@@ -66,14 +66,27 @@ const WishlistRow = ({ item, simulationMode, selected, busy, onSelect, onBuy, on
   {!simulationMode && (item.status === "active" || item.product_url || item.note) ? <WishlistRowMenu item={item} busy={busy} onEdit={onEdit} onArchive={onArchive} /> : null}
 </article>;
 
-const WishlistBoard = ({ items, filtered, scope, priority, showArchive, simulationMode, selectedIds, busy, onSelect, onBuy, onEdit, onArchive, onActivate, onReopen, onReset, onCreate }) => <section className={styles.board} aria-label="Daftar keinginan">
+const WishlistEmptyState = ({ items, active, showArchive, onReset, onShowHistory, onCreate }) => {
+  const firstItem = items.length === 0;
+  const historyOnly = !firstItem && active.length === 0 && !showArchive;
+  const title = firstItem ? "Belum ada keinginan" : historyOnly ? "Belum ada keinginan aktif" : "Tidak ada barang pada filter ini";
+  const description = firstItem ? "Catat barang yang ingin dibeli. Wishlist tidak mengurangi saldo." : historyOnly ? "Barang yang dibeli atau diarsipkan ada di riwayat." : "Coba tampilkan semua barang.";
+  const action = firstItem
+    ? <Button icon={FiPlus} variant="primary" onClick={onCreate}>Tambah keinginan</Button>
+    : historyOnly
+      ? <Button type="button" variant="primary" onClick={onShowHistory}>Lihat riwayat</Button>
+      : <button type="button" className={styles.resetFilter} onClick={onReset}>Reset filter</button>;
+  return <div className={styles.empty}><FiHeart aria-hidden="true" /><h2>{title}</h2><p>{description}</p>{action}</div>;
+};
+
+const WishlistBoard = ({ items, active, filtered, scope, priority, showArchive, simulationMode, selectedIds, busy, onSelect, onBuy, onEdit, onArchive, onActivate, onReopen, onReset, onShowHistory, onCreate }) => <section className={styles.board} aria-label="Daftar keinginan">
   <div key={`${scope}-${priority}-${showArchive}`} className={styles.resultsMotion}>
-    {filtered.length === 0 ? <div className={styles.empty}><FiHeart aria-hidden="true" /><h2>{items.length ? "Tidak ada barang pada filter ini" : "Belum ada keinginan"}</h2><p>{items.length ? "Coba ubah pemilik atau filter prioritas." : "Tambahkan barang yang ingin dibeli. Target dana bisa diatur nanti."}</p>{items.length ? <button type="button" className={styles.resetFilter} onClick={onReset}>Reset filter</button> : <Button icon={FiPlus} variant="primary" onClick={onCreate}>Tambah Wishlist</Button>}</div>
+    {filtered.length === 0 ? <WishlistEmptyState items={items} active={active} showArchive={showArchive} onReset={onReset} onShowHistory={onShowHistory} onCreate={onCreate} />
       : filtered.map((item) => <WishlistRow key={item.wishlist_item_id} item={item} simulationMode={simulationMode} selected={selectedIds.includes(item.wishlist_item_id)} busy={busy} onSelect={onSelect} onBuy={onBuy} onEdit={onEdit} onArchive={onArchive} onActivate={onActivate} onReopen={onReopen} />)}
   </div>
 </section>;
 
-const WishlistControls = ({ scope, setScope, priority, setPriority, showArchive, setFilterOpen, active, filtered, simulationMode, setSimulationMode, exitSimulation, selected, setSelectedIds, setShowSimulator }) => <>
+const WishlistControls = ({ scope, setScope, priority, setPriority, showArchive, setFilterOpen, filtered, simulationMode, setSimulationMode, exitSimulation, selected, setSelectedIds, setShowSimulator }) => <>
     <div className={styles.toolbar}>
       <div className={styles.scopeFilters} data-scope={scope} role="group" aria-label="Filter pemilik Wishlist">
         {[["all", "Semua", FiList], ["personal", "Pribadi", FiUser], ["shared", "Bersama", FiUsers]].map(([value, label, Icon]) => <button
@@ -86,12 +99,12 @@ const WishlistControls = ({ scope, setScope, priority, setPriority, showArchive,
         <FiSliders aria-hidden="true" />{priority !== "all" || showArchive ? <span className={styles.filterDot} aria-hidden="true" /> : null}
       </button>
     </div>
-    <div className={styles.listTools}>
+    {filtered.length || simulationMode ? <div className={styles.listTools}>
       <span>{filtered.length} keinginan{priority !== "all" ? ` · ${priorityLabels[priority]}` : ""}</span>
-      {active.length > 0 || simulationMode ? <button type="button" className={styles.simModeToggle} aria-pressed={simulationMode} onClick={() => simulationMode ? exitSimulation() : setSimulationMode(true)}>
+      {filtered.some((item) => item.status === "active") || simulationMode ? <button type="button" className={styles.simModeToggle} aria-pressed={simulationMode} onClick={() => simulationMode ? exitSimulation() : setSimulationMode(true)}>
         {simulationMode ? <FiX aria-hidden="true" /> : <FiShoppingCart aria-hidden="true" />}{simulationMode ? "Selesai" : "Simulasi belanja"}
       </button> : null}
-    </div>
+    </div> : null}
     {simulationMode ? <div className={styles.simToolbar} role="status">
       <span>{selected.length} barang dipilih · {formatRupiah(selected.reduce((sum, item) => sum + Number(item.estimated_amount), 0))}</span>
       <div><button type="button" className={styles.clearSelection} disabled={!selected.length} onClick={() => setSelectedIds([])}>Bersihkan</button><Button type="button" variant="primary" disabled={!selected.length} onClick={() => setShowSimulator(true)}>Hitung total</Button></div>
@@ -113,6 +126,29 @@ const WishlistFilterModal = ({ priority, showArchive, onApply, onClose }) => {
     </div>
   </Modal>;
 };
+
+const wishlistCreateAction = (hasItems, onCreate) => hasItems
+  ? <Button variant="primary" className={styles.addAction} aria-label="Tambah keinginan" icon={FiPlus} onClick={onCreate}>Tambah keinginan</Button>
+  : null;
+
+const WishlistOverview = ({ active, urgent, total, urgentTotal, done }) => {
+  if (!active.length) return null;
+  return <section className={styles.overview} aria-label="Ringkasan Wishlist">
+    <div className={styles.overviewPrimary}><span>Estimasi keinginan</span><strong>{formatRupiah(total)}</strong></div>
+    {urgent.length ? <div><span>Prioritas segera</span><strong>{formatRupiah(urgentTotal)}</strong></div> : null}
+    {done > 0 ? <div className={styles.overviewCompleted}><span>Selesai dibeli</span><strong>{done}</strong></div> : null}
+  </section>;
+};
+
+const WishlistFooter = ({ hasItems, showArchive, setShowArchive }) => {
+  if (!hasItems) return null;
+  return <>
+    <label className={styles.archivedToggle}><input type="checkbox" checked={showArchive} onChange={(event) => setShowArchive(event.target.checked)} /> Tampilkan arsip & pembelian</label>
+    <details className={styles.bottomInfo}><summary><FiTarget aria-hidden="true" /> Wishlist bukan saldo tersimpan <FiChevronDown aria-hidden="true" /></summary><p>Menambah keinginan tidak menyisihkan uang. Atur melalui <Link to="/perencanaan/kantong">Atur Dana</Link> atau <Link to="/target">Target</Link>. Pembelian tetap memeriksa saldo dan dana bebas.</p></details>
+  </>;
+};
+
+const WishlistToolbar = ({ active, showArchive, ...props }) => active.length || showArchive ? <WishlistControls showArchive={showArchive} {...props} /> : null;
 
 const WishlistPage = () => {
   const resource = useApiResource("wishlist.list");
@@ -153,25 +189,20 @@ const WishlistPage = () => {
   if (resource.status === "loading" && !resource.data) return <NativePageSkeleton />;
   if (resource.status === "error" && !resource.data) return <ErrorState error={resource.error} onRetry={resource.reload} />;
   return <div className={styles.page}>
-    <PageHeader eyebrow="Rencana & Insight" title="Wishlist" description="Catat keinginan dan atur prioritasnya." actions={<Button variant="primary" className={styles.addAction} aria-label="Tambah keinginan" icon={FiPlus} onClick={() => setEditor({})}>Tambah keinginan</Button>} />
+    <PageHeader title="Wishlist" actions={wishlistCreateAction(items.length > 0, () => setEditor({}))} />
     {resource.refreshError ? <RefreshWarning error={resource.refreshError} onRetry={resource.reload} /> : null}
     {feedback ? <p className={styles.error} role="alert">{feedback}</p> : null}
-    <section className={styles.overview} aria-label="Ringkasan Wishlist">
-      <div className={styles.overviewPrimary}><span>Total rencana aktif</span><strong>{formatRupiah(total)}</strong><small>{active.length} keinginan aktif</small></div>
-      <div><span>Prioritas segera</span><strong>{formatRupiah(urgentTotal)}</strong><small>{urgent.length} barang</small></div>
-      <div><span>Selesai dibeli</span><strong>{done}</strong><small>Dicatat sebagai transaksi</small></div>
-    </section>
-    <WishlistControls scope={scope} setScope={setScope} priority={priority} setPriority={setPriority} showArchive={showArchive} setFilterOpen={setFilterOpen}
-      active={active} filtered={filtered} simulationMode={simulationMode} setSimulationMode={setSimulationMode} exitSimulation={exitSimulation}
+    <WishlistOverview active={active} urgent={urgent} total={total} urgentTotal={urgentTotal} done={done} />
+    <WishlistToolbar active={active} scope={scope} setScope={setScope} priority={priority} setPriority={setPriority} showArchive={showArchive} setFilterOpen={setFilterOpen}
+      filtered={filtered} simulationMode={simulationMode} setSimulationMode={setSimulationMode} exitSimulation={exitSimulation}
       selected={selected} setSelectedIds={setSelectedIds} setShowSimulator={setShowSimulator} />
-    <WishlistBoard items={items} filtered={filtered} scope={scope} priority={priority} showArchive={showArchive} simulationMode={simulationMode}
+    <WishlistBoard items={items} active={active} filtered={filtered} scope={scope} priority={priority} showArchive={showArchive} simulationMode={simulationMode}
       selectedIds={selectedIds} busy={mutation.busy} onSelect={toggleSelection} onBuy={setCheckout} onEdit={setEditor}
       onArchive={(item) => changeState(item, "archived")} onActivate={(item) => changeState(item, "active")} onReopen={restoreCancelled}
-      onReset={() => { setScope("all"); setPriority("all"); setShowArchive(false); }} onCreate={() => setEditor({})} />
+      onReset={() => { setScope("all"); setPriority("all"); setShowArchive(false); }} onShowHistory={() => { setScope("all"); setPriority("all"); setShowArchive(true); }} onCreate={() => setEditor({})} />
     {filterOpen ? <WishlistFilterModal priority={priority} showArchive={showArchive} onClose={() => setFilterOpen(false)}
       onApply={(nextPriority, nextArchive) => { setPriority(nextPriority); setShowArchive(nextArchive); setFilterOpen(false); }} /> : null}
-    <label className={styles.archivedToggle}><input type="checkbox" checked={showArchive} onChange={(event) => setShowArchive(event.target.checked)} /> Tampilkan arsip & pembelian</label>
-    <details className={styles.bottomInfo}><summary><FiTarget aria-hidden="true" /> Wishlist bukan saldo tersimpan <FiChevronDown aria-hidden="true" /></summary><p>Menambah keinginan tidak menyisihkan uang. Atur melalui <Link to="/perencanaan/kantong">Atur Dana</Link> atau <Link to="/target">Target</Link>. Pembelian tetap memeriksa saldo dan dana bebas.</p></details>
+    <WishlistFooter hasItems={items.length > 0} showArchive={showArchive} setShowArchive={setShowArchive} />
     {(simulationMode && showSimulator && selected.length > 0) || editor || checkout ? <Suspense fallback={<LazyActionFallback surface="modal" title="Wishlist" label="Menyiapkan aksi Wishlist..." />}>
       {simulationMode && showSimulator && selected.length ? <WishlistDialogLayer mode="simulator" items={selected} onClose={() => setShowSimulator(false)} /> : null}
       {editor ? <WishlistDialogLayer mode="editor" key={editor.wishlist_item_id || "new"} item={editor.wishlist_item_id ? editor : null} onSaved={refresh} onClose={() => setEditor(null)} /> : null}

@@ -215,7 +215,7 @@ const validateCorrectionHolding = (form, instruments, errors) => {
 const validateCorrection = (form, context) => {
   const { instruments, userRole, today } = context;
   const errors = {};
-  if (userRole !== "owner") return { _form: "Koreksi investasi hanya tersedia untuk Administrator." };
+  if (userRole !== "owner") return { _form: "Koreksi investasi hanya tersedia untuk Pengelola Keluarga." };
 
   const dateError = requiredDateError(form.correction_date, "Tanggal koreksi", today);
   if (dateError) errors.correction_date = dateError;

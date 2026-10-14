@@ -51,7 +51,7 @@ const ACTION_MODULES = Object.freeze({
   reminders: "Pengingat",
   transactions: "Transaksi",
   transferRequests: "Persetujuan transfer",
-  users: "Member",
+  users: "Anggota",
 });
 
 const ACTION_UNKNOWN_DETAILS = Object.freeze({
@@ -121,8 +121,8 @@ const ACTION_LABELS = Object.freeze({
   "transactions.update": ["Memperbarui transaksi...", "Transaksi berhasil diperbarui"],
   "transactions.cancel": ["Membatalkan transaksi...", "Transaksi berhasil dibatalkan"],
   "transactions.restore": ["Memulihkan transaksi...", "Transaksi berhasil dipulihkan"],
-  "users.deactivate": ["Menonaktifkan member...", "Member berhasil dinonaktifkan"],
-  "users.reactivate": ["Mengaktifkan member...", "Member berhasil diaktifkan"],
+  "users.deactivate": ["Menonaktifkan anggota...", "Anggota berhasil dinonaktifkan"],
+  "users.reactivate": ["Mengaktifkan anggota...", "Anggota berhasil diaktifkan"],
 });
 
 const actionModule = (action) => ACTION_MODULES[String(action || "").split(".")[0]] || "Saldo Bersama";

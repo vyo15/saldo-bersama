@@ -19,14 +19,14 @@ const GoalSummary = ({ items }) => {
   const summary = summarizeGoals(items);
   return <Card surface="object" className={goalClass("goal-summary")} aria-labelledby="goal-summary-title">
     <div className={goalClass("goal-summary__content")}>
-      <p className={goalClass("goal-summary__eyebrow")} id="goal-summary-title">Progress target aktif</p>
+      <p className={goalClass("goal-summary__eyebrow")} id="goal-summary-title">Dana target</p>
       <div className={goalClass("goal-summary__amount")}><Money value={summary.current} /></div>
-      <p className={goalClass("goal-summary__description")}>Nilai saat ini dari target <Money value={summary.target} />.</p>
+      <p className={goalClass("goal-summary__description")}>Target <Money value={summary.target} /></p>
       <div className={goalClass("goal-summary__progress")}><ProgressBar value={summary.current} max={summary.target} label="Progress seluruh target aktif" /></div>
       <div className={goalClass("goal-summary__meta")}>
         <span>Sisa <strong><Money value={summary.remaining} /></strong></span>
-        <span>Estimasi/bulan <strong><Money value={summary.monthly} /></strong></span>
-        <span>{summary.activeCount} target aktif{summary.attention ? <> · <strong>{summary.attention} perlu perhatian</strong></> : ""}</span>
+        {summary.monthly > 0 ? <span>Estimasi/bulan <strong><Money value={summary.monthly} /></strong></span> : null}
+        {summary.attention > 0 ? <span><strong>{summary.attention} perlu perhatian</strong></span> : null}
       </div>
     </div>
     <img className={goalClass("goal-summary__art")} src={GOAL_HERO_ART} width="900" height="873" alt="" aria-hidden="true" draggable="false" decoding="async" />
@@ -100,7 +100,7 @@ const GoalCard = ({ goal, actions }) => {
     <div className={goalClass("goal-card__heading")}><div className={goalClass("goal-card__icon")}>{goal.goal_type === "emergency_fund" ? <FiShield /> : <FiTarget />}</div><div><p className="eyebrow">{goalTypeLabel(goal.goal_type)}</p><h2>{goal.name}</h2></div></div>
     <div className={goalClass("goal-card__amount-line")}><strong><Money value={current} /> <span>/ <Money value={target} /></span></strong></div>
     <ProgressBar value={current} max={target} label={goal.name} />
-    <div className={goalClass("goal-card__meta")}><span>Kurang <strong><Money value={goal.remaining_amount || 0} /></strong></span><span data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</span></div>
+    <div className={goalClass("goal-card__meta")}><span>Sisa <strong><Money value={goal.remaining_amount || 0} /></strong></span>{goal.status === "active" && goal.pace_status !== "no_target_date" ? <span data-pace={goal.pace_status}>{GOAL_PACE_LABELS[goal.pace_status] || goal.pace_status}</span> : null}</div>
     <GoalActions goal={goal} detailId={detailId} detailsOpen={detailsOpen} toggleDetails={() => setDetailsOpen((value) => !value)} {...actions} />
     {detailsOpen ? <GoalDetails goal={goal} detailId={detailId} /> : null}
   </Card>;

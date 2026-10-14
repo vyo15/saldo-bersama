@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router";
-import { FiArrowRight, FiHome, FiPlus, FiRepeat, FiSearch, FiUsers } from "react-icons/fi";
+import { FiArrowRight, FiHome, FiInbox, FiPlus, FiRepeat, FiSearch, FiUsers } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
 import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
@@ -34,7 +34,14 @@ const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, ca
   const hasAllocations = items.length > 0;
   const sources = hasAllocations ? allocationSourceAccounts(accounts) : planningFundingAccounts(accounts, items);
   const total = sources.reduce((sum, account) => sum + allocationAvailableBalance(account), 0);
-  if (!accounts.length) return null;
+  if (!accounts.length) return <Card surface="object" className={allocationClass("allocation-funding-summary allocation-funding-summary--no-accounts")}>
+    <div className={allocationClass("allocation-funding-summary__copy")}>
+      <span className={allocationClass("allocation-funding-summary__eyebrow")}>Atur Dana</span>
+      <h2>Belum ada rekening</h2>
+      <p className={allocationClass("allocation-funding-summary__hint")}>Tambahkan rekening untuk mulai mengatur dana.</p>
+      <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>
+    </div>
+  </Card>;
 
   const action = hasAllocations
     ? <>
@@ -45,27 +52,25 @@ const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, ca
 
   return <Card surface="object" className={allocationClass(`allocation-funding-summary${hasActiveItems ? " allocation-funding-summary--filled" : " allocation-funding-summary--empty"}`)} aria-labelledby="allocation-funding-summary-title">
     <div className={allocationClass("allocation-funding-summary__content")}>
-      <span className={allocationClass("allocation-funding-summary__count")}>{sources.length} rekening sumber</span>
       <div className={allocationClass("allocation-funding-summary__copy")}>
         <div>
-          <span className={allocationClass("allocation-funding-summary__eyebrow")} id="allocation-funding-summary-title" aria-label={hasAllocations ? "Dana yang bisa dialokasikan" : "Dana tersedia untuk direncanakan"}>{hasAllocations ? "Dana siap dialokasikan" : "Dana tersedia untuk direncanakan"}</span>
+          <span className={allocationClass("allocation-funding-summary__eyebrow")} id="allocation-funding-summary-title" aria-label="Dana bebas dari rekening sumber">Dana bebas</span>
           <div className={allocationClass("allocation-funding-summary__amount")}><Money value={total} /></div>
         </div>
-        <p className={allocationClass("allocation-funding-summary__supporting-copy")}>{hasAllocations ? "Dana bebas dari rekening operasional dapat diarahkan ke Alokasi yang sudah ada atau Alokasi baru. Setiap Alokasi tetap memakai satu rekening sumber." : "Dana bebas pada rekening aktif ini dapat mulai direncanakan tanpa mencampur saldo antar rekening."}</p>
-        {sources.length === 1 ? <div className={allocationClass("allocation-funding-summary__single-source")}><FundingSourceRow account={sources[0]} /></div> : null}
-        {sources.length > 1 ? <details className={allocationClass("allocation-funding-summary__sources")}>
-          <summary>Lihat {sources.length} rekening sumber<FiArrowRight aria-hidden="true" /></summary>
-          <div className={allocationClass("allocation-funding-summary__source-list")}>
-            {sources.map((account) => <FundingSourceRow key={account.account_id} account={account} />)}
-          </div>
-        </details> : null}
-        {!sources.length ? <span className={allocationClass("allocation-funding-summary__hint")}>Belum ada dana bebas. Alokasi baru tetap dapat disiapkan dari rekening yang dapat digunakan.</span> : null}
+        {total > 0 ? <p className={allocationClass("allocation-funding-summary__supporting-copy")}>Dari rekening yang dapat digunakan.</p> : null}
+        {!sources.length ? <span className={allocationClass("allocation-funding-summary__hint")}>Belum ada dana bebas. Alokasi bisa disiapkan dulu.</span> : null}
         <div className={allocationClass("allocation-funding-summary__actions")}>{action}</div>
       </div>
       <div className={allocationClass("allocation-funding-summary__art")} aria-hidden="true">
         <img src={allocationArt.heroCouple} width="512" height="384" alt="" decoding="async" />
       </div>
     </div>
+    {sources.length > 0 ? <details className={allocationClass("allocation-funding-summary__sources")}>
+      <summary>{sources.length === 1 ? "Lihat rekening sumber" : `Lihat ${sources.length} rekening sumber`}<FiArrowRight aria-hidden="true" /></summary>
+      <div className={allocationClass("allocation-funding-summary__source-list")}>
+        {sources.map((account) => <FundingSourceRow key={account.account_id} account={account} />)}
+      </div>
+    </details> : null}
   </Card>;
 };
 
@@ -76,7 +81,7 @@ const PLANNING_LINKS = Object.freeze([
 ]);
 
 const AllocationPlanningNav = () => <nav className={allocationClass("allocation-planning-nav")} aria-label="Kelola rencana">
-  <span className={allocationClass("allocation-planning-nav__label")}>Kelola</span>
+  <span className={allocationClass("allocation-planning-nav__label")} aria-current="page">Alokasi</span>
   {PLANNING_LINKS.map((item) => <NavLink
     key={item.to}
     to={item.to}
@@ -176,20 +181,18 @@ const RecurringActiveRow = ({ row, onOpen, highlighted = false }) => {
   </button>;
 };
 
-const AllocationEmptyArt = (props) => <img {...props} src={allocationArt.emptyState} width="512" height="384" alt="" decoding="async" />;
-
-const EmptyAllocationState = ({ totalItems, canCreate, clearFilter }) => <EmptyState
+const EmptyAllocationState = ({ totalItems, clearFilter }) => <EmptyState
   className={allocationClass("allocation-empty-state")}
   variant="compact"
   headingLevel={3}
-  icon={AllocationEmptyArt}
-  title={totalItems ? "Tidak ada rencana yang sesuai" : canCreate ? "Belum ada rencana aktif" : "Belum ada rekening yang dapat digunakan"}
-  description={totalItems ? "Coba ubah pencarian atau filter untuk melihat rencana lain." : canCreate ? "Mulai dengan membuat Alokasi untuk memisahkan dana sesuai kebutuhan." : "Siapkan atau aktifkan rekening yang dapat Anda operasikan sebelum mengatur dana."}
-  action={totalItems ? <Button onClick={clearFilter}>Tampilkan semua</Button> : canCreate ? null : <ButtonLink variant="primary" to="/rekening">Lihat Rekening</ButtonLink>}
+  icon={FiInbox}
+  title={totalItems ? "Tidak ada hasil" : "Belum ada alokasi aktif"}
+  description={totalItems ? "Coba kata lain atau hapus filter." : null}
+  action={totalItems ? <Button onClick={clearFilter}>Hapus filter</Button> : null}
 />;
 
-const PlanningActiveList = ({ rows, totalItems, attentionEnvelopeId, highlightedRowId, onOpenDetail, onOpenCommitmentDetail, onOpenRecurringDetail, canCreate, clearFilter }) => {
-  if (!rows.length) return <EmptyAllocationState totalItems={totalItems} canCreate={canCreate} clearFilter={clearFilter} />;
+const PlanningActiveList = ({ rows, totalItems, attentionEnvelopeId, highlightedRowId, onOpenDetail, onOpenCommitmentDetail, onOpenRecurringDetail, clearFilter }) => {
+  if (!rows.length) return <EmptyAllocationState totalItems={totalItems} clearFilter={clearFilter} />;
   return <div className={allocationClass("planning-active-list")} role="list">
     {rows.map((row) => <div key={row.id} id={`planning-active-${row.id}`} role="listitem">
       {row.kind === "allocation" ? <AllocationActiveRow row={row} attention={row.allocation.envelope_period_id === attentionEnvelopeId || row.id === highlightedRowId} onOpen={onOpenDetail} /> : null}
@@ -202,11 +205,11 @@ const PlanningActiveList = ({ rows, totalItems, attentionEnvelopeId, highlighted
 const PlanningToolbar = ({ query, setQuery, ownership, allocationFilter, setAllocationFilter, resultCount }) => <div className={allocationClass("allocation-toolbar")}>
   <label className={allocationClass("allocation-toolbar__search")}>
     <FiSearch aria-hidden="true" />
-    <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari rencana, kewajiban, atau jadwal..." aria-label="Cari rencana aktif" />
+    <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Cari alokasi, jadwal, kewajiban" aria-label="Cari rencana aktif" />
   </label>
   <div className={allocationClass("allocation-toolbar__meta")}>
     {ownership.showFilter ? <QuickSegmentedFilter label="Filter dana aktif" options={ACTIVE_FILTERS} value={allocationFilter} onChange={setAllocationFilter} /> : null}
-    <span className={allocationClass("allocation-toolbar__count")}>{resultCount} item</span>
+    <span className={allocationClass("allocation-toolbar__count")} aria-live="polite">{resultCount} hasil</span>
   </div>
 </div>;
 
@@ -248,9 +251,9 @@ const AllocationOverviewLayer = ({
     <AllocationFundingSummary accounts={accounts} items={activeItems} hasActiveItems={Boolean(rows.length)} canFund={canFund} canCreate={canCreate} onOpenFunding={onOpenFunding} onOpenCreateLauncher={() => setCreateLauncherOpen(true)} onCreateAllocation={openCreate} />
     <AllocationPlanningNav />
     <section className={allocationClass("allocation-active")} aria-labelledby="allocation-active-title">
-      <div className={allocationClass("allocation-section-heading")}><h2 id="allocation-active-title">Aktif</h2>{rows.length ? <span>{filteredItems.length} dari {rows.length}</span> : null}</div>
+      <div className={allocationClass("allocation-section-heading")}><h2 id="allocation-active-title">Aktif</h2></div>
       {rows.length ? <PlanningToolbar query={query} setQuery={setQuery} ownership={ownership} allocationFilter={allocationFilter} setAllocationFilter={setAllocationFilter} resultCount={filteredItems.length} /> : null}
-      <PlanningActiveList rows={filteredItems} totalItems={visibleItems.length} attentionEnvelopeId={attentionEnvelopeId} highlightedRowId={highlightedRowId} onOpenDetail={onOpenDetail} onOpenCommitmentDetail={onOpenCommitmentDetail} onOpenRecurringDetail={onOpenRecurringDetail} canCreate={canCreate} clearFilter={() => { setAllocationFilter("all"); setQuery(""); }} />
+      <PlanningActiveList rows={filteredItems} totalItems={rows.length} attentionEnvelopeId={attentionEnvelopeId} highlightedRowId={highlightedRowId} onOpenDetail={onOpenDetail} onOpenCommitmentDetail={onOpenCommitmentDetail} onOpenRecurringDetail={onOpenRecurringDetail} clearFilter={() => { setAllocationFilter("all"); setQuery(""); }} />
     </section>
     <PlanningCreateLauncher open={createLauncherOpen} onClose={() => setCreateLauncherOpen(false)} onCreateAllocation={openCreate} onCreateRecurring={onCreateRecurring} onCreateCommitment={onCreateCommitment} />
   </>;

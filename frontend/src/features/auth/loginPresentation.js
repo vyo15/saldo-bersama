@@ -65,8 +65,8 @@ export const mobileOAuthErrorFromSearch = (search) => {
     cancelled: "Login Google dibatalkan sebelum selesai.",
     config: "Konfigurasi login Google production belum lengkap.",
     "not-allowed": "Akun Google ini belum mendapat akses ke Saldo Bersama.",
-    inactive: "Akun ini sedang dinonaktifkan. Hubungi Administrator untuk memulihkan akses.",
-    "identity-conflict": "Identitas Google akun ini tidak cocok dengan akun yang tersimpan. Hubungi Administrator.",
+    inactive: "Akun ini sedang dinonaktifkan. Hubungi Pengelola Keluarga untuk memulihkan akses.",
+    "identity-conflict": "Identitas Google akun ini tidak cocok dengan akun yang tersimpan. Hubungi Pengelola Keluarga.",
     failed: "Google belum dapat menyelesaikan login. Silakan coba lagi.",
   };
   return code && messages[code] ? new Error(messages[code]) : null;

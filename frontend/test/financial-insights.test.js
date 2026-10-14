@@ -294,7 +294,7 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(page, /FinancialSetupChecklist/);
   for (const label of ["Rekening", "Kategori"]) assert.match(setupChecklist, new RegExp(label));
   assert.match(setupChecklist, /detail: ready \? "Siap mencatat saldo dan transaksi" : "Tambahkan rekening yang akan dipakai"/);
-  assert.match(setupChecklist, /owner \? "Siapkan kategori pemasukan dan pengeluaran" : "Ajukan kategori yang masih dibutuhkan"/);
+  assert.match(setupChecklist, /"Siapkan kategori pemasukan dan pengeluaran"/);
   assert.match(setupChecklist, /Rekening dan kategori cukup untuk mulai mencatat/);
   assert.match(setupChecklist, /Alokasi Dana, Jadwal Rutin, dan Target dapat ditambahkan kapan saja/);
   assert.match(setupChecklist, /defaultOpen=\{completed === 0\}/);

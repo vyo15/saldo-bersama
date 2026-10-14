@@ -65,7 +65,7 @@ test("side effect dan model akses dijelaskan sebelum user mengambil tindakan", a
 
   assert.match(notifications, /Saat diaktifkan, satu notifikasi uji akan dikirim otomatis/);
   assert.match(login, /Belum memiliki akses\?/);
-  assert.match(login, /Hubungi Administrator/);
+  assert.match(login, /Hubungi Pengelola Keluarga/);
   assert.doesNotMatch(login, /Belum punya akun\?|Hubungi kami/);
 });
 

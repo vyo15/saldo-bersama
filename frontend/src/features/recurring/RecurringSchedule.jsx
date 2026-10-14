@@ -173,21 +173,24 @@ const ScheduleItem = ({ item, actions, expanded, onToggle, accounts, categories,
           <div className={styles.titleLine}>
             <h3>{item.name}</h3>
           </div>
-          <p>{categoryLabel}</p>
         </div>
         <StatusBadge status={item.status} />
       </div>
 
       <div className={styles.amountBlock}>
-        <span>Rencana <Money value={item.expected_amount} /></span>
+        <span><Money value={item.expected_amount} /></span>
         {actual > 0 ? <small>Tercatat <Money value={actual} /></small> : null}
       </div>
 
-      <div className={styles.metaGrid}>
-        <span><FiClock aria-hidden="true" /><span><strong>{formatDateLongIndonesia(item.due_date) || item.due_date}</strong><small className={styles[due.tone]}>{due.label}</small></span></span>
+      <p className={styles.scheduleDue}><FiClock aria-hidden="true" />{formatDateLongIndonesia(item.due_date) || item.due_date}<span className={styles[due.tone]}>{due.label}</span></p>
+      <details className={styles.scheduleDisclosure}>
+        <summary>Rincian jadwal</summary>
+        <div className={styles.metaGrid}>
+        <span><FiCalendar aria-hidden="true" /><span><strong>{categoryLabel}</strong><small>Kategori</small></span></span>
         <span><FiRepeat aria-hidden="true" /><span><strong>{FREQUENCY_LABELS[item.frequency] || item.frequency}</strong><small>{PAYMENT_METHOD_LABELS[item.payment_method] || item.payment_method || "Metode belum diatur"}</small></span></span>
         <span className={styles.accountMeta}><span className={styles.accountDot} aria-hidden="true" /><span><strong>{accountLabel}</strong>{budgetLabel ? <small>{budgetLabel}</small> : null}</span></span>
-      </div>
+        </div>
+      </details>
 
       <ScheduleAttention item={item} guidance={guidance} actions={actions} />
       <ScheduleActions item={item} actions={actions} expanded={expanded} onToggle={onToggle} hidePay={Boolean(guidance)} />
@@ -256,14 +259,12 @@ export const ScheduleSummary = ({ items, onAttention, expenseOnly = false }) => 
           ) : <span className={styles.heroStatus}>{status.label}</span>}
         </div>
         <div className={styles.heroValue}><Money value={summary.expense} /></div>
-        <p className={styles.heroDescription}>Rencana pengeluaran rutin pada periode yang dipilih.</p>
         <div className={styles.heroProgress} aria-label={`${progress}% jadwal periode terselesaikan`}>
           <span style={{ "--recurring-progress-scale": progress / 100 }} />
         </div>
         <div className={styles.heroMetrics}>
           {!expenseOnly ? <div className={styles.heroMetric}><span>Pemasukan</span><strong><Money value={summary.income} /></strong></div> : null}
           <div className={styles.heroMetric}><span>Tuntas</span><strong>{resolved} dari {total}</strong></div>
-          <div className={`${styles.heroMetric} ${summary.attention ? styles.heroMetricAttention : ""}`}><span>Perhatian</span><strong>{summary.attention} jadwal</strong></div>
         </div>
       </div>
       <img className={styles.heroArt} src="/login/assets/mobile/finance-checklist.webp" width="900" height="840" alt="" aria-hidden="true" draggable="false" decoding="async" />

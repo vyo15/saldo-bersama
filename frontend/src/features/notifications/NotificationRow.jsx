@@ -202,6 +202,8 @@ const NotificationRow = ({ alert, read, onOpen, onDismiss }) => {
   const event = eventDisplay(alert);
   const entity = financialNotificationEntity(alert);
   const fact = financialNotificationFact(alert);
+  const title = financialNotificationTitle(alert);
+  const showEntity = Boolean(entity && !title.includes(entity) && !(fact || "").includes(entity));
   const guidanceAlert = alert.guidanceId ? { ...alert, id: alert.guidanceId } : alert;
   const actionLabel = notificationRequiresAction(alert) ? financialAlertGuidance(guidanceAlert, { source: "notification-center" }).actionLabel : "";
 
@@ -237,7 +239,7 @@ const NotificationRow = ({ alert, read, onOpen, onDismiss }) => {
           <span className={styles.icon}><Icon aria-hidden="true" /></span>
           <span className={styles.copy}>
             <span className={styles.primaryLine}><strong>{financialNotificationTitle(alert)}</strong>{event ? <time className={styles.eventTime} dateTime={event.at} title={formatDateTimeJakarta(event.at)}>{event.short}</time> : null}</span>
-            {entity ? <span className={styles.entity}>{entity}</span> : null}
+            {showEntity ? <span className={styles.entity}>{entity}</span> : null}
             {fact ? <small>{fact}</small> : null}
             {actionLabel ? <span className={styles.actionLabel}>{actionLabel}</span> : null}
           </span>

@@ -379,6 +379,6 @@ test("transfer Member yang membutuhkan approval membuka pengajuan, bukan membuat
   assert.match(controller, /transferApprovalRequired: selectedTransferRoute\?\.mode === "approval_required"/);
   assert.match(api, /transferRequests\.request/);
   assert.match(form, /Ajukan transfer/);
-  assert.match(mobile, /Ajukan transfer ke Administrator/);
+  assert.match(mobile, /Ajukan konfirmasi transfer/);
   assert.match(impact, /Pengajuan tidak langsung memindahkan dana/);
 });

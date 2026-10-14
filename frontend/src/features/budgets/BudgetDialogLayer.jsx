@@ -190,7 +190,7 @@ const BudgetDialogLayer = ({ canManage, canLifecycle = false, categories, users,
     formController.closeBudgetForm();
     onReminder?.(budget);
   };
-  const categoryCreateLabel = categoryCreator.requestMode ? "Ajukan kategori baru" : "Tambah kategori baru";
+  const categoryCreateLabel = "Tambah kategori baru";
   return <>
     {batchCreateOpen
       ? <BudgetBatchEditor open controller={formController} categories={categories} lockedEnvelope={lockedEnvelope} sourceAccount={sourceAccount} onCreateCategory={categoryCreator.openModal} categoryCreateLabel={categoryCreateLabel} />

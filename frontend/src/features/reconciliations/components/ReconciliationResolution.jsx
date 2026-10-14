@@ -46,7 +46,7 @@ const DifferenceStart = ({ result, currentSystemBalance, onDiagnose, loading, on
     <span className={styles.heroIcon} data-tone="warning"><FiAlertTriangle aria-hidden="true" /></span>
     <span className={styles.eyebrow}>Perlu diperiksa</span>
     <strong className={styles.heroAmount}><Money value={Math.abs(currentDifference)} /></strong>
-    <p>Ada perbedaan antara saldo aplikasi dan saldo yang Anda lihat. Cari penyebabnya dulu sebelum mencatat apa pun.</p>
+    <p>Cari penyebab selisih sebelum mencatat transaksi.</p>
   </div>
   <BalanceSummary result={result} currentSystemBalance={currentSystemBalance} />
   <div className={styles.actions}>

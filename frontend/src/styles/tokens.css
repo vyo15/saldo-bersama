@@ -64,6 +64,15 @@
   --accent-info: #2f8ef4;
   --accent-purple: #8670e8;
   --accent-rose: #e874a6;
+  /* Artwork-only banknote pigments: shared by Login and financial success celebration.
+     Fixed colors intentionally preserve the character artwork in both themes. */
+  --art-note-red: linear-gradient(135deg, #ffd1ca, #e77870);
+  --art-note-blue: linear-gradient(135deg, #d2edff, #72bce8);
+  --art-note-green: linear-gradient(135deg, #dcf1d8, #83c68d);
+  --art-note-purple: linear-gradient(135deg, #eedcf5, #af86c5);
+  --art-note-gold: linear-gradient(135deg, #ffe8bc, #d1ae67);
+  --art-note-mint: linear-gradient(135deg, #d7f5e8, #82cdaa);
+  --art-spark-gold: #e3b83d;
 
   /* Compatibility aliases used by existing illustrations while features migrate. */
   --palette-rich-black: #07131d;

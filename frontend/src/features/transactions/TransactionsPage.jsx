@@ -96,7 +96,7 @@ const TransactionAttentionNotice = ({ active, editableTarget, remaining = null, 
   if (!active) return null;
   const title = editableTarget ? "Hubungkan transaksi ke Kebutuhan yang sesuai." : "Rapikan pengeluaran yang belum masuk Kebutuhan.";
   const description = editableTarget
-    ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Kebutuhan yang sesuai; jika tidak ada yang cocok, Alokasi Dana tetap dapat dipilih manual."
+    ? "Transaksi pertama yang dapat diedit dibuka otomatis. Pilih Kebutuhan yang sesuai agar Alokasi Dana mengikuti hubungan Kebutuhan tersebut. Jika belum ada yang cocok, periksa rencana di Atur Dana."
     : "Daftar sudah difilter ke pengeluaran yang belum masuk rencana. Buka transaksi yang dapat diedit, lalu pilih Kebutuhan yang sesuai.";
   return <CompactNotice tone="info" title={title} role="status">{description}{Number.isFinite(remaining) ? ` ${remaining} transaksi masih perlu ditinjau.` : ""}</CompactNotice>;
 };
@@ -122,9 +122,9 @@ const TransactionResourceStates = ({ resource, items, filtersActive, openTransac
       <span>Transaksi pada periode ini tidak dapat diubah.</span>
       <details>
         <summary>Lihat alasan</summary>
-        <p>Periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</p>
+        <p>Periode ini atau periode setelahnya sudah ditutup. Pengelola Keluarga perlu membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</p>
       </details>
-      <p className={styles.periodLockDesktopReason}>Periode ini atau periode setelahnya sudah ditutup. Administrator harus membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</p>
+      <p className={styles.periodLockDesktopReason}>Periode ini atau periode setelahnya sudah ditutup. Pengelola Keluarga perlu membuka kembali seluruh periode pengunci sebelum transaksi dapat diubah.</p>
     </div> : null}
     {resource.status === "loading" ? <NativePageSkeleton kind="transactions" variant="panel" label="Memuat transaksi…" /> : null}
     {resource.status === "error" ? <ErrorState error={resource.error} onRetry={resource.reload} /> : null}

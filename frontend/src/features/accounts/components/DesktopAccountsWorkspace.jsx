@@ -208,7 +208,7 @@ const SelectedAccountHeroActions = ({ account, investment, canManage, onEditAcco
     {investment ? <Button variant="primary" icon={InvestmentIcon} onClick={() => onViewInvestment(account)}>Lihat investasi</Button> : null}
     {!investment && account.status === "active" && account.can_reconcile === true ? <Button variant="primary" icon={FiCheckCircle} onClick={() => onEnsureBalance(account)}>Pastikan saldo sesuai</Button> : null}
     {account.status === "active" && canManage ? <Button icon={FiEdit2} onClick={() => onEditAccount(account)}>Edit</Button> : null}
-    {account.status === "active" && canManage ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Hapus dari daftar</Button> : null}
+    {account.status === "active" && account.can_archive ? <Button variant="danger" icon={FiArchive} onClick={() => onArchiveAccount(account)}>Hapus dari daftar</Button> : null}
   </div>
 );
 

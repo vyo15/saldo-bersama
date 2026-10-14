@@ -289,3 +289,12 @@
   .mortgageProgress { grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
   .mortgageProgressInputs input,.mortgageProgressInputs > span { width: var(--mobile-hit-target); }
 }
+
+/* Secondary repayment metadata remains available behind a native disclosure. */
+.cardDetails { grid-column:1/-1; min-width:0; }
+.cardDetails > summary { min-height:44px; width:max-content; display:flex; align-items:center; padding:0 3px; cursor:pointer; color:var(--primary); font-size:var(--font-size-xs); font-weight:var(--font-weight-semibold); list-style:none; }
+.cardDetails > summary::-webkit-details-marker { display:none; }
+.cardDetails > summary::after { content:"⌄"; padding-left:8px; }
+.cardDetails[open] > summary::after { transform:rotate(180deg); padding-left:0; padding-right:8px; }
+.cardDetails > summary:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
+.cardDetails .meta { margin-top:8px; }

@@ -120,7 +120,7 @@ const DesktopAccountMenu = ({ user, onLogout }) => {
     <div ref={accountMenuRef} className="desktop-account-menu">
       <button ref={accountMenuTriggerRef} type="button" className="desktop-account-trigger" aria-expanded={accountMenuOpen} aria-controls="desktop-account-popover" onClick={() => setAccountMenuOpen((current) => !current)}>
         <UserAvatar user={user} className="desktop-user-avatar" />
-        <span className="desktop-account-copy"><strong>{user?.name || "Pengguna"}</strong><small>{user?.role === "owner" ? "Administrator" : "Anggota"}</small></span>
+        <span className="desktop-account-copy"><strong>{user?.name || "Pengguna"}</strong><small>{user?.role === "owner" ? "Pengelola" : "Anggota"}</small></span>
         <FiChevronDown aria-hidden="true" />
       </button>
       {accountMenuOpen ? <div id="desktop-account-popover" className="desktop-account-popover" aria-label="Menu akun">

@@ -238,7 +238,7 @@ export const useTransactionSubmit = ({ form, transaction, confirmation, isIncome
       await requestTransferApproval(validation.value, { idempotencyKey: idempotencyKeyRef.current });
       invalidate(["transferRequests.list", "notifications.center"]);
       setters.setSubmitState({ status: "success", error: null });
-      notify({ message: "Pengajuan transfer dikirim. Saldo belum berubah sampai Administrator menyetujui." });
+      notify({ message: "Pengajuan transfer dikirim. Saldo belum berubah sampai Pengelola Keluarga menyetujui." });
       onClose();
       return;
     }

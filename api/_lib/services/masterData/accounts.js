@@ -246,7 +246,7 @@ export const createAccount = async (db, context) => createAccountInternal(db, co
 export const updateAccount = async (db, context) => {
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM accounts WHERE account_id=?", [payload.account_id]);
-  if (!current || current.status !== "active") throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
+  if (!current || current.status !== "active" || current.is_system_hidden) throw appError("NOT_FOUND", "Rekening aktif tidak ditemukan.", 404);
   assertAccountOperator(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   if (payload.account_type !== undefined && String(payload.account_type) !== current.account_type) {
@@ -258,6 +258,9 @@ export const updateAccount = async (db, context) => {
     { scope: payload.owner_scope, owner_user_id: payload.owner_user_id },
     { scope: current.owner_scope, owner_user_id: current.owner_user_id },
   );
+  if (context.actor.role !== "owner" && accountScopeChanged(current, owned)) {
+    throw appError("ACCOUNT_SCOPE_CHANGE_RESTRICTED", "Perubahan pemegang rekening memerlukan Pengelola Keluarga.", 403);
+  }
   const dependencies = await db.one(`SELECT
     (SELECT COUNT(*) FROM transactions WHERE status='active' AND (source_account_id=? OR destination_account_id=?)) AS transactions,
     (SELECT COUNT(*) FROM envelope_rules WHERE status='active' AND source_account_id=?) AS envelopes,

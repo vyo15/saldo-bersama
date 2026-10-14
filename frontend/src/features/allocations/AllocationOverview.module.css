@@ -86,9 +86,6 @@
 
 
 
-@media (hover: hover) and (pointer: fine) {
-  }
-
 /* Hero: saldo/CTA on the left, character art dominant on the right. */
 .allocation-funding-summary {
   padding: 0;
@@ -136,23 +133,6 @@
   letter-spacing: -.04em;
 }
 
-.allocation-funding-summary__count {
-  position: absolute;
-  z-index: 4;
-  top: 16px;
-  right: calc(44% + 18px);
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
-  border-radius: var(--radius-pill);
-  display: inline-flex;
-  align-items: center;
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-  color: var(--primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  white-space: nowrap;
-}
 
 .allocation-funding-summary__supporting-copy {
   max-width: 46ch;
@@ -185,7 +165,6 @@
   filter: drop-shadow(0 18px 28px color-mix(in srgb, var(--shadow-ink) 14%, transparent));
 }
 
-.allocation-funding-summary__single-source,
 .allocation-funding-summary__sources {
   margin-top: 2px;
 }
@@ -531,18 +510,17 @@
 /* Empty state keeps the character artwork and message inside one canonical boundary. */
 .allocation-empty-state {
   min-height: 0;
-  padding: 18px 16px 20px;
-  border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
-  border-radius: 20px;
-  gap: 8px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, var(--primary-soft)), var(--surface));
+  padding: 16px;
+  border-color: transparent;
+  border-radius: 16px;
+  gap: 6px;
+  background: var(--surface-section);
 }
 
-.allocation-empty-state > img {
-  width: min(260px, 100%);
-  height: auto;
-  margin-bottom: 2px;
-  object-fit: contain;
+.allocation-empty-state > svg {
+  width: 27px;
+  height: 27px;
+  color: var(--primary);
 }
 
 .allocation-empty-state h3 {
@@ -713,14 +691,27 @@
 
 /* Canonical mobile cascade: one broad <=820 layer, compact exceptions after. */
 @media (max-width: 820px) {
+  .allocation-funding-summary__content { min-height: 170px; }
+  .allocation-funding-summary__copy { min-height: 170px; }
+  .allocation-active { gap: 7px; }
+  .allocation-empty-state { padding-block: 14px; }
+  .allocation-funding-summary--no-accounts .allocation-funding-summary__copy { width: 100%; }
+  .allocation-funding-summary__sources { display: block; margin: 0 14px 6px; }
+  .allocation-funding-summary__source-list .allocation-funding-summary__source-row { border-color: transparent; }
+
   .allocations-page {
     gap: 10px;
   }
 
-  .allocation-section-heading,
+  .allocation-section-heading { display: flex; }
+
   .allocation-toolbar {
-    display: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
+  .allocation-toolbar__meta { justify-content: space-between; flex-wrap: wrap; }
+  .allocation-toolbar__search { background: var(--surface-section); border-color: transparent; }
 
   
   .allocation-funding-summary {
@@ -740,11 +731,7 @@
     gap: 9px;
   }
 
-  .allocation-funding-summary__supporting-copy,
-  .allocation-funding-summary__single-source,
-  .allocation-funding-summary__sources {
-    display: none;
-  }
+  .allocation-funding-summary__supporting-copy { display: none; }
 
   .allocation-funding-summary__hint {
     max-width: 170px;
@@ -752,13 +739,6 @@
     line-height: 1.3;
   }
 
-  .allocation-funding-summary__count {
-    top: 11px;
-    right: 10px;
-    min-height: 27px;
-    padding-inline: 9px;
-    font-size: var(--font-size-xs);
-  }
 
   .allocation-funding-summary__eyebrow {
     font-size: var(--font-size-xs);
@@ -814,10 +794,8 @@
     min-height: 44px;
   }
 
-  .allocation-planning-nav__link {
-    min-height: 44px;
-    padding-inline: 4px;
-  }
+  .allocation-planning-nav__link { min-height: 44px; padding-inline: 7px; }
+  .allocation-planning-nav__label { padding-inline: 6px 8px; }
 
   .allocation-planning-nav__link small {
     min-width: 18px;
@@ -864,9 +842,10 @@
     gap: 7px;
   }
 
-  .allocation-empty-state > img {
-    width: min(246px, 74vw);
-    margin-bottom: 1px;
+  .allocation-empty-state > svg {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 0;
   }
 
   .allocation-funding-summary {
@@ -937,11 +916,26 @@
     padding-inline: 9px;
   }
 
-  .allocation-funding-summary__count {
-    right: 8px;
-  }
 
   .allocation-planning-nav__link {
     font-size: var(--font-size-xs);
   }
+}
+
+/* Density audit: compact fallback and keyboard discoverability. */
+.allocation-funding-summary--no-accounts .allocation-funding-summary__copy {
+  width: 100%;
+  min-height: 0;
+  padding: 20px;
+}
+.allocation-funding-summary--no-accounts h2 { margin: 0; font-size: 18px; }
+.allocation-funding-summary--no-accounts .allocation-funding-summary__hint { max-width: none; }
+.allocation-funding-summary--no-accounts :global(.button) { width: max-content; min-height: 44px; }
+.allocation-toolbar__search:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.allocation-planning-nav__label { color: var(--primary); font-weight: var(--font-weight-bold); }
+
+/* The source list lives below the hero artwork, so it remains usable on phones. */
+.allocation-funding-summary__sources {
+  margin: 0 18px 9px;
+  border-color: color-mix(in srgb, var(--border) 52%, transparent);
 }

@@ -279,10 +279,10 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
     read("src/components/navigation/MobileNavigation.jsx"),
   ]);
 
-  assert.match(allocation, /if \(!accounts\.length\) return null;/);
+  assert.match(allocation, /if \(!accounts\.length\) return <Card/);
   assert.match(allocation, /<AllocationFundingSummary accounts=\{accounts\}/);
   assert.match(allocation, /hasActiveItems=\{Boolean\(rows\.length\)\}/);
-  assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Tampilkan semua<\/Button> : canCreate \? null/);
+  assert.match(allocation, /action=\{totalItems \? <Button onClick=\{clearFilter\}>Hapus filter<\/Button> : null/);
   assert.doesNotMatch(allocation, /canMove|openMove|allocation-move-action/);
 
   assert.match(allocationDetail, /linkedBudgets\.length \? <>[\s\S]*\{canManage \? <Button className=\{allocationClass\("allocation-needs-add"\)\} variant="secondary" icon=\{FiPlus\} onClick=\{openBudgetForm\}>Tambah kebutuhan<\/Button> : null\}[\s\S]*<\/> : <EmptyState/);
@@ -307,7 +307,7 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
   assert.match(goalCards, /action=\{sourceLoadFailed \? null : canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
   assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>Tambah rekening<\/Button> : null\}/);
   assert.match(accounts, /action=\{emptyState === EMPTY_COLLECTION_STATE\.FILTERED \?[\s\S]*?Tampilkan semua<\/Button> : <Button variant="primary"/);
-  assert.match(categories, /actions=\{items\.length \? <Button[^>]*aria-label=\{ownerMode \? "Tambah kategori" : "Ajukan kategori"\}>\{ownerMode \? "Tambah" : "Ajukan"\}<\/Button> : null\}/);
+  assert.match(categories, /actions=\{items\.length \? <Button[^>]*aria-label="Tambah kategori">Tambah<\/Button> : null\}/);
   assert.match(categories, /emptyState === EMPTY_COLLECTION_STATE\.FILTERED && filtersActive \? <Button onClick=\{clearFilters\}>Reset pencarian<\/Button> : initialEmpty \? <Button variant="primary"/);
   assert.match(budgets, /Sekali bayar/);
   assert.match(budgets, /Rutin/);

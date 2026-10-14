@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState } from "react";
+import { FiBarChart2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import InlineSelectionPicker from "../../components/common/InlineSelectionPicker.jsx";
 import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
+import { formatDateLongIndonesia } from "../../domain/dates.js";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
 import TemporalInput from "../../components/common/TemporalInput.jsx";
@@ -12,6 +14,7 @@ import useUnsavedChangesGuard from "../../hooks/useUnsavedChangesGuard.js";
 import { isOutcomeUnknownError } from "../../services/api/errors.js";
 import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import InvestmentAssetPicker from "./InvestmentAssetPicker.jsx";
+import InvestmentAssetLogo from "./InvestmentAssetLogo.jsx";
 import InvestmentDecimalInput from "./InvestmentDecimalInput.jsx";
 import InvestmentFormField from "./InvestmentFormField.jsx";
 import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
@@ -44,6 +47,9 @@ const PositionSummary = ({ form, asset }) => {
   const preview = assetPositionPreview(form, asset);
   return <section className={styles.review} aria-label="Ringkasan posisi investasi">
     <dl className={styles.reviewGrid}>
+      <div><dt>Aset</dt><dd>{asset.name || asset.ticker}</dd></div>
+      <div><dt>Jumlah</dt><dd>{Number(form.opening_quantity).toLocaleString("id-ID", { maximumFractionDigits: 2 })} {isMutualFundInstrument(asset) ? "unit" : "lot"}</dd></div>
+      <div><dt>Tanggal posisi</dt><dd>{formatDateLongIndonesia(form.position_date) || form.position_date}</dd></div>
       <div><dt>Harga rata-rata</dt><dd><InvestmentUnitPrice value={preview.averagePrice} /></dd></div>
       <div><dt>Harga saat ini</dt><dd><InvestmentUnitPrice value={preview.currentPrice} /></dd></div>
       <div><dt>Modal tercatat</dt><dd><Money value={preview.costBasis} /></dd></div>
@@ -66,7 +72,7 @@ const PurchaseSummary = ({ form, asset, account }) => {
       <div><dt>Biaya {form.fee_amount ? "tercatat" : "belum diisi"}</dt><dd>{form.fee_amount ? <Money value={Number(form.fee_amount)} /> : "—"}</dd></div>
       <div><dt>Total pengurang RDN</dt><dd><Money value={preview.total} /></dd></div>
       <div><dt>Rekening RDN</dt><dd>{account?.name || "-"}</dd></div>
-      <div><dt>Tanggal beli</dt><dd>{form.position_date}</dd></div>
+      <div><dt>Tanggal beli</dt><dd>{formatDateLongIndonesia(form.position_date) || form.position_date}</dd></div>
     </dl>
     <small className={styles.formHint}>Hanya pencatatan pembelian yang telah terjadi di broker. Saldo RDN dalam Saldo Bersama akan berkurang; tidak ada order beli sungguhan.</small>
   </section>;
@@ -100,7 +106,7 @@ const createPurchasePayload = (form, asset, instruments, goalId = "") => {
 };
 
 const PurchaseDetails = ({ form, asset, mutualFund, fieldErrors, onFieldChange, rdnAccounts, accountsStatus }) => <>
-  {mutualFund ? <InvestmentFormField id="investment-position-average" label="NAB beli per unit" required error={fieldErrors.average_price}>
+  {mutualFund ? <InvestmentFormField id="investment-position-average" label="NAB beli per unit" prefix="Rp" required error={fieldErrors.average_price}>
     <InvestmentDecimalInput value={form.average_price} onChange={(value) => onFieldChange("average_price", value)} />
   </InvestmentFormField> : <MoneyInput id="investment-position-average" label="Harga beli per saham" required value={form.average_price} error={fieldErrors.average_price} onChange={(value) => onFieldChange("average_price", value)} />}
 
@@ -113,10 +119,10 @@ const PurchaseDetails = ({ form, asset, mutualFund, fieldErrors, onFieldChange, 
 </>;
 
 const OpeningDetails = ({ form, mutualFund, fieldErrors, onFieldChange, asset }) => <>
-  <InvestmentFormField id="investment-position-average" label={mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"} required error={fieldErrors.average_price}>
+  <InvestmentFormField id="investment-position-average" label={mutualFund ? "Nilai rata-rata per unit" : "Harga rata-rata per saham"} prefix="Rp" required error={fieldErrors.average_price}>
     <InvestmentDecimalInput value={form.average_price} onChange={(value) => onFieldChange("average_price", value)} />
   </InvestmentFormField>
-  {mutualFund ? <InvestmentFormField id="investment-position-current" label="NAB per unit saat ini" required error={fieldErrors.reference_price}><InvestmentDecimalInput value={form.reference_price} onChange={(value) => onFieldChange("reference_price", value)} /></InvestmentFormField> : <MoneyInput id="investment-position-current" label="Harga saham saat ini" required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />}
+  {mutualFund ? <InvestmentFormField id="investment-position-current" label="NAB per unit saat ini" prefix="Rp" required error={fieldErrors.reference_price}><InvestmentDecimalInput value={form.reference_price} onChange={(value) => onFieldChange("reference_price", value)} /></InvestmentFormField> : <MoneyInput id="investment-position-current" label="Harga saham saat ini" required value={form.reference_price} error={fieldErrors.reference_price} onChange={(value) => onFieldChange("reference_price", value)} />}
   <details className={styles.setupOptional}>
     <summary>Sesuaikan dengan angka broker{form.cost_basis || form.market_value ? " · Terisi" : ""}</summary>
     <p className={styles.formHint}>Hanya jika total di broker berbeda karena pembulatan harga/NAB. Angka otomatis digunakan bila dikosongkan.</p>
@@ -127,12 +133,19 @@ const OpeningDetails = ({ form, mutualFund, fieldErrors, onFieldChange, asset })
 </>;
 
 const AssetFields = ({ form, asset, heldTickers, allowedTickers, outcomeUnknown, fieldErrors, onAssetSelect, onAssetKindChange, onFieldChange, intent, rdnAccounts, accountsStatus }) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const mutualFund = isMutualFundInstrument(asset || {});
+  const showPicker = !asset || pickerOpen;
   return <fieldset className={`${styles.intentFieldset} ${styles.setupFields}`} disabled={outcomeUnknown}>
-    <InvestmentAssetPicker value={form.ticker} existingInstruments={heldTickers} allowedTickers={allowedTickers} disabled={outcomeUnknown} error={fieldErrors.ticker} onSelect={onAssetSelect} onKindChange={onAssetKindChange} />
+    {asset ? <div className={styles.selectedAsset} aria-label="Aset investasi terpilih">
+      <InvestmentAssetLogo ticker={asset.ticker} size="sm" />
+      <span className={styles.selectedAssetCopy}><strong>{asset.name || asset.ticker}</strong><small>{mutualFund ? (asset.category || "Reksa Dana") : `Saham · ${asset.ticker}`}</small></span>
+      <button type="button" className={styles.changeAsset} aria-expanded={pickerOpen} onClick={() => setPickerOpen((current) => !current)}>{pickerOpen ? "Tutup" : "Ganti"}</button>
+    </div> : null}
+    {showPicker ? <InvestmentAssetPicker value={form.ticker} existingInstruments={heldTickers} allowedTickers={allowedTickers} disabled={outcomeUnknown} error={fieldErrors.ticker} onSelect={(nextAsset) => { onAssetSelect(nextAsset); setPickerOpen(false); }} onKindChange={onAssetKindChange} /> : null}
     {asset ? <>
       <div className={styles.formRow}>
-        <InvestmentFormField id="investment-position-quantity" label={mutualFund ? "Jumlah unit" : "Jumlah lot"} required error={fieldErrors.opening_quantity}>
+        <InvestmentFormField id="investment-position-quantity" label={mutualFund ? "Jumlah unit" : "Jumlah lot"} prefix={mutualFund ? <FiBarChart2 /> : null} required error={fieldErrors.opening_quantity}>
           {mutualFund ? <InvestmentDecimalInput value={form.opening_quantity} onChange={(value) => onFieldChange("opening_quantity", value)} /> : <input min="1" step="1" inputMode="numeric" type="number" value={form.opening_quantity} onChange={(event) => onFieldChange("opening_quantity", event.target.value)} />}
         </InvestmentFormField>
         <InvestmentFormField id="investment-position-date" label={intent === "purchase" ? "Tanggal beli" : "Tanggal posisi"} required error={fieldErrors.position_date}>
@@ -152,8 +165,9 @@ const AssetFields = ({ form, asset, heldTickers, allowedTickers, outcomeUnknown,
 };
 
 const SetupFooter = ({ intent, reviewing, outcomeUnknown, busy, asset, accountReady, onBack, onCancel, onEdit }) => <>
-  {intent && !reviewing && !outcomeUnknown ? <Button type="button" onClick={onBack} disabled={busy}>Kembali</Button> : <Button type="button" onClick={onCancel} disabled={busy || outcomeUnknown}>Batal</Button>}
-  {reviewing && !outcomeUnknown ? <Button type="button" onClick={onEdit} disabled={busy}>Ubah</Button> : null}
+  {reviewing && !outcomeUnknown ? <Button type="button" onClick={onEdit} disabled={busy}>Ubah</Button>
+    : intent && !outcomeUnknown ? <Button type="button" onClick={onBack} disabled={busy}>Kembali</Button>
+      : <Button type="button" onClick={onCancel} disabled={busy || outcomeUnknown}>Batal</Button>}
   {intent ? <Button variant="primary" type="submit" form="investment-setup-form" loading={busy} disabled={!asset || (intent === "purchase" && !accountReady)}>{outcomeUnknown ? "Coba lagi data yang sama" : reviewing ? "Simpan catatan" : "Tinjau"}</Button> : null}
 </>;
 
@@ -228,7 +242,7 @@ const InvestmentSetupDialog = ({ instruments = [], portfolios = [], owner = fals
     } finally { setBusy(false); }
   };
 
-  return <Modal open title="Tambah investasi" description={intent === "purchase" ? "Catat pembelian yang telah Anda lakukan di broker, menggunakan saldo RDN tercatat." : intent === "existing" ? "Masukkan posisi yang sudah Anda miliki tanpa memotong saldo RDN." : "Apakah Anda sudah memiliki investasi ini?"}
+  return <Modal open className={styles.setupDialog} title="Tambah investasi" description={intent === "purchase" ? "Catat pembelian yang telah Anda lakukan di broker, menggunakan saldo RDN tercatat." : intent === "existing" ? "Masukkan posisi yang sudah Anda miliki tanpa memotong saldo RDN." : "Apakah Anda sudah memiliki investasi ini?"}
     onClose={busy || outcomeUnknown ? undefined : guard.requestClose} discardGuard={guard} discardSubject="investasi" dismissible={!busy && !outcomeUnknown}
     footer={<SetupFooter intent={intent} reviewing={reviewing} outcomeUnknown={outcomeUnknown} busy={busy} asset={asset} accountReady={["ready", "refreshing"].includes(accountsResource.status) && rdnAccounts.length > 0} onBack={() => chooseIntent("")} onCancel={guard.discardAndClose} onEdit={() => setReviewing(false)} />}
   >

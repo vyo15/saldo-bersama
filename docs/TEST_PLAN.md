@@ -224,7 +224,7 @@ Minimum contract:
 - Pull-to-refresh mobile hanya aktif pada root scroller ketika berada di atas; modal/composer/mutation/input/nested-scroll/offline memblokir gesture.
 - Perubahan `blocked=true` di tengah gesture mengembalikan indicator ke idle.
 - Tidak ada `window.location.reload()` untuk sinkronisasi data dan draft/form lokal tidak di-reset.
-- Multi-device Production smoke minimum: Member membuka picker kategori → Administrator approve → kategori muncul tanpa restart; lakukan juga mutation saldo/Alokasi/Kebutuhan yang relevan.
+- Multi-device Production smoke minimum: Anggota membuat kategori langsung dari picker → kategori muncul tanpa restart; pengajuan legacy tetap bisa direview Pengelola; lakukan juga mutation saldo/Alokasi/Kebutuhan yang relevan.
 
 ## UI, responsive, dan accessibility
 
@@ -348,3 +348,9 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 - QA manual dark/light di 320/360/390/430/520/820/1024 px: status aktif/dibatalkan, deskripsi/rekening panjang, transaksi dan saldo privasi tersembunyi, transaksi managed, detail belanja, serta keyboard navigation disclosure.
 - Detail akun perlu memvalidasi nomor salin, RDN, ownership, read-only, action edit/archive/lihat transaksi, dan long amount tanpa clipping.
 - Audit dan sesi harus tetap memperlihatkan request ID/timestamp via disclosure; aksi cabut sesi tidak berubah.
+
+### Design resource harmonization
+
+- `frontend/test/design-resources-harmonization.test.js` memastikan varian artwork Login/sukses berbagi token pigmen, feedback tonal borderless tetap memiliki warna status dan copy terbaca, serta CSS Notifikasi tidak menambah kembali duplikasi cascade.
+- Test yang sama menjaga navigasi/pembersihan Notifikasi (Delete, pressed filter, focus, reduced-motion), lapisan indikator QuickSegmentedFilter, dan microcopy review Transaksi sesuai relasi Kebutuhan–Alokasi tanpa picker manual.
+- Gate final: `npm run lint`, `npm run verify` (termasuk frontend/backend coverage, build-budget, browser smoke), ditambah QA manual light/dark 320/390/430/desktop dan perangkat iOS nyata sebelum release.

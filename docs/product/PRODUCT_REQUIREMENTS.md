@@ -17,9 +17,9 @@ Saldo Bersama adalah sistem pengendali keuangan keluarga privat untuk dua akun G
 
 ## Pengguna dan istilah role
 
-- **Administrator**: mengelola member, master data, rekening, maintenance, backup/restore, dan operasi administratif.
-- **Member**: pengguna kedua dengan permission operasional terbatas; tidak dapat membuat atau mengelola master rekening.
-- UI memakai istilah Administrator/Member. Backend mempertahankan key internal `owner` untuk Administrator demi kompatibilitas data/session existing; `ALLOWED_USERS_JSON` menerima `administrator` hanya untuk bootstrap/recovery Administrator, sedangkan anggota operasional dikelola di registry `users`.
+- **Pengelola Keluarga** (`owner` internal): mencatat seperti semua anggota, ditambah pengaturan akses keluarga, review transfer, koreksi dan lifecycle sensitif, backup/restore.
+- **Anggota Keluarga** (`member` internal): mencatat transaksi, membuat rekening pribadi/Bersama, mengubah rekening yang dapat dioperasikan, membuat kategori langsung, dan mengatur perencanaan dalam ownership miliknya. Tidak dapat mengubah rekening pribadi pasangan, mengganti ownership rekening existing, atau menghapus/arsip data sensitif.
+- UI memakai istilah Pengelola Keluarga/Anggota Keluarga. Backend mempertahankan key internal `owner` untuk Administrator demi kompatibilitas data/session existing; `ALLOWED_USERS_JSON` menerima `administrator` hanya untuk bootstrap/recovery Administrator, sedangkan anggota operasional dikelola di registry `users`.
 
 ## Invariant produk
 

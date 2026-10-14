@@ -3,7 +3,7 @@ import Button from "../../components/common/Button.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import { formatDateLongIndonesia } from "../../domain/dates.js";
-import { isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
+import { investmentAssetByTicker, isMutualFundInstrument } from "../../shared/presentation/investmentAssets.js";
 import { investmentActivityLabel, investmentReturnPercent } from "./investments.model.js";
 import InvestmentUnitPrice from "./InvestmentUnitPrice.jsx";
 import InvestmentAssetLogo from "./InvestmentAssetLogo.jsx";
@@ -48,12 +48,8 @@ const Metric = ({ label, children }) => <div className={styles.metric}><dt>{labe
 
 const ActivePositionMetrics = ({ holding, mutualFund, quantityLabel }) => <>
   <Metric label={mutualFund ? "Unit dimiliki" : "Lot dimiliki"}>{quantityLabel}</Metric>
-  <Metric label={mutualFund ? "Rata-rata nilai/unit" : "Rata-rata harga/lembar"}><InvestmentUnitPrice value={holding.average_cost} /></Metric>
+  <Metric label={mutualFund ? "Harga rata-rata" : "Rata-rata harga/lembar"}><InvestmentUnitPrice value={holding.average_cost} /></Metric>
   <Metric label="Modal tercatat"><Money value={holding.cost_basis} /></Metric>
-  <Metric label={mutualFund ? "Nilai per unit terakhir" : "Harga catatan terakhir"}>
-    <InvestmentUnitPrice value={holding.price_per_share} />
-    {holding.valuation_date ? <small>{formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}</small> : null}
-  </Metric>
   {Number(holding.realized_cost_basis || 0) > 0 ? <Metric label="Hasil yang sudah direalisasi"><Money value={holding.realized_pl} /></Metric> : null}
 </>;
 
@@ -100,23 +96,26 @@ const InvestmentHoldingDetail = ({ portfolio, holding, onClose, onAction }) => {
   const returnAmount = closed ? holding.realized_pl : holding.unrealized_pl;
   const returnPercent = investmentReturnPercent(returnAmount, closed ? holding.realized_cost_basis : holding.cost_basis);
   const activities = (portfolio.activity || []).filter((item) => item.instrument_id === holding.instrument_id).slice(0, 10);
+  const assetCategory = investmentAssetByTicker(holding.ticker)?.category;
   const footer = <HoldingDetailFooter portfolio={portfolio} holding={holding} closed={closed} onClose={onClose} onAction={onAction} />;
-  return <Modal open size="sm" title={holding.ticker || "Detail investasi"} onClose={onClose} footer={footer}>
+  return <Modal open size="sm" className={styles.compactHoldingDialog} title={holding.ticker || "Detail investasi"} onClose={onClose} footer={footer}>
     <div className={styles.detail}>
       <div className={styles.identity}>
         <InvestmentAssetLogo ticker={holding.ticker} size="sm" />
         <div className={styles.identityCopy}>
           <strong>{holding.name || "Instrumen investasi"}</strong>
-          <span>{mutualFund ? "Reksa Dana" : "Saham"} · Catatan manual</span>
+          <span>{mutualFund ? (assetCategory || "Reksa Dana") : "Saham"} · Catatan manual</span>
         </div>
-        <span className={styles.status}>{closed ? "Posisi selesai" : "Posisi aktif"}</span>
+        {closed ? <span className={styles.status}>Posisi selesai</span> : <span className={styles.identityPrice}><small>Harga terakhir</small><InvestmentUnitPrice value={holding.price_per_share} />{holding.valuation_date ? <small>{formatDateLongIndonesia(holding.valuation_date) || holding.valuation_date}</small> : null}</span>}
       </div>
 
-      <HoldingValueSummary holding={holding} closed={closed} returnAmount={returnAmount} returnPercent={returnPercent} />
-
-      <dl className={styles.metrics}>
-        {closed ? <ClosedPositionMetrics holding={holding} mutualFund={mutualFund} quantityLabel={quantityLabel} /> : <ActivePositionMetrics holding={holding} mutualFund={mutualFund} quantityLabel={quantityLabel} />}
-      </dl>
+      <h3 className={styles.summaryHeading}>Ringkasan {mutualFund ? "Reksa Dana" : "Saham"}</h3>
+      <div className={styles.summaryFacts}>
+        <dl className={styles.metrics}>
+          {closed ? <ClosedPositionMetrics holding={holding} mutualFund={mutualFund} quantityLabel={quantityLabel} /> : <ActivePositionMetrics holding={holding} mutualFund={mutualFund} quantityLabel={quantityLabel} />}
+        </dl>
+        <HoldingValueSummary holding={holding} closed={closed} returnAmount={returnAmount} returnPercent={returnPercent} />
+      </div>
 
       <p className={styles.manualNote}>Nilai berdasarkan catatan manual atau transaksi terakhir, bukan harga pasar live.</p>
 

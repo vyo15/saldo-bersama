@@ -60,7 +60,7 @@ const InvestmentHero = ({ summary, assetCount, positionCount }) => {
         <p className={heroStyles.heroCompactBasis}>Modal aktif <Money value={values.cost_basis} /> · {assetCount.toLocaleString("id-ID")} aset aktif</p>
       </div>
       <div className={heroStyles.heroFooter}>
-        <p>Nilai dari catatan manual, bukan harga pasar live.</p>
+        <p>Harga dicatat manual · bukan data pasar live.</p>
       </div>
     </section>
   );
@@ -143,9 +143,13 @@ const InvestmentActivityPanel = ({ portfolios, onHolding }) => {
   };
   return <Card className={activityStyles.activityCard}>
     <div className={sharedStyles.sectionHeading}>
-      <div><h3>Aktivitas aset</h3><p>Pembelian, penjualan, nilai manual, posisi awal, dan koreksi aset. Catatan saldo lama tidak dicampurkan di sini.</p></div>
+      <div><h3>Aktivitas aset</h3></div>
       <span>{rows.length.toLocaleString("id-ID")} terbaru</span>
     </div>
+    <details className={activityStyles.activityInfo}>
+      <summary>Tentang aktivitas</summary>
+      <p>Catatan saldo lama tidak dicampurkan di sini. Aktivitas mencakup pembelian, penjualan, nilai manual, dan koreksi aset.</p>
+    </details>
     {rows.length ? <ul className={activityStyles.activityList}>{rows.map((row) => <li key={`${row.portfolio.portfolio_id}:${row.activity.activity_type}:${row.activity.activity_id || row.index}`} className={`${activityStyles.activityItem}${row.position ? ` ${activityStyles.activityItemInteractive}` : ""}`} data-native-enter={row.position ? "true" : undefined} role={row.position ? "button" : undefined} tabIndex={row.position ? 0 : undefined} onClick={() => row.position && onHolding(row.portfolio, row.position)} onKeyDown={(event) => openFromKeyboard(event, row)} aria-label={row.position ? `Buka riwayat ${row.activity.ticker || "aset"}` : undefined}>
       <span className={activityStyles.activityIcon} aria-hidden="true"><FiActivity /></span>
       <div className={activityStyles.activityCopy}>

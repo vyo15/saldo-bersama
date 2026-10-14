@@ -221,3 +221,27 @@
 - [ ] Viewport 320/360/390/430px, tablet 820/821px, desktop, light/dark, reduced-motion, long labels, rapid filter switch, no results, dan keyboard-focus tidak mengalami overflow atau data stale.
 
 - [ ] Detail transaksi (Beranda + Transaksi), Rekening, Kebutuhan, Audit, Sesi: cek penyajian ringkas dan disclosure metadata tanpa kehilangan informasi atau aksi; pastikan nomor bisa disalin dan status Bahasa Indonesia.
+
+### Resource design harmonization
+
+- [ ] Mobile 320/390/430 dan desktop: Notifikasi, Transaksi, Rekening, Atur Dana, Wishlist, Jadwal, Target, Investasi, Laporan, Pengaturan; tidak ada overflow/pemotongan nominal.
+- [ ] Light dan dark: StatusBadge/CompactNotice tonal borderless tetapi judul, isi, ikon dan status tetap dapat dibaca; indikator focus-visible tidak hilang.
+- [ ] Notifikasi: filter 2 pilihan bergeser teal, search, belum dibaca, mark read, row direct navigation, swipe bersihkan, Delete/hover dan restore saat API gagal.
+- [ ] Login dan overlay sukses: enam varian banknote memakai pigmen konsisten; reduced-motion menonaktifkan dekorasi tanpa menyembunyikan pesan.
+- [ ] Transaksi: petunjuk peninjauan hanya meminta pemilihan Kebutuhan, bukan menawarkan picker Alokasi manual; pastikan relationship ikut Kebutuhan.
+- [ ] Uji login, real data, approval, screen reader iOS/Android, dan dark mode pada perangkat nyata sebelum release; preview statis tidak menggantikannya.
+
+## Uji kepadatan informasi UI/UX (14 Oktober 2026)
+
+- [ ] Mobile Atur Dana **320/360/390/430px**, light/dark: tanpa rekening tampil arah ke Rekening; rekening ada dan dana Rp0 menampilkan `Dana bebas`, tidak ada badge `0 rekening sumber`, CTA `Buat Alokasi` mengikuti capability, tanpa ilustrasi kedua yang memenuhi layar.
+- [ ] Atur Dana sumber **1 dan >1**: rincian sumber bisa dibuka di mobile dan desktop; nominal tidak salah diartikan sebagai gabungan pool baru. Ketika Alokasi ada, tetap bisa pilih tujuan dan sumber dengan validasi existing. Semua rekening Rp0 atau tidak eligible tidak menyamar sebagai rekening yang tidak dimiliki.
+- [ ] Daftar Aktif Atur Dana: kosong tanpa duplicate CTA; minimal 1 baris menampilkan judul, input Cari, filter `Semua/Bersama/Saya` hanya jika bermakna, reset `Hapus filter` pada hasil kosong; search dan filter bisa dijalankan keyboard dan sentuhan di mobile.
+- [ ] Nav Atur Dana membedakan `Alokasi` (current) dari `Jadwal/Kewajiban/Target` (tautan), tidak overflow/hilang dan tidak membuat pseudo-tab yang salah.
+- [ ] Jadwal: nominal, tanggal jatuh tempo, status/CTA tetap terlihat; `Rincian jadwal` membuka kategori, frekuensi, metode, rekening, alokasi; on-time, overdue, partially paid, paid, skipped dan status perhatian tidak gandakan CTA atau status.
+- [ ] Kewajiban: sisa pokok/sisa setoran, tanggal berikutnya, progres, `Bayar`, dan tindakan status kritis terlihat; detail pinjaman, sumber dana, pokok+bunga tetap dapat dibuka. Kartu aktif/selesai dan arisan diverifikasi.
+- [ ] Target: ringkasan sisa dan progress tidak double-count, nilai investasi manual/belum realisasi tetap benar; rincian sumber dana dan tanggal bisa dibuka, status perlu perhatian tetap tersedia.
+- [ ] Wishlist: header dan dua metrik utama tidak menenggelamkan daftar; pembelian selesai tetap tersedia lewat histori/filter, pengelolaan/simulasi dan konfirmasi transaksi tidak berubah.
+- [ ] Kategori hanya menampilkan ilustrasi intro bila belum ada kategori. Beranda tetap menampilkan nominal pemilik, info pencatat ketika dibutuhkan di detail transaksi; nominal dan akses penting tidak tersembunyi secara permanen.
+- [ ] Notifikasi dengan judul berisi nama entitas tidak mengulang entitas; tindakan nyata, waktu, fakta penting, keyboard Delete, swipe, unread, filter, dan error restore tetap berfungsi.
+- [ ] Investasi menunjukkan bahwa data adalah catatan manual; histori/catatan saldo lama tetap dapat diakses pada `Tentang aktivitas`; laporan dan pemeriksaan saldo tidak menghilangkan arti selisih atau larangan koreksi otomatis.
+- [ ] Uji dengan VoiceOver/TalkBack, tab keyboard, safe-area iOS, bottom navigation, reduced motion, gambar belum termuat, dan data panjang/nominal besar. Jalankan full `npm run verify` pada instalasi dependency lengkap, lalu visual smoke perangkat sebelum merilis.

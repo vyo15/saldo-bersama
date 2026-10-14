@@ -173,7 +173,7 @@ const HeroOverview = ({ summary = {}, scope, trend, period, trendMonths, setTren
       <div className={styles.heroFacts}>{model.facts.map(([label, value]) => <span key={label}>{label} <strong>{typeof value === "number" ? formatCompactRupiah(value) : value}</strong></span>)}</div>
     </section>
     <section className={`${styles.reportPanel} ${styles.categoryPanel}`}>
-      <div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2><p>Lihat penyumbang pengeluaran terbesar pada pilihan saat ini.</p></div></div>
+      <div className={styles.sectionHeading}><div><h2>Pengeluaran per kategori</h2></div></div>
       <CategoryRows items={categories} />
     </section>
   </div>;
@@ -190,7 +190,7 @@ const CommitmentActivity = ({ activity = {} }) => {
   ].filter(([, value]) => Number(value || 0) > 0);
   if (!rows.length) return null;
   return <section className={`${styles.reportPanel} ${styles.activityPanel}`}>
-    <div className={styles.sectionHeading}><div><h2>Aktivitas Kewajiban</h2><p>Pembayaran pokok, bunga/biaya, dan Arisan yang sudah tercatat.</p></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Buka Kewajiban</Link></div>
+    <div className={styles.sectionHeading}><div><h2>Aktivitas Kewajiban</h2></div><Link className={styles.headingLink} to="/perencanaan/komitmen">Buka Kewajiban</Link></div>
     <div className={styles.categoryRows}>{rows.map(([label, value, note]) => <div className={styles.categoryRowSimple} key={label}><span><strong>{label}</strong><small>{note}</small></span><span><strong>{formatCompactRupiah(value)}</strong></span></div>)}</div>
   </section>;
 };

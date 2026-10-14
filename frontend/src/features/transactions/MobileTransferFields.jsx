@@ -92,8 +92,8 @@ const TransferAmount = ({ form, update, errors, amountRef, submitting, confirmat
         className={styles.submitButton}
         type="submit"
         disabled={submitting}
-        aria-label={submitting ? "Memproses transfer" : intentLocked ? "Coba lagi transfer dengan data yang sama" : confirmation ? "Konfirmasi transfer tetap" : transferApprovalRequired ? "Ajukan transfer ke Administrator" : "Transfer sekarang"}
-        title={intentLocked ? "Coba lagi data yang sama" : confirmation ? "Konfirmasi transfer tetap" : transferApprovalRequired ? "Ajukan transfer ke Administrator" : "Transfer sekarang"}
+        aria-label={submitting ? "Memproses transfer" : intentLocked ? "Coba lagi transfer dengan data yang sama" : confirmation ? "Konfirmasi transfer tetap" : transferApprovalRequired ? "Ajukan konfirmasi transfer" : "Transfer sekarang"}
+        title={intentLocked ? "Coba lagi data yang sama" : confirmation ? "Konfirmasi transfer tetap" : transferApprovalRequired ? "Ajukan konfirmasi transfer" : "Transfer sekarang"}
       >
         <FiArrowRight aria-hidden="true" />
       </button>
@@ -141,7 +141,7 @@ const ImpactPreview = ({ impact, transferApprovalRequired = false }) => {
   return (
     <section className={styles.impact} aria-live="polite">
       <div className={styles.impactHeader}>
-        <span className={styles.impactLabel}>{transferApprovalRequired ? "Jika disetujui Administrator" : "Setelah transfer"}</span>
+        <span className={styles.impactLabel}>{transferApprovalRequired ? "Jika disetujui Pengelola Keluarga" : "Setelah transfer"}</span>
         <strong className={styles.impactAmount}>{formatRupiah(impact.amount)}</strong>
       </div>
       <div className={styles.impactStats}>
@@ -231,7 +231,7 @@ const MobileTransferFields = ({
         emptyText="Belum ada rekening tujuan yang kompatibel."
       />
       <TransferNote form={form} update={update} intentLocked={outcomeUnknown} />
-      {transferApprovalRequired ? <div className={styles.warning} role="status">Transfer ini memerlukan persetujuan Administrator. Saldo tidak berubah hingga disetujui.</div> : null}
+      {transferApprovalRequired ? <div className={styles.warning} role="status">Transfer ini memerlukan konfirmasi Pengelola Keluarga. Saldo tidak berubah hingga disetujui.</div> : null}
       <TransferAmount form={form} update={update} errors={errors} amountRef={amountRef} submitting={submitting} confirmation={confirmation} intentLocked={outcomeUnknown} transferApprovalRequired={transferApprovalRequired} />
       <TransferDate form={form} update={update} errors={errors} intentLocked={outcomeUnknown} />
       <ImpactPreview impact={impact} transferApprovalRequired={transferApprovalRequired} />

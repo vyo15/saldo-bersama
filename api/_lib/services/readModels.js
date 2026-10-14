@@ -76,6 +76,7 @@ export const mapVisibleAccountRows = (rows, actor) => rows.map((row) => {
     can_transact: canOperate,
     can_reconcile: canOperate && item.account_type !== "investment",
     can_manage: canOperate,
+    can_archive: actor.role === "owner" && canOperate,
     read_only: !canOperate,
   };
 });

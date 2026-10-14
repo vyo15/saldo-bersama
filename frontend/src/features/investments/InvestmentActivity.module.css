@@ -172,3 +172,10 @@
   .activityCard { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
   .activityItem { min-height: var(--mobile-hit-target); padding-block: .65rem; }
 }
+
+/* Explain legacy history only on demand rather than repeating it in every tab header. */
+.activityInfo { min-width:0; }
+.activityInfo > summary { display:flex; align-items:center; width:max-content; min-height:44px; color:var(--primary); font-size:var(--font-size-xs); font-weight:var(--font-weight-semibold); cursor:pointer; list-style:none; }
+.activityInfo > summary::-webkit-details-marker { display:none; }
+.activityInfo > summary:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
+.activityInfo > p { margin:0 0 6px; color:var(--text-muted); font-size:var(--font-size-xs); line-height:1.5; }

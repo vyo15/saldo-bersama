@@ -78,7 +78,6 @@ const NotificationFilterControls = ({ filter, setFilter, filterCounts, searchOpe
         {query ? <button type="button" onClick={() => { setQuery(""); searchRef.current?.focus(); }} aria-label="Hapus kata pencarian"><FiX aria-hidden="true" /></button> : null}
     </div> : null}
     <div className={styles.listToolbar}>
-        <span>{filter === "action" ? "Perlu perhatian" : "Pengingat terbaru"}</span>
         <div className={styles.listActions}>
         <button type="button" className={styles.searchToggle} aria-expanded={searchOpen} aria-controls={searchOpen ? "notification-search" : undefined} aria-label={searchOpen ? "Tutup pencarian notifikasi" : "Cari notifikasi"} onClick={() => { setSearchOpen((current) => !current); setQuery(""); }}>
           {searchOpen ? <FiX aria-hidden="true" /> : <FiSearch aria-hidden="true" />}

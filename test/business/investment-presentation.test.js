@@ -191,7 +191,7 @@ test("validasi koreksi menjaga input konsisten sebelum server melakukan validasi
   assert.match(mismatch.cost_basis_delta, /searah/);
 
   const member = validateInvestmentOperation("correction", { correction_date: "2026-09-02", reason: "cek selisih", cash_delta: 1 }, { ...base, userRole: "member" });
-  assert.match(member._form, /Administrator/);
+  assert.match(member._form, /Pengelola Keluarga/);
 });
 
 test("validasi posisi aset langsung menjaga jumlah, harga, tanggal, dan batas catatan", () => {

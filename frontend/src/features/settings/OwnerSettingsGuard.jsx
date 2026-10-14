@@ -9,7 +9,7 @@ const OwnerSettingsGuard = ({ children, returnTo = "/pengaturan", returnLabel = 
   return (
     <Card className="panel">
       <div className="panel__header">
-        <div><h2>Hanya Administrator yang dapat membuka bagian ini</h2></div>
+        <div><h2>Bagian ini hanya untuk Pengelola Keluarga</h2></div>
         <FiLock aria-hidden="true" />
       </div>
       <ButtonLink to={returnTo}>{returnLabel}</ButtonLink>

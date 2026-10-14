@@ -130,7 +130,6 @@ export const prepareCategoryCreatePayload = async (db, payload = {}) => {
 };
 
 export const createCategory = async (db, context) => {
-  assertOwner(context.actor);
   const prepared = await prepareCategoryCreatePayload(db, context.payload || {});
   const timestamp = nowIso();
   const record = { category_id: uuid(), ...prepared, status: "active", ...newVersionStamp(context.actor.user_id, timestamp) };

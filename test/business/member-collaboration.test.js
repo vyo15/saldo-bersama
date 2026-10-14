@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import test from "node:test";
 
 import { dispatchAction } from "../../api/_lib/actionDispatcher.js";
+import { authorizeAction } from "../../api/_lib/security.js";
 import { todayJakarta } from "../../api/_lib/services/core.js";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 
@@ -39,7 +40,7 @@ const createAccount = (db, payload, actor = owner) => dispatch(db, actor, "accou
   ...payload,
 });
 
-test("Member membuat rekening pribadi sendiri secara langsung, sedangkan kategori tetap melalui pengajuan", async () => {
+test("Anggota membuat rekening dan kategori langsung, tanpa bisa mengambil rekening pasangan", async () => {
   const db = await createSqliteTestDatabase();
   try {
     await seedUser(db, owner);
@@ -71,11 +72,39 @@ test("Member membuat rekening pribadi sendiri secara langsung, sedangkan kategor
       (error) => error?.code === "FORBIDDEN_PERSONAL_OWNER",
     );
 
+    assert.equal(authorizeAction(member, "accounts.create"), true);
+    assert.equal(authorizeAction(member, "accounts.update"), true);
+    assert.equal(authorizeAction(member, "categories.create"), true);
+    for (const action of ["accounts.archive", "accounts.deleteUnused", "categories.update", "categories.archive", "masterDataRequests.review", "transferRequests.review"]) {
+      assert.equal(authorizeAction(member, action), false, action);
+    }
+    const memberCategory = await dispatch(db, member, "categories.create", {
+      name: "Kebutuhan Member Baru", transaction_type: "expense", nature: "variable", icon: "wedding_ring",
+    });
+    assert.equal(memberCategory.name, "Kebutuhan Member Baru");
+    assert.equal((await db.one("SELECT status FROM categories WHERE category_id=?", [memberCategory.category_id])).status, "active");
+
+    const shared = await createAccount(db, { name: "Rekening Bersama untuk Anggota", owner_scope: "shared" }, member);
+    const changedShared = await dispatch(db, member, "accounts.update", { account_id: shared.account_id, row_version: shared.row_version, name: "Rekening Bersama Baru" }, { rowVersion: shared.row_version });
+    assert.equal(changedShared.name, "Rekening Bersama Baru");
+    await assert.rejects(dispatch(db, member, "accounts.update", { account_id: changedShared.account_id, row_version: changedShared.row_version, owner_scope: "personal", owner_user_id: member.user_id }, { rowVersion: changedShared.row_version }), (error) => error?.code === "ACCOUNT_SCOPE_CHANGE_RESTRICTED");
+    const editedOwn = await dispatch(db, member, "accounts.update", { account_id: created.account_id, row_version: created.row_version, name: "Rekening Member Diperbarui" }, { rowVersion: created.row_version });
+    assert.equal(editedOwn.name, "Rekening Member Diperbarui");
+    const partnerAccount = await createAccount(db, { name: "Rekening Pribadi Pengelola", owner_scope: "personal", owner_user_id: owner.user_id });
+    const memberAccounts = await dispatch(db, member, "accounts.list", {}, { read: true });
+    const canManageShared = memberAccounts.items.find((item) => item.account_id === shared.account_id);
+    const canManageOwn = memberAccounts.items.find((item) => item.account_id === created.account_id);
+    const cannotManagePartner = memberAccounts.items.find((item) => item.account_id === partnerAccount.account_id);
+    assert.equal(canManageShared.can_manage, true);
+    assert.equal(canManageOwn.can_manage, true);
+    assert.equal(canManageShared.can_archive, false);
+    assert.equal(cannotManagePartner.can_manage, false);
+    assert.equal(cannotManagePartner.read_only, true);
+    await assert.rejects(dispatch(db, member, "accounts.update", { account_id: partnerAccount.account_id, row_version: partnerAccount.row_version, name: "Tidak Sah" }, { rowVersion: partnerAccount.row_version }), (error) => error?.code === "FORBIDDEN_ACCOUNT");
+
+    // Request dari versi aplikasi lama tetap dapat ditinjau; tidak membuat kategori baru harus menunggu approval.
     const categoryRequest = await dispatch(db, member, "categories.requestCreate", {
-      name: "Kebutuhan Member Baru",
-      transaction_type: "expense",
-      nature: "variable",
-      icon: "wedding_ring",
+      name: "Pengajuan Lama", transaction_type: "expense", nature: "variable", icon: "wedding_ring",
     }, { idempotencyKey: "member-category-request" });
     const rejected = await dispatch(db, owner, "masterDataRequests.review", {
       request_id: categoryRequest.request_id,

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { FiArrowLeft, FiCheck, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiSearch, FiShoppingCart, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiCheck, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiShoppingCart, FiTrash2 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import Card from "../../components/common/Card.jsx";
@@ -169,8 +169,8 @@ const CompletedListView = ({ data, canManage, online, onCreate, navigate }) => <
 </div>;
 
 const ShoppingHeader = ({ data, mode, counts, online, canManage, onAdd }) => <header className={styles.header}>
-  <div><ContextBack className={styles.mobileBack} to="/perencanaan/kantong" label="Atur Dana" ariaLabel="Kembali ke Atur Dana" /><span>{data.budget.name}</span><h1>{data.list.name}</h1><p>{mode === "shopping" ? `${counts.done} dari ${counts.active} barang` : `${counts.open} dari ${counts.active} barang belum selesai`}</p></div>
-  {mode === "planning" ? <Button icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button> : null}
+  <div><ContextBack className={styles.mobileBack} to="/perencanaan/kantong" label="Atur Dana" ariaLabel="Kembali ke Atur Dana" /><span>{data.budget.name}</span><h1>{data.list.name}</h1>{counts.active ? <p>{mode === "shopping" ? `${counts.done} dari ${counts.active} barang` : `${counts.open} dari ${counts.active} barang belum selesai`}</p> : null}</div>
+  {mode === "planning" && counts.active ? <Button icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button> : null}
 </header>;
 
 const ShoppingStatusNotices = ({ canManage, online, refreshError, onRetry, mutationError, onDismissError }) => <>
@@ -181,11 +181,11 @@ const ShoppingStatusNotices = ({ canManage, online, refreshError, onRetry, mutat
 
 const PlanningWorkspace = ({ data, activeItems, purchasedItems, showItems, online, canManage, busyId, onAdd, onToggle, onEdit, onRemove, onStart }) => <div className={styles.workspace}>
   <main className={styles.listPane}>
-    <div className={styles.mobileSummary}><Summary data={data} /></div>
-    <div className={styles.quickAdd}><FiSearch aria-hidden="true" /><button type="button" onClick={onAdd}>Cari / tambah barang...</button><button type="button" className={styles.addSquare} aria-label="Tambah barang" onClick={onAdd}><FiPlus aria-hidden="true" /></button></div>
+    {activeItems.length ? <div className={styles.mobileSummary}><Summary data={data} /></div> : null}
+    {activeItems.length && canManage ? <button type="button" className={styles.quickAdd} onClick={onAdd} disabled={!online || Boolean(busyId)}><FiPlus aria-hidden="true" /><span>Tambah barang</span></button> : null}
     {activeItems.length ? <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} disabled={!online || !canManage || Boolean(busyId)} /> : <EmptyState variant="inline" title="Daftar masih kosong" description="Tambahkan barang yang ingin dibeli. Harga boleh diisi sekarang atau nanti." action={<Button variant="primary" icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button>} />}
   </main>
-  <aside className={styles.summaryRail}><h2>Ringkasan</h2><div className={styles.countMeta}><span><FiShoppingCart aria-hidden="true" /></span><div><strong>{activeItems.length} barang</strong><small>{purchasedItems.length} selesai</small></div></div><Summary data={data} /><Button variant="primary" disabled={!activeItems.length || !online || !canManage} onClick={onStart}>Mulai Belanja</Button></aside>
+  {activeItems.length ? <aside className={styles.summaryRail}><h2>Ringkasan</h2><div className={styles.countMeta}><span><FiShoppingCart aria-hidden="true" /></span><div><strong>{activeItems.length} barang</strong><small>{purchasedItems.length} selesai</small></div></div><Summary data={data} /><Button variant="primary" disabled={!activeItems.length || !online || !canManage} onClick={onStart}>Mulai Belanja</Button></aside> : null}
 </div>;
 
 const ShoppingModeView = ({ activeItems, cartItems, purchasedItems, pendingItems, showItems, progress, shoppingFilter, online, canManage, busyId, onFilter, onToggle, onEdit, onRemove }) => <div className={styles.shoppingMode}>
@@ -194,9 +194,12 @@ const ShoppingModeView = ({ activeItems, cartItems, purchasedItems, pendingItems
   <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} disabled={!online || !canManage || Boolean(busyId)} />
 </div>;
 
-const ShoppingStickyAction = ({ mode, activeItems, cartItems, data, online, canManage, onStart, onCheckout }) => <div className={styles.stickyAction}>
+const ShoppingStickyAction = ({ mode, activeItems, cartItems, data, online, canManage, onStart, onCheckout }) => {
+  if (mode === "planning" && !activeItems.length) return null;
+  return <div className={`${styles.stickyAction} ${mode === "planning" ? styles.shoppingFlowAction : ""}`}>
   {mode === "planning" ? <Button variant="primary" disabled={!activeItems.length || !online || !canManage} onClick={onStart}>Mulai Belanja</Button> : <><div><span>Estimasi keranjang</span><strong><Money value={data.summary.in_cart_estimated_total || 0} /></strong></div><Button variant="primary" disabled={!cartItems.length || !online || !canManage} onClick={onCheckout}>Selesai Belanja</Button></>}
 </div>;
+};
 
 const ShoppingActiveView = ({ data, mode, shoppingFilter, online, canManage, busyId, mutationError, resource, collections, onMode, onFilter, onAdd, onToggle, onEdit, onRemove, onDismissError }) => {
   const { activeItems, pendingItems, cartItems, purchasedItems, shoppingItems } = collections;

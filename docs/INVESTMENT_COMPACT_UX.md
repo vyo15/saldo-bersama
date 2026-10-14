@@ -1,4 +1,4 @@
-# Investasi — compact native UX (13 Oktober 2026)
+# Investasi — compact native UX (diperbarui 14 Oktober 2026)
 
 **Authority:** source `frontend/src/features/investments/`, API investasi dalam `api/_lib/services/investments/`, `docs/API_CONTRACT.md`. Dokumen ini menjelaskan UI yang dibuat, **bukan** otoritas ledger baru.
 
@@ -14,6 +14,10 @@
 - Tetap tanyakan **Sudah punya / Belum punya**. Posisi lama tanpa cash effect/RDN; pembelian baru memotong RDN tercatat hanya bila backend mengonfirmasi transaksi.
 - Minimal: aset, jumlah, harga dan tanggal default hari ini; untuk posisi lama tambahkan harga/NAB referensi. Jika hanya ada satu rekening RDN operable, terpilih implisit tetapi tetap terlihat.
 - `cost_basis` dan `market_value` override broker disembunyikan di `<details>` **Sesuaikan dengan angka broker**; tidak dihapus dari payload atau validasi. Fee dan notes juga dalam **Detail tambahan**.
+- Setelah memilih aset, katalog/picker diganti baris ringkas berisi logo–nama–kategori dan tombol **Ganti**. Ketika Ganti dibuka, pemilihan, pencarian, izin member dan larangan menambah aset yang sudah ada tetap mengikuti `InvestmentAssetPicker` asli; tidak ada flow keuangan baru.
+- Form posisi awal memakai prefix unit/Rp dekoratif di `InvestmentFormField` (aria label dan input formatter tetap sama), satu kolom untuk tanggal dan kuantitas di viewport mobile ≤620px, serta nilai ringkasan dengan surface lembut. Bottom sheet tetap mengikuti `Modal`, safe-area iOS dan focus keyboard canonical.
+- Footer tahap isi: **Kembali + Tinjau**; tahap review: **Ubah + Simpan catatan**. Ketika hasil simpan tidak pasti (outcome-unknown), pengubahan intent tetap terkunci. Layar review posisi lama memuat aset, kuantitas, **tanggal posisi**, harga, modal, dan nilai akhir, termasuk override broker jika diisi.
+- Detail holding saham/reksa dana memakai header identitas + harga terakhir (beserta tanggal jika ada), satu daftar fakta label–nominal tanpa harga terakhir duplikat, kemudian total nilai/return dan catatan manual. Aksi Beli/Jual/Perbarui, detail histori, data posisi selesai, dan pembatasan permission tetap sesuai source.
 - Nominal dibulatkan half-up ke Rupiah memakai `rupiahFromInvestmentUnits`, berdasarkan integer hundredths & cents: 0,58 unit × Rp25 = Rp15. Validasi `purchaseTotalError`, preview first-purchase, dan opening position memakai perhitungan sama. Server tetap authoritative.
 
 ## Beli dan jual
@@ -28,7 +32,7 @@
 1. Viewport 320/375/390/430px dan desktop, dark & light, ukuran teks 200%, keyboard Tab dan Arrow, focus, reduced-motion.
 2. Saldo RDN cukup/tidak cukup, RDN tunggal/ganda, rekening internal hidden, member read-only, stale row-version, network outcome-unknown retry key.
 3. Aset bebas, seluruhnya di satu Target, dialokasikan ke beberapa Target, dan posisi selesai; shortcut Jual Semua tak boleh melampaui sumber yang dipilih.
-4. Reksa dana 0,01 / 0,58 / 977,56 dan harga dua desimal; total preview dan backend harus sama; fee, override broker, nilai overflow, pembelian mundur tanggal.
+4. Reksa dana 0,01 / 0,58 / 977,56 dan harga dua desimal; total preview dan backend harus sama; fee, override broker, nilai overflow, pembelian mundur tanggal. Pastikan perbedaan 977,56 × Rp5.696,59 (otomatis Rp5.568.759) vs nilai broker Rp5.568.784 dapat ditampilkan dan dipilih lewat override tanpa mengubah kuantitas/harga/RDN.
 5. Penjualan parsial vs penuh menyesuaikan cost basis proporsional, jumlah, realisasi P/L, RDN dan Target; pastikan UI tidak mengirim order ke broker.
 6. Histori di atas 30 aktivitas harus **secara eksplisit ditandai terbatas** sampai ada pagination server. Jangan menganggap halaman Riwayat lengkap.
 

@@ -52,7 +52,7 @@ export const DESKTOP_NAVIGATION = Object.freeze([
   freezeGroup({
     id: "management",
     label: "Kelola",
-    description: "Anggota dan pengajuan Administrator.",
+    description: "Anggota dan konfirmasi dana Bersama.",
     icon: FiUsers,
     ownerOnly: true,
     items: pickNavigation("/anggota"),

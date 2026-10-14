@@ -33,7 +33,7 @@ test("rekening dan beranda menjelaskan transparansi keluarga serta pencatat", as
   assert.match(accountDialogs, /seluruh anggota tetap dapat melihatnya/);
   assert.match(accountCard, /Semua rekening transparan untuk keluarga/);
   assert.match(dashboard, /transactionCreatorLabel/);
-  assert.match(mobileDashboard, /dicatat \{transactionCreatorLabel\(item\)\}/);
+  assert.match(mobileDashboard, /transactionCreatorLabel\(item\)/, "Pencatat tetap dapat tersedia untuk transaksi bersama.");
   assert.match(desktopDashboard, /dicatat \{creatorLabel\}/);
   assert.match(desktopDashboard, /transactionCreatorLabel=\{model\.transactionCreatorLabel\}/);
 });

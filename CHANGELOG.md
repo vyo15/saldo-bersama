@@ -1,3 +1,34 @@
+## 2026-10-14 — Merge Investasi Compact + Anti-Duplikasi UI/UX (UI-only, candidate QA)
+
+- Basis `saldo-bersama-clean.zip` terbaru **sudah mengandung seluruh 10 file Investasi Compact secara identik**, termasuk test dan dokumentasinya; tidak dilakukan overwrite ulang. Flow posisi lama/beli, RDN, validasi, serta perhitungan broker dipertahankan.
+- Menambahkan perbaikan **Wishlist**: satu jalur tambah pada empty state, ringkasan/toolbar hanya saat berguna, akses langsung ke histori ketika tak ada item aktif, dan simulasi hanya jika barang dapat dipilih.
+- Menambahkan perbaikan **Daftar Belanja**: satu aksi `Tambah barang` yang jujur, tanpa kolom pencarian semu; ringkasan dan CTA mulai hanya bila ada barang, satu CTA mulai per breakpoint, tombol checkout dalam mode belanja tetap tersedia.
+- Menghapus heading yang mengulang filter segmen pada **Notifikasi**, tanpa mengubah pencarian, filter belum dibaca, atau aksi yang meminta perhatian.
+- Semantic merge `docs/UI_DESIGN_SYSTEM.md` mempertahankan kebijakan **layout investasi satu kolom** dan **Family-first permission experience** dari baseline terbaru, lalu menambahkan aturan anti-duplikasi; regression test diselaraskan.
+- Integrasi tidak mengubah schema, API, auth/role, ledger, atau mutation. `npm run lint` dan `npm test` lulus pada working copy; `npm run verify` terhenti di production build karena dependency native Rollup Linux tidak tersedia pada dependency Windows dan registry npm tidak bisa diakses dari lingkungan merge. Verifikasi build/browser/device tetap diperlukan sebelum production.
+
+## 2026-10-14 — Investasi compact sesuai HTML preview disetujui (UI-only, candidate QA)
+
+- **Tambah investasi** menampilkan aset yang sudah dipilih sebagai satu baris logo–nama–kategori dengan aksi Ganti; katalog saham/reksa dana, pencarian, batasan aset existing, izin member, serta alur Sudah punya/Belum punya tetap sama. Form posisi lama mendapat prefix angka ringan, input mobile satu kolom, summary nilai tanpa card bertumpuk, dan footer dua tindakan pada setiap tahap.
+- Tinjau posisi lama menampilkan **nama aset, unit/lot, tanggal posisi, harga rata-rata, harga terbaru, modal, nilai tercatat** sebelum simpan. Penyesuaian nilai dari broker tetap opsional di disclosure; contoh 977,56 × Rp5.696,59 otomatis Rp5.568.759 sedangkan override broker bisa menjadi Rp5.568.784. Posisi awal tidak menyentuh RDN, pembelian baru tetap mengikuti rekening RDN yang tervalidasi.
+- Detail holding saham/reksa dana memakai header aset dan harga terakhir, fakta numerik scan-friendly satu kolom tanpa mengulang harga terakhir, total nilai/return dan catatan manual; histori/aksi Beli/Jual/Perbarui nilai tidak dipindah maupun diubah. Seluruh perubahan memakai CSS Module dan token light/dark/reduced motion tanpa dependency baru.
+- Regression investasi disesuaikan dengan layout baru dan ditambah kasus angka broker; QA di browser/perangkat nyata, lint/build, dan full verify tetap wajib sebelum production-ready.
+
+## 2026-10-14 — Perapihan kepadatan informasi lintas fitur (UI-only, candidate QA)
+
+- Atur Dana: `Dana bebas` menggantikan teks hero panjang; badge `0 rekening sumber` tidak dipakai, rekening sumber tersedia lewat rincian yang bisa dibuka di mobile/desktop; tanpa rekening, arahkan ke Rekening. Empty state kedua memakai ikon ringkas, bukan ilustrasi karakter besar; navigasi `Alokasi` dibedakan dari tautan Jadwal/Kewajiban/Target, dan search/filter Aktif kembali dapat digunakan di mobile ketika data ada.
+- Jadwal: tampilkan nama, nominal, tanggal/status dan CTA; kategori, frekuensi, metode, dan rekening dipindah ke `Rincian jadwal`; status perhatian tidak digandakan pada hero. Kewajiban: tampilkan sisa pokok, jadwal terdekat, progres; metadata sumber pembayaran/rincian suku bunga tetap di disclosure. Target: ringkasan angka dan sisa target diperpendek, estimasi/bulan hanya ketika relevan.
+- Wishlist, Kategori, Beranda, Investasi, Laporan, Notifikasi, dan Pemeriksaan Saldo: hapus pengantar/metrik/copy berulang tanpa mengubah pembayaran, approval, mutation, ledger, permission, atau status manual-vs-live. Catatan histori investasi tetap tersedia lewat `Tentang aktivitas`.
+- CSS menjaga satu breakpoint mobile canonical per fitur, memakai semantic token yang ada, accessible native `details`, fokus keyboard, dan target sentuh. Test source UI serta docs checklist diselaraskan. QA perangkat nyata/light-dark dan full npm verify masih diperlukan sebelum status production-ready.
+
+## 2026-10-14 — Harmonisasi resource desain, notifikasi dan guidance transaksi (UI-only)
+
+- Mempertahankan Manrope, Feather, warna teal–emerald, ilustrasi lokal, navigasi, dan layout domain; menyelaraskan token pigmen artwork yang sebelumnya diduplikasi antara Login dan animasi sukses.
+- StatusBadge dan CompactNotice dibuat tonal borderless lintas halaman, dengan body copy yang lebih tenang, tanpa menghilangkan warna status maupun outline fokus/input.
+- Menyederhanakan override CSS Notifikasi tanpa mengubah filter, swipe, akses keyboard/hover, dan operasi notifikasi; memperjelas layer indikator QuickSegmentedFilter.
+- Memperbaiki teks review Transaksi agar hubungan Alokasi mengikuti Kebutuhan, bukan menyarankan picker manual yang tidak tersedia.
+- Menguatkan regression dan checklist light/dark, densitas, keyboard, motion. Tidak ada perubahan saldo, schema, API, role, kontrak approval, atau dependency.
+
 ## 2026-10-13 — Notifikasi Interactive List yang compact (UI-only)
 
 - Merapikan Notification Center mengikuti tampilan Saldo Bersama dan referensi Interactive List: baris lebih padat dengan informasi satu layar, event bertanggal singkat Jakarta bila tersedia, pencarian opsional, filter belum dibaca, dan clear icon ketika hover/focus desktop.

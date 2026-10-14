@@ -64,7 +64,7 @@ const DesktopLoginLayout = ({ authProps }) => (
 
       <div className={styles.contact}>
         <span>Belum memiliki akses?</span>
-        <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">Hubungi Administrator</a>
+        <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">Hubungi Pengelola Keluarga</a>
         <strong aria-hidden="true">→</strong>
       </div>
     </header>

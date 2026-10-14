@@ -470,13 +470,6 @@ transition: none;
 }
 .setupForm .reviewGrid dd { max-width: 60%; text-align: end; }
 
-@media (min-width: 430px) and (max-width: 620px) {
-  .setupFields .formRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-  .setupFields .formRow input { min-width: 0; padding-inline: var(--space-2); }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .setupOptional > summary::after { transition: none; }
@@ -525,3 +518,134 @@ transition: none;
 .referencePrice button { display: inline-flex; align-items: center; gap: .35rem; min-height: var(--mobile-hit-target); padding: .25rem .45rem; background: var(--surface-soft); border: 0; border-radius: var(--radius-sm); color: var(--primary); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .referencePrice button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 @media (max-width: 370px) { .referencePrice { align-items: start; flex-direction: column; } }
+
+/* 2026-10-14 approved investment HTML: condensed, theme-token based setup surface.
+   The shared Modal and other investment trade forms keep their own geometry. */
+.setupDialog :global(.modal__header) {
+  padding-block: .9rem .65rem;
+  border-bottom: 0;
+}
+.setupDialog :global(.modal__body) { padding-block: .55rem .8rem; }
+.setupDialog :global(.modal__footer) {
+  gap: var(--space-2);
+  padding-block: .75rem;
+  border-color: var(--mobile-divider);
+}
+.setupDialog :global(.modal__footer) > :global(.button) {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--mobile-hit-target);
+}
+.setupForm, .setupFields { gap: .7rem; }
+.setupFields .field { gap: .38rem; }
+.setupFields .field > span:first-child { font-size: var(--font-size-body-sm); line-height: 1.35; }
+.setupFields .field > input {
+  min-height: 46px;
+  padding: .65rem .8rem;
+  border-radius: var(--control-radius);
+  font-variant-numeric: tabular-nums;
+}
+.setupFields .setupInputShell {
+  min-width: 0;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .35rem .65rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  background: var(--input);
+  transition: border-color var(--motion-control) var(--ease-standard);
+}
+.setupFields .setupInputShell:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+.setupFields .setupInputShell:has(input[aria-invalid="true"]) { border-color: var(--negative); }
+.setupInputPrefix {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding-inline: .25rem;
+  border-radius: .5rem;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+}
+.setupInputPrefix svg { width: 1rem; height: 1rem; }
+.setupFields .setupInputShell input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.setupFields .setupInputShell input:focus-visible { outline: none; }
+.selectedAsset {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-width: 0;
+  padding: .6rem .7rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+.selectedAssetCopy { display: grid; gap: .1rem; flex: 1 1 auto; min-width: 0; }
+.selectedAssetCopy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: var(--font-size-body-sm);
+}
+.selectedAssetCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+.changeAsset {
+  flex: 0 0 auto;
+  min-height: var(--mobile-hit-target);
+  padding: .4rem .5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+.changeAsset:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.setupFields .setupImpact {
+  padding: .7rem .8rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+.setupFields .setupOptional { padding-top: .25rem; }
+.setupFields .setupOptional > summary { min-height: var(--mobile-hit-target); }
+.setupForm .reviewGrid > div { padding: .6rem 0; }
+
+@media (max-width: 620px) {
+  .setupFields .formRow { grid-template-columns: 1fr; gap: .7rem; }
+  .setupDialog :global(.modal__header) { padding-top: calc(var(--space-4) + .55rem); }
+  .setupDialog :global(.modal__footer) { padding-bottom: calc(.75rem + env(safe-area-inset-bottom) + var(--keyboard-inset, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .setupFields .setupInputShell { transition: none; }
+}

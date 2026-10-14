@@ -25,7 +25,7 @@ const PlanningCreateLauncher = ({ open, onClose, onCreateAllocation, onCreateRec
   useEffect(() => { if (open) setView("root"); }, [open]);
   const launch = (callback, value) => { onClose?.(); callback?.(value); };
   const choosingCommitment = view === "commitment";
-  return <Modal open={open} onClose={onClose} size="sm" title={choosingCommitment ? "Pilih kewajiban" : "Tambah di Atur Dana"} description={choosingCommitment ? "Pilih jenis yang ingin dicatat." : "Pilih tujuan. Sistem akan membuka flow yang tepat."} headerBackAction={choosingCommitment ? { label: "Kembali", onClick: () => setView("root") } : null}>
+  return <Modal open={open} onClose={onClose} size="sm" title={choosingCommitment ? "Pilih kewajiban" : "Tambah di Atur Dana"} headerBackAction={choosingCommitment ? { label: "Kembali", onClick: () => setView("root") } : null}>
     <div className={allocationClass("planning-create-list")}>
       {choosingCommitment ? COMMITMENT_TYPES.map((item) => <LauncherOption key={item.value} icon={item.icon} title={item.label} description={item.description} onClick={() => launch(onCreateCommitment, item.value)} />) : <>
         <LauncherOption icon={FiPieChart} title="Buat Alokasi" description="Pisahkan uang untuk tujuan baru" onClick={() => launch(onCreateAllocation)} />

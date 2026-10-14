@@ -17,16 +17,16 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
   assert.match(planning, /Pemasukan yang sudah tercatat otomatis menambah dana rekening/);
   assert.doesNotMatch(planning, /role="tablist"|planning-tab-/);
   assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
-  assert.match(overview, /Dana yang bisa dialokasikan/);
-  assert.match(overview, /Dana siap dialokasikan/);
-  assert.match(overview, /Dana tersedia untuk direncanakan/);
+  assert.match(overview, /Dana bebas dari rekening sumber/);
+  assert.match(overview, /Belum ada dana bebas. Alokasi bisa disiapkan dulu/);
+  assert.doesNotMatch(overview, /allocation-funding-summary__count/);
   assert.match(overview, /allocationSourceAccounts\(accounts\)/);
   assert.match(overview, /planningFundingAccounts\(accounts, items\)/);
-  assert.match(overview, /Dana bebas dari rekening operasional dapat diarahkan ke Alokasi yang sudah ada atau Alokasi baru/);
-  assert.match(overview, /Lihat \{sources\.length\} rekening sumber/);
-  assert.match(overview, /icon=\{AllocationEmptyArt\}/);
+  assert.match(overview, /Lihat rekening sumber/);
+  assert.match(overview, /icon=\{FiInbox\}/);
+  assert.match(overview, /totalItems=\{rows\.length\}/);
   assert.doesNotMatch(overview, /<div className=\{allocationClass\("allocation-empty-state"\)\}>/);
-  assert.match(overviewStyles, /\.allocation-empty-state > img \{/);
+  assert.match(overviewStyles, /\.allocation-empty-state > svg \{/);
   assert.doesNotMatch(overviewStyles, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-empty-state \{[\s\S]*?border:\s*0;/);
   assert.match(planningStyles, /\.page > \.mobileHeader \{[\s\S]*?width:\s*calc\(100% \+ \(var\(--mobile-page-gutter\) \* 2\)\);[\s\S]*?max-width:\s*none;/);
   assert.doesNotMatch(overview, /wallet\.webp/);
@@ -80,8 +80,9 @@ test("create Alokasi mengikuti ownership rekening dan menyimpan opsi lanjutan se
 });
 
 test("overview menyatukan objek aktif dan hanya menampilkan filter ownership ketika dataset membutuhkannya", async () => {
-  const [overview, launcher, workspace] = await Promise.all([
+  const [overview, overviewStyles, launcher, workspace] = await Promise.all([
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
+    read("src/features/allocations/AllocationOverview.module.css"),
     read("src/features/allocations/PlanningCreateLauncher.jsx"),
     read("src/features/allocations/AllocationsWorkspace.jsx"),
   ]);
@@ -97,6 +98,8 @@ test("overview menyatukan objek aktif dan hanya menampilkan filter ownership ket
   assert.equal((overview.match(/>Buat Alokasi<\/Button>/g) || []).length, 1);
   assert.doesNotMatch(overview, /Tambah rencana/);
   assert.match(overview, /rows\.length \? <PlanningToolbar/);
+  assert.match(overviewStyles, /\.allocation-section-heading \{ display: flex; \}/);
+  assert.match(overviewStyles, /\.allocation-toolbar__search:focus-within/);
   assert.match(overview, /PlanningCreateLauncher/);
   assert.match(launcher, /Tambah di Atur Dana/);
   assert.match(launcher, /title="Buat Alokasi"/);

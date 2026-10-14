@@ -128,7 +128,7 @@ const SETTINGS_ROUTE_META = Object.freeze({
     backLabel: "Pengaturan",
     help: {
       title: "Tentang Periode & integritas",
-      content: "Periksa integritas sebelum menutup periode. Periode tertutup mengunci perubahan sampai Administrator membukanya kembali secara eksplisit dan tercatat di audit.",
+      content: "Periksa integritas sebelum menutup periode. Periode tertutup mengunci perubahan sampai Pengelola Keluarga membukanya kembali secara eksplisit dan tercatat di audit.",
     },
   },
   "/pengaturan/audit": {

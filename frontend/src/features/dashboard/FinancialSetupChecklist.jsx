@@ -14,24 +14,22 @@ const accountStep = ({ operableAccounts }) => {
   };
 };
 
-const categoryStep = ({ categories, owner }) => {
+const categoryStep = ({ categories }) => {
   const hasIncome = categories.some((item) => item.transaction_type === "income");
   const hasExpense = categories.some((item) => item.transaction_type === "expense");
   const ready = hasIncome && hasExpense;
   let detail = "Pemasukan dan pengeluaran siap";
-  if (!hasIncome && !hasExpense) detail = owner ? "Siapkan kategori pemasukan dan pengeluaran" : "Ajukan kategori yang masih dibutuhkan";
+  if (!hasIncome && !hasExpense) detail = "Siapkan kategori pemasukan dan pengeluaran";
   else if (!hasIncome) detail = "Kategori pemasukan belum siap";
   else if (!hasExpense) detail = "Kategori pengeluaran belum siap";
   return { key: "categories", label: "Kategori", ready, detail, to: ready ? null : "/kategori" };
 };
 
-const setupState = ({ bootstrap, user }) => {
-  const actor = bootstrap?.user || user || {};
+const setupState = ({ bootstrap }) => {
   const accounts = (bootstrap?.accounts || []).filter((item) => item.status === "active");
   const operableAccounts = accounts.filter((item) => item.can_transact !== false && item.account_type !== "investment");
   const categories = (bootstrap?.categories || []).filter((item) => item.status === "active");
-  const owner = actor.role === "owner";
-  return [accountStep({ operableAccounts }), categoryStep({ categories, owner })];
+  return [accountStep({ operableAccounts }), categoryStep({ categories })];
 };
 
 const SetupStep = ({ step, index }) => {
@@ -41,8 +39,8 @@ const SetupStep = ({ step, index }) => {
   return step.to && !step.ready ? <Link className={className} to={step.to} state={{ setupFlow: true }}>{content}</Link> : <div className={className}>{content}</div>;
 };
 
-const FinancialSetupChecklist = ({ bootstrap, user }) => {
-  const steps = setupState({ bootstrap, user });
+const FinancialSetupChecklist = ({ bootstrap }) => {
+  const steps = setupState({ bootstrap });
   if (steps.every((step) => step.ready)) return null;
   const completed = steps.filter((step) => step.ready).length;
   return <Card className={styles.card} aria-labelledby="financial-setup-title">
