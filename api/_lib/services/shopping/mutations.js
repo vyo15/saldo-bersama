@@ -25,6 +25,37 @@ export const createShoppingList = async (db, context) => {
   return publicRow(row);
 };
 
+// The shopping list is a planning shell; never cascade-delete checkout transactions.
+// Archiving is reversible and keeps historical item-to-checkout references intact.
+export const archiveShoppingList = async (db, context) => {
+  const id = String(context.payload?.shopping_list_id || "");
+  const { list } = await assertShoppingListOperable(db, context, id, { expectedVersion: context.rowVersion ?? context.payload?.row_version, mutable: false });
+  if (list.status === "archived") return { list: publicRow(list) };
+  const next = { ...list, status: "archived", row_version: Number(list.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const result = await db.execute("UPDATE shopping_lists SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE shopping_list_id=? AND row_version=? AND status=?", [next.row_version,next.updated_by,next.updated_at,id,list.row_version,list.status]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Daftar belanja berubah. Muat ulang sebelum menghapus.", 409);
+  await appendAudit(db, context, { entityType: "shopping_list", entityId: id, previous: publicRow(list), next: publicRow(next) });
+  return { list: publicRow(next), archived: true };
+};
+
+export const restoreShoppingList = async (db, context) => {
+  const id = String(context.payload?.shopping_list_id || "");
+  const { list } = await assertShoppingListOperable(db, context, id, { expectedVersion: context.rowVersion ?? context.payload?.row_version, mutable: false });
+  if (list.status !== "archived") throw appError("SHOPPING_NOT_ARCHIVED", "Daftar belanja tidak berada di arsip.", 409);
+  const hasOpen = await db.one("SELECT shopping_list_id FROM shopping_lists WHERE budget_id=? AND status IN ('active','draft') LIMIT 1", [list.budget_id]);
+  if (hasOpen) throw appError("SHOPPING_ALREADY_ACTIVE", "Sudah ada daftar belanja aktif. Selesaikan atau arsipkan terlebih dahulu.", 409);
+  const [hasCheckout, pending] = await Promise.all([
+    db.one("SELECT shopping_checkout_id FROM shopping_checkouts WHERE shopping_list_id=? LIMIT 1", [id]),
+    db.one("SELECT COUNT(*) AS count FROM shopping_items WHERE shopping_list_id=? AND status IN ('pending','in_cart')", [id]),
+  ]);
+  const nextStatus = Number(pending?.count || 0) > 0 || !hasCheckout ? "active" : "completed";
+  const next = { ...list, status: nextStatus, row_version: Number(list.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const result = await db.execute("UPDATE shopping_lists SET status=?,row_version=?,updated_by=?,updated_at=? WHERE shopping_list_id=? AND row_version=? AND status='archived'", [next.status,next.row_version,next.updated_by,next.updated_at,id,list.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Daftar belanja berubah. Muat ulang sebelum memulihkan.", 409);
+  await appendAudit(db, context, { entityType: "shopping_list", entityId: id, previous: publicRow(list), next: publicRow(next) });
+  return { list: publicRow(next), restored: true };
+};
+
 export const createShoppingItem = async (db, context) => {
   const listId = String(context.payload?.shopping_list_id || context.payload?.shoppingListId || "");
   const { list } = await assertShoppingListOperable(db, context, listId, { expectedVersion: context.payload?.list_row_version ?? context.payload?.listRowVersion });

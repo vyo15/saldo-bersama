@@ -541,7 +541,7 @@ test("polish mobile menjaga microcopy penting >=12px dan target sentuh lokal >=4
   assert.doesNotMatch(transactionForm, /\.notesField textarea \{[\s\S]*?!important/);
   assert.match(contextBack, /\.back \{[^}]*min-height:\s*var\(--mobile-control-height, 44px\);/s);
   assert.match(budgetCard, /\.planning-active-row\s*\{[^}]*min-height:\s*76px;/);
-  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-needs-filter__button,[\s\S]*?\.allocation-limit-row__quick-action,[\s\S]*?\.allocation-limit-row__menu > summary \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
+  assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-needs-gap :global\(\.button\),[\s\S]*?\.allocation-needs-filter__button,[\s\S]*?\.allocation-limit-row__quick-action,[\s\S]*?\.allocation-limit-row__menu-trigger \{[\s\S]*?min-height:\s*var\(--mobile-control-height\);/);
   assert.match(pages, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-detail-panel__header p,[\s\S]*?\.allocation-limit-row__balance,[\s\S]*?font-size:\s*var\(--font-size-xs\);/);
   assert.doesNotMatch(pages, /allocation-limit-row__more|allocation-related-row/);
 });

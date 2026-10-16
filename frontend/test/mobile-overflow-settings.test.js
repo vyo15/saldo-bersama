@@ -287,7 +287,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(allocations, /planning-active-row/);
   assert.match(allocations, /aria-label=\{`Buka detail \$\{item\.name\}`\}/);
   assert.doesNotMatch(allocations, /allocation-card__expand|allocation-card__fund/);
-  assert.match(allocations, /mobileSwipeToClose/);
+  assert.match(allocations, /<ConfirmationModal open=\{Boolean\(p.archiveTarget\)\}/); // Dialog memakai swipe close bawaan Modal.
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
   assert.match(goals, /goalClass\("goal-action-menu"\)/);
   assert.match(goals, /FiMoreHorizontal/);

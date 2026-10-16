@@ -28,8 +28,8 @@ test("migration target memakai schema_version SQL dan tidak menganggap prefix 01
 
 test("seluruh migration chain memisahkan migration ID dari target schema secara monoton", async () => {
   const migrations = await loadMigrations();
-  assert.deepEqual(migrations.map((item) => item.migrationId), Array.from({ length: 26 }, (_, index) => index + 1));
-  assert.deepEqual(migrations.map((item) => item.targetSchemaVersion), Array.from({ length: 26 }, (_, index) => index + 3));
+  assert.deepEqual(migrations.map((item) => item.migrationId), Array.from({ length: 27 }, (_, index) => index + 1));
+  assert.deepEqual(migrations.map((item) => item.targetSchemaVersion), Array.from({ length: 27 }, (_, index) => index + 3));
   const expectedTail = [
     ["017_budget_lifecycle_history.sql", 19],
     ["018_envelope_decoration.sql", 20],
@@ -41,6 +41,7 @@ test("seluruh migration chain memisahkan migration ID dari target schema secara 
     ["024_investment_fractional_precision.sql", 26],
     ["025_wishlist_purchase_planning.sql", 27],
     ["026_wishlist_optional_planning.sql", 28],
+    ["027_user_hidden_items.sql", 29],
   ];
   assert.deepEqual(migrations.slice(-expectedTail.length).map((item) => [item.file, item.targetSchemaVersion]), expectedTail);
 });

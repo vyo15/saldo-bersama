@@ -2,7 +2,7 @@ import { appendAudit } from "../audit.js";
 import { appError, nonNegativeInteger, assertOwner, assertVersion, dateValue, nowIso, operableAccountSql, positiveInteger, publicRow, sanitizeText, todayJakarta, uuid } from "../core.js";
 import { createAccountInternal } from "../masterData/accounts.js";
 import { allocateGoalInvestment } from "../planning/goalInvestments.js";
-import { assertActivityAfterReconciliation, assertPortfolioHistoryDate, assertPortfolioOperable, bumpPortfolio, exchangeValue, instrumentRow, portfolioRow, tickerValue } from "./investmentState.js";
+import { assertActivityAfterReconciliation, assertPortfolioHistoryDate, assertPortfolioOperable, portfolioState, bumpPortfolio, exchangeValue, instrumentRow, portfolioRow, tickerValue } from "./investmentState.js";
 import { decimalHundredths, isMutualFund, safeRupiahFromCentsAndUnits } from "./investmentPrecision.js";
 import { accountBalanceAsOf } from "../readModels.js";
 import { assertTransactionDateUnlocked } from "../finance/transactionValidation.js";
@@ -52,6 +52,44 @@ export const createInvestmentPortfolio = async (db, context) => {
   await db.execute(`INSERT INTO investment_portfolios(portfolio_id,name,broker,rdn_account_id,status,row_version,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)`, Object.values(record));
   await appendAudit(db, context, { entityType: "investment_portfolio", entityId: record.portfolio_id, next: { ...record, rdn_created_automatically: autoCreated } });
   return { ...publicRow(record), rdn_created_automatically: autoCreated };
+};
+
+// Portfolios with active holdings, RDN cash, or goal allocations cannot disappear
+// from financial summaries. Archive only a financially settled portfolio.
+const portfolioLifecycleTarget = async (db, context) => {
+  const portfolio = await portfolioRow(db, context.payload?.portfolio_id);
+  if (!portfolio) throw appError("PORTFOLIO_NOT_FOUND", "Portofolio tidak ditemukan.", 404);
+  if (portfolio.owner_scope === "personal" && portfolio.owner_user_id !== context.actor.user_id) throw appError("PORTFOLIO_FORBIDDEN", "Portofolio pribadi hanya bisa dihapus pemiliknya.", 403);
+  if (portfolio.owner_scope === "shared" && context.actor.role !== "owner") throw appError("PORTFOLIO_FORBIDDEN", "Hanya pengelola yang dapat menghapus portofolio bersama.", 403);
+  assertVersion(portfolio, context.rowVersion ?? context.payload?.row_version);
+  return portfolio;
+};
+
+export const archiveInvestmentPortfolio = async (db, context) => {
+  const portfolio = await portfolioLifecycleTarget(db, context);
+  if (portfolio.status !== "active" || portfolio.rdn_status !== "active") throw appError("PORTFOLIO_NOT_ACTIVE", "Portofolio tidak aktif.", 409);
+  const [state, allocations] = await Promise.all([
+    portfolioState(db, portfolio),
+    db.one("SELECT COALESCE(SUM(share_delta),0) AS allocated_shares,COALESCE(SUM(cash_delta),0) AS retained_cash FROM goal_investment_events WHERE portfolio_id=? AND status='active'", [portfolio.portfolio_id]),
+  ]);
+  if (state.positions.some((position) => Number(position.shares || 0) !== 0 || Number(position.cost_basis || 0) !== 0) || Number(state.rdn_cash || 0) !== 0 || Number(allocations?.allocated_shares || 0) !== 0 || Number(allocations?.retained_cash || 0) !== 0) {
+    throw appError("PORTFOLIO_NOT_SETTLED", "Portofolio masih memiliki posisi, saldo RDN, atau dana Target. Selesaikan atau pindahkan dana terlebih dahulu sebelum menghapus dari daftar.", 409);
+  }
+  const next = { ...portfolio, status: "archived", row_version: Number(portfolio.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const result = await db.execute("UPDATE investment_portfolios SET status='archived',row_version=?,updated_by=?,updated_at=? WHERE portfolio_id=? AND row_version=? AND status='active'", [next.row_version,next.updated_by,next.updated_at,next.portfolio_id,portfolio.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Portofolio berubah. Muat ulang sebelum menghapus.", 409);
+  await appendAudit(db, context, { entityType: "investment_portfolio", entityId: portfolio.portfolio_id, previous: publicRow(portfolio), next: publicRow(next) });
+  return { portfolio: publicRow(next), archived: true };
+};
+
+export const restoreInvestmentPortfolio = async (db, context) => {
+  const portfolio = await portfolioLifecycleTarget(db, context);
+  if (portfolio.status !== "archived" || portfolio.rdn_status !== "active") throw appError("PORTFOLIO_RESTORE_BLOCKED", "Aktifkan rekening RDN terlebih dahulu untuk memulihkan portofolio.", 409);
+  const next = { ...portfolio, status: "active", row_version: Number(portfolio.row_version) + 1, updated_by: context.actor.user_id, updated_at: nowIso() };
+  const result = await db.execute("UPDATE investment_portfolios SET status='active',row_version=?,updated_by=?,updated_at=? WHERE portfolio_id=? AND row_version=? AND status='archived'", [next.row_version,next.updated_by,next.updated_at,next.portfolio_id,portfolio.row_version]);
+  if (result.rowsAffected !== 1) throw appError("CONFLICT", "Portofolio berubah. Muat ulang sebelum memulihkan.", 409);
+  await appendAudit(db, context, { entityType: "investment_portfolio", entityId: portfolio.portfolio_id, previous: publicRow(portfolio), next: publicRow(next) });
+  return { portfolio: publicRow(next), restored: true };
 };
 
 const investmentInstrumentInput = (payload, existing) => {

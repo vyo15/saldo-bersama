@@ -487,3 +487,16 @@
   .investmentNav button, .investmentNav button::after { transition: none; }
   .investmentPanelMotion { animation: none; }
 }
+
+.portfolioLifecycle { display:grid; gap:8px; padding:12px 14px; border-radius:var(--radius-surface); background:var(--surface-section); }
+.portfolioLifecycle h2 { margin:0 0 2px; color:var(--text-soft); font-size:13px; }
+.portfolioLifecycleRow { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; }
+.portfolioLifecycleRow + .portfolioLifecycleRow { border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent); }
+.portfolioLifecycleRow > span { display:grid; gap:3px; min-width:0; }
+.portfolioLifecycleRow strong { color:var(--text); font-size:13px; overflow-wrap:anywhere; }
+.portfolioLifecycleRow small { color:var(--text-soft); font-size:12px; }
+.portfolioLifecycleRow button { border:0; border-radius:9px; background:var(--surface-soft); color:var(--text); font:inherit; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:8px 12px; cursor:pointer; white-space:nowrap; }
+.portfolioLifecycleRow button:focus-visible { outline:3px solid var(--focus-ring); outline-offset:2px; }
+.portfolioLifecycleRow button:disabled { opacity:.5; cursor:default; }
+.portfolioLifecycleError { color:var(--negative); background:var(--negative-soft); padding:10px 12px; border-radius:10px; font-size:13px; }
+@media(max-width:640px) { .portfolioLifecycleRow { align-items:flex-start; } .portfolioLifecycleRow button { align-self:center; } }

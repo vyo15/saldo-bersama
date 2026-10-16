@@ -5,9 +5,9 @@ const listByBudget = async (db, budgetId) => db.one(`SELECT * FROM shopping_list
   WHERE budget_id=? AND status<>'archived'
   ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END,updated_at DESC LIMIT 1`, [budgetId]);
 
-const itemsForList = async (db, listId) => db.all(`SELECT i.*,COALESCE(NULLIF(TRIM(u.name),''),NULLIF(TRIM(u.email),''),'Pengguna') AS creator_name
+const itemsForList = async (db, listId, actorId) => db.all(`SELECT i.*,COALESCE((SELECT h.hidden FROM user_hidden_items h WHERE h.user_id=? AND h.entity_kind='shopping_item' AND h.entity_id=i.shopping_item_id),0) AS is_hidden,COALESCE(NULLIF(TRIM(u.name),''),NULLIF(TRIM(u.email),''),'Pengguna') AS creator_name
   FROM shopping_items i LEFT JOIN users u ON u.user_id=i.created_by
-  WHERE i.shopping_list_id=? ORDER BY CASE i.status WHEN 'pending' THEN 0 WHEN 'in_cart' THEN 1 WHEN 'purchased' THEN 2 ELSE 3 END,i.sort_order,i.created_at`, [listId]);
+  WHERE i.shopping_list_id=? ORDER BY CASE i.status WHEN 'pending' THEN 0 WHEN 'in_cart' THEN 1 WHEN 'purchased' THEN 2 ELSE 3 END,i.sort_order,i.created_at`, [actorId,listId]);
 
 const checkoutHistory = (db, listId) => db.all(`SELECT sc.*,t.status AS transaction_status,t.row_version AS transaction_row_version
   FROM shopping_checkouts sc JOIN transactions t ON t.transaction_id=sc.transaction_id
@@ -43,14 +43,16 @@ const canManageShoppingBudget = (budget, actor) => {
 
 export const shoppingDetail = async (db, context) => {
   const { budget, list } = await resolveShoppingDetailContext(db, context);
-  const items = list ? await itemsForList(db, list.shopping_list_id) : [];
+  const items = list ? await itemsForList(db, list.shopping_list_id, context.actor.user_id) : [];
   const checkouts = list ? await checkoutHistory(db, list.shopping_list_id) : [];
   const summary = shoppingSummary(items);
+  const archivedLists = await db.all("SELECT * FROM shopping_lists WHERE budget_id=? AND status='archived' ORDER BY updated_at DESC LIMIT 30", [budget.budget_id]);
   return {
     budget: budgetPresentation(budget),
     list: list ? publicRow(list) : null,
     items: items.map((row) => publicRow(row)),
     checkouts: checkouts.map((row) => publicRow(row)),
+    archived_lists: archivedLists.map((row) => publicRow(row)),
     summary,
     can_manage: canManageShoppingBudget(budget, context.actor),
   };
@@ -77,6 +79,7 @@ export const shoppingByTransaction = async (db, context) => {
     FROM shopping_checkouts sc JOIN shopping_lists l ON l.shopping_list_id=sc.shopping_list_id JOIN budgets b ON b.budget_id=l.budget_id
     WHERE sc.transaction_id=?`, [transactionId]);
   if (!checkout) return { checkout: null, items: [] };
+  await assertShoppingBudgetReadable(db, context, checkout.budget_id);
   const items = await db.all(`SELECT name,quantity_milli,unit_key,actual_amount,estimated_amount,group_name
     FROM shopping_items WHERE purchased_checkout_id=? ORDER BY sort_order,created_at`, [checkout.shopping_checkout_id]);
   return { checkout: publicRow(checkout), items: items.map((row) => publicRow(row)) };

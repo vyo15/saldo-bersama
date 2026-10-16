@@ -19,6 +19,13 @@ Dokumen ini adalah kontrak visual dan implementasi UI Saldo Bersama. Tujuannya m
 
 Current source memakai shared primitive dan stylesheet feature utama berbasis CSS Modules + design token project tanpa dependency Mantine runtime. Jika nanti primitive kompleks membutuhkan Mantine, adopsi harus dimulai melalui shared wrapper dengan consumer nyata dan package/lockfile diperbarui pada patch yang sama. Global CSS dibatasi untuk reset, token, root/base, accessibility/shared primitives, dan shell responsive; layout/state milik feature harus tetap colocated pada CSS Module pemiliknya.
 
+## Detail Alokasi Dana (mobile)
+
+- Saat URL planning memiliki parameter `allocation`, header aplikasi menampilkan judul **Alokasi Dana** dan **satu tombol kembali** ke daftar Alokasi; breadcrumb `ContextBack` milik detail hanya terlihat di desktop. Parameter filter lain pada URL tetap dipertahankan saat kembali.
+- Hero Alokasi dan panel Kebutuhan ditampilkan sebagai **dua surface dengan radius 16px dan jarak 10px** pada lebar `<=820px`. Tidak boleh memakai panel persegi menempel di bawah hero atau menambahkan outline/border visual dekoratif.
+- Menu tiga titik Alokasi dan tiap Kebutuhan memakai `Modal` canonical (action sheet di mobile, dialog di desktop), bukan popover `details` yang memotong daftar atau menimpa baris lain. Aksi perlu izin `can_manage`; tombol Hapus Kebutuhan mengikuti `previewBudgetLifecycle` dan konfirmasi server, tidak memaksa hard delete transaksi/saldo.
+- Detail, Edit, dan Hapus boleh dicapai dari satu menu yang sama; jangan membuat tombol Hapus kedua dalam kartu. Fokus, Back, Escape, tap target 44px, loading/error, light/dark, dan safe area tetap memakai shared primitive.
+
 ## Source of truth
 
 | Area | Canonical source |

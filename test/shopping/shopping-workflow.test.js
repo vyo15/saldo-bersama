@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
-import { createShoppingItem, createShoppingList, removeShoppingItem, setShoppingItemState, checkoutShoppingList } from "../../api/_lib/services/shopping/mutations.js";
+import { archiveShoppingList, restoreShoppingList, createShoppingItem, createShoppingList, removeShoppingItem, setShoppingItemState, checkoutShoppingList } from "../../api/_lib/services/shopping/mutations.js";
 import { shoppingDetail } from "../../api/_lib/services/shopping/queries.js";
+import { setItemVisibility } from "../../api/_lib/services/itemVisibility.js";
 import { syncBudgetShoppingPreference } from "../../api/_lib/services/shopping/preferences.js";
 import { compactBudgetsForClosedPeriod, copyEnvelopeNeedsToPeriod, restoreCompactedBudgetsForPeriod } from "../../api/_lib/services/planning/budgets.js";
 
@@ -156,5 +157,55 @@ test("periode tertutup mempertahankan histori daftar belanja tanpa memutus conti
     const reopened = await db.one("SELECT status,ended_reason FROM budgets WHERE budget_id='budget-shopping'");
     assert.equal(reopened.status, "active");
     assert.equal(reopened.ended_reason, "");
+  } finally { db.close(); }
+});
+
+test("Smart Delete arsip dan pulihkan daftar checkout parsial tanpa menyentuh transaksi", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedPlanning(db);
+    const list = await createShoppingList(db, context("shopping.create", { budget_id: "budget-shopping", name: "Belanja yang diarsipkan" }));
+    const added = await createShoppingItem(db, context("shopping.itemCreate", { shopping_list_id: list.shopping_list_id, list_row_version: list.row_version, name: "Beras", quantity_milli: 1000, estimated_unit_price: 10000 }));
+    const second = await createShoppingItem(db, context("shopping.itemCreate", { shopping_list_id: list.shopping_list_id, list_row_version: added.list.row_version, name: "Telur", quantity_milli: 1000, estimated_unit_price: 15000 }));
+    const cart = await setShoppingItemState(db, context("shopping.itemState", { shopping_item_id: added.item.shopping_item_id, row_version: added.item.row_version, status: "in_cart", actual_amount: 10000 }));
+    const bought = await db.transaction((tx) => checkoutShoppingList(tx, context("shopping.checkout", {
+      shopping_list_id: list.shopping_list_id, row_version: cart.list.row_version,
+      total_amount: 10000, checkout_date: `${PERIOD}-16`, leftover_action: "keep",
+    })));
+    assert.equal(bought.list.status, "active");
+    const txnBefore = await db.one("SELECT COUNT(*) AS count FROM transactions");
+    const archive = await db.transaction((tx) => archiveShoppingList(tx, context("shopping.archive", {
+      shopping_list_id: list.shopping_list_id, row_version: bought.list.row_version,
+    })));
+    assert.equal(archive.list.status, "archived");
+    const archivedDetail = await shoppingDetail(db, context("shopping.detail", { budget_id: "budget-shopping" }));
+    assert.equal(archivedDetail.list, null);
+    assert.equal(archivedDetail.archived_lists.length, 1);
+    const restore = await db.transaction((tx) => restoreShoppingList(tx, context("shopping.restore", {
+      shopping_list_id: list.shopping_list_id, row_version: archive.list.row_version,
+    })));
+    assert.equal(restore.list.status, "active", "checkout parsial tidak boleh diubah menjadi completed");
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions")).count), Number(txnBefore.count));
+    assert.equal((await db.one("SELECT purchased_checkout_id FROM shopping_items WHERE shopping_item_id=?", [added.item.shopping_item_id])).purchased_checkout_id, bought.checkout.shopping_checkout_id);
+    assert.equal((await db.one("SELECT status FROM shopping_items WHERE shopping_item_id=?", [second.item.shopping_item_id])).status, "pending");
+  } finally { db.close(); }
+});
+
+
+test("Smart Delete barang checkout sembunyi per pengguna, transaksi dan checkout tidak berubah", async () => {
+  const db = await createSqliteTestDatabase();
+  try {
+    await seedPlanning(db);
+    const list = await createShoppingList(db, context("shopping.create", { budget_id: "budget-shopping", name: "Riwayat pembelian" }));
+    const added = await createShoppingItem(db, context("shopping.itemCreate", { shopping_list_id: list.shopping_list_id, list_row_version: list.row_version, name: "Kopi", quantity_milli: 1000, estimated_unit_price: 12000 }));
+    const cart = await setShoppingItemState(db, context("shopping.itemState", { shopping_item_id: added.item.shopping_item_id, row_version: added.item.row_version, status: "in_cart", actual_amount: 12000 }));
+    const checkout = await db.transaction((tx) => checkoutShoppingList(tx, context("shopping.checkout", { shopping_list_id: list.shopping_list_id, row_version: cart.list.row_version, total_amount: 12000, checkout_date: `${PERIOD}-16`, leftover_action: "keep" })));
+    const transactionBefore = await db.one("SELECT * FROM transactions WHERE transaction_id=?", [checkout.transaction.transaction_id]);
+    await setItemVisibility(db, context("visibility.set", { entity_kind: "shopping_item", entity_id: added.item.shopping_item_id, hidden: true }));
+    const detail = await shoppingDetail(db, context("shopping.detail", { budget_id: "budget-shopping" }));
+    assert.equal(detail.items.find((item) => item.shopping_item_id === added.item.shopping_item_id)?.is_hidden, 1);
+    assert.equal(detail.summary.purchased_items, 1, "ringkasan finansial menghitung item tersembunyi");
+    assert.deepEqual(await db.one("SELECT * FROM transactions WHERE transaction_id=?", [checkout.transaction.transaction_id]), transactionBefore);
+    assert.equal((await db.one("SELECT purchased_checkout_id FROM shopping_items WHERE shopping_item_id=?", [added.item.shopping_item_id])).purchased_checkout_id, checkout.checkout.shopping_checkout_id);
   } finally { db.close(); }
 });

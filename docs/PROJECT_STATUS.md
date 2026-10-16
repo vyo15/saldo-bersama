@@ -7,7 +7,7 @@
 
 ## Runtime canonical
 
-- **Active schema contract:** v28
+- **Active schema contract:** v29
 - Node yang didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - Turso adalah source of truth; Google Sheets hanya mirror satu arah untuk data shared.
 - Development dan Production memakai database terpisah yang ditandai `DATABASE_ENVIRONMENT`; cross-binding ditolak fail-closed.

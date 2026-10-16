@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSqliteTestDatabase } from "../helpers/sqlite-test-database.js";
 import {
-  buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentHoldingStateFromEvents, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  archiveInvestmentPortfolio, restoreInvestmentPortfolio, buyInvestment, correctInvestment, createInvestmentAssetPosition, createInvestmentPortfolio, createOpeningPosition, investmentHoldingStateFromEvents, investmentOverview, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../../api/_lib/services/investments.js";
 import { snapshotDatabase, validateSnapshot } from "../../api/_lib/services/maintenance/shared.js";
 import { integrityIssues } from "../../api/_lib/services/reporting/integrity.js";
@@ -578,12 +578,47 @@ test("backup canonical mencakup authoritative investment history dan integrity c
     const { portfolio, instrument } = await setupPortfolio(db);
     await buy(db, owner, portfolio, instrument);
     const snapshot = await snapshotDatabase(db);
-    assert.equal(snapshot.manifest.schemaVersion, 28);
+    assert.equal(snapshot.manifest.schemaVersion, 29);
     for (const table of ["investment_instruments", "investment_portfolios", "investment_trades", "investment_valuations", "investment_reconciliations", "investment_corrections"]) {
       assert.ok(Array.isArray(snapshot.tables[table]));
     }
     assert.equal(snapshot.tables.investment_trades.length, 1);
     assert.doesNotThrow(() => validateSnapshot(snapshot));
     assert.deepEqual(await integrityIssues(db), []);
+  } finally { db.close(); }
+});
+
+test("Smart Delete portofolio kosong dapat dipulihkan tanpa kehilangan ledger dan audit", async () => {
+  const db = await seed({ initialBalance: 0 });
+  try {
+    const { portfolio } = await setupPortfolio(db);
+    const beforeLedger = Number((await db.one("SELECT COUNT(*) AS count FROM transactions")).count);
+    const archived = await db.transaction((tx) => archiveInvestmentPortfolio(tx, context(owner, "investments.portfolios.archive", {
+      portfolio_id: portfolio.portfolio_id, row_version: portfolio.row_version,
+    })));
+    assert.equal(archived.portfolio.status, "archived");
+    const overview = await investmentOverview(db, context(owner, "investments.overview"));
+    assert.equal(overview.portfolios.some((item) => item.portfolio_id === portfolio.portfolio_id), false);
+    assert.equal(overview.archived_portfolios.some((item) => item.portfolio_id === portfolio.portfolio_id), true);
+    const restored = await db.transaction((tx) => restoreInvestmentPortfolio(tx, context(owner, "investments.portfolios.restore", {
+      portfolio_id: portfolio.portfolio_id, row_version: archived.portfolio.row_version,
+    })));
+    assert.equal(restored.portfolio.status, "active");
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM transactions")).count), beforeLedger);
+    assert.equal(Number((await db.one("SELECT COUNT(*) AS count FROM audit_log WHERE entity_type='investment_portfolio' AND entity_id=?", [portfolio.portfolio_id])).count), 3);
+  } finally { db.close(); }
+});
+
+test("Smart Delete portofolio bersaldo memblokir arsip dan menolak anggota non-pengelola", async () => {
+  const db = await seed({ initialBalance: 150_000 });
+  try {
+    const { portfolio } = await setupPortfolio(db);
+    await assert.rejects(() => archiveInvestmentPortfolio(db, context(owner, "investments.portfolios.archive", {
+      portfolio_id: portfolio.portfolio_id, row_version: portfolio.row_version,
+    })), (error) => error.code === "PORTFOLIO_NOT_SETTLED");
+    await assert.rejects(() => archiveInvestmentPortfolio(db, context(member, "investments.portfolios.archive", {
+      portfolio_id: portfolio.portfolio_id, row_version: portfolio.row_version,
+    })), (error) => error.code === "PORTFOLIO_FORBIDDEN");
+    assert.equal((await db.one("SELECT status FROM investment_portfolios WHERE portfolio_id=?", [portfolio.portfolio_id])).status, "active");
   } finally { db.close(); }
 });

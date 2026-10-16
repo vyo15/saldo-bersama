@@ -2,6 +2,8 @@ import { apiClient } from "../../services/api/client.js";
 
 const mutate = (action, payload, rowVersion, options = {}) => apiClient.request(action, payload, { ...options, rowVersion });
 
+export const archiveInvestmentPortfolio = (payload) => mutate("investments.portfolios.archive", payload, payload.row_version);
+export const restoreInvestmentPortfolio = (payload) => mutate("investments.portfolios.restore", payload, payload.row_version);
 export const createInvestmentPortfolio = (payload, options) => apiClient.request("investments.portfolios.create", payload, options);
 export const recordInvestmentAssetPurchase = (payload, options) => apiClient.request("investments.assets.recordPurchase", payload, options);
 export const createInvestmentAssetPosition = (payload, options) => apiClient.request("investments.assets.create", payload, options);

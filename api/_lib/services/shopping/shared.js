@@ -28,7 +28,14 @@ export const shoppingBudgetContext = async (db, budgetId) => {
   return row;
 };
 
-export const assertShoppingBudgetReadable = async (db, context, budgetId) => shoppingBudgetContext(db, budgetId);
+export const assertShoppingBudgetReadable = async (db, context, budgetId) => {
+  const budget = await shoppingBudgetContext(db, budgetId);
+  const personalDenied = budget.scope === "personal" && budget.owner_user_id !== context.actor.user_id;
+  if (personalDenied || !["personal", "shared"].includes(budget.scope)) {
+    throw appError("SHOPPING_FORBIDDEN", "Daftar belanja ini tidak dapat diakses.", 403);
+  }
+  return budget;
+};
 
 export const assertShoppingBudgetOperable = async (db, context, budgetId) => {
   const budget = await shoppingBudgetContext(db, budgetId);

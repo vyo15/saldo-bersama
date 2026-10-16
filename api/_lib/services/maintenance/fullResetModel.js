@@ -40,6 +40,7 @@ export const FULL_RESET_MASTER_TABLES = Object.freeze([
 ]);
 
 export const FULL_RESET_OPERATIONAL_TABLES = Object.freeze([
+  { table: "user_hidden_items", orderBy: "user_id,entity_kind,entity_id", key: "hiddenItems" },
   { table: "transfer_requests", orderBy: "request_id", key: "transferRequests" },
   { table: "master_data_requests", orderBy: "request_id", key: "masterDataRequests" },
   { table: "notification_deliveries", orderBy: "delivery_id", key: "notificationDeliveries" },
@@ -69,6 +70,7 @@ export const FULL_RESET_GENERATED_OUTBOX_PREDICATE = `(
 )`;
 
 export const FULL_RESET_DELETE_ORDER = Object.freeze([
+  "user_hidden_items",
   "transfer_requests",
   "master_data_requests",
   "notification_deliveries",
@@ -169,6 +171,7 @@ export const fullResetSummary = (counts) => {
   const masterRows = groupCount(counts, FULL_RESET_MASTER_TABLES);
   const operationalRows = groupCount(counts, FULL_RESET_OPERATIONAL_TABLES);
   return {
+    hiddenItems: tableCount(counts, "user_hidden_items"),
     transactions: tableCount(counts, "transactions"),
     reconciliations: tableCount(counts, "reconciliations"),
     investmentTrades: tableCount(counts, "investment_trades"),

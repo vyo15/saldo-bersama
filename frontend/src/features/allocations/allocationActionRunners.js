@@ -105,12 +105,13 @@ export const runPreviewAllocationLifecycle = async ({ item, setArchiveTarget, se
     setArchiveTarget({ item, preview });
     setArchiveState({ status: "idle", error: null });
   } catch (error) {
-    setArchiveState({ status: "idle", error: null });
+    setArchiveTarget(null);
+    setArchiveState({ status: "error", error });
     notify({ message: error.message || "Status alokasi gagal diperiksa.", tone: "danger", dedupeKey: "envelopes:lifecycle-preview-error" });
   }
 };
 
-export const runApplyAllocationLifecycle = async ({ archiveTarget, reason, confirmation, setArchiveTarget, setArchiveState, notify, refreshAfterMutation }) => {
+export const runApplyAllocationLifecycle = async ({ archiveTarget, reason, confirmation, setArchiveTarget, setArchiveState, notify, refreshAfterMutation, onRemoved }) => {
   const { item, preview } = archiveTarget;
   if (preview.canDeleteUnused) {
     await deleteUnusedEnvelopeRule({ envelope_rule_id: item.envelope_rule_id, row_version: item.rule_row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: item.rule_row_version });
@@ -121,6 +122,7 @@ export const runApplyAllocationLifecycle = async ({ archiveTarget, reason, confi
   }
   setArchiveTarget(null);
   setArchiveState({ status: "idle", error: null });
+  onRemoved?.(item.envelope_rule_id);
   await refreshAfterMutation();
 };
 

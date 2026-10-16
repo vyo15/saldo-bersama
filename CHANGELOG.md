@@ -1,3 +1,25 @@
+## 2026-10-16 — Mobile Alokasi/Kebutuhan: single Back, separated surfaces & action sheet (candidate)
+
+- Detail Atur Dana pada mobile sekarang memakai satu navigasi kontekstual `Alokasi Dana`, menjaga parameter filter pada URL kembali, dan menyembunyikan breadcrumb detail khusus mobile; navigasi desktop tetap tersedia.
+- Hero `Rumah` dan panel `Kebutuhan` memiliki jarak serta radius seragam, tanpa panel kotak yang menempel/bertumpuk.
+- Menu tiga titik Kebutuhan dan Alokasi berpindah ke `Modal` canonical (action sheet mobile), menghapus CSS popover lama; Detail, Edit, Hapus tetap mengikuti izin dan lifecycle backend existing. Saldo, jadwal, histori, API dan schema tidak diubah.
+- Regression UI dan contract docs diperbarui. Status candidate sampai full `npm run verify` lulus pada runtime/build native sesuai platform.
+
+## 2026-10-16 — Smart Delete: feedback, pengajuan, dan modal portofolio (candidate)
+
+- Alokasi dan Kebutuhan: menu tiga titik menampilkan aksi Hapus yang eksplisit, status memeriksa, pesan kegagalan yang terlihat, serta tombol coba lagi saat API preview lifecycle gagal. Hapus/arsip tetap berdasarkan dependensi dan izin backend; saldo serta transaksi historis tidak dihapus.
+- Pengajuan master-data legacy pending dapat **ditarik oleh pemohon asli** melalui action `masterDataRequests.withdraw`; status `cancelled`, `row_version`, audit, dan invalidasi realtime terlindungi. Aksi muncul pada panel Pengajuan Saya.
+- Hapus portofolio Investasi memakai modal konfirmasi native desain Saldo Bersama sebagai pengganti `window.confirm`; tetap menolak arsip ketika RDN, holding, atau alokasi Target aktif.
+- Kontrak API/role, realtime, dokumentasi, dan pengujian regresi diperbarui. Tidak ada perubahan migration/database schema. Build Vite tetap memerlukan dependensi Rollup sesuai platform; status candidate hingga `npm run verify` berhasil.
+
+## 2026-10-16 — Hotfix Smart Delete Alokasi Dana/Kebutuhan (candidate)
+
+- Memperbaiki tombol `Hapus dari daftar` Alokasi Dana yang tidak bereaksi pada halaman detail karena action modal hanya dimuat di tampilan overview; tombol sekarang langsung membuka preview dan konfirmasi lifecycle backend yang aman, menghilangkan modal perantara duplikat.
+- Menampilkan aksi Hapus Kebutuhan di menu tiga titik bagi pengguna yang berhak, langsung menuju preview hapus/arsip existing tanpa masuk Edit terlebih dahulu.
+- Membersihkan detail URL setelah berhasil, menjaga saldo asli dan histori, dan memberi penjelasan jujur bahwa jadwal Kebutuhan terkait perlu diperiksa terpisah.
+- Regression fixture Alokasi Rumah Rp700.000 dan dua kebutuhan membuktikan nominal akun tidak berubah dan dana alokasi dilepas; regression UI melindungi wiring tombol.
+- Merapikan baseline lint (kompleksitas Wishlist/backup, font investasi 12px) tanpa mengubah perhitungan. Verifikasi build Linux belum berhasil karena dependensi Rollup yang dibawa ZIP adalah build Windows; wajib `npm ci` + `npm run verify` pada lingkungan terpasang yang benar sebelum Production.
+
 ## 2026-10-14 — Merge Investasi Compact + Anti-Duplikasi UI/UX (UI-only, candidate QA)
 
 - Basis `saldo-bersama-clean.zip` terbaru **sudah mengandung seluruh 10 file Investasi Compact secara identik**, termasuk test dan dokumentasinya; tidak dilakukan overwrite ulang. Flow posisi lama/beli, RDN, validasi, serta perhitungan broker dipertahankan.

@@ -2,11 +2,12 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import { useNavigate } from "react-router";
 import { useTransactionComposer } from "../../app/TransactionComposerContext.jsx";
-import { FiArrowRight, FiBell, FiMoreHorizontal, FiPlus, FiSliders } from "react-icons/fi";
+import { FiArrowRight, FiBell, FiMoreHorizontal, FiPlus, FiSliders, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ContextBack from "../../components/navigation/ContextBack.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
 import Card from "../../components/common/Card.jsx";
+import Modal from "../../components/common/Modal.jsx";
 import Money from "../../components/common/Money.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
 import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
@@ -14,7 +15,7 @@ import { budgetPeriodMeta, budgetRemainingAmount, budgetVisualState } from "../.
 import { useBudgetFormController, useBudgetLifecycleController } from "../budgets/useBudgetActions.js";
 import { allocationAssigneeLabel, allocationNeedsFundingSummary, allocationPeriodLabel, allocationSourceLabel, allocationUsage } from "./allocationPresentation.js";
 import { allocationClass } from "./allocationStyles.js";
-import { BudgetLimitRow, BudgetNeedDetailModal } from "./AllocationNeedRow.jsx";
+import { BudgetLimitRow, BudgetNeedDetailModal, BudgetNeedActionsModal } from "./AllocationNeedRow.jsx";
 
 const BudgetDialogLayer = lazy(() => import("../budgets/BudgetDialogLayer.jsx"));
 const COMPLETED_RECURRING_STATUSES = new Set(["paid", "received"]);
@@ -74,6 +75,8 @@ const canRecordAllocationExpense = (item, today) => Boolean(item.can_record_expe
   && (!item.period_start || today >= item.period_start)
   && (!item.period_end || today <= item.period_end);
 
+const canManageNeedActions = (canManage, target) => Boolean(canManage && target?.budget?.can_manage !== false);
+
 const AllocationNeedsPanel = ({
   item,
   linkedBudgets,
@@ -89,10 +92,13 @@ const AllocationNeedsPanel = ({
   recordExpense,
   openSchedule,
   editBudget,
+  removeBudget,
   openShopping,
+  lifecycleController,
 }) => {
   const [needFilter, setNeedFilter] = useState("all");
   const [detailTarget, setDetailTarget] = useState(null);
+  const [actionsTarget, setActionsTarget] = useState(null);
   const categoryLookup = new Map((expenseCategories || []).map((category) => [category.category_id, category]));
   const budgetState = linkedBudgets.map((budget) => ({
     budget,
@@ -113,6 +119,8 @@ const AllocationNeedsPanel = ({
       <div><h3 id="allocation-needs-title">Kebutuhan</h3><p>Pantau sisa dana dan catat pemakaian.</p></div>
       {linkedBudgets.length ? <span className={allocationClass("allocation-detail-section__count")}>{linkedBudgets.length} item</span> : null}
     </div>
+    {lifecycleController.archiveState.status === "checking" ? <p className="notice notice--info" role="status" aria-live="polite">Memeriksa histori dan dana Kebutuhan sebelum dihapus...</p> : null}
+    {lifecycleController.archiveState.status === "error" && !lifecycleController.archiveTarget ? <div className="notice notice--danger" role="alert">{lifecycleController.archiveState.error?.message || "Pemeriksaan Kebutuhan gagal."} <Button type="button" onClick={() => lifecycleController.retryBudgetLifecycle()}>Coba lagi</Button></div> : null}
     {linkedBudgets.length ? <>
       <AllocationNeedsFundingSummary item={item} linkedBudgets={linkedBudgets} canAdjustAllocation={canAdjustAllocation} onAdjustAllocation={onAdjustAllocation} />
       {showFilters ? <div className={allocationClass("allocation-needs-filter")} data-active-index={needFilter === "all" ? 0 : needFilter === "attention" ? 1 : 2} role="group" aria-label="Filter kebutuhan">
@@ -132,12 +140,21 @@ const AllocationNeedsPanel = ({
           canManage={canManage && budget.can_manage !== false}
           onRecord={canRecordExpense ? recordExpense : null}
           onOpenSchedule={openSchedule}
-          onEdit={editBudget}
-          onOpenDetail={() => setDetailTarget({ budget, category, schedule, periodMeta })}
+          onOpenActions={() => setActionsTarget({ budget, category, schedule, periodMeta })}
           onOpenShopping={openShopping}
         />;
       })}</div> : <p className={allocationClass("allocation-needs-filter__empty")}>Tidak ada kebutuhan pada filter ini.</p>}
       {canManage ? <Button className={allocationClass("allocation-needs-add")} variant="secondary" icon={FiPlus} onClick={openBudgetForm}>Tambah kebutuhan</Button> : null}
+      <BudgetNeedActionsModal
+        target={actionsTarget}
+        onClose={() => setActionsTarget(null)}
+        canManage={canManageNeedActions(canManage, actionsTarget)}
+        onOpenDetail={() => setDetailTarget(actionsTarget)}
+        onOpenSchedule={openSchedule}
+        onEdit={editBudget}
+        onRemove={removeBudget}
+        lifecycleChecking={lifecycleController.archiveState.status === "checking"}
+      />
       <BudgetNeedDetailModal target={detailTarget} onClose={() => setDetailTarget(null)} />
     </> : <EmptyState
       variant="inline"
@@ -247,6 +264,7 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
     budgetLifecycleController,
     openBudgetForm,
     editBudget,
+    removeBudget: budgetLifecycleController.openBudgetLifecycle,
     recordAllocationExpense,
     recordNeedExpense,
     openSchedule,
@@ -255,22 +273,42 @@ const useAllocationPlanningDetailState = ({ item, budgets, relatedRecurring, per
 
 const showGlobalExpenseAction = (canRecordExpense, linkedBudgets) => canRecordExpense && linkedBudgets.length === 0;
 
-const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage, canLifecycle, expenseCategories, users, usersStatus, onBack, onBudgetReminder, onAllocationReminder, onOpenAllocationActions, canAdjustAllocation, onAdjustAllocation, canMoveAllocation, onMoveAllocation, state }) => <>
+const AllocationLifecycleFeedback = ({ lifecycleState, lifecycleTarget, item, onRetry }) => {
+  if (lifecycleTarget) return null;
+  if (lifecycleState?.status === "checking") return <div className="notice notice--info" role="status" aria-live="polite">Memeriksa penggunaan dan riwayat Alokasi...</div>;
+  if (lifecycleState?.status === "error") return <div className="notice notice--danger" role="alert">{lifecycleState.error?.message || `Pemeriksaan Alokasi ${item.name} gagal.`} <Button type="button" onClick={() => onRetry(item)}>Coba lagi</Button></div>;
+  return null;
+};
+
+const AllocationHeroActions = ({ item, canMoveAllocation, onMoveAllocation, onAllocationReminder, onOpenAllocationActions, allocationLifecycleState, allocationLifecycleTarget }) => {
+  const [open, setOpen] = useState(false);
+  const run = (action) => {
+    setOpen(false);
+    action(item);
+  };
+  if (!canMoveAllocation && !item.can_set_reminder && !item.can_archive_rule) return null;
+  return <>
+    <button type="button" className={allocationClass("allocation-detail-action-trigger")} onClick={() => setOpen(true)} aria-label={`Kelola Alokasi ${item.name}`} title="Kelola Alokasi"><FiMoreHorizontal aria-hidden="true" /></button>
+    <Modal open={open} title="Pilihan Alokasi" description={item.name} onClose={() => setOpen(false)} size="sm">
+      <div className={allocationClass("allocation-need-actions")}>
+        {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => run(onMoveAllocation)}>Pindahkan dana</Button> : null}
+        {item.can_set_reminder ? <Button icon={FiBell} onClick={() => run(onAllocationReminder)}>Pengingat</Button> : null}
+        {item.can_archive_rule ? <Button variant="danger" icon={FiTrash2} disabled={allocationLifecycleState?.status === "checking" || allocationLifecycleState?.status === "submitting" || Boolean(allocationLifecycleTarget)} onClick={() => run(onOpenAllocationActions)}>Hapus Alokasi</Button> : null}
+      </div>
+    </Modal>
+  </>;
+};
+
+const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage, canLifecycle, expenseCategories, users, usersStatus, onBack, onBudgetReminder, onAllocationReminder, onOpenAllocationActions, allocationLifecycleState, allocationLifecycleTarget, canAdjustAllocation, onAdjustAllocation, canMoveAllocation, onMoveAllocation, state }) => <>
   <div className={allocationClass("allocation-planning-detail")}>
     <ContextBack className={allocationClass("allocation-detail-back")} onClick={onBack} label="Alokasi Dana" />
     <Card className={allocationClass("allocation-detail-shell")}>
       <section className={allocationClass("allocation-detail-hero")} aria-labelledby="allocation-detail-title">
         <div className={allocationClass("allocation-detail-hero__heading")}>
           <div><span>Alokasi Dana</span><h2 id="allocation-detail-title">{item.name}</h2><p>{state.sourceLabel} · {state.assigneeLabel} · {state.periodLabel}</p></div>
-          {(canMoveAllocation || item.can_set_reminder || item.can_archive_rule) ? <details className={allocationClass("allocation-detail-menu")}>
-            <summary aria-label={`Kelola Alokasi ${item.name}`} title="Kelola Alokasi"><FiMoreHorizontal aria-hidden="true" /></summary>
-            <div className={allocationClass("allocation-detail-menu__items")}>
-              {canMoveAllocation ? <Button icon={FiArrowRight} onClick={() => onMoveAllocation(item)}>Pindahkan dana</Button> : null}
-              {item.can_set_reminder ? <Button icon={FiBell} onClick={() => onAllocationReminder(item)}>Pengingat</Button> : null}
-              {item.can_archive_rule ? <Button onClick={() => onOpenAllocationActions(item)}>Hapus dari daftar</Button> : null}
-            </div>
-          </details> : null}
+          <AllocationHeroActions item={item} canMoveAllocation={canMoveAllocation} onMoveAllocation={onMoveAllocation} onAllocationReminder={onAllocationReminder} onOpenAllocationActions={onOpenAllocationActions} allocationLifecycleState={allocationLifecycleState} allocationLifecycleTarget={allocationLifecycleTarget} />
         </div>
+        <AllocationLifecycleFeedback lifecycleState={allocationLifecycleState} lifecycleTarget={allocationLifecycleTarget} item={item} onRetry={onOpenAllocationActions} />
         {showGlobalExpenseAction(state.canRecordExpense, linkedBudgets) ? <div className={allocationClass("allocation-detail-hero__action")}><Button variant="primary" icon={FiPlus} onClick={state.recordAllocationExpense}>Catat pengeluaran</Button></div> : null}
         <div className={allocationClass("allocation-detail-hero__metrics allocation-detail-hero__metrics--compact")}>
           <div><span>Total alokasi</span><strong><Money value={state.usage.allocated} /></strong></div>
@@ -293,7 +331,9 @@ const AllocationPlanningDetailView = ({ item, linkedBudgets, budgets, canManage,
         recordExpense={state.recordNeedExpense}
         openSchedule={state.openSchedule}
         editBudget={state.editBudget}
+        removeBudget={state.removeBudget}
         openShopping={state.openShopping}
+        lifecycleController={state.budgetLifecycleController}
       />
     </Card>
   </div>

@@ -5,7 +5,7 @@ import { createAccount, prepareAccountCreatePayload } from "./accounts.js";
 import { createCategory, prepareCategoryCreatePayload } from "./categories.js";
 
 const REQUEST_TYPES = new Set(["account", "category"]);
-const REQUEST_STATUSES = new Set(["pending", "approved", "rejected"]);
+const REQUEST_STATUSES = new Set(["pending", "approved", "rejected", "cancelled"]);
 
 const assertMemberRequester = (actor) => {
   if (actor.role !== "member") throw appError("MEMBER_REQUEST_ONLY", "Administrator dapat membuat data master secara langsung tanpa pengajuan.", 409);
@@ -164,4 +164,33 @@ export const reviewMasterDataRequest = async (db, context) => {
     next: requestAuditProjection(next),
   });
   return { request: requestProjection(next), entity };
+};
+
+// Pengajuan legacy milik sendiri dapat ditarik saat masih pending. Tidak ada entity
+// atau transaksi yang dihapus, dan jejak audit sebelum/sesudah tetap utuh.
+export const withdrawMasterDataRequest = async (db, context) => {
+  const payload = context.payload || {};
+  const current = await db.one("SELECT * FROM master_data_requests WHERE request_id=?", [payload.request_id]);
+  if (!current || current.requested_by !== context.actor.user_id) throw appError("REQUEST_NOT_FOUND", "Pengajuan Anda tidak ditemukan.", 404);
+  if (current.status !== "pending") throw appError("REQUEST_NOT_PENDING", "Pengajuan sudah diproses dan tidak bisa ditarik.", 409);
+  assertVersion(current, context.rowVersion ?? payload.row_version);
+  const reason = sanitizeText(payload.reason, 200);
+  if (!reason) throw appError("REASON_REQUIRED", "Alasan menarik pengajuan wajib diisi.", 400);
+  const timestamp = nowIso();
+  const next = {
+    ...current, status: "cancelled", row_version: Number(current.row_version) + 1,
+    reviewed_by: context.actor.user_id, reviewed_at: timestamp, review_reason: reason,
+  };
+  const update = await db.execute(`UPDATE master_data_requests
+    SET status='cancelled',row_version=?,reviewed_by=?,reviewed_at=?,review_reason=?
+    WHERE request_id=? AND requested_by=? AND row_version=? AND status='pending'`, [
+    next.row_version, next.reviewed_by, next.reviewed_at, next.review_reason,
+    current.request_id, context.actor.user_id, current.row_version,
+  ]);
+  if (update.rowsAffected !== 1) throw appError("CONFLICT", "Pengajuan sudah berubah di perangkat lain. Muat ulang daftar pengajuan.", 409);
+  await appendAudit(db, context, {
+    entityType: "master_data_request", entityId: current.request_id,
+    previous: requestAuditProjection(current), next: requestAuditProjection(next),
+  });
+  return { request: requestProjection(next) };
 };

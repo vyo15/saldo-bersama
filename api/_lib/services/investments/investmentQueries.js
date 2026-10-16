@@ -84,7 +84,11 @@ export const investmentOverview = async (db, context) => {
       legacy_cash_activity: legacyActivity,
     });
   }
+  const archived = await db.all(`SELECT p.portfolio_id,p.name,p.row_version,p.rdn_account_id,p.status,a.name AS rdn_account_name,a.owner_scope,a.owner_user_id
+    FROM investment_portfolios p JOIN accounts a ON a.account_id=p.rdn_account_id
+    WHERE p.status='archived' AND (a.owner_scope='shared' OR a.owner_user_id=?) ORDER BY p.updated_at DESC LIMIT 50`, [context.actor.user_id]);
   return {
+    archived_portfolios: archived.map((row) => ({ ...publicRow(row), can_manage: row.owner_scope === "personal" ? row.owner_user_id === context.actor.user_id : context.actor.role === "owner" })),
     portfolios: items,
     instruments: instruments.map((row) => publicRow(row)),
     summary: {

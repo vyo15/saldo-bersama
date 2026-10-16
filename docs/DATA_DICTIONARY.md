@@ -5,7 +5,7 @@
 > **Update when:** Makna field/table atau lifecycle data berubah.  
 > **Boundary:** Tipe/constraint authoritative berada di migration; kronologi migration berada di Git/CHANGELOG.
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `026_wishlist_optional_planning.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `027_user_hidden_items.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -28,7 +28,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `system_config` | Konfigurasi runtime internal seperti schema version, maintenance, timezone, dan currency. | Sedang | Migration-only |
 | `user_sessions` | Registry session perangkat server-side dengan verifier hash, expiry/revoke state, dan metadata perangkat coarse. Raw secret/cookie tidak pernah disimpan. | Tinggi | Backend auth/session lifecycle; tidak masuk logical backup |
 | `users` | Identitas aplikasi yang terikat pada Firebase UID, email, role, dan status. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
-| `master_data_requests` | Pengajuan create rekening/kategori oleh Member. Menyimpan payload canonical, request key, status, reviewer, alasan, entity hasil, dan `row_version`. | Tinggi | Member create request; Administrator review; ikut backup/restore |
+| `master_data_requests` | Pengajuan create rekening/kategori oleh Member. Menyimpan payload canonical, request key, status, reviewer, alasan, entity hasil, dan `row_version`. | Tinggi | Member create request; Administrator review; pemohon dapat menarik pending (status cancelled); ikut backup/restore |
 | `transfer_requests` | Pengajuan transfer Member dari shared → rekening personal. Menyimpan payload transfer canonical, reviewer, transaction hasil, status, dan `row_version`. | Tinggi | Member request; Administrator review; approval atomik dengan ledger; ikut backup/restore |
 | `accounts` | Rekening shared/personal beserta nomor rekening bank, template visual bank/E-wallet, saldo awal, kebijakan saldo negatif, dan flag internal `is_system_hidden` untuk compatibility Investasi. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `categories` | Kategori pemasukan/pengeluaran. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
@@ -49,9 +49,10 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `envelope_movements` | Realokasi atau mutasi Alokasi Dana yang diaudit. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `budgets` | Kebutuhan operasional per periode terbuka, termasuk metadata penghentian dan total dana yang sudah dilepas. | Sedang | User-facing remove memilih delete history-free atau ended/archive; row periode tertutup dipadatkan |
 | `wishlist_items` | Rencana pembelian pribadi/bersama, estimasi biaya, prioritas dan target dana opsional (`planning_enabled=0` saat belum direncanakan), satu tautan transaksi pembayaran bila dibeli. Menyimpan rencana tidak mengurangi saldo dan tidak menciptakan dana terkunci. | Tinggi | User create/update/archive; purchased melalui transaction canonical, cancelled payment bisa reopen; backup/restore/export/reset |
-| `shopping_lists` | Daftar belanja operasional yang terhubung ke satu Kebutuhan dan memakai optimistic concurrency. | Sedang | Service shopping; ikut backup/restore/export/reset |
+| `shopping_lists` | Daftar belanja operasional yang terhubung ke satu Kebutuhan dan memakai optimistic concurrency. | Sedang | Service shopping; status archived/restore; ikut backup/restore/export/reset |
 | `shopping_items` | Barang checklist dengan quantity milli-unit, estimasi/aktual, kelompok, dan status operasional. | Sedang | Bukan ledger/transaction line; purchased hanya melalui checkout |
 | `shopping_checkouts` | Snapshot checkout yang menautkan satu sesi belanja ke satu transaksi canonical. | Tinggi | Transaction ID unik; dibuat atomik bersama transaksi |
+| `user_hidden_items` | Preferensi UI per pengguna untuk item wishlist/barang checkout yang disembunyikan; bukan lifecycle finansial. | Sedang | Mutation `visibility.set`, ikut backup/restore/reset; tidak mengubah transaksi |
 | `budget_history` | Histori compact Kebutuhan periode tertutup: snapshot nama, nominal, pemakaian, dana dilepas, status akhir, ownership, dan metadata minimum untuk reopen. | Sedang | Dibuat saat period close, dibaca report, direhidrasi lalu dihapus saat reopen; ikut backup/restore |
 | `goal_movements` | Setoran/penarikan cash Target yang terhubung ke transaksi. | Sedang | Service/API; satu kejadian cash tidak boleh diduplikasi sebagai event investasi |
 | `goal_investment_events` | Event append-only yang mengaitkan sebagian holding atau Buy/Sell ke Target, menyimpan cost-basis delta, retained sale cash, dan realized P/L terkait Target. | Tinggi | Dibentuk service Target/Investasi; trade link unik; reversal/history dipertahankan; ikut backup/restore |
@@ -142,7 +143,7 @@ Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API cont
 
 ## Current schema marker
 
-Versi runtime aktif: `28`. Latest migration canonical: `026_wishlist_optional_planning.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
+Versi runtime aktif: `29`. Latest migration canonical: `027_user_hidden_items.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
 
 Compatibility penting yang tetap current:
 

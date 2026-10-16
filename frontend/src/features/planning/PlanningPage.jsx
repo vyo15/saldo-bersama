@@ -21,7 +21,13 @@ const PlanningDetailShell = ({ children }) => <>
 
 const PLANNING_HELP = "Atur penggunaan dana untuk pengeluaran dari satu tempat. Alokasi, jadwal, kewajiban, dan target tetap saling terhubung di belakang layar dan tampil sebagai satu daftar Aktif yang ringkas. Pemasukan yang sudah tercatat otomatis menambah dana rekening dan tidak perlu direncanakan ulang di sini.";
 
-const PlanningOverviewHeader = () => <>
+const allocationListLocation = (location) => {
+  const params = new URLSearchParams(location.search);
+  params.delete("allocation");
+  return { pathname: location.pathname, search: params.toString() ? `?${params}` : "" };
+};
+
+const PlanningOverviewHeader = ({ location, allocationDetailOpen }) => <>
   <div className={styles.desktopHeader}>
     <PageHeader
       title="Atur Dana"
@@ -30,18 +36,19 @@ const PlanningOverviewHeader = () => <>
     />
   </div>
   <header className={styles.mobileHeader}>
-    <ContextBack to="/" label="Beranda" className={styles.mobileBack} ariaLabel="Kembali ke Beranda" />
-    <h1>Atur Dana</h1>
-    <PageInfoButton className={styles.mobileHelp} title="Tentang Atur Dana">{PLANNING_HELP}</PageInfoButton>
+    <ContextBack to={allocationDetailOpen ? allocationListLocation(location) : "/"} label={allocationDetailOpen ? "Alokasi Dana" : "Beranda"} className={styles.mobileBack} ariaLabel={allocationDetailOpen ? "Kembali ke daftar Alokasi Dana" : "Kembali ke Beranda"} />
+    <h1>{allocationDetailOpen ? "Alokasi Dana" : "Atur Dana"}</h1>
+    {allocationDetailOpen ? <span aria-hidden="true" /> : <PageInfoButton className={styles.mobileHelp} title="Tentang Atur Dana">{PLANNING_HELP}</PageInfoButton>}
   </header>
 </>;
 
 const PlanningPage = () => {
   const location = useLocation();
   const surface = planningSurfaceFromPath(location.pathname);
+  const allocationDetailOpen = surface === "overview" && Boolean(new URLSearchParams(location.search).get("allocation"));
 
   return <div className={`page-stack ${styles.page}`}>
-    {surface === "overview" ? <PlanningOverviewHeader /> : null}
+    {surface === "overview" ? <PlanningOverviewHeader location={location} allocationDetailOpen={allocationDetailOpen} /> : null}
     <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat pengaturan dana…" />}>
       {surface === "overview" ? <AllocationsPage embedded /> : null}
       {surface === "recurring" ? <PlanningDetailShell><RecurringPage embedded expenseOnly /></PlanningDetailShell> : null}

@@ -10,7 +10,7 @@ import { createTransaction, updateTransaction, cancelTransaction, restoreTransac
 import { backupActivityStatement, enqueueIntegration, integrationStatus, integrationStatusStatement, presentIntegrationStatus } from "../services/integrations.js";
 import {
   archiveAccount, archiveCategory, createAccount, createCategory, deleteUnusedAccount, deleteUnusedCategory, listAccounts, listArchivedData,
-  listCategories, listMasterDataRequests, previewAccountLifecycle, previewCategoryArchive, requestAccountCreation, requestCategoryCreation, restoreAccount, restoreCategory, reviewMasterDataRequest, updateAccount,
+  listCategories, listMasterDataRequests, previewAccountLifecycle, previewCategoryArchive, requestAccountCreation, requestCategoryCreation, restoreAccount, restoreCategory, reviewMasterDataRequest, withdrawMasterDataRequest, updateAccount,
   updateCategory,
 } from "../services/masterData.js";
 import {
@@ -19,7 +19,7 @@ import {
 } from "../services/maintenance/index.js";
 import { markNotificationRead, notificationCenter, notificationPreferences, notificationStatus, registerPush, testPush, unregisterPush, updateNotificationPreference, updateNotificationSettings } from "../services/notifications.js";
 import {
-  buyInvestment, correctInvestment, createInvestmentAssetPosition, recordInvestmentAssetPurchase, createInvestmentPortfolio, createOpeningPosition, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
+  buyInvestment, correctInvestment, createInvestmentAssetPosition, recordInvestmentAssetPurchase, createInvestmentPortfolio, archiveInvestmentPortfolio, restoreInvestmentPortfolio, createOpeningPosition, investmentOverview, listInvestmentInstruments, reconcileInvestment, sellInvestment, updateInvestmentValuation, upsertInvestmentInstrument,
 } from "../services/investments.js";
 import { cancelManualReminder, getManualReminder, upsertManualReminder } from "../services/reminders.js";
 import {
@@ -38,9 +38,10 @@ import { listTransferRequests, requestSharedToPersonalTransfer, reviewTransferRe
 import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
 import { operationalHealthStatement, presentOperationalHealth, presentSchedulerHealth } from "../services/operationalHealth.js";
 import { listWishlist, createWishlist, updateWishlist, changeWishlistState, purchaseWishlist, reopenWishlist } from "../services/wishlist/index.js";
-import { shoppingByTransaction, shoppingDetail, shoppingSuggestions, createShoppingList, createShoppingItem, updateShoppingItem, setShoppingItemState, removeShoppingItem, checkoutShoppingList } from "../services/shopping.js";
+import { shoppingByTransaction, shoppingDetail, shoppingSuggestions, createShoppingList, archiveShoppingList, restoreShoppingList, createShoppingItem, updateShoppingItem, setShoppingItemState, removeShoppingItem, checkoutShoppingList } from "../services/shopping.js";
 
 import { readSyncState } from "../syncRevisions.js";
+import { setItemVisibility } from "../services/itemVisibility.js";
 
 const systemHealth = async (db) => {
   const configStatement = { sql: "SELECT key,value FROM system_config WHERE key IN ('schema_version','maintenance_mode','timezone','currency','database_environment','scheduler_last_run_at','scheduler_last_success_at','scheduler_last_failure_at','scheduler_last_error_code')", args: [] };
@@ -106,6 +107,8 @@ const ACTION_HANDLERS = Object.freeze({
   "investments.assets.create": createInvestmentAssetPosition,
   "investments.assets.recordPurchase": recordInvestmentAssetPurchase,
   "investments.portfolios.create": createInvestmentPortfolio,
+  "investments.portfolios.archive": archiveInvestmentPortfolio,
+  "investments.portfolios.restore": restoreInvestmentPortfolio,
   "investments.instruments.upsert": upsertInvestmentInstrument,
   "investments.trades.buy": buyInvestment,
   "investments.trades.sell": sellInvestment,
@@ -131,6 +134,7 @@ const ACTION_HANDLERS = Object.freeze({
   "categories.deleteUnused": deleteUnusedCategory,
   "masterDataRequests.list": listMasterDataRequests,
   "masterDataRequests.review": reviewMasterDataRequest,
+  "masterDataRequests.withdraw": withdrawMasterDataRequest,
   "transferRequests.list": listTransferRequests,
   "transferRequests.request": requestSharedToPersonalTransfer,
   "transferRequests.review": reviewTransferRequest,
@@ -139,6 +143,7 @@ const ACTION_HANDLERS = Object.freeze({
   "transactions.update": updateTransaction,
   "transactions.cancel": cancelTransaction,
   "transactions.restore": restoreTransaction,
+  "visibility.set": setItemVisibility,
   "wishlist.list": listWishlist,
   "wishlist.create": createWishlist,
   "wishlist.update": updateWishlist,
@@ -149,6 +154,8 @@ const ACTION_HANDLERS = Object.freeze({
   "shopping.suggestions": shoppingSuggestions,
   "shopping.byTransaction": shoppingByTransaction,
   "shopping.create": createShoppingList,
+  "shopping.archive": archiveShoppingList,
+  "shopping.restore": restoreShoppingList,
   "shopping.itemCreate": createShoppingItem,
   "shopping.itemUpdate": updateShoppingItem,
   "shopping.itemState": setShoppingItemState,

@@ -12,7 +12,6 @@ export const useAllocationWorkspaceUiState = ({ createFormFactory, createNeedsFa
   const [allocationFilter, setAllocationFilter] = useState("all");
   const [detailAction, setDetailAction] = useState("");
   const [legacyBudgetAttention, setLegacyBudgetAttention] = useState(false);
-  const [actionTarget, setActionTarget] = useState(null);
   const [reminderTarget, setReminderTarget] = useState(null);
   const [closeTarget, setCloseTarget] = useState(null);
   const [closeReuseNeeds, setCloseReuseNeeds] = useState(false);
@@ -24,7 +23,7 @@ export const useAllocationWorkspaceUiState = ({ createFormFactory, createNeedsFa
   const [releasedFunds, setReleasedFunds] = useState(null);
   const [fundingIntent, setFundingIntent] = useState(null);
   const [fundingError, setFundingError] = useState(null);
-  return { move, setMove, createForm, setCreateForm, createNeeds, setCreateNeeds, createOpen, setCreateOpen, moveOpen, setMoveOpen, adjustTarget, setAdjustTarget, adjustForm, setAdjustForm, message, setMessage, allocationFilter, setAllocationFilter, detailAction, setDetailAction, legacyBudgetAttention, setLegacyBudgetAttention, actionTarget, setActionTarget, reminderTarget, setReminderTarget, closeTarget, setCloseTarget, closeReuseNeeds, setCloseReuseNeeds, closeState, setCloseState, archiveTarget, setArchiveTarget, archiveState, setArchiveState, reverseTarget, setReverseTarget, reverseState, setReverseState, releasedFunds, setReleasedFunds, fundingIntent, setFundingIntent, fundingError, setFundingError };
+  return { move, setMove, createForm, setCreateForm, createNeeds, setCreateNeeds, createOpen, setCreateOpen, moveOpen, setMoveOpen, adjustTarget, setAdjustTarget, adjustForm, setAdjustForm, message, setMessage, allocationFilter, setAllocationFilter, detailAction, setDetailAction, legacyBudgetAttention, setLegacyBudgetAttention, reminderTarget, setReminderTarget, closeTarget, setCloseTarget, closeReuseNeeds, setCloseReuseNeeds, closeState, setCloseState, archiveTarget, setArchiveTarget, archiveState, setArchiveState, reverseTarget, setReverseTarget, reverseState, setReverseState, releasedFunds, setReleasedFunds, fundingIntent, setFundingIntent, fundingError, setFundingError };
 };
 
 export const useAllocationDetailRoute = (location, navigate) => {

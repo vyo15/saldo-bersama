@@ -269,17 +269,22 @@ export const useBudgetFormController = ({ items, period, notify, refresh, catego
 export const useBudgetLifecycleController = ({ notify, refresh, setForm, setFormOpen, envelopePeriodId = "" }) => {
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveState, setArchiveState] = useState({ status: "idle", error: null });
+  const [lastPreviewBudget, setLastPreviewBudget] = useState(null);
   const openBudgetLifecycle = async (budget) => {
-    setArchiveState({ status: "submitting", error: null });
+    if (!budget || archiveState.status === "checking" || archiveState.status === "submitting") return;
+    setLastPreviewBudget(budget);
+    setArchiveState({ status: "checking", error: null });
     try {
       const preview = await previewBudgetLifecycle({ budget_id: budget.budget_id, row_version: budget.row_version }, { force: true });
       setArchiveTarget({ budget, preview });
       setArchiveState({ status: "idle", error: null });
     } catch (error) {
-      setArchiveState({ status: "idle", error: null });
+      setArchiveTarget(null);
+      setArchiveState({ status: "error", error });
       notify({ message: error.message || "Status kebutuhan gagal diperiksa.", tone: "danger", dedupeKey: "budgets:lifecycle-preview-error" });
     }
   };
+  const retryBudgetLifecycle = () => { if (lastPreviewBudget) return openBudgetLifecycle(lastPreviewBudget); return undefined; };
   const applyBudgetLifecycle = async (reason) => {
     if (!archiveTarget) return;
     const { budget, preview } = archiveTarget;
@@ -303,5 +308,5 @@ export const useBudgetLifecycleController = ({ notify, refresh, setForm, setForm
       setArchiveState({ status: "error", error });
     }
   };
-  return { archiveTarget, archiveState, setArchiveTarget, openBudgetLifecycle, applyBudgetLifecycle };
+  return { archiveTarget, archiveState, setArchiveTarget, openBudgetLifecycle, retryBudgetLifecycle, applyBudgetLifecycle };
 };

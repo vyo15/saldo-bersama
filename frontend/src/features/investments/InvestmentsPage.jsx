@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { FiPlus } from "react-icons/fi";
+import { FiPlus, FiTrash2, FiRotateCcw } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
+import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
@@ -11,6 +12,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useDashboardAttentionState } from "../../hooks/useDashboardAttentionState.js";
 import { investmentRdnAccountSetupState, readInvestmentContinuation } from "../../shared/workflows/investmentContinuation.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { archiveInvestmentPortfolio, restoreInvestmentPortfolio, invalidateInvestmentReads } from "./investments.api.js";
 import investmentEmptyDuo from "../../assets/investments/investment-empty-duo.webp";
 import styles from "./InvestmentsPage.module.css";
 
@@ -117,6 +119,31 @@ const resolveQuickRecordInvestment = ({ portfolios, requestedPortfolioId }) => {
   return { kind: "choose", requestedUnavailable: false };
 };
 
+const PortfolioLifecyclePanel = ({ portfolios, archived, actor, online, busyId, onArchive, onRestore }) => {
+  const manageable = portfolios.filter((item) => item.owner_scope === "personal" ? item.owner_user_id === actor?.user_id : actor?.role === "owner");
+  if (!manageable.length && !archived.length) return null;
+  return <section className={styles.portfolioLifecycle} aria-label="Kelola portofolio investasi">
+    <h2>Kelola portofolio</h2>
+    {manageable.map((portfolio) => <div key={portfolio.portfolio_id} className={styles.portfolioLifecycleRow}>
+      <span><strong>{portfolio.name}</strong><small>{portfolio.rdn_account_name} · Saldo RDN dan posisi harus nol untuk mengarsipkan</small></span>
+      <button type="button" disabled={!online || Boolean(busyId)} onClick={() => onArchive(portfolio)}><FiTrash2 aria-hidden="true" /> Hapus</button>
+    </div>)}
+    {archived.map((portfolio) => <div key={portfolio.portfolio_id} className={styles.portfolioLifecycleRow}>
+      <span><strong>{portfolio.name}</strong><small>Diarsipkan · Histori tetap tersimpan</small></span>
+      {portfolio.can_manage ? <button type="button" disabled={!online || Boolean(busyId)} onClick={() => onRestore(portfolio)}><FiRotateCcw aria-hidden="true" /> Pulihkan</button> : null}
+    </div>)}
+  </section>;
+};
+
+const PortfolioArchiveConfirm = ({ portfolio, busy, error, onClose, onConfirm }) => <ConfirmationModal
+  open={Boolean(portfolio)} title="Hapus portofolio dari daftar?"
+  description={portfolio ? `${portfolio.name} hanya dapat diarsipkan jika saldo RDN, posisi investasi, dan alokasi Target sudah kosong. Histori transaksi tidak dihapus.` : ""}
+  confirmLabel="Arsipkan portofolio" tone="danger" busy={busy}
+  acknowledgementLabel="Saya memahami bahwa portofolio yang masih memiliki dana atau posisi tidak dapat diarsipkan."
+  error={error ? new Error(error) : null}
+  onCancel={() => { if (!busy) onClose(); }} onConfirm={onConfirm}
+/>;
+
 const InvestmentsPage = () => {
   const { user } = useAuth();
   const { notify } = useFeedback();
@@ -132,12 +159,26 @@ const InvestmentsPage = () => {
   const workflowHandled = useRef("");
   const [holdingDetail, setHoldingDetail] = useState(null);
   const [latestSavedAsset, setLatestSavedAsset] = useState(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState("");
+  const [archivePortfolioTarget, setArchivePortfolioTarget] = useState(null), [lifecycleError, setLifecycleError] = useState("");
+  const online = typeof navigator === "undefined" || navigator.onLine;
   const data = overview.data || { summary: {}, portfolios: [], instruments: [], activity: [] };
   const goals = goalResource.data?.items || [];
   const positionCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.positions || portfolio.holdings || []).length, 0), [data.portfolios]);
   const activityCount = useMemo(() => (data.portfolios || []).reduce((total, portfolio) => total + (portfolio.activity || []).length, 0), [data.portfolios]);
   const hasInvestmentHistory = positionCount > 0 || activityCount > 0;
 
+  const applyPortfolioLifecycle = async (portfolio, restore) => {
+    if (!online || lifecycleBusy) return;
+    setLifecycleError(""); setLifecycleBusy(portfolio.portfolio_id);
+    try {
+      await (restore ? restoreInvestmentPortfolio : archiveInvestmentPortfolio)({ portfolio_id: portfolio.portfolio_id, row_version: portfolio.row_version });
+      invalidateInvestmentReads(); await Promise.allSettled([overview.reload(), goalResource.reload()]);
+      if (!restore) setArchivePortfolioTarget(null);
+      notify({ message: restore ? "Portofolio berhasil dipulihkan." : "Portofolio kosong diarsipkan. Histori tetap aman.", tone: "success" });
+    } catch (error) { setLifecycleError(error?.message || "Perubahan portofolio gagal. Coba lagi."); }
+    finally { setLifecycleBusy(""); }
+  };
   const openAction = (mode, portfolio, options = {}) => setDialog({ mode, portfolio, ...options });
   const clearSetupGoal = () => setSetupGoalId("");
   const onCreateRdn = () => { setSetupOpen(false); navigate("/rekening", { state: investmentRdnAccountSetupState() }); };
@@ -193,14 +234,17 @@ const InvestmentsPage = () => {
   const page = { data, goals, user, setupOpen, setupGoalId, setupRdnId, setSetupOpen, clearSetupGoal, onCreateRdn, holdingDetail, setHoldingDetail, dialog, setDialog, onSetupSuccess, onInvestmentSuccess, openAction };
   return <div className={`page-stack ${styles.page}`}>
     <RefreshWarning error={overview.refreshError || goalResource.error || goalResource.refreshError} onRetry={() => Promise.allSettled([overview.reload(), goalResource.reload()])} />
-    <PageHeader
-      title="Investasi"
-      actions={hasInvestmentHistory ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup()} aria-label="Tambah investasi">Tambah investasi</Button> : null}
-      help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak mengirim transfer bank otomatis, dan tidak mengambil harga pasar live. Beli/Jual pada portfolio dengan RDN eksplisit memperbarui cash RDN tercatat; aset dengan rekening internal tetap hanya pencatatan posisi."
-    />
+    <PageHeader title="Investasi" actions={hasInvestmentHistory ? <Button className={styles.setupAction} variant="primary" icon={FiPlus} data-preload-action="investmentSetup" onClick={() => openSetup()} aria-label="Tambah investasi">Tambah investasi</Button> : null}
+      help="Investasi adalah pencatatan manual. Saldo Bersama tidak terhubung ke broker, tidak mengirim order beli/jual, tidak mengirim transfer bank otomatis, dan tidak mengambil harga pasar live. Beli/Jual pada portfolio dengan RDN eksplisit memperbarui cash RDN tercatat; aset dengan rekening internal tetap hanya pencatatan posisi." />
     {!hasInvestmentHistory ? <EmptyInvestmentState onAdd={() => setSetupOpen(true)} /> : <Suspense fallback={<NativePageSkeleton kind="investments" label="Menyiapkan rincian investasi…" />}>
       <InvestmentOverview latestSavedAsset={latestSavedAsset} data={data} onHolding={(portfolio, holding) => setHoldingDetail({ portfolio, holding })} />
     </Suspense>}
+    {lifecycleError ? <p className={styles.portfolioLifecycleError} role="alert">{lifecycleError}</p> : null}
+    <PortfolioLifecyclePanel portfolios={data.portfolios || []} archived={data.archived_portfolios || []} actor={user} online={online} busyId={lifecycleBusy}
+      onArchive={(portfolio) => { setLifecycleError(""); setArchivePortfolioTarget(portfolio); }} onRestore={(portfolio) => applyPortfolioLifecycle(portfolio, true)} />
+    <PortfolioArchiveConfirm portfolio={archivePortfolioTarget} busy={Boolean(lifecycleBusy)} error={lifecycleError}
+      onClose={() => { setArchivePortfolioTarget(null); setLifecycleError(""); }}
+      onConfirm={() => archivePortfolioTarget ? applyPortfolioLifecycle(archivePortfolioTarget, false) : undefined} />
     <InvestmentOverlays page={page} />
   </div>;
 };

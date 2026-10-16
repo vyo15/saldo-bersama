@@ -22,14 +22,14 @@ test("lifecycle action membedakan hard-delete, archive, dan penghentian Kewajiba
     assert.match(source, /Hapus permanen/);
     assert.match(source, /Arsipkan/);
   }
-  for (const source of [categories, allocations, budgets, recurring, goals]) {
+  for (const source of [categories, recurring, goals]) {
     assert.match(source, /Hapus dari daftar/);
 
     assert.doesNotMatch(source, />\s*Kelola data\s*</);
   }
-  assert.match(allocations, /Hapus dari daftar/);
+  assert.match(allocations, /Hapus Alokasi/);
   assert.doesNotMatch(allocations, />\s*Kelola data\s*</);
-  assert.match(budgets, /Hapus dari daftar/);
+  assert.match(budgets, /Arsipkan kebutuhan/);
   assert.doesNotMatch(budgets, />\s*Kelola status\s*</);
 
   assert.match(commitments, /Hentikan kewajiban\?/);

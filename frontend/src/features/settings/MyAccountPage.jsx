@@ -61,7 +61,7 @@ const MyRequests = ({ masterRequests, transferRequests, accounts }) => {
   return <div className={memberStyles.myRequestStack}>
     <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
     {!masterItems.length && !transferItems.length ? <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Belum ada pengajuan</strong><span>Rekening dan kategori baru bisa langsung dibuat. Pengajuan transfer dan permintaan lama ditampilkan di sini.</span></div> : null}
-    <MasterDataRequestsPanel items={masterItems} title="Permintaan lama rekening dan kategori" />
+    <MasterDataRequestsPanel items={masterItems} title="Permintaan lama rekening dan kategori" onChanged={masterRequests.reload} />
     <TransferRequestsPanel items={transferItems} accounts={accounts} />
   </div>;
 };

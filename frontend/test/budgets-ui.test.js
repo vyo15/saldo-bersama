@@ -98,9 +98,9 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(detail, /allocation-limit-row__header/);
   assert.match(styles, /grid-template-columns: 34px minmax\(0, 1fr\) auto/);
   assert.match(styles, /allocation-limit-row__content[\s\S]*margin-left: 42px/);
-  assert.match(styles, /allocation-limit-row__menu-items[\s\S]*width: 11\.5rem/);
-  assert.match(styles, /allocation-limit-row__menu-items[\s\S]*max-width: calc\(100vw - 40px\)/);
-  assert.doesNotMatch(styles, /allocation-limit-row__menu-items[\s\S]{0,220}width: max-content/);
+  assert.match(styles, /\.allocation-limit-row__menu-trigger/);
+  assert.doesNotMatch(styles, /allocation-limit-row__menu-items/, "Popover yang menutupi baris lain harus sudah dihapus.");
+  assert.match(detail, /<Modal open title="Pilihan kebutuhan"/);
   assert.match(detail, /allocation-needs-filter/);
   assert.match(detail, /Perhatian <span>\{attentionCount\}<\/span>/);
   assert.match(detail, /Belum dipakai <span>\{unusedCount\}<\/span>/);
@@ -110,10 +110,10 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
   assert.match(styles, /allocation-limit-row__quick-action-icon/);
   assert.doesNotMatch(detail, /Jadwal Terkait/);
   assert.doesNotMatch(detail, /AllocationScheduleContinuation/);
-  assert.match(detail, /allocation-detail-menu/);
+  assert.match(detail, /allocation-detail-action-trigger/);
   assert.match(detail, /Pindahkan dana/);
   assert.match(detail, /Pengingat/);
-  assert.match(detail, />Hapus dari daftar<\/Button>/);
+  assert.match(detail, />Hapus (Alokasi|Kebutuhan)<\/Button>/);
   assert.doesNotMatch(detail, /Kelola dana/);
   assert.match(styles, /allocation-detail-shell/);
   assert.match(styles, /allocation-limit-row/);

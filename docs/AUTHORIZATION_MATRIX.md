@@ -46,6 +46,8 @@
 | `investments.assets.create` | Ya | Ya |
 | `investments.assets.recordPurchase` | Ya | Ya |
 | `investments.portfolios.create` | Ya | Ya |
+| `investments.portfolios.archive` | Ya | Ya |
+| `investments.portfolios.restore` | Ya | Ya |
 | `investments.instruments.upsert` | Ya | Tidak |
 | `investments.openingPositions.create` | Ya | Ya |
 | `investments.trades.buy` | Ya | Ya |
@@ -71,6 +73,7 @@
 | `categories.restore` | Ya | Tidak |
 | `masterDataRequests.list` | Ya | Ya |
 | `masterDataRequests.review` | Ya | Tidak |
+| `masterDataRequests.withdraw` | Ya | Ya |
 | `transferRequests.list` | Ya | Ya |
 | `transferRequests.request` | Tidak | Ya |
 | `transferRequests.review` | Ya | Tidak |
@@ -80,6 +83,7 @@
 | `transactions.cancel` | Ya | Ya |
 | `transactions.restore` | Ya | Tidak |
 | `wishlist.list` | Ya | Ya |
+| `visibility.set` | Ya | Ya |
 | `wishlist.create` | Ya | Ya |
 | `wishlist.update` | Ya | Ya |
 | `wishlist.state` | Ya | Ya |
@@ -124,6 +128,8 @@
 | `shopping.suggestions` | Ya | Ya |
 | `shopping.byTransaction` | Ya | Ya |
 | `shopping.create` | Ya | Ya |
+| `shopping.archive` | Ya | Ya |
+| `shopping.restore` | Ya | Ya |
 | `shopping.itemCreate` | Ya | Ya |
 | `shopping.itemUpdate` | Ya | Ya |
 | `shopping.itemState` | Ya | Ya |
@@ -232,3 +238,5 @@ UI menggunakan label **Pengelola Keluarga** dan **Anggota Keluarga**. Untuk komp
 ## Shopping
 
 Read mengikuti keterlihatan Kebutuhan. Mutasi personal hanya pemilik Kebutuhan. Mutasi shared mengikuti assignee Alokasi Dana; owner dapat mengelola. Kebutuhan harus aktif, memiliki kategori expense, dan terhubung ke Alokasi Dana/rekening sumber. Backend adalah authority; disabled control frontend hanya UX.
+
+Catatan izin `masterDataRequests.withdraw`: peran Owner/Member boleh memanggil action, tetapi layanan hanya mengizinkan pemohon asli menarik pengajuan miliknya sendiri yang masih pending (cek `requested_by` di backend).

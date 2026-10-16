@@ -94,6 +94,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `investments.assets.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `investments.assets.recordPurchase` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `investments.portfolios.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.portfolios.archive` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
+| `investments.portfolios.restore` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `investments.instruments.upsert` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `investments.openingPositions.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
 | `investments.trades.buy` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/investments.js` |
@@ -119,6 +121,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `categories.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData.js` |
 | `masterDataRequests.list` | Ya | Ya | Read | Tidak | `api/_lib/services/masterData/requests.js` |
 | `masterDataRequests.review` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
+| `masterDataRequests.withdraw` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/masterData/requests.js` |
 | `transferRequests.list` | Ya | Ya | Read | Tidak | `api/_lib/services/transferRequests.js` |
 | `transferRequests.request` | Tidak | Ya | Write/operation | Wajib | `api/_lib/services/transferRequests.js` |
 | `transferRequests.review` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/transferRequests.js` |
@@ -128,6 +131,7 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `transactions.cancel` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `transactions.restore` | Ya | Tidak | Write/operation | Wajib | `api/_lib/services/finance.js` |
 | `wishlist.list` | Ya | Ya | Read | Tidak | `api/_lib/services/wishlist/index.js` |
+| `visibility.set` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/itemVisibility.js` |
 | `wishlist.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/wishlist/index.js` |
 | `wishlist.update` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/wishlist/index.js` |
 | `wishlist.state` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/wishlist/index.js` |
@@ -172,6 +176,8 @@ Permission canonical tetap `api/_lib/security.js`. Handler registry berada di `a
 | `shopping.suggestions` | Ya | Ya | Read | Tidak | `api/_lib/services/shopping/` |
 | `shopping.byTransaction` | Ya | Ya | Read | Tidak | `api/_lib/services/shopping/` |
 | `shopping.create` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
+| `shopping.archive` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
+| `shopping.restore` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
 | `shopping.itemCreate` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
 | `shopping.itemUpdate` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
 | `shopping.itemState` | Ya | Ya | Write/operation | Wajib | `api/_lib/services/shopping/` |
@@ -432,3 +438,13 @@ Write actions: `shopping.create`, `shopping.itemCreate`, `shopping.itemUpdate`, 
 Semua write mengikuti kontrak idempotency gateway. Daftar Belanja adalah capability **opt-in per Kebutuhan**: UI tidak menampilkan entry point pada semua Kebutuhan secara universal dan tidak mengaktifkannya berdasarkan kategori secara hard-code. `budgets.upsert`, `budgets.batchCreate`, dan `envelopes.createWithNeeds` membawa preference melalui `shopping_enabled`; `shopping.create` juga membuat capability terbaca aktif karena menghasilkan list non-archived. Saat Kebutuhan diteruskan ke periode baru, preference ikut diteruskan sebagai list kosong baru, sedangkan item/checkouts periode lama tidak disalin. Pada tutup periode, snapshot Kebutuhan tetap masuk `budget_history`; bila Kebutuhan masih menjadi parent FK shopping, satu row `budgets` arsip dipertahankan hanya sebagai anchor FK dan dikecualikan dari branch report operasional agar tidak double-count. Buka ulang periode mengaktifkan kembali anchor yang memang aktif saat penutupan.
 
 `shopping.checkout` menerima `shopping_list_id`, `row_version`, `total_amount`, `checkout_date`, `leftover_action`, opsional `overspend_reason`, dan `confirm_duplicate`; hasilnya berisi checkout dan transaksi canonical. Checklist item tidak menciptakan transaksi.
+
+
+## Smart Delete — kontrak tambahan (candidate 2026-10-15)
+
+- `shopping.archive` / `shopping.restore`: `{shopping_list_id,row_version}`. Owner/member hanya dapat mengubah daftar yang berhak dikelola; `row_version` divalidasi. Archive mempertahankan checkout, transaksi, item. Restore ditolak bila sudah ada list aktif dan memulihkan list parsial menjadi `active`.
+- `investments.portfolios.archive` / `.restore`: `{portfolio_id,row_version}`. Arsip hanya ketika kepemilikan, dana RDN, serta alokasi Target telah ditutup. Portofolio personal hanya pemiliknya; shared hanya pengelola (`owner`).
+- `visibility.set`: `{entity_kind: "wishlist_item"|"shopping_item",entity_id,hidden:boolean}`. Tidak ada perubahan ledger/status purchase; preferensi per pengguna. `wishlist.list` dan `shopping.detail` menambah `is_hidden`; `shopping.detail` juga mengembalikan `archived_lists`, `investments.overview` mengembalikan `archived_portfolios`. Klien lama boleh mengabaikan kolom tambahan tersebut.
+- Database migration 027 → `DATABASE_SCHEMA_VERSION=29`, `user_hidden_items` ikut logical backup/restore/reset. Detail ada di `SMART_DELETE_FLOW.md`.
+
+Status: contract ini kandidat sampai `npm run verify` lulus pada instalasi dependency lengkap.

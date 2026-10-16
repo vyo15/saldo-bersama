@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `026_wishlist_optional_planning.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `027_user_hidden_items.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -127,9 +127,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `28`
+Versi aktif: `29`
 
-Latest migration: `026_wishlist_optional_planning.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `027_user_hidden_items.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 
@@ -142,3 +142,8 @@ Current additive capabilities yang perlu diketahui reader schema:
 - Environment/session/rate-limit/collaboration tables tetap bagian current schema meskipun diperkenalkan oleh migration lebih lama.
 
 Urutan/history migration lengkap ada di `database/migrations/`; arti field/lifecycle ada di `DATA_DICTIONARY.md`; rollback/forward-fix mengikuti `DATABASE_MIGRATION_POLICY.md`.
+
+
+## Tambahan schema 29: preferensi hapus dari tampilan (candidate)
+
+Migration `027_user_hidden_items.sql` menambahkan tabel `user_hidden_items` dengan primary key `(user_id,entity_kind,entity_id)`, `hidden` 0/1 dan `updated_at`. Relasi entitas adalah opaque ID sengaja tanpa cascade FK supaya delete/arsip domain tidak menghapus histori finansial. `user_id` memiliki FK RESTRICT ke `users`; tabel ikut logical backup/restore/reset. Migrasi ini wajib dilakukan canonical sebelum menggunakan action `visibility.set` dan query item dengan `is_hidden`.

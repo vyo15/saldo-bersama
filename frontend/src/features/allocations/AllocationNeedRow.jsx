@@ -1,4 +1,4 @@
-import { FiArrowRight, FiCalendar, FiCheck, FiCheckCircle, FiEdit2, FiInfo, FiMoreHorizontal, FiPlus, FiShoppingCart } from "react-icons/fi";
+import { FiArrowRight, FiCalendar, FiCheck, FiCheckCircle, FiEdit2, FiInfo, FiMoreHorizontal, FiPlus, FiShoppingCart, FiTrash2 } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import Money from "../../components/common/Money.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -10,7 +10,6 @@ import { allocationClass } from "./allocationStyles.js";
 
 const COMPLETED_RECURRING_STATUSES = new Set(["paid", "received"]);
 
-const closeNeedMenu = (event) => event.currentTarget.closest("details")?.removeAttribute("open");
 
 const budgetRecordingLabel = (recordingMode, { long = false } = {}) => {
   if (recordingMode === "fixed_once") return "Sekali bayar";
@@ -49,32 +48,43 @@ const BudgetNeedPrimaryAction = ({ budget, schedule, onRecord, onOpenSchedule })
   ><span className={allocationClass("allocation-limit-row__quick-action-icon")}><PrimaryIcon aria-hidden="true" /></span><span>{visibleLabel}</span></button>;
 };
 
-const BudgetNeedOverflowMenu = ({ budget, schedule, blockedByLimit, canManage, onOpenSchedule, onEdit, onOpenDetail }) => {
-  const showSchedule = blockedByLimit && Boolean(schedule);
-  const hasMenu = Boolean(onOpenDetail || canManage || showSchedule);
-  if (!hasMenu) return null;
-  return <details className={allocationClass("allocation-limit-row__menu")}>
-    <summary aria-label={`Pilihan kebutuhan ${budget.name}`} title="Pilihan kebutuhan"><FiMoreHorizontal aria-hidden="true" /></summary>
-    <div className={allocationClass("allocation-limit-row__menu-items")}>
-      {onOpenDetail ? <Button icon={FiInfo} onClick={(event) => { closeNeedMenu(event); onOpenDetail(); }}>Detail kebutuhan</Button> : null}
-      {showSchedule ? <Button icon={FiCalendar} onClick={(event) => { closeNeedMenu(event); onOpenSchedule(schedule.item, false); }}>Lihat jadwal</Button> : null}
-      {canManage ? <Button icon={FiEdit2} onClick={(event) => { closeNeedMenu(event); onEdit(budget); }}>Edit kebutuhan</Button> : null}
-    </div>
-  </details>;
+const BudgetNeedOverflowMenu = ({ budget, onOpenActions }) => {
+  if (!onOpenActions) return null;
+  return <button type="button" className={allocationClass("allocation-limit-row__menu-trigger")} aria-label={`Pilihan kebutuhan ${budget.name}`} title={`Pilihan kebutuhan ${budget.name}`} onClick={onOpenActions}><FiMoreHorizontal aria-hidden="true" /></button>;
 };
 
-const BudgetLimitActions = ({ budget, schedule, status, canManage, onRecord, onOpenSchedule, onEdit, onOpenDetail }) => {
+// Use the canonical Modal: on mobile it becomes a bottom action sheet with focus trapping,
+// Escape/system Back handling, and no popover that can obscure another Kebutuhan row.
+export const BudgetNeedActionsModal = ({ target, onClose, canManage, onOpenDetail, onOpenSchedule, onEdit, onRemove, lifecycleChecking }) => {
+  if (!target) return null;
+  const { budget, schedule } = target;
+  const status = budgetVisualState(budget, target.periodMeta);
+  const showSchedule = ["completed", "empty", "danger"].includes(status.key) && Boolean(schedule);
+  const run = (action) => {
+    onClose();
+    action();
+  };
+  return <Modal open title="Pilihan kebutuhan" description={budget.name} onClose={onClose} size="sm">
+    <div className={allocationClass("allocation-need-actions")}>
+      <Button icon={FiInfo} onClick={() => run(onOpenDetail)}>Detail kebutuhan</Button>
+      {showSchedule ? <Button icon={FiCalendar} onClick={() => run(() => onOpenSchedule(schedule.item, false))}>Lihat jadwal</Button> : null}
+      {canManage ? <Button icon={FiEdit2} onClick={() => run(() => onEdit(budget))}>Edit kebutuhan</Button> : null}
+      {canManage && onRemove ? <Button variant="danger" icon={FiTrash2} disabled={lifecycleChecking} onClick={() => run(() => onRemove(budget))}>Hapus kebutuhan</Button> : null}
+    </div>
+  </Modal>;
+};
+
+const BudgetLimitActions = ({ budget, schedule, status, onRecord, onOpenSchedule, onOpenActions }) => {
   const blockedByLimit = ["completed", "empty", "danger"].includes(status.key);
   const depleted = status.key === "empty";
   const primarySchedule = blockedByLimit ? null : schedule;
   const primaryRecord = blockedByLimit ? null : onRecord;
   const hasPrimaryAction = Boolean(primarySchedule || primaryRecord);
-  const hasOverflowAction = Boolean(onOpenDetail || canManage || (blockedByLimit && schedule));
-  if (!hasPrimaryAction && !hasOverflowAction && !depleted) return null;
+  if (!hasPrimaryAction && !onOpenActions && !depleted) return null;
   return <div className={allocationClass(`allocation-limit-row__actions ${hasPrimaryAction ? "has-primary" : ""}`)}>
     <BudgetNeedPrimaryAction budget={budget} schedule={primarySchedule} onRecord={primaryRecord} onOpenSchedule={onOpenSchedule} />
     {depleted ? <span className={allocationClass("allocation-limit-row__depleted-stamp")} aria-label="Dana habis">Habis</span> : null}
-    <BudgetNeedOverflowMenu budget={budget} schedule={schedule} blockedByLimit={blockedByLimit} canManage={canManage} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} />
+    <BudgetNeedOverflowMenu budget={budget} onOpenActions={onOpenActions} />
   </div>;
 };
 
@@ -97,7 +107,7 @@ const BudgetLimitUsage = ({ budget, status, schedule, amount, used, remaining })
   </div>;
 };
 
-export const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canManage, onRecord, onOpenSchedule, onEdit, onOpenDetail, onOpenShopping }) => {
+export const BudgetLimitRow = ({ budget, category, periodMeta, schedule, onRecord, onOpenSchedule, onOpenActions, onOpenShopping }) => {
   const amount = Math.max(0, Number(budget.amount || 0));
   const used = Math.max(0, Number(budget.used_amount || 0));
   const status = budgetVisualState(budget, periodMeta);
@@ -115,7 +125,7 @@ export const BudgetLimitRow = ({ budget, category, periodMeta, schedule, canMana
         <strong>{budget.name}</strong>
         {completed ? <BudgetCompletedMeta amount={amount} /> : <span className={allocationClass(`allocation-limit-row__pattern ${status.attention && !depleted ? tone : ""}`)}>{depleted ? patternLabel : status.attention ? status.label : patternLabel}</span>}
       </div>
-      <BudgetLimitActions budget={budget} schedule={schedule} status={status} canManage={canManage} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onEdit={onEdit} onOpenDetail={onOpenDetail} />
+      <BudgetLimitActions budget={budget} schedule={schedule} status={status} onRecord={recordAction} onOpenSchedule={onOpenSchedule} onOpenActions={onOpenActions} />
     </div>
     {completed ? null : <BudgetLimitUsage budget={budget} status={status} schedule={schedule} amount={amount} used={used} remaining={remaining} />}
     {onOpenShopping && budget.shopping_enabled && !completed ? <button type="button" className={allocationClass("allocation-limit-row__shopping-link")} onClick={() => onOpenShopping(budget)}><FiShoppingCart aria-hidden="true" /><span>{Number(budget.shopping_item_count || 0) > 0 ? `Daftar belanja · ${Number(budget.shopping_item_count)} item` : "Buat daftar belanja"}</span><FiArrowRight aria-hidden="true" /></button> : null}

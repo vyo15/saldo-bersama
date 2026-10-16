@@ -71,11 +71,11 @@ const editable = async (db, context) => {
 const present = (row) => publicRow(row);
 
 export const listWishlist = async (db, context) => {
-  const rows = await db.all(`SELECT w.*,t.status AS purchase_transaction_status,CASE WHEN t.status='active' THEN t.amount ELSE w.purchased_amount END AS displayed_purchased_amount FROM wishlist_items w
+  const rows = await db.all(`SELECT w.*,COALESCE((SELECT h.hidden FROM user_hidden_items h WHERE h.user_id=? AND h.entity_kind='wishlist_item' AND h.entity_id=w.wishlist_item_id),0) AS is_hidden,t.status AS purchase_transaction_status,CASE WHEN t.status='active' THEN t.amount ELSE w.purchased_amount END AS displayed_purchased_amount FROM wishlist_items w
     LEFT JOIN transactions t ON t.transaction_id=w.purchase_transaction_id
     WHERE w.scope='shared' OR w.owner_user_id=?
     ORDER BY CASE w.status WHEN 'active' THEN 0 WHEN 'purchased' THEN 1 ELSE 2 END,
-      CASE w.priority WHEN 'soon' THEN 0 WHEN 'planned' THEN 1 ELSE 2 END,w.created_at DESC`, [context.actor.user_id]);
+      CASE w.priority WHEN 'soon' THEN 0 WHEN 'planned' THEN 1 ELSE 2 END,w.created_at DESC`, [context.actor.user_id,context.actor.user_id]);
   return { items: rows.map(present) };
 };
 export const createWishlist = async (db, context) => {

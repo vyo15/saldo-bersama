@@ -1,3 +1,3 @@
 export { shoppingDetail, shoppingSuggestions, shoppingByTransaction } from "./shopping/queries.js";
-export { createShoppingList, createShoppingItem, updateShoppingItem, setShoppingItemState, removeShoppingItem, checkoutShoppingList } from "./shopping/mutations.js";
+export { createShoppingList, archiveShoppingList, restoreShoppingList, createShoppingItem, updateShoppingItem, setShoppingItemState, removeShoppingItem, checkoutShoppingList } from "./shopping/mutations.js";
 export { syncBudgetShoppingPreference } from "./shopping/preferences.js";

@@ -28,6 +28,7 @@ export {
   requestAccountCreation,
   requestCategoryCreation,
   reviewMasterDataRequest,
+  withdrawMasterDataRequest,
 } from "./masterData/requests.js";
 
 export const deleteUnusedAccount = async (db, context) => {

@@ -37,6 +37,7 @@ export const RESET_BUSINESS_TABLES = Object.freeze([
 ]);
 
 export const RESET_OPERATIONAL_TABLES = Object.freeze([
+  { table: "user_hidden_items", key: "entity_id", orderBy: "user_id,entity_kind,entity_id" },
   { table: "transfer_requests", key: "request_id" },
   { table: "master_data_requests", key: "request_id" },
   { table: "notification_deliveries", key: "delivery_id" },
@@ -201,6 +202,7 @@ export const resetSummary = (counts) => {
   return {
     transactions: countFor(counts, "transactions"),
     wishlistItems: countFor(counts, "wishlist_items"),
+    hiddenItems: countFor(counts, "user_hidden_items"),
     shoppingLists: countFor(counts, "shopping_lists"),
     shoppingItems: countFor(counts, "shopping_items"),
     shoppingCheckouts: countFor(counts, "shopping_checkouts"),

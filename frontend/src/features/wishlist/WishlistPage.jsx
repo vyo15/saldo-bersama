@@ -13,6 +13,7 @@ import { todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
 import { changeWishlistState, invalidateWishlist, isOutcomeUnknownError, reopenWishlist } from "./wishlist.api.js";
 import styles from "./WishlistPage.module.css";
+import { setItemVisibility } from "../../services/visibility.js";
 
 const WishlistDialogLayer = lazy(() => import("./WishlistDialogLayer.jsx"));
 
@@ -41,16 +42,17 @@ const WishlistRowStatus = ({ item, busy, onActivate, onReopen }) => <>
   {isCancelled(item) ? <button className={styles.restoreAction} type="button" disabled={busy} onClick={() => onReopen(item)}>Buka rencana lagi</button> : null}
 </>;
 
-const WishlistRowMenu = ({ item, busy, onEdit, onArchive }) => <details className={styles.itemMenu}>
+const WishlistRowMenu = ({ item, busy, onEdit, onArchive, onVisibility }) => <details className={styles.itemMenu}>
   <summary aria-label={`Aksi lainnya untuk ${item.name}`}><FiMoreHorizontal aria-hidden="true" /></summary>
   <div className={styles.menuPanel}>
     {item.status === "active" ? <><button type="button" disabled={busy} onClick={() => onEdit(item)}><FiEdit2 aria-hidden="true" /> Edit wishlist</button><button type="button" disabled={busy} onClick={() => onArchive(item)}><FiTrash2 aria-hidden="true" /> Arsipkan</button></> : null}
+    {item.status === "purchased" ? <button type="button" disabled={busy} onClick={() => onVisibility(item, !item.is_hidden)}><FiTrash2 aria-hidden="true" /> {item.is_hidden ? "Tampilkan lagi" : "Hapus dari tampilan"}</button> : null}
     {item.product_url ? <a href={item.product_url} target="_blank" rel="noopener noreferrer"><FiArrowRight aria-hidden="true" /> Marketplace</a> : null}
     {item.note ? <p className={styles.menuNote}>{item.note}</p> : null}
   </div>
 </details>;
 
-const WishlistRow = ({ item, simulationMode, selected, busy, onSelect, onBuy, onEdit, onArchive, onActivate, onReopen }) => <article className={styles.item}>
+const WishlistRow = ({ item, simulationMode, selected, busy, onSelect, onBuy, onEdit, onArchive, onActivate, onReopen, onVisibility }) => <article className={styles.item}>
   {simulationMode && item.status === "active" ? <label className={styles.simIcon}>
     <input type="checkbox" checked={selected} disabled={busy} onChange={() => onSelect(item.wishlist_item_id)} aria-label={`Pilih ${item.name} untuk simulasi`} />
   </label> : <div className={styles.itemIcon} aria-hidden="true"><FiShoppingBag /></div>}
@@ -63,7 +65,7 @@ const WishlistRow = ({ item, simulationMode, selected, busy, onSelect, onBuy, on
     <p className={styles.itemSubtitle}>{scopeText(item.scope)} · {item.target_date ? `Target ${item.target_date}` : !item.planning_enabled ? "Tanpa target" : strategyLabels[item.funding_strategy]}</p>
     <WishlistRowStatus item={item} busy={busy} onActivate={onActivate} onReopen={onReopen} />
   </div>
-  {!simulationMode && (item.status === "active" || item.product_url || item.note) ? <WishlistRowMenu item={item} busy={busy} onEdit={onEdit} onArchive={onArchive} /> : null}
+  {!simulationMode && (item.status === "active" || item.status === "purchased" || item.product_url || item.note) ? <WishlistRowMenu item={item} busy={busy} onEdit={onEdit} onArchive={onArchive} onVisibility={onVisibility} /> : null}
 </article>;
 
 const WishlistEmptyState = ({ items, active, showArchive, onReset, onShowHistory, onCreate }) => {
@@ -79,10 +81,10 @@ const WishlistEmptyState = ({ items, active, showArchive, onReset, onShowHistory
   return <div className={styles.empty}><FiHeart aria-hidden="true" /><h2>{title}</h2><p>{description}</p>{action}</div>;
 };
 
-const WishlistBoard = ({ items, active, filtered, scope, priority, showArchive, simulationMode, selectedIds, busy, onSelect, onBuy, onEdit, onArchive, onActivate, onReopen, onReset, onShowHistory, onCreate }) => <section className={styles.board} aria-label="Daftar keinginan">
+const WishlistBoard = ({ items, active, filtered, scope, priority, showArchive, simulationMode, selectedIds, busy, onSelect, onBuy, onEdit, onArchive, onActivate, onReopen, onVisibility, onReset, onShowHistory, onCreate }) => <section className={styles.board} aria-label="Daftar keinginan">
   <div key={`${scope}-${priority}-${showArchive}`} className={styles.resultsMotion}>
     {filtered.length === 0 ? <WishlistEmptyState items={items} active={active} showArchive={showArchive} onReset={onReset} onShowHistory={onShowHistory} onCreate={onCreate} />
-      : filtered.map((item) => <WishlistRow key={item.wishlist_item_id} item={item} simulationMode={simulationMode} selected={selectedIds.includes(item.wishlist_item_id)} busy={busy} onSelect={onSelect} onBuy={onBuy} onEdit={onEdit} onArchive={onArchive} onActivate={onActivate} onReopen={onReopen} />)}
+      : filtered.map((item) => <WishlistRow key={item.wishlist_item_id} item={item} simulationMode={simulationMode} selected={selectedIds.includes(item.wishlist_item_id)} busy={busy} onSelect={onSelect} onBuy={onBuy} onEdit={onEdit} onArchive={onArchive} onActivate={onActivate} onReopen={onReopen} onVisibility={onVisibility} />)}
   </div>
 </section>;
 
@@ -150,6 +152,20 @@ const WishlistFooter = ({ hasItems, showArchive, setShowArchive }) => {
 
 const WishlistToolbar = ({ active, showArchive, ...props }) => active.length || showArchive ? <WishlistControls showArchive={showArchive} {...props} /> : null;
 
+const visibleWishlistItems = (items, { showHidden, showArchive, scope, priority }) => items.filter((item) =>
+  (showHidden || !item.is_hidden) && (showArchive || item.status === "active")
+  && (scope === "all" || item.scope === scope) && (priority === "all" || item.priority === priority));
+
+const WishlistHiddenToggle = ({ items, showHidden, setShowHidden, setShowArchive }) => {
+  if (!items.some((item) => item.is_hidden)) return null;
+  const toggle = (event) => {
+    const checked = event.target.checked;
+    setShowHidden(checked);
+    if (checked) setShowArchive(true);
+  };
+  return <label className={styles.hiddenToggle}><input type="checkbox" checked={showHidden} onChange={toggle} /> Tampilkan yang dihapus dari tampilan</label>;
+};
+
 const WishlistPage = () => {
   const resource = useApiResource("wishlist.list");
   const mutation = useGuardedMutation();
@@ -159,17 +175,18 @@ const WishlistPage = () => {
   const [checkout, setCheckout] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [showArchive, setShowArchive] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [simulationMode, setSimulationMode] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
   const items = useMemo(() => resource.data?.items || [], [resource.data]);
-  const active = items.filter((item) => item.status === "active");
+  const active = items.filter((item) => item.status === "active" && !item.is_hidden);
   // Always derive selections from active server records; purchased/archived items cannot be simulated.
   const selected = active.filter((item) => selectedIds.includes(item.wishlist_item_id));
   const exitSimulation = () => { setSimulationMode(false); setSelectedIds([]); setShowSimulator(false); };
   const toggleSelection = (id) => setSelectedIds((previous) => previous.includes(id) ? previous.filter((itemId) => itemId !== id) : [...previous, id]);
-  const filtered = items.filter((item) => (showArchive || item.status === "active") && (scope === "all" || item.scope === scope) && (priority === "all" || item.priority === priority));
+  const filtered = visibleWishlistItems(items, { showHidden, showArchive, scope, priority });
   const total = active.reduce((sum, item) => sum + Number(item.estimated_amount), 0);
   const urgent = active.filter((item) => item.priority === "soon");
   const urgentTotal = urgent.reduce((sum, item) => sum + Number(item.estimated_amount), 0);
@@ -180,6 +197,12 @@ const WishlistPage = () => {
     setFeedback("");
     try { await mutation.run(() => changeWishlistState({ wishlist_item_id: item.wishlist_item_id, row_version: item.row_version, status })); invalidateWishlist(); await resource.reload(); setSelectedIds([]); }
     catch (error) { setFeedback(isOutcomeUnknownError(error) ? "Status perubahan belum pasti. Muat ulang sebelum mencoba lagi." : error.message); }
+  };
+  const toggleVisibility = async (item, hidden) => {
+    if (hidden && !window.confirm(`Hapus ${item.name} dari tampilan pribadi? Histori pembelian dan saldo tidak berubah.`)) return;
+    setFeedback("");
+    try { await mutation.run(() => setItemVisibility("wishlist_item", item.wishlist_item_id, hidden)); invalidateWishlist(); await resource.reload(); }
+    catch (error) { setFeedback(isOutcomeUnknownError(error) ? "Status belum pasti. Muat ulang terlebih dahulu." : error.message); }
   };
   const restoreCancelled = async (item) => {
     setFeedback("");
@@ -193,12 +216,13 @@ const WishlistPage = () => {
     {resource.refreshError ? <RefreshWarning error={resource.refreshError} onRetry={resource.reload} /> : null}
     {feedback ? <p className={styles.error} role="alert">{feedback}</p> : null}
     <WishlistOverview active={active} urgent={urgent} total={total} urgentTotal={urgentTotal} done={done} />
+    <WishlistHiddenToggle items={items} showHidden={showHidden} setShowHidden={setShowHidden} setShowArchive={setShowArchive} />
     <WishlistToolbar active={active} scope={scope} setScope={setScope} priority={priority} setPriority={setPriority} showArchive={showArchive} setFilterOpen={setFilterOpen}
       filtered={filtered} simulationMode={simulationMode} setSimulationMode={setSimulationMode} exitSimulation={exitSimulation}
       selected={selected} setSelectedIds={setSelectedIds} setShowSimulator={setShowSimulator} />
     <WishlistBoard items={items} active={active} filtered={filtered} scope={scope} priority={priority} showArchive={showArchive} simulationMode={simulationMode}
       selectedIds={selectedIds} busy={mutation.busy} onSelect={toggleSelection} onBuy={setCheckout} onEdit={setEditor}
-      onArchive={(item) => changeState(item, "archived")} onActivate={(item) => changeState(item, "active")} onReopen={restoreCancelled}
+      onArchive={(item) => changeState(item, "archived")} onActivate={(item) => changeState(item, "active")} onReopen={restoreCancelled} onVisibility={toggleVisibility}
       onReset={() => { setScope("all"); setPriority("all"); setShowArchive(false); }} onShowHistory={() => { setScope("all"); setPriority("all"); setShowArchive(true); }} onCreate={() => setEditor({})} />
     {filterOpen ? <WishlistFilterModal priority={priority} showArchive={showArchive} onClose={() => setFilterOpen(false)}
       onApply={(nextPriority, nextArchive) => { setPriority(nextPriority); setShowArchive(nextArchive); setFilterOpen(false); }} /> : null}

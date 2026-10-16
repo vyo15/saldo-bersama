@@ -17,9 +17,10 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import {
-  checkoutShoppingList, createShoppingList, invalidateShopping, removeShoppingItem, setShoppingItemState,
+  archiveShoppingList, restoreShoppingList, checkoutShoppingList, createShoppingList, invalidateShopping, removeShoppingItem, setShoppingItemState,
 } from "./shopping.api.js";
 import styles from "./ShoppingPage.module.css";
+import { setItemVisibility } from "../../services/visibility.js";
 
 const ShoppingItemEditor = lazy(() => import("./ShoppingItemEditor.jsx"));
 
@@ -62,7 +63,7 @@ const Summary = ({ data }) => {
   </div>;
 };
 
-const ItemRow = ({ item, onToggle, onEdit, onRemove, disabled }) => {
+const ItemRow = ({ item, onToggle, onEdit, onRemove, onVisibility, disabled }) => {
   const checked = ["in_cart", "purchased"].includes(item.status);
   const purchased = item.status === "purchased";
   const displayAmount = Number(item.actual_amount || item.estimated_amount || 0);
@@ -71,15 +72,15 @@ const ItemRow = ({ item, onToggle, onEdit, onRemove, disabled }) => {
     <button type="button" className={styles.itemBody} onClick={() => !purchased && onEdit(item)} disabled={purchased}>
       <strong>{item.name}</strong><span>{formatQty(item.quantity_milli)} {item.unit_key}{displayAmount ? <> · <Money value={displayAmount} /></> : null}</span>{item.note ? <small>{item.note}</small> : null}
     </button>
-    {!purchased ? <details className={styles.itemMenu}><summary aria-label={`Pilihan ${item.name}`}><FiMoreHorizontal aria-hidden="true" /></summary><div><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onEdit(item); }}><FiEdit2 aria-hidden="true" />Edit</button><button type="button" className={styles.dangerAction} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onRemove(item); }}><FiTrash2 aria-hidden="true" />Hapus</button></div></details> : <span className={styles.purchasedMark}><FiCheckCircle aria-hidden="true" /></span>}
+    <details className={styles.itemMenu}><summary aria-label={`Pilihan ${item.name}`}><FiMoreHorizontal aria-hidden="true" /></summary><div>{!purchased ? <><button type="button" disabled={disabled} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onEdit(item); }}><FiEdit2 aria-hidden="true" />Edit</button><button type="button" disabled={disabled} className={styles.dangerAction} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onRemove(item); }}><FiTrash2 aria-hidden="true" />Hapus</button></> : <button type="button" disabled={disabled} className={styles.dangerAction} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onVisibility(item, !item.is_hidden); }}><FiTrash2 aria-hidden="true" />{item.is_hidden ? "Tampilkan lagi" : "Hapus dari tampilan"}</button>}</div></details>
   </div>;
 };
 
-const GroupedItems = ({ items, onToggle, onEdit, onRemove, disabled }) => {
+const GroupedItems = ({ items, onToggle, onEdit, onRemove, onVisibility, disabled }) => {
   const visible = items.filter((item) => item.status !== "removed");
   const groups = new Map();
   visible.forEach((item) => { const key = item.group_name || "Lainnya"; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(item); });
-  return <div className={styles.groups}>{[...groups.entries()].map(([group, rows]) => <section key={group} className={styles.group}><h3>{group}</h3>{rows.map((item) => <ItemRow key={item.shopping_item_id} item={item} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} disabled={disabled} />)}</section>)}</div>;
+  return <div className={styles.groups}>{[...groups.entries()].map(([group, rows]) => <section key={group} className={styles.group}><h3>{group}</h3>{rows.map((item) => <ItemRow key={item.shopping_item_id} item={item} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onVisibility={onVisibility} disabled={disabled} />)}</section>)}</div>;
 };
 
 const CheckoutSummary = ({ estimated, total, difference }) => <dl className={styles.checkoutSummary}>
@@ -155,22 +156,26 @@ const SuccessView = ({ result, data, onBackToList, navigate }) => <div className
   <Button onClick={onBackToList}>Kembali ke Daftar</Button>
 </div>;
 
-const ShoppingListUnavailableView = ({ data, canManage, online, mutationError, onCreate }) => <div className={styles.page}>
+const ShoppingListUnavailableView = ({ data, canManage, online, mutationError, onCreate, onRestore }) => <div className={styles.page}>
   <ContextBack to="/perencanaan/kantong" label="Atur Dana" />
   <Card className={styles.emptyShell}><EmptyState title="Belum ada daftar belanja" description={`Buat daftar untuk ${data.budget.name}. Barang dapat disiapkan sekarang lalu dicentang saat belanja.`} action={canManage ? <Button variant="primary" icon={FiShoppingCart} onClick={onCreate} disabled={!online}>Buat daftar belanja</Button> : null} />
     {!canManage ? <p className={styles.inlineWarning}>Daftar ini hanya dapat dilihat. Kebutuhan tidak aktif atau dikelola anggota lain.</p> : !online ? <p className={styles.inlineWarning}>Kamu sedang offline. Sambungkan internet untuk membuat daftar.</p> : null}
+    {(data.archived_lists || []).length ? <div className={styles.archivedLists}><strong>Daftar yang dihapus</strong>{data.archived_lists.map((list) => <div key={list.shopping_list_id}><span>{list.name}</span>{canManage ? <button type="button" disabled={!online} onClick={() => onRestore(list)}>Pulihkan</button> : null}</div>)}</div> : null}
     {mutationError ? <p className={styles.inlineError}>{mutationMessage(mutationError)}</p> : null}
   </Card>
 </div>;
 
-const CompletedListView = ({ data, canManage, online, onCreate, navigate }) => <div className={styles.page}>
+const CompletedListView = ({ data, canManage, online, onCreate, onArchive, navigate }) => <div className={styles.page}>
   <ContextBack to="/perencanaan/kantong" label="Atur Dana" />
-  <Card className={styles.emptyShell}><div className={styles.completedState}><span className={styles.successMark}><FiCheck aria-hidden="true" /></span><h1>{data.list.name}</h1><p>Daftar ini sudah selesai. {data.summary.purchased_items} barang tersimpan sebagai histori belanja.</p><Summary data={data} />{canManage ? <Button variant="primary" icon={FiShoppingCart} onClick={onCreate} disabled={!online}>Buat daftar belanja baru</Button> : null}<Button onClick={() => navigate("/transaksi", { state: { period: data.budget.period_key } })}>Lihat Transaksi</Button></div></Card>
+  <Card className={styles.emptyShell}><div className={styles.completedState}><span className={styles.successMark}><FiCheck aria-hidden="true" /></span><h1>{data.list.name}</h1><p>Daftar ini sudah selesai. {data.summary.purchased_items} barang tersimpan sebagai histori belanja.</p><Summary data={data} />{canManage ? <Button variant="primary" icon={FiShoppingCart} onClick={onCreate} disabled={!online}>Buat daftar belanja baru</Button> : null}<Button onClick={() => navigate("/transaksi", { state: { period: data.budget.period_key } })}>Lihat Transaksi</Button>{canManage ? <button className={styles.archiveListAction} type="button" disabled={!online} onClick={onArchive}><FiTrash2 aria-hidden="true" /> Hapus daftar dari tampilan</button> : null}</div></Card>
 </div>;
 
-const ShoppingHeader = ({ data, mode, counts, online, canManage, onAdd }) => <header className={styles.header}>
+const ShoppingHeader = ({ data, mode, counts, online, canManage, onAdd, onArchive }) => <header className={styles.header}>
   <div><ContextBack className={styles.mobileBack} to="/perencanaan/kantong" label="Atur Dana" ariaLabel="Kembali ke Atur Dana" /><span>{data.budget.name}</span><h1>{data.list.name}</h1>{counts.active ? <p>{mode === "shopping" ? `${counts.done} dari ${counts.active} barang` : `${counts.open} dari ${counts.active} barang belum selesai`}</p> : null}</div>
-  {mode === "planning" && counts.active ? <Button icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button> : null}
+  <div className={styles.headerActions}>
+    {mode === "planning" && counts.active ? <Button icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button> : null}
+    {canManage ? <button type="button" className={styles.archiveListAction} disabled={!online} onClick={onArchive}><FiTrash2 aria-hidden="true" /> Hapus daftar</button> : null}
+  </div>
 </header>;
 
 const ShoppingStatusNotices = ({ canManage, online, refreshError, onRetry, mutationError, onDismissError }) => <>
@@ -179,19 +184,19 @@ const ShoppingStatusNotices = ({ canManage, online, refreshError, onRetry, mutat
   {mutationError ? <div className={styles.errorNotice} role="alert">{mutationMessage(mutationError)} <button type="button" onClick={onDismissError}>Tutup</button></div> : null}
 </>;
 
-const PlanningWorkspace = ({ data, activeItems, purchasedItems, showItems, online, canManage, busyId, onAdd, onToggle, onEdit, onRemove, onStart }) => <div className={styles.workspace}>
+const PlanningWorkspace = ({ data, activeItems, purchasedItems, showItems, online, canManage, busyId, onAdd, onToggle, onEdit, onRemove, onVisibility, onStart }) => <div className={styles.workspace}>
   <main className={styles.listPane}>
     {activeItems.length ? <div className={styles.mobileSummary}><Summary data={data} /></div> : null}
     {activeItems.length && canManage ? <button type="button" className={styles.quickAdd} onClick={onAdd} disabled={!online || Boolean(busyId)}><FiPlus aria-hidden="true" /><span>Tambah barang</span></button> : null}
-    {activeItems.length ? <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} disabled={!online || !canManage || Boolean(busyId)} /> : <EmptyState variant="inline" title="Daftar masih kosong" description="Tambahkan barang yang ingin dibeli. Harga boleh diisi sekarang atau nanti." action={<Button variant="primary" icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button>} />}
+    {activeItems.length ? <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onVisibility={onVisibility} disabled={!online || !canManage || Boolean(busyId)} /> : <EmptyState variant="inline" title="Daftar masih kosong" description="Tambahkan barang yang ingin dibeli. Harga boleh diisi sekarang atau nanti." action={<Button variant="primary" icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button>} />}
   </main>
   {activeItems.length ? <aside className={styles.summaryRail}><h2>Ringkasan</h2><div className={styles.countMeta}><span><FiShoppingCart aria-hidden="true" /></span><div><strong>{activeItems.length} barang</strong><small>{purchasedItems.length} selesai</small></div></div><Summary data={data} /><Button variant="primary" disabled={!activeItems.length || !online || !canManage} onClick={onStart}>Mulai Belanja</Button></aside> : null}
 </div>;
 
-const ShoppingModeView = ({ activeItems, cartItems, purchasedItems, pendingItems, showItems, progress, shoppingFilter, online, canManage, busyId, onFilter, onToggle, onEdit, onRemove }) => <div className={styles.shoppingMode}>
+const ShoppingModeView = ({ activeItems, cartItems, purchasedItems, pendingItems, showItems, progress, shoppingFilter, online, canManage, busyId, onFilter, onToggle, onEdit, onRemove, onVisibility }) => <div className={styles.shoppingMode}>
   <div className={styles.progressBlock}><div><span>{cartItems.length + purchasedItems.length} dari {activeItems.length} barang</span><strong>{progress}%</strong></div><ProgressBar value={progress} max={100} label="Progress belanja" showValue={false} compact /></div>
   <QuickSegmentedFilter label="Filter barang" compact options={[{ value: "all", label: "Semua", count: activeItems.length }, { value: "pending", label: "Belum", count: pendingItems.length }, { value: "done", label: "Selesai", count: cartItems.length + purchasedItems.length, tone: "positive" }]} value={shoppingFilter} onChange={onFilter} />
-  <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} disabled={!online || !canManage || Boolean(busyId)} />
+  <GroupedItems items={showItems} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onVisibility={onVisibility} disabled={!online || !canManage || Boolean(busyId)} />
 </div>;
 
 const ShoppingStickyAction = ({ mode, activeItems, cartItems, data, online, canManage, onStart, onCheckout }) => {
@@ -201,22 +206,22 @@ const ShoppingStickyAction = ({ mode, activeItems, cartItems, data, online, canM
 </div>;
 };
 
-const ShoppingActiveView = ({ data, mode, shoppingFilter, online, canManage, busyId, mutationError, resource, collections, onMode, onFilter, onAdd, onToggle, onEdit, onRemove, onDismissError }) => {
+const ShoppingActiveView = ({ data, mode, shoppingFilter, online, canManage, busyId, mutationError, resource, collections, onMode, onFilter, onAdd, onArchive, onToggle, onEdit, onRemove, onVisibility, onDismissError }) => {
   const { activeItems, pendingItems, cartItems, purchasedItems, shoppingItems } = collections;
   const progress = activeItems.length ? Math.round(((cartItems.length + purchasedItems.length) / activeItems.length) * 100) : 0;
   const showItems = mode === "shopping" ? shoppingItems : activeItems;
   const counts = { active: activeItems.length, done: cartItems.length + purchasedItems.length, open: pendingItems.length + cartItems.length };
   return <div className={styles.page} data-mode={mode}>
     <div className={styles.desktopBack}><ContextBack to="/perencanaan/kantong" label="Atur Dana" /></div>
-    <ShoppingHeader data={data} mode={mode} counts={counts} online={online} canManage={canManage} onAdd={onAdd} />
+    <ShoppingHeader data={data} mode={mode} counts={counts} online={online} canManage={canManage} onAdd={onAdd} onArchive={onArchive} />
     <ShoppingStatusNotices canManage={canManage} online={online} refreshError={resource.refreshError} onRetry={resource.reload} mutationError={mutationError} onDismissError={onDismissError} />
-    {mode === "planning" ? <PlanningWorkspace data={data} activeItems={activeItems} purchasedItems={purchasedItems} showItems={showItems} online={online} canManage={canManage} busyId={busyId} onAdd={onAdd} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onStart={() => onMode("shopping")} /> : <ShoppingModeView activeItems={activeItems} cartItems={cartItems} purchasedItems={purchasedItems} pendingItems={pendingItems} showItems={showItems} progress={progress} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} onFilter={onFilter} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} />}
+    {mode === "planning" ? <PlanningWorkspace data={data} activeItems={activeItems} purchasedItems={purchasedItems} showItems={showItems} online={online} canManage={canManage} busyId={busyId} onAdd={onAdd} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onVisibility={onVisibility} onStart={() => onMode("shopping")} /> : <ShoppingModeView activeItems={activeItems} cartItems={cartItems} purchasedItems={purchasedItems} pendingItems={pendingItems} showItems={showItems} progress={progress} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} onFilter={onFilter} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onVisibility={onVisibility} />}
     <ShoppingStickyAction mode={mode} activeItems={activeItems} cartItems={cartItems} data={data} online={online} canManage={canManage} onStart={() => onMode("shopping")} onCheckout={() => onMode("checkout")} />
   </div>;
 };
 
-const collectShoppingItems = (data, shoppingFilter) => {
-  const activeItems = data?.items?.filter((item) => item.status !== "removed") || [];
+const collectShoppingItems = (data, shoppingFilter, showHidden = false) => {
+  const activeItems = data?.items?.filter((item) => item.status !== "removed" && (showHidden || !item.is_hidden)) || [];
   const pendingItems = activeItems.filter((item) => item.status === "pending");
   const cartItems = activeItems.filter((item) => item.status === "in_cart");
   const purchasedItems = activeItems.filter((item) => item.status === "purchased");
@@ -232,6 +237,7 @@ const ShoppingPage = () => {
   const resource = useApiResource("shopping.detail", { budget_id: budgetId });
   const [mode, setMode] = useState("planning");
   const [shoppingFilter, setShoppingFilter] = useState("all");
+  const [showHidden, setShowHidden] = useState(false);
   const [editor, setEditor] = useState({ open: false, item: null });
   const [mutationError, setMutationError] = useState(null);
   const [busyId, setBusyId] = useState("");
@@ -244,7 +250,7 @@ const ShoppingPage = () => {
   }, [busyId, undoRemove]);
   const data = resource.data;
   const canManage = Boolean(data?.can_manage);
-  const collections = useMemo(() => collectShoppingItems(data, shoppingFilter), [data, shoppingFilter]);
+  const collections = useMemo(() => collectShoppingItems(data, shoppingFilter, showHidden), [data, shoppingFilter, showHidden]);
 
   const reload = async () => { await resource.reload(); };
   const createList = async () => {
@@ -252,6 +258,19 @@ const ShoppingPage = () => {
     setMutationError(null);
     try { await createShoppingList({ budget_id: budgetId }); invalidateShopping(); await reload(); }
     catch (error) { setMutationError(error); }
+  };
+  const archiveList = async () => {
+    if (!data?.list || !online || !canManage || busyId) return;
+    if (!window.confirm(`Hapus daftar ${data.list.name} dari tampilan? Histori belanja dan transaksi tetap disimpan.`)) return;
+    setBusyId(data.list.shopping_list_id); setMutationError(null);
+    try { await archiveShoppingList({ shopping_list_id: data.list.shopping_list_id, row_version: data.list.row_version }, { rowVersion: data.list.row_version }); invalidateShopping(); await reload(); }
+    catch (error) { setMutationError(error); } finally { setBusyId(""); }
+  };
+  const restoreList = async (list) => {
+    if (!online || !canManage || busyId) return;
+    setBusyId(list.shopping_list_id); setMutationError(null);
+    try { await restoreShoppingList({ shopping_list_id: list.shopping_list_id, row_version: list.row_version }, { rowVersion: list.row_version }); invalidateShopping(); await reload(); }
+    catch (error) { setMutationError(error); } finally { setBusyId(""); }
   };
   const toggle = async (item) => {
     if (!online || !canManage || busyId) return;
@@ -269,6 +288,13 @@ const ShoppingPage = () => {
       setUndoRemove({ ...item, row_version: Number(item.row_version || 0) + 1 });
       invalidateShopping(); await reload();
     } catch (error) { setMutationError(error); } finally { setBusyId(""); }
+  };
+  const toggleItemVisibility = async (item, hidden) => {
+    if (!online || busyId) return;
+    if (hidden && !window.confirm(`Hapus ${item.name} dari tampilan? Riwayat checkout dan transaksi tetap aman.`)) return;
+    setBusyId(item.shopping_item_id); setMutationError(null);
+    try { await setItemVisibility("shopping_item", item.shopping_item_id, hidden); invalidateShopping(); await reload(); }
+    catch (error) { setMutationError(error); } finally { setBusyId(""); }
   };
   const restoreRemoved = async () => {
     if (!undoRemove || !online || busyId) return;
@@ -288,12 +314,13 @@ const ShoppingPage = () => {
   if (!data) return null;
   if (mode === "checkout") return <CheckoutView data={data} onBack={() => setMode("shopping")} onDone={completeCheckout} online={online && canManage} />;
   if (mode === "success" && success) return <SuccessView result={success} data={data} onBackToList={backToList} navigate={navigate} />;
-  if (!data.list) return <ShoppingListUnavailableView data={data} canManage={canManage} online={online} mutationError={mutationError} onCreate={createList} />;
-  if (data.list.status === "completed") return <CompletedListView data={data} canManage={canManage} online={online} onCreate={createList} navigate={navigate} />;
+  if (!data.list) return <ShoppingListUnavailableView data={data} canManage={canManage} online={online} mutationError={mutationError} onCreate={createList} onRestore={restoreList} />;
+  if (data.list.status === "completed") return <CompletedListView data={data} canManage={canManage} online={online} onCreate={createList} onArchive={archiveList} navigate={navigate} />;
 
   return <>
     {undoRemove ? <div className={styles.undoNotice} role="status"><span><strong>{undoRemove.name}</strong> dihapus dari daftar.</span><button type="button" onClick={restoreRemoved} disabled={Boolean(busyId)}>Urungkan</button></div> : null}
-    <ShoppingActiveView data={data} mode={mode} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} mutationError={mutationError} resource={resource} collections={collections} onMode={setMode} onFilter={setShoppingFilter} onAdd={() => openEditor()} onToggle={toggle} onEdit={openEditor} onRemove={remove} onDismissError={() => setMutationError(null)} />
+    {data.items?.some((item) => item.is_hidden) ? <label className={styles.hiddenToggle}><input type="checkbox" checked={showHidden} onChange={(event) => setShowHidden(event.target.checked)} /> Tampilkan barang tersembunyi</label> : null}
+    <ShoppingActiveView data={data} mode={mode} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} mutationError={mutationError} resource={resource} collections={collections} onMode={setMode} onFilter={setShoppingFilter} onAdd={() => openEditor()} onArchive={archiveList} onToggle={toggle} onEdit={openEditor} onRemove={remove} onVisibility={toggleItemVisibility} onDismissError={() => setMutationError(null)} />
     {editor.open ? <Suspense fallback={<div className={styles.editorLoading} role="status">Menyiapkan form barang…</div>}><ShoppingItemEditor open onClose={() => setEditor({ open: false, item: null })} data={data} list={data.list} item={editor.item} onSaved={reload} online={online && canManage} /></Suspense> : null}
   </>;
 };

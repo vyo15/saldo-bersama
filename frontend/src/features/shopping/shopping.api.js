@@ -2,6 +2,8 @@ import { apiClient, isOutcomeUnknownError } from "../../services/api/client.js";
 
 export const getShoppingSuggestions = (payload, options) => apiClient.request("shopping.suggestions", payload, options);
 export const createShoppingList = (payload, options) => apiClient.request("shopping.create", payload, options);
+export const archiveShoppingList = (payload, options) => apiClient.request("shopping.archive", payload, options);
+export const restoreShoppingList = (payload, options) => apiClient.request("shopping.restore", payload, options);
 export const createShoppingItem = (payload, options) => apiClient.request("shopping.itemCreate", payload, options);
 export const updateShoppingItem = (payload, options) => apiClient.request("shopping.itemUpdate", payload, options);
 export const setShoppingItemState = (payload, options) => apiClient.request("shopping.itemState", payload, options);
