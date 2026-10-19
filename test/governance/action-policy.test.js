@@ -33,11 +33,11 @@ test("read action tidak meminta idempotency dan perubahan kritis tetap guarded",
   assert.equal(requiresIdempotencyKey("integrity.run"), true);
 });
 
-test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", () => {
+test("lifecycle sensitif tetap owner-only kecuali wadah Alokasi yang dijaga scope", () => {
   const ownerOnly = [
     "archive.list", "accounts.previewLifecycle", "accounts.restore", "accounts.deleteUnused",
     "categories.previewArchive", "categories.restore", "categories.deleteUnused", "transactions.restore", "users.reactivate", "periods.previewClose",
-    "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule", "envelopes.restoreRule",
+    "envelopes.restoreRule",
     "recurring.previewRuleLifecycle", "recurring.archiveRule", "recurring.deleteUnusedRule", "recurring.cancelOccurrence", "recurring.restoreOccurrence", "recurring.restoreRule",
     "budgets.deleteUnused", "budgets.restore", "goals.previewLifecycle", "goals.archive", "goals.deleteUnused", "goals.restore",
     "reset.preview", "reset.status", "reset.apply", "fullReset.preview", "fullReset.status", "fullReset.apply",
@@ -46,9 +46,9 @@ test("human-error lifecycle tetap owner-only dan generic purge tidak tersedia", 
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
     assert.equal(ACTION_PERMISSIONS.member.has(action), false, `${action} tidak boleh tersedia untuk member`);
   }
-  for (const action of ["budgets.previewLifecycle", "budgets.remove"]) {
+  for (const action of ["budgets.previewLifecycle", "budgets.remove", "envelopes.previewRuleLifecycle", "envelopes.archiveRule", "envelopes.deleteUnusedRule"]) {
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
-    assert.equal(ACTION_PERMISSIONS.member.has(action), true, `${action} tersedia untuk Member dan tetap dibatasi scope/assignee di service`);
+    assert.equal(ACTION_PERMISSIONS.member.has(action), true, `${action} tersedia untuk Member, dengan izin scope tetap diperiksa di service`);
   }
   for (const forbidden of ["purge", "data.purge", "accounts.delete", "transactions.delete", "categories.delete"]) {
     assert.equal(ACTION_POLICIES[forbidden], undefined, `${forbidden} tidak boleh terdaftar`);

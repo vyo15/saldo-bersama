@@ -1,10 +1,10 @@
 import { readBatchRows } from "../../db/readBatchRows.js";
 import { appendAudit } from "../audit.js";
 import { envelopeItemsStatement, mapEnvelopeItemRows } from "../readModels.js";
-import { appError, assertOwner, assertVersion, dateValue, nonNegativeInteger, nowIso, parseJson, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
+import { appError, assertVersion, dateValue, nonNegativeInteger, nowIso, parseJson, publicRow, sanitizeText, strictBoolean, uuid, visibleScopeSql } from "../core.js";
 import { newVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
-import { accountWithAccess, assertEnvelopeAssigneeAccess, assertOperationalPlanningAccount, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
+import { accountWithAccess, assertEnvelopeAssigneeAccess, assertEnvelopeLifecycleAccess, assertOperationalPlanningAccount, assertPlanningManageScope, envelopeCapabilities, resolveEnvelopeAssignee, ruleScopeFromAccount } from "./shared.js";
 import { assertAllocationAvailable, envelopeRuleLifecycleImpact } from "./envelopeLifecycle.js";
 import { createBudgetsBatch } from "./budgetMutations.js";
 
@@ -240,10 +240,10 @@ export const createEnvelopeWithNeeds = async (db, context) => {
   return { ...envelope, budgets };
 };
 export const deleteUnusedEnvelopeRule = async (db, context) => {
-  assertOwner(context.actor);
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
   if (!current) throw appError("NOT_FOUND", "Aturan alokasi aktif tidak ditemukan.", 404);
+  assertEnvelopeLifecycleAccess(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan penghapusan alokasi wajib diisi.", 400);

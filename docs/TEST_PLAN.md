@@ -354,3 +354,11 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 - `frontend/test/design-resources-harmonization.test.js` memastikan varian artwork Login/sukses berbagi token pigmen, feedback tonal borderless tetap memiliki warna status dan copy terbaca, serta CSS Notifikasi tidak menambah kembali duplikasi cascade.
 - Test yang sama menjaga navigasi/pembersihan Notifikasi (Delete, pressed filter, focus, reduced-motion), lapisan indikator QuickSegmentedFilter, dan microcopy review Transaksi sesuai relasi Kebutuhan–Alokasi tanpa picker manual.
 - Gate final: `npm run lint`, `npm run verify` (termasuk frontend/backend coverage, build-budget, browser smoke), ditambah QA manual light/dark 320/390/430/desktop dan perangkat iOS nyata sebelum release.
+
+### Regression hapus wadah Alokasi lintas role
+
+- Jalankan `node --test test/business/allocation-member-delete.test.js test/business/envelope-assignee.test.js test/governance/action-policy.test.js test/governance/data-deletion-policy.test.js` dengan dependensi asli setelah `npm ci`.
+- Pengguna Member harus memperoleh capability `can_archive_rule` pada semua Alokasi Bersama, termasuk assignee lain; permission untuk dana/Kebutuhan tidak ikut meluas.
+- Preview + hard delete wadah yang benar-benar unused, atau arsip wadah yang punya Kebutuhan, menulis audit aktor, menjaga saldo dan histori, dan menyegarkan daftar aktif setelah sukses.
+- Pengguna lain tidak dapat menyentuh Alokasi Pribadi orang lain melalui API, meskipun mencoba request manual; stale version, reason kosong, dan konfirmasi yang hilang harus ditolak.
+- Browser QA login dua akun (Administrator dan Member): detail Alokasi → `···` → Hapus Alokasi → konfirmasi; verifikasi salin-data B tanpa reload manual sesuai interval sinkronisasi yang sudah ada.

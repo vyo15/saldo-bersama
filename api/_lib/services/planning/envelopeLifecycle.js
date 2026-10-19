@@ -6,6 +6,7 @@ import { newVersionStamp, nextVersionStamp } from "../versioning.js";
 import { cancelScheduledManualRemindersForEntity, cancelScheduledManualRemindersForEnvelopeRule } from "../reminders.js";
 import { addMonths } from "./shared.js";
 import { copyEnvelopeNeedsToPeriod } from "./budgets.js";
+import { assertEnvelopeLifecycleAccess } from "./shared.js";
 import { adjustEnvelopeForBudgetDelta } from "./budgetFunding.js";
 
 // Envelope lifecycle owns period close/rollover and archive/delete/restore safeguards.
@@ -208,7 +209,6 @@ export const closeEnvelope = async (db, context) => {
 };
 
 export const previewEnvelopeRuleLifecycle = async (db, context) => {
-  assertOwner(context.actor);
   const payload = context.payload || {};
   const ruleId = payload.envelope_rule_id;
   const [currentRows, dependencyRows] = await readBatchRows(db, [{
@@ -217,15 +217,16 @@ export const previewEnvelopeRuleLifecycle = async (db, context) => {
   }, envelopeRuleDependencyStatement(ruleId)]);
   const current = currentRows[0] || null;
   if (!current) throw appError("NOT_FOUND", "Aturan alokasi aktif tidak ditemukan.", 404);
+  assertEnvelopeLifecycleAccess(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   return envelopeRuleLifecycleResult(current, dependencyRows[0] || {});
 };
 
 export const archiveEnvelopeRule = async (db, context) => {
-  assertOwner(context.actor);
   const payload = context.payload || {};
   const current = await db.one("SELECT * FROM envelope_rules WHERE envelope_rule_id=? AND status='active'", [payload.envelope_rule_id]);
   if (!current) throw appError("NOT_FOUND", "Aturan alokasi aktif tidak ditemukan.", 404);
+  assertEnvelopeLifecycleAccess(context.actor, current);
   assertVersion(current, context.rowVersion ?? payload.row_version);
   const reason = sanitizeText(payload.reason, 200);
   if (!reason) throw appError("REASON_REQUIRED", "Alasan arsip alokasi wajib diisi.", 400);

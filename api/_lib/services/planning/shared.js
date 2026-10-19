@@ -77,6 +77,21 @@ export const canUseEnvelope = (actor, item) => {
     || item.assignee_user_id === actor.user_id;
 };
 
+// Menghapus wadah adalah lifecycle perencanaan, bukan transaksi rekening.
+// Setiap anggota aktif boleh mengelola wadah Bersama, termasuk yang ditugaskan
+// kepada anggota lain. Wadah Pribadi tetap dibatasi pada pemiliknya.
+export const canManageEnvelopeLifecycle = (actor, item) => Boolean(actor?.user_id && actor?.status === "active" && item?.status === "active"
+  && ((item.scope === "shared" && !item.owner_user_id)
+    || (item.scope === "personal" && item.owner_user_id === actor.user_id)));
+
+export const assertEnvelopeLifecycleAccess = (actor, item) => {
+  if (!canManageEnvelopeLifecycle(actor, item)) throw appError(
+    "ENVELOPE_LIFECYCLE_FORBIDDEN",
+    "Hanya anggota aktif yang dapat menghapus Alokasi Bersama. Alokasi Pribadi hanya dapat dihapus oleh pemiliknya.",
+    403,
+  );
+};
+
 export const envelopeCapabilities = (actor, item) => {
   const canUse = canUseEnvelope(actor, item);
   const operational = item?.source_account_type !== "investment";
@@ -88,7 +103,7 @@ export const envelopeCapabilities = (actor, item) => {
     can_set_reminder: canUse,
     can_record_expense: canUse && operational,
     can_close: actor?.role === "owner" && item?.status === "active",
-    can_archive_rule: actor?.role === "owner" && item?.status === "active",
+    can_archive_rule: canManageEnvelopeLifecycle(actor, item),
   };
 };
 

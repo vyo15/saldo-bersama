@@ -66,20 +66,21 @@ const LIFECYCLE_PREVIEW_ACTIONS = [
   "budgets.previewLifecycle",
 ];
 
-test("delete-unused selalu owner-only, idempotent write, dan preview lifecycle tetap read-only", () => {
+test("delete-unused tetap owner-only kecuali Alokasi Bersama; write idempotent dan preview read-only", () => {
   for (const action of DELETE_UNUSED_ACTIONS) {
     const policy = getActionPolicy(action);
     assert.equal(policy?.mode, "write", `${action} harus write`);
     assert.equal(policy?.idempotencyRequired, true, `${action} wajib idempotency`);
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
-    assert.equal(ACTION_PERMISSIONS.member.has(action), false, `${action} tidak boleh tersedia untuk member`);
+    const memberAllowed = action === "envelopes.deleteUnusedRule";
+    assert.equal(ACTION_PERMISSIONS.member.has(action), memberAllowed, `${action} harus mengikuti scope akses Alokasi`);
   }
   for (const action of LIFECYCLE_PREVIEW_ACTIONS) {
     const policy = getActionPolicy(action);
     assert.equal(policy?.mode, "read", `${action} harus read`);
     assert.equal(policy?.idempotencyRequired, false, `${action} tidak memerlukan idempotency`);
     assert.equal(ACTION_PERMISSIONS.owner.has(action), true, `${action} wajib tersedia untuk owner`);
-    const memberAllowed = action === "budgets.previewLifecycle";
+    const memberAllowed = ["budgets.previewLifecycle", "envelopes.previewRuleLifecycle"].includes(action);
     assert.equal(ACTION_PERMISSIONS.member.has(action), memberAllowed, `${action} permission Member harus sesuai lifecycle Kebutuhan`);
   }
   const removePolicy = getActionPolicy("budgets.remove");

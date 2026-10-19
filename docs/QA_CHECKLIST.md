@@ -245,3 +245,12 @@
 - [ ] Notifikasi dengan judul berisi nama entitas tidak mengulang entitas; tindakan nyata, waktu, fakta penting, keyboard Delete, swipe, unread, filter, dan error restore tetap berfungsi.
 - [ ] Investasi menunjukkan bahwa data adalah catatan manual; histori/catatan saldo lama tetap dapat diakses pada `Tentang aktivitas`; laporan dan pemeriksaan saldo tidak menghilangkan arti selisih atau larangan koreksi otomatis.
 - [ ] Uji dengan VoiceOver/TalkBack, tab keyboard, safe-area iOS, bottom navigation, reduced motion, gambar belum termuat, dan data panjang/nominal besar. Jalankan full `npm run verify` pada instalasi dependency lengkap, lalu visual smoke perangkat sebelum merilis.
+
+### Alokasi: hapus wadah untuk seluruh anggota (2026-10-19)
+
+- [ ] Member membuka detail Alokasi Bersama yang dibuat admin / ditugaskan ke anggota lain; tombol **Hapus Alokasi** muncul.
+- [ ] Member dapat melakukan preview dan arsip Alokasi Bersama dengan alasan wajib; alokasi hilang dari daftar aktif, saldo fisik serta histori tetap.
+- [ ] Wadah tanpa Kebutuhan, transaksi, maupun mutasi dapat dihapus permanen setelah acknowledgement.
+- [ ] Anggota tidak dapat menghapus Alokasi Pribadi milik anggota lain, termasuk lewat API langsung.
+- [ ] Data berubah di perangkat kedua tanpa reload manual sesuai sinkronisasi revisi; stale row version ditolak.
+- [ ] Alokasi yang diarsipkan dapat dipulihkan Administrator melalui Pemulihan, jika validasi dana mengizinkan.

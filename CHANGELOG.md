@@ -1,3 +1,10 @@
+## 2026-10-19 — Hapus wadah Alokasi untuk anggota
+
+- Semua anggota aktif dapat membuka **Hapus Alokasi** pada Alokasi Bersama, termasuk wadah yang dialokasikan ke pengguna lain. Alokasi Pribadi tetap hanya dapat dihapus oleh pemiliknya.
+- Permission API `envelopes.previewRuleLifecycle`, `envelopes.archiveRule`, `envelopes.deleteUnusedRule` kini tersedia untuk `member` dengan guard scope/ownership di backend, capability yang sama dari read model, audit dan row-version guard yang tetap berlaku.
+- Alokasi tanpa dependensi dapat dihapus permanen setelah konfirmasi; Alokasi dengan Kebutuhan/histori tetap diarsipkan, sisa dana tersedia kembali tanpa mengubah saldo rekening atau menghapus histori.
+- Admin tetap menangani pemulihan Arsip dan penutupan periode. Pengujian regresi role/scope, saldo, histori, dan governance ditambahkan.
+
 ## 2026-10-16 — Mobile Alokasi/Kebutuhan: single Back, separated surfaces & action sheet (candidate)
 
 - Detail Atur Dana pada mobile sekarang memakai satu navigasi kontekstual `Alokasi Dana`, menjaga parameter filter pada URL kembali, dan menyembunyikan breadcrumb detail khusus mobile; navigasi desktop tetap tersedia.
