@@ -9,6 +9,56 @@ import styles from "../../../components/common/RequestPanel.module.css";
 const LABELS = { pending: "Menunggu", approved: "Disetujui", rejected: "Ditolak", cancelled: "Ditarik" };
 const STATES = { pending: styles.statusPending, approved: styles.statusApproved, rejected: styles.statusRejected, cancelled: styles.statusRejected };
 
+const GoalDeletionRequestItem = ({ request, ownerMode, busy, unknown, onAction }) => <article className={styles.item}>
+  <div className={styles.top}>
+    <div><strong>{request.goal_name}</strong><small>{ownerMode ? request.requester_name || "Anggota" : "Pengajuan saya"}</small></div>
+    <span className={`${styles.status} ${STATES[request.status] || ""}`}>{LABELS[request.status] || request.status}</span>
+  </div>
+  <div className={styles.meta}>Alasan: {request.reason}</div>
+  {request.review_reason ? <small className={styles.meta}>Catatan admin: {request.review_reason}</small> : null}
+  {request.status === "pending" ? <div className={styles.actions}>
+    {ownerMode ? <>
+      <Button type="button" disabled={busy || unknown} onClick={() => onAction(request, "reject")}>Tolak</Button>
+      <Button type="button" variant="primary" disabled={busy || unknown} onClick={() => onAction(request, "approve")}>Setujui</Button>
+    </> : <Button type="button" disabled={busy || unknown} onClick={() => onAction(request, "withdraw")}>Tarik pengajuan</Button>}
+  </div> : null}
+</article>;
+
+const GoalDeletionDecisionDialog = ({ intent, busy, unknown, error, onCancel, onConfirm }) => {
+  const decision = intent?.decision;
+  const goalName = intent?.request.goal_name || "";
+  const copy = {
+    approve: {
+      title: "Setujui penghapusan Target?",
+      description: `Target ${goalName} akan dihapus jika belum pernah dipakai, atau diarsipkan bila memiliki histori. Saldo dan transaksi tetap dilindungi.`,
+      confirmLabel: "Setujui penghapusan",
+    },
+    withdraw: {
+      title: "Tarik pengajuan hapus Target?",
+      description: `Target ${goalName} akan muncul kembali di daftar kamu.`,
+      confirmLabel: "Tarik pengajuan",
+    },
+    reject: {
+      title: "Tolak penghapusan Target?",
+      description: `Target ${goalName} akan muncul kembali untuk pemohon.`,
+      confirmLabel: "Tolak pengajuan",
+    },
+  }[decision] || {};
+  return <ConfirmationModal
+    open={Boolean(intent)}
+    title={copy.title}
+    description={copy.description}
+    confirmLabel={copy.confirmLabel}
+    reasonLabel={decision === "approve" ? "Catatan keputusan (opsional)" : "Alasan keputusan"}
+    requireReason={decision !== "approve"}
+    busy={busy}
+    retryOnly={unknown}
+    error={error}
+    onCancel={onCancel}
+    onConfirm={onConfirm}
+  />;
+};
+
 const GoalDeletionRequestsPanel = ({ items = [], ownerMode = false, onChanged, title }) => {
   const { notify } = useFeedback();
   const [intent, setIntent] = useState(null);
@@ -35,15 +85,17 @@ const GoalDeletionRequestsPanel = ({ items = [], ownerMode = false, onChanged, t
   if (!items.length) return null;
   return <section className={styles.panel} aria-label={title || "Pengajuan hapus Target"}>
     <div className={styles.heading}><div><h2>{title || "Pengajuan hapus Target"}</h2><p>{ownerMode ? "Putuskan permintaan anggota tanpa mengubah saldo sebelum disetujui." : "Target disembunyikan dari daftar kamu selama menunggu persetujuan."}</p></div></div>
-    <div className={styles.list}>{items.slice(0, ownerMode ? 100 : 20).map((request) => <article className={styles.item} key={request.request_id}>
-      <div className={styles.top}><div><strong>{request.goal_name}</strong><small>{ownerMode ? request.requester_name || "Anggota" : "Pengajuan saya"}</small></div><span className={`${styles.status} ${STATES[request.status] || ""}`}>{LABELS[request.status] || request.status}</span></div>
-      <div className={styles.meta}>Alasan: {request.reason}</div>
-      {request.review_reason ? <small className={styles.meta}>Catatan admin: {request.review_reason}</small> : null}
-      {request.status === "pending" ? <div className={styles.actions}>{ownerMode
-        ? <><Button type="button" disabled={busy || unknown} onClick={() => open(request, "reject")}>Tolak</Button><Button type="button" variant="primary" disabled={busy || unknown} onClick={() => open(request, "approve")}>Setujui</Button></>
-        : <Button type="button" disabled={busy || unknown} onClick={() => open(request, "withdraw")}>Tarik pengajuan</Button>}</div> : null}
-    </article>)}</div>
-    <ConfirmationModal open={Boolean(intent)} title={intent?.decision === "withdraw" ? "Tarik pengajuan hapus Target?" : intent?.decision === "reject" ? "Tolak penghapusan Target?" : "Setujui penghapusan Target?"} description={intent?.decision === "approve" ? `Target ${intent.request.goal_name} akan dihapus jika belum pernah dipakai, atau diarsipkan bila memiliki histori. Saldo dan transaksi tetap dilindungi.` : intent?.decision === "withdraw" ? `Target ${intent.request.goal_name} akan muncul kembali di daftar kamu.` : `Target ${intent?.request.goal_name || ""} akan muncul kembali untuk pemohon.`} confirmLabel={intent?.decision === "withdraw" ? "Tarik pengajuan" : intent?.decision === "reject" ? "Tolak pengajuan" : "Setujui penghapusan"} reasonLabel={intent?.decision === "approve" ? "Catatan keputusan (opsional)" : "Alasan keputusan"} requireReason={intent?.decision !== "approve"} busy={busy} retryOnly={unknown} error={error} onCancel={() => !busy && setIntent(null)} onConfirm={submit} />
+    <div className={styles.list}>
+      {items.slice(0, ownerMode ? 100 : 20).map((request) => <GoalDeletionRequestItem
+        key={request.request_id}
+        request={request}
+        ownerMode={ownerMode}
+        busy={busy}
+        unknown={unknown}
+        onAction={open}
+      />)}
+    </div>
+    <GoalDeletionDecisionDialog intent={intent} busy={busy} unknown={unknown} error={error} onCancel={() => !busy && setIntent(null)} onConfirm={submit} />
   </section>;
 };
 

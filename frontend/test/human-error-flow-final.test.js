@@ -34,7 +34,8 @@ test("Target menolak tanggal masa lalu dan lifecycle memakai unknown-outcome ret
   assert.match(page, /isGoalsOutcomeUnknownError/);
   assert.match(dialogs, /min=\{todayInJakarta\(\)\}/);
   assert.match(dialogs, /retryOnly=\{statusState\.status === "unknown"\}/);
-  assert.match(dialogs, /retryOnly=\{archiveState\.status === "unknown"\}/);
+  assert.match(dialogs, /const retryOnly = archiveState\.status === "unknown";/);
+  assert.match(dialogs, /retryOnly=\{retryOnly\}/);
 });
 
 test("Rekonsiliasi dan lifecycle transaksi mengunci retry ketika outcome belum pasti", () => {

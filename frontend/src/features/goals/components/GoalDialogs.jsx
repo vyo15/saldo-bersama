@@ -105,9 +105,55 @@ const GoalStatusConfirmation = ({ statusTarget, statusState, setStatusTarget, ap
   />;
 };
 
+const goalLifecycleCopy = (target) => {
+  if (target?.member) return {
+    title: "Ajukan hapus Target?",
+    description: `${target.goal.name} akan langsung disembunyikan dari daftar kamu. Target tetap tersedia untuk anggota lain sampai admin menyetujui.`,
+    confirmLabel: "Ajukan hapus",
+    reasonLabel: "Alasan pengajuan",
+  };
+  if (target?.preview.canDeleteUnused) return {
+    title: "Hapus target yang belum dipakai?",
+    description: `${target.goal.name} masih Rp0 dan belum pernah memiliki mutasi, transaksi, atau investasi terkait.`,
+    confirmLabel: "Hapus permanen",
+    reasonLabel: "Alasan penghapusan",
+    acknowledgementLabel: "Saya memahami target ini belum pernah digunakan dan penghapusan bersifat permanen.",
+  };
+  return {
+    title: "Arsipkan target?",
+    description: target ? `${target.goal.name} sudah memiliki histori. Target tidak dihapus permanen dan riwayat tetap tersimpan.` : "",
+    confirmLabel: "Arsipkan target",
+    reasonLabel: "Alasan pengarsipan",
+  };
+};
+
+const GoalLifecycleConfirmation = ({ archiveTarget, archiveState, setArchiveTarget, applyGoalLifecycle }) => {
+  const copy = goalLifecycleCopy(archiveTarget);
+  const busy = archiveState.status === "submitting";
+  const retryOnly = archiveState.status === "unknown";
+  return <ConfirmationModal
+    open={Boolean(archiveTarget)}
+    title={copy.title}
+    description={copy.description}
+    confirmLabel={copy.confirmLabel}
+    reasonLabel={copy.reasonLabel}
+    requireReason
+    acknowledgementLabel={copy.acknowledgementLabel || ""}
+    busy={busy}
+    retryOnly={retryOnly}
+    error={archiveState.error}
+    onCancel={() => !busy && !retryOnly && setArchiveTarget(null)}
+    onConfirm={applyGoalLifecycle}
+  >
+    {archiveTarget && !archiveTarget.member ? <div className="notice notice--info">
+      Progress saat ini <Money value={archiveTarget.preview.currentAmount} /> · mutasi historis {archiveTarget.preview.dependencies.movements} · transaksi terkait {archiveTarget.preview.dependencies.transactions} · aktivitas investasi {archiveTarget.preview.dependencies.investmentEvents || 0}.
+    </div> : null}
+  </ConfirmationModal>;
+};
+
 const GoalConfirmations = ({ archiveTarget, archiveState, setArchiveTarget, applyGoalLifecycle, statusTarget, statusState, setStatusTarget, applyGoalStatus }) => <>
   <GoalStatusConfirmation statusTarget={statusTarget} statusState={statusState} setStatusTarget={setStatusTarget} applyGoalStatus={applyGoalStatus} />
-  <ConfirmationModal open={Boolean(archiveTarget)} title={archiveTarget?.member ? "Ajukan hapus Target?" : archiveTarget?.preview.canDeleteUnused ? "Hapus target yang belum dipakai?" : "Arsipkan target?"} description={archiveTarget ? (archiveTarget.member ? `${archiveTarget.goal.name} akan langsung disembunyikan dari daftar kamu. Target tetap tersedia untuk anggota lain sampai admin menyetujui.` : archiveTarget.preview.canDeleteUnused ? `${archiveTarget.goal.name} masih Rp0 dan belum pernah memiliki mutasi, transaksi, atau investasi terkait.` : `${archiveTarget.goal.name} sudah memiliki histori. Target tidak dihapus permanen dan riwayat tetap tersimpan.`) : ""} confirmLabel={archiveTarget?.member ? "Ajukan hapus" : archiveTarget?.preview.canDeleteUnused ? "Hapus permanen" : "Arsipkan target"} reasonLabel={archiveTarget?.member ? "Alasan pengajuan" : archiveTarget?.preview.canDeleteUnused ? "Alasan penghapusan" : "Alasan pengarsipan"} requireReason acknowledgementLabel={!archiveTarget?.member && archiveTarget?.preview.canDeleteUnused ? "Saya memahami target ini belum pernah digunakan dan penghapusan bersifat permanen." : ""} busy={archiveState.status === "submitting"} retryOnly={archiveState.status === "unknown"} error={archiveState.error} onCancel={() => !["submitting", "unknown"].includes(archiveState.status) && setArchiveTarget(null)} onConfirm={applyGoalLifecycle}>{archiveTarget && !archiveTarget.member ? <div className="notice notice--info">Progress saat ini <Money value={archiveTarget.preview.currentAmount} /> · mutasi historis {archiveTarget.preview.dependencies.movements} · transaksi terkait {archiveTarget.preview.dependencies.transactions} · aktivitas investasi {archiveTarget.preview.dependencies.investmentEvents || 0}.</div> : null}</ConfirmationModal>
+  <GoalLifecycleConfirmation archiveTarget={archiveTarget} archiveState={archiveState} setArchiveTarget={setArchiveTarget} applyGoalLifecycle={applyGoalLifecycle} />
 </>;
 
 export { GoalConfirmations, GoalCreateModal, GoalEditModal };

@@ -81,6 +81,16 @@ const ApprovalCenterContent = ({
   </OwnerSettingsGuard>;
 };
 
+// Keep the readiness gate separate from the stateful page so all hooks run consistently.
+const approvalBlockingState = (ownerMode, resources) => {
+  if (!ownerMode) return null;
+  if (resources.some((resource) => resource.status === "loading")) {
+    return <NativePageSkeleton kind="approvals" label="Memuat persetujuan…" />;
+  }
+  const failure = resources.find((resource) => resource.status === "error");
+  return failure ? <ErrorState error={failure.error} onRetry={failure.reload} /> : null;
+};
+
 const ApprovalCenterPage = ({ embedded = false, requesterId = "" }) => {
   const { user } = useAuth();
   const ownerMode = user?.role === "owner";
@@ -119,10 +129,8 @@ const ApprovalCenterPage = ({ embedded = false, requesterId = "" }) => {
     notify,
   });
 
-  if (ownerMode && (masterRequests.status === "loading" || transferRequests.status === "loading" || goalRequests.status === "loading")) return <NativePageSkeleton kind="approvals" label="Memuat persetujuan…" />;
-  if (ownerMode && masterRequests.status === "error") return <ErrorState error={masterRequests.error} onRetry={masterRequests.reload} />;
-  if (ownerMode && transferRequests.status === "error") return <ErrorState error={transferRequests.error} onRetry={transferRequests.reload} />;
-  if (ownerMode && goalRequests.status === "error") return <ErrorState error={goalRequests.error} onRetry={goalRequests.reload} />;
+  const blockingState = approvalBlockingState(ownerMode, [masterRequests, transferRequests, goalRequests]);
+  if (blockingState) return blockingState;
 
   const content = <ApprovalCenterContent
       tab={tab}

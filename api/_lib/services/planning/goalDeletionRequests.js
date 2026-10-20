@@ -64,6 +64,36 @@ export const withdrawGoalDeletion = async (db, context) => {
   return { request: project(next) };
 };
 
+// Each approval runs inside the canonical request transaction; keep lifecycle
+// and sibling resolution atomic with the decision and its audit trail.
+const applyApprovedGoalDeletion = async (db, context, current) => {
+  const goal = await db.one("SELECT * FROM savings_goals WHERE goal_id=?", [current.goal_id]);
+  if (!goal || goal.status === "archived" || goal.row_version !== current.goal_row_version || goal.scope !== "shared") {
+    throw appError("GOAL_CHANGED", "Target telah berubah sejak diajukan. Tolak pengajuan ini dan minta member mengajukan ulang jika masih diperlukan.", 409);
+  }
+  const impact = await goalLifecycleImpact(db, goal);
+  const ownerContext = {
+    ...context,
+    rowVersion: goal.row_version,
+    payload: { goal_id: goal.goal_id, row_version: goal.row_version, reason: current.reason, acknowledged: true },
+  };
+  if (impact.canDeleteUnused) {
+    await deleteUnusedGoal(db, ownerContext);
+    return "deleted";
+  }
+  await archiveGoal(db, ownerContext);
+  return "archived";
+};
+
+const resolveSiblingGoalDeletionRequests = async (db, context, current, reviewedAt, outcome) => {
+  const siblings = await db.all("SELECT * FROM goal_deletion_requests WHERE goal_id=? AND status='pending'", [current.goal_id]);
+  for (const sibling of siblings) {
+    const resolved = { ...sibling, status: "approved", row_version: sibling.row_version + 1, reviewed_by: context.actor.user_id, reviewed_at: reviewedAt, review_reason: "Target telah ditangani melalui persetujuan anggota lain.", outcome };
+    await db.execute("UPDATE goal_deletion_requests SET status='approved',row_version=?,reviewed_by=?,reviewed_at=?,review_reason=?,outcome=? WHERE request_id=? AND status='pending'", [resolved.row_version,resolved.reviewed_by,resolved.reviewed_at,resolved.review_reason,outcome,sibling.request_id]);
+    await appendAudit(db, context, { entityType: "goal_deletion_request", entityId: sibling.request_id, previous: project(sibling), next: project(resolved) });
+  }
+};
+
 export const reviewGoalDeletion = async (db, context) => {
   assertOwner(context.actor);
   const payload = context.payload || {};
@@ -75,28 +105,13 @@ export const reviewGoalDeletion = async (db, context) => {
   if (current.requester_status !== "active") throw appError("REQUESTER_INACTIVE", "Pemohon sudah tidak aktif.", 409);
   const reason = sanitizeText(payload.reason, 200);
   if (decision === "reject" && reason.length < 3) throw appError("REVIEW_REASON_REQUIRED", "Isi alasan penolakan minimal 3 karakter.", 400);
-  let outcome = "";
-  if (decision === "approve") {
-    const goal = await db.one("SELECT * FROM savings_goals WHERE goal_id=?", [current.goal_id]);
-    if (!goal || goal.status === "archived" || goal.row_version !== current.goal_row_version || goal.scope !== "shared") throw appError("GOAL_CHANGED", "Target telah berubah sejak diajukan. Tolak pengajuan ini dan minta member mengajukan ulang jika masih diperlukan.", 409);
-    const impact = await goalLifecycleImpact(db, goal);
-    const ownerContext = { ...context, rowVersion: goal.row_version, payload: { goal_id: goal.goal_id, row_version: goal.row_version, reason: current.reason, acknowledged: true } };
-    if (impact.canDeleteUnused) { await deleteUnusedGoal(db, ownerContext); outcome = "deleted"; }
-    else { await archiveGoal(db, ownerContext); outcome = "archived"; }
-  }
+  const outcome = decision === "approve" ? await applyApprovedGoalDeletion(db, context, current) : "";
   const now = nowIso();
   const next = { ...current, status: decision === "approve" ? "approved" : "rejected", row_version: current.row_version + 1, reviewed_by: context.actor.user_id, reviewed_at: now, review_reason: reason, outcome };
   const result = await db.execute("UPDATE goal_deletion_requests SET status=?,row_version=?,reviewed_by=?,reviewed_at=?,review_reason=?,outcome=? WHERE request_id=? AND row_version=? AND status='pending'", [next.status,next.row_version,next.reviewed_by,next.reviewed_at,next.review_reason,next.outcome,current.request_id,current.row_version]);
   if (result.rowsAffected !== 1) throw appError("CONFLICT", "Pengajuan telah diproses oleh perangkat lain.", 409);
   await appendAudit(db, context, { entityType: "goal_deletion_request", entityId: current.request_id, previous: project(current), next: project(next) });
-  if (decision === "approve") {
-    const siblings = await db.all("SELECT * FROM goal_deletion_requests WHERE goal_id=? AND status='pending'", [current.goal_id]);
-    for (const sibling of siblings) {
-      const resolved = { ...sibling, status: "approved", row_version: sibling.row_version + 1, reviewed_by: context.actor.user_id, reviewed_at: now, review_reason: "Target telah ditangani melalui persetujuan anggota lain.", outcome };
-      await db.execute("UPDATE goal_deletion_requests SET status='approved',row_version=?,reviewed_by=?,reviewed_at=?,review_reason=?,outcome=? WHERE request_id=? AND status='pending'", [resolved.row_version,resolved.reviewed_by,resolved.reviewed_at,resolved.review_reason,outcome,sibling.request_id]);
-      await appendAudit(db, context, { entityType: "goal_deletion_request", entityId: sibling.request_id, previous: project(sibling), next: project(resolved) });
-    }
-  }
+  if (decision === "approve") await resolveSiblingGoalDeletionRequests(db, context, current, now, outcome);
   await queueNotification(db, { userId: current.requested_by, type: "goal_deletion", title: decision === "approve" ? "Penghapusan Target disetujui" : "Penghapusan Target ditolak", body: decision === "approve" ? `${current.goal_name} sudah ${outcome === "deleted" ? "dihapus" : "diarsipkan"}.` : `${current.goal_name} muncul kembali di daftar Target.`, targetPath: decision === "approve" ? "/pengaturan/akun" : "/target", dedupeKey: `goal-delete:review:${current.request_id}:${next.status}` });
   return { request: project(next), outcome };
 };
