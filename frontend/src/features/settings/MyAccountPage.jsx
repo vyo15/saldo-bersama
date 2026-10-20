@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router";
 import { FiInbox } from "react-icons/fi";
 import Money from "../../components/common/Money.jsx";
 import UserAvatar from "../../components/common/UserAvatar.jsx";
@@ -12,6 +13,7 @@ import { AccountIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
 import TransferRequestsPanel from "../transactions/TransferRequestsPanel.jsx";
+import GoalDeletionRequestsPanel from "../goals/components/GoalDeletionRequestsPanel.jsx";
 import { roleLabel } from "./settingsPresentation.js";
 import memberStyles from "./MembersSettings.module.css";
 
@@ -28,7 +30,7 @@ const TABS = Object.freeze([
 const resolveActor = (bootstrap, user) => bootstrap?.user ?? user ?? EMPTY_ACCOUNT;
 const resolveProfile = (actor, user) => ({ ...actor, photoURL: user?.photoURL ?? user?.picture ?? actor.photoURL ?? "" });
 const accountDisplayName = (actor) => actor.name || actor.email || "Akun Saya";
-const requestCountFor = (enabled, masterRequests, transferRequests) => enabled ? (masterRequests.data?.items?.length ?? 0) + (transferRequests.data?.items?.length ?? 0) : 0;
+const requestCountFor = (enabled, masterRequests, transferRequests, goalRequests) => enabled ? (masterRequests.data?.items?.length ?? 0) + (transferRequests.data?.items?.length ?? 0) + (goalRequests.data?.items?.length ?? 0) : 0;
 
 const financeForUser = (user, bootstrap, overview) => ({
   accounts: (bootstrap?.accounts ?? []).filter((item) => item.owner_scope === "personal" && String(item.owner_user_id ?? "") === String(user?.user_id ?? "")),
@@ -51,49 +53,56 @@ const MyFinance = ({ finance }) => <div className={memberStyles.memberFinanceGri
   <section className={memberStyles.memberFinanceSection}><div className={memberStyles.detailSectionHeading}><div><p className="eyebrow">Ditugaskan</p><h3>Alokasi saya</h3></div><span className={memberStyles.detailCount}>{finance.allocations.length}</span></div>{finance.allocations.length ? <div className={memberStyles.detailRows}>{finance.allocations.map((item) => <div className={memberStyles.detailRow} key={item.envelope_period_id || item.envelope_rule_id}><span><strong>{item.name || "Alokasi"}</strong><small>{item.source_account_name || "Sumber dana"}</small></span><Money value={item.remaining_amount ?? item.allocated_amount ?? 0} /></div>)}</div> : <p className={memberStyles.detailEmpty}>Belum ada alokasi yang ditugaskan kepada Anda.</p>}</section>
 </div>;
 
-const MyRequests = ({ masterRequests, transferRequests, accounts }) => {
+const MyRequests = ({ masterRequests, transferRequests, goalRequests, accounts }) => {
   if (masterRequests.status === "error") return <ErrorState error={masterRequests.error} onRetry={masterRequests.reload} />;
   if (transferRequests.status === "error") return <ErrorState error={transferRequests.error} onRetry={transferRequests.reload} />;
-  const loading = [masterRequests.status, transferRequests.status].some((status) => status === "loading");
+  if (goalRequests.status === "error") return <ErrorState error={goalRequests.error} onRetry={goalRequests.reload} />;
+  const loading = [masterRequests.status, transferRequests.status, goalRequests.status].some((status) => status === "loading");
   if (loading) return <LazyActionFallback surface="panel" title="Pengajuan Saya" label="Memuat pengajuan..." />;
   const masterItems = masterRequests.data?.items ?? [];
   const transferItems = transferRequests.data?.items ?? [];
+  const goalItems = goalRequests.data?.items ?? [];
   return <div className={memberStyles.myRequestStack}>
-    <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
-    {!masterItems.length && !transferItems.length ? <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Belum ada pengajuan</strong><span>Rekening dan kategori baru bisa langsung dibuat. Pengajuan transfer dan permintaan lama ditampilkan di sini.</span></div> : null}
+    <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError || goalRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload(), goalRequests.reload()])} />
+    {!masterItems.length && !transferItems.length && !goalItems.length ? <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Belum ada pengajuan</strong><span>Rekening dan kategori baru bisa langsung dibuat. Pengajuan transfer, Target, dan permintaan lama ditampilkan di sini.</span></div> : null}
     <MasterDataRequestsPanel items={masterItems} title="Permintaan lama rekening dan kategori" onChanged={masterRequests.reload} />
     <TransferRequestsPanel items={transferItems} accounts={accounts} />
+    <GoalDeletionRequestsPanel items={goalItems} title="Pengajuan hapus Target" onChanged={goalRequests.reload} />
   </div>;
 };
 
 const AdminRequestMessage = () => <div className={memberStyles.myRequestEmpty}><FiInbox aria-hidden="true" /><strong>Tidak ada pengajuan pribadi</strong><span>Rekening dan kategori bisa langsung dibuat. Permintaan transfer dari anggota lain dapat ditinjau melalui Keluarga.</span></div>;
 
-const MyAccountTabPanel = ({ tab, actor, finance, requestCount, memberMode, masterRequests, transferRequests, accounts, activityMember, profile }) => {
+const MyAccountTabPanel = ({ tab, actor, finance, requestCount, memberMode, masterRequests, transferRequests, goalRequests, accounts, activityMember, profile }) => {
   if (tab === "summary") return <MySummary user={actor} finance={finance} requestCount={requestCount} />;
   if (tab === "finance") return <MyFinance finance={finance} />;
-  if (tab === "requests") return memberMode ? <MyRequests masterRequests={masterRequests} transferRequests={transferRequests} accounts={accounts} /> : <AdminRequestMessage />;
+  if (tab === "requests") return memberMode ? <MyRequests masterRequests={masterRequests} transferRequests={transferRequests} goalRequests={goalRequests} accounts={accounts} /> : <AdminRequestMessage />;
   if (tab === "activity") return <Suspense fallback={<LazyActionFallback surface="panel" title="Aktivitas Saya" label="Menyiapkan aktivitas..." />}><MemberActivityPanel embedded member={activityMember} currentUser={profile} /></Suspense>;
   return null;
 };
 
 const MyAccountPage = () => {
+  const { search } = useLocation();
+  const requestedTab = new URLSearchParams(search).get("tab");
   const { user } = useAuth();
   const { bootstrap, overview } = useFinance();
-  const [tab, setTab] = useState("summary");
+  const [tab, setTab] = useState(() => TABS.some((item) => item.key === requestedTab) ? requestedTab : "summary");
+  useEffect(() => { if (TABS.some((item) => item.key === requestedTab)) setTab(requestedTab); }, [requestedTab]);
   const actor = useMemo(() => resolveActor(bootstrap, user), [bootstrap, user]);
   const profile = useMemo(() => resolveProfile(actor, user), [actor, user]);
   const memberMode = actor.role === "member";
   const masterRequests = useApiResource("masterDataRequests.list", {}, { enabled: memberMode });
   const transferRequests = useApiResource("transferRequests.list", {}, { enabled: memberMode });
+  const goalRequests = useApiResource("goalDeletionRequests.list", {}, { enabled: memberMode });
   const finance = useMemo(() => financeForUser(actor, bootstrap, overview), [actor, bootstrap, overview]);
-  const requestCount = requestCountFor(memberMode, masterRequests, transferRequests);
+  const requestCount = requestCountFor(memberMode, masterRequests, transferRequests, goalRequests);
   const activityMember = { ...actor, is_current: true, status: "active", identity_status: "linked" };
   const accounts = bootstrap?.accounts ?? [];
 
   return <section className={`${memberStyles.memberDetail} ${memberStyles.myAccountDetail}`} aria-label="Akun Saya">
     <div className={memberStyles.memberDetailHero}><UserAvatar user={profile} className={memberStyles.memberDetailAvatar} /><div className={memberStyles.memberDetailIdentity}><h2>{accountDisplayName(actor)}</h2><p>{actor.email}</p><div className={memberStyles.memberDetailBadges}><span className={memberStyles.memberRole}>{roleLabel(actor.role)}</span><span className="status-badge status-badge--active">Aktif</span></div></div></div>
     <div className={memberStyles.memberDetailTabs} role="tablist" aria-label="Akun Saya" onKeyDown={(event) => handleRovingTabKeyDown(event, TABS.map((item) => item.key), tab, setTab)}>{TABS.map((item) => <button key={item.key} id={`my-account-tab-${item.key}`} aria-controls="my-account-tab-panel" tabIndex={tab === item.key ? 0 : -1} type="button" role="tab" aria-selected={tab === item.key} className={tab === item.key ? memberStyles.memberDetailTabActive : memberStyles.memberDetailTab} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
-    <div id="my-account-tab-panel" className={memberStyles.memberDetailPanel} role="tabpanel" aria-labelledby={`my-account-tab-${tab}`} tabIndex={0}><MyAccountTabPanel tab={tab} actor={actor} finance={finance} requestCount={requestCount} memberMode={memberMode} masterRequests={masterRequests} transferRequests={transferRequests} accounts={accounts} activityMember={activityMember} profile={profile} /></div>
+    <div id="my-account-tab-panel" className={memberStyles.memberDetailPanel} role="tabpanel" aria-labelledby={`my-account-tab-${tab}`} tabIndex={0}><MyAccountTabPanel tab={tab} actor={actor} finance={finance} requestCount={requestCount} memberMode={memberMode} masterRequests={masterRequests} transferRequests={transferRequests} goalRequests={goalRequests} accounts={accounts} activityMember={activityMember} profile={profile} /></div>
   </section>;
 };
 

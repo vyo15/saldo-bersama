@@ -303,8 +303,8 @@ test("true-empty collection utama memiliki satu primary CTA tanpa summary nol ga
 
   assert.match(goals, /\{summary\.activeCount \? <GoalSummary items=\{items\} \/> : null\}/);
   assert.match(goals, /const headerActions = canCreate && items\.length \? <Button/);
-  assert.match(goalCards, /title=\{sourceLoadFailed \? "Sumber dana Target belum dapat diperiksa" : canCreate \? "Belum ada target keuangan"/);
-  assert.match(goalCards, /action=\{sourceLoadFailed \? null : canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
+  assert.match(goalCards, /title=\{sourceLoadFailed \? "Sumber dana Target belum dapat diperiksa" : pendingCount \? "Target sedang menunggu persetujuan" : canCreate \? "Belum ada target keuangan"/);
+  assert.match(goalCards, /action=\{sourceLoadFailed \|\| pendingCount \? null : canCreate \? <Button[^>]*>Buat target pertama<\/Button>/);
   assert.match(accounts, /actions=\{accounts\.length \? <Button[^>]*>Tambah rekening<\/Button> : null\}/);
   assert.match(accounts, /action=\{emptyState === EMPTY_COLLECTION_STATE\.FILTERED \?[\s\S]*?Tampilkan semua<\/Button> : <Button variant="primary"/);
   assert.match(categories, /actions=\{items\.length \? <Button[^>]*aria-label="Tambah kategori">Tambah<\/Button> : null\}/);

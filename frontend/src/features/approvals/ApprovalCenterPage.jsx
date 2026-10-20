@@ -11,6 +11,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useMasterDataRequestReview } from "../../hooks/useMasterDataRequestReview.js";
 import MasterDataRequestsPanel from "../masterData/MasterDataRequestsPanel.jsx";
 import TransferRequestsPanel from "../transactions/TransferRequestsPanel.jsx";
+import GoalDeletionRequestsPanel from "../goals/components/GoalDeletionRequestsPanel.jsx";
 import { useTransferRequestReview } from "../transactions/useTransferRequestReview.js";
 import OwnerSettingsGuard from "../settings/OwnerSettingsGuard.jsx";
 import styles from "./ApprovalCenterPage.module.css";
@@ -20,6 +21,7 @@ const TABS = Object.freeze([
   { key: "account", label: "Rekening" },
   { key: "category", label: "Kategori" },
   { key: "transfer", label: "Transfer" },
+  { key: "goal", label: "Target" },
 ]);
 const APPROVAL_REFRESH_KEYS = Object.freeze(["accounts.list", "categories.list", "transactions.list", "reports.monthly", "dashboard.overview", "app.initialState"]);
 
@@ -34,6 +36,9 @@ const ApprovalCenterContent = ({
   setTab,
   masterItems,
   transferItems,
+  goalItems,
+  goalRequests,
+  reloadGoalRequests,
   visibleMasterItems,
   showMaster,
   showTransfer,
@@ -44,7 +49,7 @@ const ApprovalCenterContent = ({
   accounts,
   embedded = false,
 }) => {
-  const pendingCount = masterItems.length + transferItems.length;
+  const pendingCount = masterItems.length + transferItems.length + goalItems.length;
   const activateTab = (nextTab, { focus = false } = {}) => {
     setTab(nextTab);
     if (focus) globalThis.requestAnimationFrame?.(() => document.getElementById(`approval-tab-${nextTab}`)?.focus());
@@ -59,17 +64,18 @@ const ApprovalCenterContent = ({
     activateTab(TABS[nextIndex].key, { focus: true });
   };
   if (!pendingCount) return <OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda">
-    <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
-    <EmptyState title="Tidak ada pengajuan yang menunggu" description="Semua pengajuan rekening, kategori, dan transfer sudah ditinjau." action={embedded ? null : <ButtonLink to="/">Kembali ke Beranda</ButtonLink>} />
+    <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError || goalRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload(), goalRequests.reload()])} />
+    <EmptyState title="Tidak ada pengajuan yang menunggu" description="Semua pengajuan rekening, kategori, transfer, dan Target sudah ditinjau." action={embedded ? null : <ButtonLink to="/">Kembali ke Beranda</ButtonLink>} />
   </OwnerSettingsGuard>;
   return <OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda">
-    <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload()])} />
+    <RefreshWarning error={masterRequests.refreshError || transferRequests.refreshError || goalRequests.refreshError} onRetry={() => Promise.allSettled([masterRequests.reload(), transferRequests.reload(), goalRequests.reload()])} />
     <section className={styles.summary} aria-label="Ringkasan persetujuan"><strong>{pendingCount}</strong><span>pengajuan menunggu keputusan</span></section>
     <div className={styles.tabs} role="tablist" aria-label="Jenis persetujuan">
       {TABS.map((item) => <button key={item.key} id={`approval-tab-${item.key}`} type="button" role="tab" aria-controls="approval-tabpanel" aria-selected={tab === item.key} tabIndex={tab === item.key ? 0 : -1} className={tab === item.key ? styles.tabActive : styles.tab} onClick={() => activateTab(item.key)} onKeyDown={handleTabKeyDown}>{item.label}</button>)}
     </div>
     <div id="approval-tabpanel" className={styles.tabpanel} role="tabpanel" aria-labelledby={`approval-tab-${tab}`}>
       {showMaster ? <MasterDataRequestsPanel items={visibleMasterItems} ownerMode title={tab === "all" ? "Rekening dan kategori" : `Pengajuan ${tab === "account" ? "rekening" : "kategori"}`} busyId={masterReview.busyId} unresolvedIntent={masterReview.unresolvedIntent} onRetryUnresolved={masterReview.retryUnresolvedIntent} onApprove={(request) => masterReview.reviewRequest(request, "approve")} onReject={(request, reason) => masterReview.reviewRequest(request, "reject", reason)} /> : null}
+      {tab === "all" || tab === "goal" ? <GoalDeletionRequestsPanel items={goalItems} ownerMode onChanged={reloadGoalRequests} title="Permintaan hapus Target" /> : null}
       {showTransfer ? <TransferRequestsPanel items={transferItems} accounts={accounts} ownerMode busyId={transferReview.busyId} unresolvedIntent={transferReview.unresolvedIntent} onRetryUnresolved={transferReview.retryUnresolvedIntent} onApprove={(request, reason) => transferReview.reviewTransferRequest(request, "approve", reason)} onReject={(request, reason) => transferReview.reviewTransferRequest(request, "reject", reason)} /> : null}
     </div>
   </OwnerSettingsGuard>;
@@ -83,10 +89,14 @@ const ApprovalCenterPage = ({ embedded = false, requesterId = "" }) => {
   const [tab, setTab] = useState("all");
   const masterRequests = useApiResource("masterDataRequests.list", { status: "pending" }, { enabled: ownerMode });
   const transferRequests = useApiResource("transferRequests.list", { status: "pending" }, { enabled: ownerMode });
+  const goalRequests = useApiResource("goalDeletionRequests.list", { status: "pending" }, { enabled: ownerMode });
   const allMasterItems = masterRequests.data?.items || [];
   const allTransferItems = transferRequests.data?.items || [];
+  const allGoalItems = goalRequests.data?.items || [];
   const masterItems = requesterId ? allMasterItems.filter((item) => String(item.requested_by || "") === String(requesterId)) : allMasterItems;
   const transferItems = requesterId ? allTransferItems.filter((item) => String(item.requested_by || "") === String(requesterId)) : allTransferItems;
+  const goalItems = requesterId ? allGoalItems.filter((item) => String(item.requested_by || "") === String(requesterId)) : allGoalItems;
+  const reloadGoalRequests = async () => { invalidate(["goalDeletionRequests.list", "goals.list", "notifications.center"]); await Promise.allSettled([goalRequests.reload(), refreshAll()]); };
   const { visibleMasterItems, showMaster, showTransfer } = approvalView(tab, masterItems);
 
   const reloadApprovedMasterData = async () => {
@@ -109,15 +119,19 @@ const ApprovalCenterPage = ({ embedded = false, requesterId = "" }) => {
     notify,
   });
 
-  if (ownerMode && (masterRequests.status === "loading" || transferRequests.status === "loading")) return <NativePageSkeleton kind="approvals" label="Memuat persetujuan…" />;
+  if (ownerMode && (masterRequests.status === "loading" || transferRequests.status === "loading" || goalRequests.status === "loading")) return <NativePageSkeleton kind="approvals" label="Memuat persetujuan…" />;
   if (ownerMode && masterRequests.status === "error") return <ErrorState error={masterRequests.error} onRetry={masterRequests.reload} />;
   if (ownerMode && transferRequests.status === "error") return <ErrorState error={transferRequests.error} onRetry={transferRequests.reload} />;
+  if (ownerMode && goalRequests.status === "error") return <ErrorState error={goalRequests.error} onRetry={goalRequests.reload} />;
 
   const content = <ApprovalCenterContent
       tab={tab}
       setTab={setTab}
       masterItems={masterItems}
       transferItems={transferItems}
+      goalItems={goalItems}
+      goalRequests={goalRequests}
+      reloadGoalRequests={reloadGoalRequests}
       visibleMasterItems={visibleMasterItems}
       showMaster={showMaster}
       showTransfer={showTransfer}
@@ -130,7 +144,7 @@ const ApprovalCenterPage = ({ embedded = false, requesterId = "" }) => {
     />;
   if (embedded) return content;
   return <div className="page-stack">
-    <PageHeader title="Persetujuan" help="Tinjau pengajuan rekening, kategori, dan transfer. Keputusan tetap mengikuti hak akses, status pengajuan, dan aturan keuangan yang berlaku." />
+    <PageHeader title="Persetujuan" help="Tinjau pengajuan rekening, kategori, transfer, dan penghapusan Target. Keputusan tetap mengikuti hak akses, status pengajuan, dan aturan keuangan yang berlaku." />
     {content}
   </div>;
 };

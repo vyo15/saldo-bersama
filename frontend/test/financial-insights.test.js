@@ -208,7 +208,8 @@ test("hero visual planning memakai aset existing tanpa mengubah kontrak bisnis",
     source("src/features/reports/ReportsPage.jsx"),
   ]);
   assert.match(goals, /piggy-bank\.webp/);
-  assert.match(goals, /const items = useMemo\(\(\) => resource\.data\?\.items \|\| \[\], \[resource\.data\?\.items\]\);/);
+  assert.match(goals, /const items = useMemo\(\(\) => \(resource\.data\?\.items \|\| \[\]\)\.filter\(\(goal\) => !pendingGoalIds\.has\(goal\.goal_id\)\)/);
+  assert.match(goals, /<GoalGrid items=\{items\}/);
   assert.match(goals, /<GoalSummary items=\{items\}/);
   assert.doesNotMatch(allocations, /wallet\.webp/);
   assert.match(allocations, /<AllocationFundingSummary accounts=\{accounts\}/);

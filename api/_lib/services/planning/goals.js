@@ -123,6 +123,7 @@ const goalManagementCapabilities = (row, reached, context) => {
     can_reopen: [ownerMode, row.status === "completed"].every(Boolean),
     can_update: [row.status === "active", ownerMode || row.scope === "shared"].every(Boolean),
     can_archive: [ownerMode, row.status !== "archived"].every(Boolean),
+    can_request_delete: context.actor.role === "member" && row.scope === "shared" && row.status !== "archived",
   };
 };
 

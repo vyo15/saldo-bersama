@@ -136,6 +136,10 @@
 | `shopping.itemState` | Ya | Ya |
 | `shopping.itemRemove` | Ya | Ya |
 | `shopping.checkout` | Ya | Ya |
+| `goalDeletionRequests.list` | Ya | Ya |
+| `goalDeletionRequests.request` | Tidak | Ya |
+| `goalDeletionRequests.review` | Ya | Tidak |
+| `goalDeletionRequests.withdraw` | Tidak | Ya |
 | `goals.list` | Ya | Ya |
 | `goals.create` | Ya | Ya |
 | `goals.update` | Ya | Ya |

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
@@ -23,6 +23,7 @@ import {
   updateGoal as requestUpdateGoal,
   isGoalsOutcomeUnknownError,
 } from "./goals.api.js";
+import { requestGoalDeletion } from "./goalDeletionRequests.api.js";
 import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
 import { summarizeGoals } from "./goalPresentation.js";
 
@@ -67,7 +68,7 @@ const useGoalCreation = ({ resource, investmentResource, refreshOverview, invali
   return { createMutation, message, form, setForm, open, openCreate, closeCreate, createGoal };
 };
 
-const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, invalidate, notify }) => {
+const useGoalLifecycle = ({ resource, investmentResource, requestResource, memberMode, setLocallyHidden, refreshOverview, invalidate, notify }) => {
   const [editGoal, setEditGoal] = useState(null);
   const [editState, setEditState] = useState({ status: "idle", error: null });
   const [archiveTarget, setArchiveTarget] = useState(null);
@@ -91,6 +92,7 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
     } catch (error) { setEditState({ status: isGoalsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openArchive = async (goal) => {
+    if (memberMode) { setArchiveTarget({ goal, member: true }); setArchiveState({ status: "idle", error: null }); return; }
     setArchiveState({ status: "submitting", error: null });
     try {
       const preview = await previewGoalLifecycle({ goal_id: goal.goal_id, row_version: goal.row_version }, { force: true });
@@ -106,7 +108,11 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
     const { goal, preview } = archiveTarget;
     setArchiveState({ status: "submitting", error: null });
     try {
-      if (preview.canDeleteUnused) {
+      if (archiveTarget.member) {
+        await requestGoalDeletion({ goal_id: goal.goal_id, row_version: goal.row_version, reason }, { rowVersion: goal.row_version });
+        setLocallyHidden((previous) => new Set(previous).add(goal.goal_id));
+        notify({ message: "Pengajuan terkirim. Target disembunyikan untuk kamu sampai admin memutuskan.", tone: "success", dedupeKey: "goals:request-delete" });
+      } else if (preview.canDeleteUnused) {
         await requestDeleteUnusedGoal({ goal_id: goal.goal_id, row_version: goal.row_version, reason, acknowledged: confirmation.acknowledged }, { rowVersion: goal.row_version });
         notify({ message: "Target yang belum pernah digunakan berhasil dihapus permanen.", tone: "success", dedupeKey: "goals:delete-unused" });
       } else {
@@ -115,7 +121,10 @@ const useGoalLifecycle = ({ resource, investmentResource, refreshOverview, inval
       }
       setArchiveTarget(null);
       setArchiveState({ status: "idle", error: null });
-      await refresh(refreshGoalKeys);
+      if (archiveTarget.member) {
+        invalidate(["goalDeletionRequests.list", "notifications.center"]);
+        await Promise.allSettled([requestResource.reload(), resource.reload()]);
+      } else await refresh(refreshGoalKeys);
     } catch (error) { setArchiveState({ status: isGoalsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
   const openStatusChange = (goal, nextStatus) => { setStatusTarget({ goal, nextStatus }); setStatusState({ status: "idle", error: null }); };
@@ -185,9 +194,11 @@ const GoalsPage = () => {
   const { attention, consumeAttention } = useDashboardAttentionState();
   const location = useLocation();
   const navigate = useNavigate();
-  const resource = useApiResource("goals.list");
-  const investmentResource = useApiResource("investments.overview");
   const { bootstrap, overview, refreshOverview, invalidate } = useFinance();
+  const resource = useApiResource("goals.list");
+  const memberMode = bootstrap?.user?.role === "member";
+  const requestResource = useApiResource("goalDeletionRequests.list", {}, { enabled: memberMode });
+  const investmentResource = useApiResource("investments.overview");
   const { notify } = useFeedback();
   const [reminderTarget, setReminderTarget] = useState(null);
   const [createdGoal, setCreatedGoal] = useState(null);
@@ -198,9 +209,12 @@ const GoalsPage = () => {
   const creationAccounts = useMemo(() => accounts.filter((item) => item.can_transact !== false && item.owner_scope === "shared" && item.account_type !== "investment"), [accounts]);
   const investmentPortfolios = useMemo(() => (investmentResource.data?.portfolios || []).filter((item) => item.can_operate !== false && item.owner_scope === "shared"), [investmentResource.data?.portfolios]);
   const canCreate = creationAccounts.length > 0 || investmentPortfolios.length > 0;
-  const items = useMemo(() => resource.data?.items || [], [resource.data?.items]);
+  const [locallyHidden, setLocallyHidden] = useState(() => new Set());
+  useEffect(() => { if (requestResource.status === "ready" && requestResource.data?.items) setLocallyHidden(new Set()); }, [requestResource.data?.items, requestResource.status]);
+  const pendingGoalIds = useMemo(() => new Set([...(requestResource.data?.items || []).filter((request) => request.status === "pending").map((request) => request.goal_id), ...locallyHidden]), [requestResource.data?.items, locallyHidden]);
+  const items = useMemo(() => (resource.data?.items || []).filter((goal) => !pendingGoalIds.has(goal.goal_id)), [resource.data?.items, pendingGoalIds]);
   const summary = useMemo(() => summarizeGoals(items), [items]);
-  const shared = { resource, investmentResource, refreshOverview, invalidate, notify };
+  const shared = { resource, investmentResource, requestResource, memberMode, setLocallyHidden, refreshOverview, invalidate, notify };
   const creation = useGoalCreation({ ...shared, onCreated: (goal) => { if (location.state?.setupFlow) setCreatedGoal(goal || { name: "Target" }); } });
   const lifecycle = useGoalLifecycle(shared);
 
@@ -229,6 +243,8 @@ const GoalsPage = () => {
   if (resource.status === "loading") return <NativePageSkeleton kind="goals" label="Memuat target keuangan…" />;
   if (resource.status === "error") return <ErrorState error={resource.error} onRetry={resource.reload} />;
   if (investmentResource.status === "loading") return <NativePageSkeleton kind="goals" label="Memeriksa sumber dana Target…" />;
+  if (memberMode && requestResource.status === "loading") return <NativePageSkeleton kind="goals" label="Memeriksa pengajuan Target…" />;
+  if (memberMode && requestResource.status === "error") return <ErrorState error={requestResource.error} onRetry={requestResource.reload} />;
 
   const sourceLoadFailed = investmentResource.status === "error" && creationAccounts.length === 0;
   const openReminder = (goal) => setReminderTarget({ entityType: "goal", entityId: goal.goal_id, name: goal.name, suggestedDate: goal.target_date });
@@ -249,13 +265,14 @@ const GoalsPage = () => {
   };
 
   return <div className="page-stack">
-    <RefreshWarning error={resource.refreshError || investmentResource.error || investmentResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), investmentResource.reload()])} />
+    <RefreshWarning error={resource.refreshError || investmentResource.error || investmentResource.refreshError || requestResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), investmentResource.reload(), ...(memberMode ? [requestResource.reload()] : [])])} />
     <PageHeader title="Target" help="Satu tujuan dapat berisi dana tunai, investasi, atau keduanya. Nilai investasi mengikuti catatan harga terakhir dan setiap kejadian uang dihitung satu kali." actions={headerActions} />
     {createdGoal ? <CompactNotice tone="success" title="Target sudah siap." role="status">Gunakan Tambah dana untuk menyimpan lewat rekening atau investasi sesuai cara menabung Target.</CompactNotice> : null}
     {createdGoal ? <div className="form-actions"><Button type="button" onClick={() => setCreatedGoal(null)}>Selesai</Button>{createdGoal?.goal_id ? <Button type="button" variant="primary" onClick={() => { openFunding(createdGoal); setCreatedGoal(null); }}>Tambah dana</Button> : null}</div> : null}
     {fundingPrompt ? <CompactNotice tone="info" title="Pilih Target yang ingin ditambah." role="status">Gunakan tombol Tambah dana pada Target yang dituju. Dana dapat disimpan sebagai tunai atau investasi sesuai pengaturannya.</CompactNotice> : null}
+    {pendingGoalIds.size > 0 ? <CompactNotice tone="info" title={`${pendingGoalIds.size} Target menunggu persetujuan`} role="status">Target disembunyikan dari daftar kamu. Cek status atau tarik pengajuan melalui <Link to="/pengaturan/akun?tab=requests">Pengajuan Saya</Link>.</CompactNotice> : null}
     {summary.activeCount ? <GoalSummary items={items} /> : null}
-    <GoalGrid items={items} actions={actions} canCreate={canCreate} sourceLoadFailed={sourceLoadFailed} openCreate={creation.openCreate} />
+    <GoalGrid items={items} actions={actions} canCreate={canCreate} sourceLoadFailed={sourceLoadFailed} openCreate={creation.openCreate} pendingCount={pendingGoalIds.size} />
     {(reminderTarget || creation.open || lifecycle.editGoal || lifecycle.archiveTarget || lifecycle.statusTarget) ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan aksi target..." />}><GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} investmentPortfolios={investmentPortfolios} lifecycle={lifecycle} /></Suspense> : null}
     {fundingTarget ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan dana Target..." />}><GoalFundingModal goal={fundingTarget.goal} accounts={accounts} transferRoutes={bootstrap?.transferRoutes || []} investmentOverview={investmentResource.data || { portfolios: [] }} initialSourceAccountId={fundingTarget.sourceAccountId} suggestedAmount={fundingTarget.suggestedAmount} manualAmount={fundingTarget.manualAmount} onClose={() => setFundingTarget(null)} onChanged={onFundingChanged} onBuyInvestment={openGoalInvestmentBuy} /></Suspense> : null}
     {achievement ? <Suspense fallback={null}><GoalAchievementPostcard {...achievement} onClose={() => setAchievement(null)} /></Suspense> : null}

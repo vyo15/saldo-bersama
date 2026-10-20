@@ -37,7 +37,7 @@ const prefersReducedMotion = () => matchesMedia(APP_MEDIA.reducedMotion);
 const notificationIcon = (type) => {
   if (["reconciliation_stale", "reconciliation_difference", "investment_reconciliation_stale", "investment_reconciliation_difference"].includes(type)) return FiRefreshCw;
   if (["recurring_due", "recurring_overdue", "recurring_funding_shortage", "recurring_completed"].includes(type)) return FiCalendar;
-  if (type === "goal_behind") return FiTarget;
+  if (["goal_behind", "goal_deletion"].includes(type)) return FiTarget;
   if (type === "manual_reminder") return FiBell;
   if (["budget_threshold", "envelope_threshold", "unallocated_expense", "unallocated_funds"].includes(type)) return FiPieChart;
   return FiInfo;

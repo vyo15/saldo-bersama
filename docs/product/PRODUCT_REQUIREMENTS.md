@@ -227,3 +227,10 @@ Dekorasi kartu Alokasi Dana diturunkan otomatis dari `decoration_key=auto`; flow
 4. Pemilik mengubah item personal. Item Bersama dapat diubah oleh pembuat/Administrator, tetap mengacu permission ledger ketika checkout. Pembelian memvalidasi scope rekening, kategori, saldo, alokasi dan idempotency transaksi existing, lalu menautkan satu transaksi expense canonical secara atomik.
 5. Barang purchased hanya dapat diaktifkan kembali ketika transaksi pembelian sudah cancelled. Edit/archive item purchased ditolak sampai payment dibatalkan. Semua perubahan penting diaudit dengan optimistic concurrency row_version.
 6. Restore/backup/reset/export menyertakan `wishlist_items`; migrasi production harus sesuai schema v28 dan gate integrity. Tidak ada auto-fund, goal pribadi otomatis, multi-item purchase atomic, atau approval khusus Wishlist dalam current release.
+
+### Approval hapus Target Bersama (current)
+
+- Anggota aktif (Member) dapat memilih **Ajukan hapus target** pada menu `···` Target Bersama. Sistem hanya mengirim pengajuan ke backend dan menyembunyikan kartu dari **daftar member pemohon** setelah server menyimpan pengajuan, termasuk lintas reload/perangkat; data Target, ledger, saldo, dan tampilan anggota lain tetap utuh.
+- Status tersimpan (`pending`, `approved`, `rejected`, `cancelled`) terlihat di **Pengajuan Saya**; pemohon boleh menarik pending sehingga Target kembali terlihat. Administrator melihat pengajuan Target pada Persetujuan Keluarga, dapat menerima atau menolak disertai alasan, dan dapat terus melihat Target sebelum approval.
+- Persetujuan memakai optimistic version check Target dan domain lifecycle: unused/Rp0 tanpa dependensi hard-delete, target pernah dipakai archive, histori/ledger tetap dijaga. Investasi aktif yang belum dilepas tetap memblokir approval sampai diperbaiki. Penolakan membuat Target muncul lagi untuk pemohon tanpa mengubah nilai keuangan.
+- Target pribadi tidak dapat dihapus oleh member lain; akses admin existing tetap di jalur lifecycle terpisah.

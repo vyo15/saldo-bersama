@@ -73,7 +73,7 @@ const GoalActions = ({ goal, detailId, detailsOpen, toggleDetails, openEdit, ope
         {canRemind ? <Button icon={FiBell} onClick={() => closeMenuThen(() => openReminder(goal))}>Pengingat</Button> : null}
         {goal.can_complete && canAdd ? <Button icon={FiCheckCircle} onClick={() => closeMenuThen(() => openStatusChange(goal, "completed"))}>Selesaikan target</Button> : null}
         {goal.can_update ? <Button icon={FiEdit2} onClick={() => closeMenuThen(() => openEdit(goal))}>Edit</Button> : null}
-        {goal.can_archive ? <Button icon={FiArchive} onClick={() => closeMenuThen(() => openArchive(goal))}>Hapus dari daftar</Button> : null}
+        {goal.can_archive || goal.can_request_delete ? <Button icon={FiArchive} onClick={() => closeMenuThen(() => openArchive(goal))}>{goal.can_request_delete ? "Ajukan hapus target" : "Hapus dari daftar"}</Button> : null}
       </div>
     </details>
   </div>;
@@ -106,13 +106,13 @@ const GoalCard = ({ goal, actions }) => {
   </Card>;
 };
 
-const GoalGrid = ({ items, actions, canCreate, sourceLoadFailed = false, openCreate }) => <section className={goalClass("goal-grid")}>
+const GoalGrid = ({ items, actions, canCreate, sourceLoadFailed = false, openCreate, pendingCount = 0 }) => <section className={goalClass("goal-grid")}>
   {items.length ? items.map((goal) => <GoalCard key={goal.goal_id} goal={goal} actions={actions} />) : <EmptyState
     className={goalClass("goal-grid__empty")}
     icon={FiTarget}
-    title={sourceLoadFailed ? "Sumber dana Target belum dapat diperiksa" : canCreate ? "Belum ada target keuangan" : "Belum ada sumber dana Target"}
-    description={sourceLoadFailed ? "Data investasi belum berhasil dimuat. Coba lagi dari peringatan di atas sebelum menyimpulkan belum ada sumber dana." : canCreate ? "Buat satu tujuan lalu pilih menabung lewat rekening, investasi, atau campuran." : "Siapkan rekening Bersama aktif atau portfolio investasi Bersama terlebih dahulu."}
-    action={sourceLoadFailed ? null : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : <ButtonLink variant="primary" to="/rekening">Lihat sumber dana</ButtonLink>}
+    title={sourceLoadFailed ? "Sumber dana Target belum dapat diperiksa" : pendingCount ? "Target sedang menunggu persetujuan" : canCreate ? "Belum ada target keuangan" : "Belum ada sumber dana Target"}
+    description={sourceLoadFailed ? "Data investasi belum berhasil dimuat. Coba lagi dari peringatan di atas sebelum menyimpulkan belum ada sumber dana." : pendingCount ? "Target masih tercatat dengan aman dan tersembunyi sementara. Cek keputusan admin di Pengajuan Saya." : canCreate ? "Buat satu tujuan lalu pilih menabung lewat rekening, investasi, atau campuran." : "Siapkan rekening Bersama aktif atau portfolio investasi Bersama terlebih dahulu."}
+    action={sourceLoadFailed || pendingCount ? null : canCreate ? <Button variant="primary" icon={FiPlus} onClick={openCreate}>Buat target pertama</Button> : <ButtonLink variant="primary" to="/rekening">Lihat sumber dana</ButtonLink>}
   />}
 </section>;
 

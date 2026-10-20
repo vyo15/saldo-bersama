@@ -11,7 +11,7 @@ const ACTIONS = [
 ];
 
 test("shopping schema and canonical actions are registered", () => {
-  assert.equal(DATABASE_SCHEMA_VERSION, 29);
+  assert.equal(DATABASE_SCHEMA_VERSION, 30);
   for (const action of ACTIONS) assert.ok(ACTION_POLICIES[action], `${action} must have canonical policy`);
 });
 

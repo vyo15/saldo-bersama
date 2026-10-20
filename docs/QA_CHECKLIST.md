@@ -254,3 +254,13 @@
 - [ ] Anggota tidak dapat menghapus Alokasi Pribadi milik anggota lain, termasuk lewat API langsung.
 - [ ] Data berubah di perangkat kedua tanpa reload manual sesuai sinkronisasi revisi; stale row version ditolak.
 - [ ] Alokasi yang diarsipkan dapat dipulihkan Administrator melalui Pemulihan, jika validasi dana mengizinkan.
+
+## QA manual — approval hapus Target Bersama v30
+
+- [ ] Masuk sebagai Member, buka Target Bersama, menu `···` → **Ajukan hapus target**; isi alasan; target tersembunyi untuk pemohon setelah sukses dan tetap tersembunyi usai reload/login di perangkat kedua.
+- [ ] Target tetap terlihat untuk Member lain/Administrator dan nilai saldo/rekening serta report canonical tidak berubah saat pending.
+- [ ] **Pengajuan Saya** menampilkan status dan tombol **Tarik pengajuan**; setelah ditarik, Target muncul kembali tanpa reload manual.
+- [ ] Administrator pada **Persetujuan Keluarga → Target** melihat pengajuan, bisa menolak dengan alasan sehingga Target muncul lagi dan pemohon diberi notifikasi.
+- [ ] Persetujuan Target Rp0 yang belum dipakai menghapus record; Target dengan histori mengarsipkan tanpa menghapus mutasi ataupun transaksi.
+- [ ] Target dengan investasi yang masih teralokasi gagal diarsipkan secara aman dan memberi jalan keluar; dua pengajuan bersamaan tidak berakhir konflik/saldo ganda; versi Target stale gagal tanpa aksi keuangan.
+- [ ] Cek mobile iPhone/Android pada light/dark, notifikasi, swipe/navigasi, fokus keyboard, back, dan ukuran tombol 44px; verifikasi langsung dengan dua akun pada database Development yang terisolasi.

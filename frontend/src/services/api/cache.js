@@ -16,6 +16,7 @@ export const READ_CACHE_TTL_MS = Object.freeze({
   "categories.list": 120_000,
   "categories.previewArchive": 0,
   "masterDataRequests.list": 0,
+  "goalDeletionRequests.list": 0,
   "transferRequests.list": 0,
   "archive.list": 30_000,
   "transactions.list": 30_000,

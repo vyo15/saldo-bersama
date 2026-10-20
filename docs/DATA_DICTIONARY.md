@@ -5,7 +5,7 @@
 > **Update when:** Makna field/table atau lifecycle data berubah.  
 > **Boundary:** Tipe/constraint authoritative berada di migration; kronologi migration berada di Git/CHANGELOG.
 
-Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `027_user_hidden_items.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
+Schema column-level canonical merupakan hasil seluruh file berurutan di `database/migrations/`, saat ini dari `001_initial_schema.sql` sampai `028_goal_deletion_approval.sql`. Dokumen ini menjelaskan arti dan lifecycle; bila ada perbedaan tipe/constraint, migration menang.
 
 ## Aturan lintas tabel
 
@@ -38,6 +38,7 @@ Schema column-level canonical merupakan hasil seluruh file berurutan di `databas
 | `recurring_occurrences` | Kejadian per jatuh tempo dari aturan rutin. | Sedang | Service/API; hard delete dilarang untuk data finansial normal |
 | `commitments` | Domain internal Kewajiban untuk KPR, cicilan, pinjaman, Arisan, atau kewajiban berkala lain beserta sisa pokok/setoran, rekening pembayaran, dan jadwal canonical. | Tinggi | Service/API; jadwal ditautkan 1:1 ke `recurring_rules`; aksi UI **Hentikan kewajiban** menonaktifkan record tanpa menghapus histori finansial |
 | `commitment_movements` | Ledger progres Kewajiban untuk pembayaran, penerimaan Arisan, dan reversal; menyimpan pemisahan pokok/bunga ketika dapat ditentukan. | Tinggi | Dibentuk oleh service Kewajiban/Jadwal Rutin; tidak boleh ditulis langsung client |
+| `goal_deletion_requests` | Pengajuan penghapusan Target Bersama: snapshot nama/versi Target, pemohon, alasan, status pending/approved/rejected/cancelled, reviewer, outcome deleted/archived, row_version. Jejak tetap ada ketika Target belum dipakai dihapus permanen. | Tinggi | Member mengajukan dan menarik sendiri; Administrator review; ikut backup/restore; tidak mengubah saldo sampai keputusan dan tidak dihapus cascade |
 | `savings_goals` | Target tujuan dengan nominal, tanggal, lifecycle, rekening compatibility, dan `funding_mode` `cash`/`investment`/`mixed`. | Sedang | Service/API; progress dapat berasal dari cash dan/atau investasi; hard delete hanya untuk target benar-benar belum dipakai |
 | `transactions` | Ledger transaksi income, expense, transfer, refund, dan adjustment. | Tinggi | Service/API; hard delete dilarang untuk data finansial normal |
 | `investment_portfolios` | Compatibility container yang mengikat histori investasi ke satu rekening `account_type=investment`; broker context dipertahankan untuk data lama tetapi tidak menjadi hierarchy UI current. | Tinggi | Service/API; satu RDN per portfolio; ikut backup/restore |
@@ -143,7 +144,7 @@ Jangan menambahkan field tersebut ke payload atau UI sebelum migration, API cont
 
 ## Current schema marker
 
-Versi runtime aktif: `29`. Latest migration canonical: `027_user_hidden_items.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
+Versi runtime aktif: `30`. Latest migration canonical: `028_goal_deletion_approval.sql`. Migration menambah schema secara berurutan dan dicatat pada `schema_migrations`; arti current tidak memakai section per-version agar dictionary tidak berubah menjadi changelog.
 
 Compatibility penting yang tetap current:
 

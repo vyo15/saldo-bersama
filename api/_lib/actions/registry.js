@@ -35,6 +35,7 @@ import {
 } from "../services/reporting/index.js";
 import { deactivateUser, listUsers, reactivateUser, upsertUser } from "../services/users.js";
 import { listTransferRequests, requestSharedToPersonalTransfer, reviewTransferRequest } from "../services/transferRequests.js";
+import { listGoalDeletionRequests, requestGoalDeletion, reviewGoalDeletion, withdrawGoalDeletion } from "../services/planning/goalDeletionRequests.js";
 import { listOwnSessions, revokeAllOwnSessions, revokeOwnSession } from "../services/sessions.js";
 import { operationalHealthStatement, presentOperationalHealth, presentSchedulerHealth } from "../services/operationalHealth.js";
 import { listWishlist, createWishlist, updateWishlist, changeWishlistState, purchaseWishlist, reopenWishlist } from "../services/wishlist/index.js";
@@ -197,6 +198,10 @@ const ACTION_HANDLERS = Object.freeze({
   "budgets.deleteUnused": deleteUnusedBudget,
   "budgets.restore": restoreBudget,
   "goals.list": listGoals,
+  "goalDeletionRequests.list": listGoalDeletionRequests,
+  "goalDeletionRequests.request": requestGoalDeletion,
+  "goalDeletionRequests.review": reviewGoalDeletion,
+  "goalDeletionRequests.withdraw": withdrawGoalDeletion,
   "goals.create": createGoal,
   "goals.update": updateGoal,
   "goals.previewLifecycle": previewGoalLifecycle,

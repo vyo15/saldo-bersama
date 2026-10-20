@@ -5,7 +5,7 @@
 > **Update when:** Migration/schema/runtime version berubah.  
 > **Boundary:** Detail kronologi migration berada di `database/migrations/` dan `CHANGELOG.md`; file ini menjelaskan bentuk current.
 
-Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `027_user_hidden_items.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
+Schema canonical merupakan hasil seluruh migration berurutan di `database/migrations/`; latest migration current adalah `028_goal_deletion_approval.sql`. Migration yang sudah diterapkan dicatat pada `schema_migrations`. Prefix file adalah ID urutan migration, sedangkan target schema dibaca dari `system_config.schema_version` di SQL. Production update dijalankan eksplisit melalui `npm run prod:update`, bukan otomatis pada request.
 
 ## Kelompok tabel
 
@@ -34,6 +34,7 @@ Schema canonical merupakan hasil seluruh migration berurutan di `database/migrat
 - `shopping_checkouts` — link satu checkout belanja ke tepat satu transaksi canonical.
 - `budget_history` — representasi compact Kebutuhan setelah periode ditutup; dipakai report/reopen tanpa mempertahankan row operasional aktif.
 - `savings_goals` — Target tujuan dengan `funding_mode` `cash`, `investment`, atau `mixed`; status selesai tetap keputusan eksplisit user.
+- `goal_deletion_requests` — pengajuan hapus Target Bersama oleh Member dengan status pending/approved/rejected/cancelled dan versi Target saat pengajuan; approval tidak memutasi saldo selain menjalankan lifecycle Target canonical; audit/backup/restore lengkap.
 - `goal_movements` — mutasi cash Target yang terhubung satu-ke-satu ke transaksi ledger.
 - `goal_investment_events` — event append-only untuk menautkan/release holding, Buy/Sell yang terkait Target, dan retained sale cash tanpa menduplikasi mutasi ledger.
 - `reconciliations`
@@ -127,9 +128,9 @@ deposit, withdrawal, adjustment
 
 ## Schema version
 
-Versi aktif: `29`
+Versi aktif: `30`
 
-Latest migration: `027_user_hidden_items.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
+Latest migration: `028_goal_deletion_approval.sql`. Runtime version ditentukan oleh `api/_lib/db/schema.js` (`DATABASE_SCHEMA_VERSION`) dan migration yang tercatat pada `schema_migrations`. Production update dijalankan eksplisit sesuai `DATABASE_MIGRATION_POLICY.md` melalui `npm run prod:update`; workflow membuat backup verified fresh dari schema aktif, menjalankan seluruh migration pending secara atomik sampai schema target, menjalankan integrity, lalu mempromosikan candidate runtime yang sama.
 
 Current additive capabilities yang perlu diketahui reader schema:
 
@@ -147,3 +148,7 @@ Urutan/history migration lengkap ada di `database/migrations/`; arti field/lifec
 ## Tambahan schema 29: preferensi hapus dari tampilan (candidate)
 
 Migration `027_user_hidden_items.sql` menambahkan tabel `user_hidden_items` dengan primary key `(user_id,entity_kind,entity_id)`, `hidden` 0/1 dan `updated_at`. Relasi entitas adalah opaque ID sengaja tanpa cascade FK supaya delete/arsip domain tidak menghapus histori finansial. `user_id` memiliki FK RESTRICT ke `users`; tabel ikut logical backup/restore/reset. Migrasi ini wajib dilakukan canonical sebelum menggunakan action `visibility.set` dan query item dengan `is_hidden`.
+
+## Tambahan schema 30: pengajuan hapus Target Bersama
+
+Migration `028_goal_deletion_approval.sql` menambahkan `goal_deletion_requests`, menyimpan `goal_name` snapshot, `goal_row_version`, `requested_by`, `reason`, reviewer, status, outcome `deleted`/`archived`, dan optimistic `row_version`. Foreign key user tetap wajib; `goal_id` tidak memakai FK cascade supaya jejak pengajuan tetap ada setelah penghapusan permanen Target belum dipakai. Unique index mencegah satu anggota membuat lebih dari satu pending request untuk Target sama. Member hanya membaca/menarik pengajuan sendiri, Administrator dapat membaca/memutuskan seluruh pengajuan. Request tidak menyentuh ledger dan hanya disembunyikan dari daftar pemohon; reviewer memakai versi Target dan lifecycle guard. Tabel termasuk backup/restore/reset canonical.

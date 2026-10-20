@@ -51,7 +51,7 @@
 
 Minimum contract:
 
-- Schema Production harus versi 29 sebelum runtime current menerima traffic.
+- Schema Production harus versi 30 sebelum runtime current menerima traffic.
 - Node didukung: `22.15.0+` pada 22.x atau Node 24.x.
 - `npm run zip` hanya membuat clean archive bila full verification PASS; verification gagal harus exit non-zero dan tidak membuat archive baru.
 - Generated build/test artifact dibersihkan setelah gate tanpa menghapus dependency, `.env.local`, `.vercel`, atau repository Git.
@@ -269,7 +269,7 @@ Minimum contract:
 ## Schema dan migration
 
 - Migration berurutan, additive bila memungkinkan, dicatat di `schema_migrations`, dan current runtime version sama dengan `DATABASE_SCHEMA_VERSION`.
-- Schema Production harus versi 29 sebelum deployment current menerima traffic.
+- Schema Production harus versi 30 sebelum deployment current menerima traffic.
 - Latest migration harus didokumentasikan di `TURSO_SCHEMA.md` dan `DATA_DICTIONARY.md`.
 - Untuk release schema-sensitive, `npm run prod:update` harus membuktikan backup verified fresh pada schema aktif, migration chain atomik menuju schema source, integrity PASS, promotion candidate yang sama, dan live health runtime/schema sinkron; retry memakai command yang sama.
 

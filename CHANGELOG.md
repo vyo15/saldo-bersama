@@ -1,3 +1,10 @@
+## 2026-10-20 — Candidate persetujuan hapus Target Bersama untuk Member
+
+- Member dapat mengajukan penghapusan Target Bersama melalui menu `···`; setelah server menerima, hanya pemohon yang menyembunyikan Target dari daftar (persisten lintas sesi dari pengajuan `pending`).
+- Perluasan pusat Persetujuan Administrator dan Pengajuan Saya untuk setujui/tolak/tarik; keputusan memakai lifecycle aman: hard-delete unused, archive historis, validasi versi, audit, notifikasi, dan sync invalidation.
+- Migration schema v30 `goal_deletion_requests` ikut backup/restore; kontrak API, hak akses, schema, deployment, test-plan, dan regression diselaraskan.
+- Status: Candidate sampai `npm ci`/`npm run verify` penuh dan browser smoke terautentikasi dua pengguna lulus pada Development.
+
 ## 2026-10-19 — Hapus wadah Alokasi untuk anggota
 
 - Semua anggota aktif dapat membuka **Hapus Alokasi** pada Alokasi Bersama, termasuk wadah yang dialokasikan ke pengguna lain. Alokasi Pribadi tetap hanya dapat dihapus oleh pemiliknya.

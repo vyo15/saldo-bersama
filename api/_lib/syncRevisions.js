@@ -72,7 +72,7 @@ const ALL_BUSINESS_READS = Object.freeze(unique(
   SYSTEM,
   [
     "users.list", "sessions.listOwn", "archive.list", "investments.overview", "investments.instruments.list",
-    "accounts.list", "accounts.previewLifecycle", "categories.list", "categories.previewArchive", "masterDataRequests.list",
+    "accounts.list", "accounts.previewLifecycle", "categories.list", "categories.previewArchive", "masterDataRequests.list", "goalDeletionRequests.list",
     "transferRequests.list", "transactions.list", "shopping.detail", "shopping.suggestions", "shopping.byTransaction", "wishlist.list", "envelopes.list", "envelopes.previewRuleLifecycle", "recurring.list",
     "recurring.previewRuleLifecycle", "commitments.list", "budgets.list", "budgets.previewLifecycle", "goals.list", "goals.previewLifecycle",
     "reports.monthly", "reconciliations.list", "periods.list", "periods.previewClose", "notifications.status",
@@ -172,6 +172,9 @@ export const ACTION_SYNC_DEPENDENCIES = Object.freeze({
 
   "goals.create": GOAL_DEPENDENCIES,
   "goals.update": GOAL_DEPENDENCIES,
+  "goalDeletionRequests.request": unique(AUDIT, ["goalDeletionRequests.list", "notifications.center"]),
+  "goalDeletionRequests.withdraw": unique(AUDIT, ["goalDeletionRequests.list", "goals.list", "notifications.center"]),
+  "goalDeletionRequests.review": unique(GOAL_DEPENDENCIES, ["goalDeletionRequests.list", "notifications.center"]),
   "goals.archive": GOAL_DEPENDENCIES,
   "goals.deleteUnused": GOAL_DEPENDENCIES,
   "goals.move": GOAL_DEPENDENCIES,
