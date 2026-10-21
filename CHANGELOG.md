@@ -1,3 +1,9 @@
+## 2026-10-21 — Remediasi route Target melewati build budget (candidate)
+
+- Memisahkan presentasi ringkasan dan kartu Target dari route utama menjadi satu chunk lazy yang langsung dipreload saat modul route dibuka; fallback skeleton mempertahankan keadaan memuat saat chunk belum siap.
+- Semua aksi Target tetap berada pada komponen lama, tanpa perubahan keuangan, capability, API, atau style. Guard regresi dan `docs/TEST_PLAN.md` ditambahkan; limit route tetap 8192 byte gzip.
+- Gate akhir wajib memverifikasi ukuran artefak Vite yang sebenarnya melalui `npm run verify`; pengujian build pada lingkungan Linux tanpa Rollup native tidak dapat dianggap PASS.
+
 ## 2026-10-21 — Perbaikan overflow action, Back Target, lint, dan konsolidasi catatan (candidate)
 
 - Overflow Target/Transaksi/Kewajiban/Shopping/Wishlist memakai menu berbasis portal dengan posisi adaptif (flip ke atas di dekat bottom navigation), fokus/Escape/outside-click, dan tinggi scrollable. Aksi bisnis tidak diubah.

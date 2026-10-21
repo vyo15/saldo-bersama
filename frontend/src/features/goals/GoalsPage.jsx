@@ -25,8 +25,13 @@ import {
   isGoalsOutcomeUnknownError,
 } from "./goals.api.js";
 import { requestGoalDeletion } from "./goalDeletionRequests.api.js";
-import { GoalGrid, GoalSummary } from "./components/GoalCards.jsx";
 import { summarizeGoals } from "./goalPresentation.js";
+
+// Card presentation is an independently cacheable chunk. Start downloading it alongside
+// the route so the first loaded list does not wait for another sequential network request.
+const goalCardsModule = import("./components/GoalCards.jsx");
+const GoalGrid = lazy(() => goalCardsModule.then(({ GoalGrid: Component }) => ({ default: Component })));
+const GoalSummary = lazy(() => goalCardsModule.then(({ GoalSummary: Component }) => ({ default: Component })));
 
 const GoalDialogLayer = lazy(() => import("./components/GoalDialogLayer.jsx"));
 const GoalFundingModal = lazy(() => import("./components/GoalFundingModal.jsx"));
@@ -273,8 +278,10 @@ const GoalsPage = () => {
     {createdGoal ? <div className="form-actions"><Button type="button" onClick={() => setCreatedGoal(null)}>Selesai</Button>{createdGoal?.goal_id ? <Button type="button" variant="primary" onClick={() => { openFunding(createdGoal); setCreatedGoal(null); }}>Tambah dana</Button> : null}</div> : null}
     {fundingPrompt ? <CompactNotice tone="info" title="Pilih Target yang ingin ditambah." role="status">Gunakan tombol Tambah dana pada Target yang dituju. Dana dapat disimpan sebagai tunai atau investasi sesuai pengaturannya.</CompactNotice> : null}
     {pendingGoalIds.size > 0 ? <CompactNotice tone="info" title={`${pendingGoalIds.size} Target menunggu persetujuan`} role="status">Target disembunyikan dari daftar kamu. Cek status atau tarik pengajuan melalui <Link to="/pengaturan/akun?tab=requests">Pengajuan Saya</Link>.</CompactNotice> : null}
-    {summary.activeCount ? <GoalSummary items={items} /> : null}
-    <GoalGrid items={items} actions={actions} canCreate={canCreate} sourceLoadFailed={sourceLoadFailed} openCreate={creation.openCreate} pendingCount={pendingGoalIds.size} />
+    <Suspense fallback={<NativePageSkeleton kind="goals" label="Menyiapkan daftar Target…" />}>
+      {summary.activeCount ? <GoalSummary items={items} /> : null}
+      <GoalGrid items={items} actions={actions} canCreate={canCreate} sourceLoadFailed={sourceLoadFailed} openCreate={creation.openCreate} pendingCount={pendingGoalIds.size} />
+    </Suspense>
     {(reminderTarget || creation.open || lifecycle.editGoal || lifecycle.archiveTarget || lifecycle.statusTarget) ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan aksi target..." />}><GoalDialogLayer reminderTarget={reminderTarget} onReminderClose={() => setReminderTarget(null)} creation={creation} creationAccounts={creationAccounts} investmentPortfolios={investmentPortfolios} lifecycle={lifecycle} /></Suspense> : null}
     {fundingTarget ? <Suspense fallback={<LazyActionFallback surface="modal" title="Target" label="Menyiapkan dana Target..." />}><GoalFundingModal goal={fundingTarget.goal} accounts={accounts} transferRoutes={bootstrap?.transferRoutes || []} investmentOverview={investmentResource.data || { portfolios: [] }} initialSourceAccountId={fundingTarget.sourceAccountId} suggestedAmount={fundingTarget.suggestedAmount} manualAmount={fundingTarget.manualAmount} onClose={() => setFundingTarget(null)} onChanged={onFundingChanged} onBuyInvestment={openGoalInvestmentBuy} /></Suspense> : null}
     {achievement ? <Suspense fallback={null}><GoalAchievementPostcard {...achievement} onClose={() => setAchievement(null)} /></Suspense> : null}

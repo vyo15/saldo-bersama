@@ -13,6 +13,13 @@
 - Manual QA mencakup 320/360/390/430px, batas 820/821px, desktop, tema, 200% text, keyboard focus, reduced-motion, dan 2 actor berlawanan identitas penerima; browser/auth smoke wajib sebelum production.
 - Regression: `frontend/test/theme-accessibility.test.js`, `frontend/test/atur-dana-redesign.test.js`, `frontend/test/planning-active-model.test.js`, `frontend/test/information-density-regression.test.js`, `frontend/test/mobile-app-surface-governance.test.js`.
 
+## Target route — bundle budget without losing card interactions
+
+- Target (`GoalsPage`) must keep card/summary presentation in one separately cacheable async module while preloading it when the route module is loaded, to avoid an additional API-to-card request waterfall.
+- Both the Target summary and per-item cards share one Suspense loading fallback. Edit, archive, goal funding, menu overflow, reminder and accessible details remain in the canonical `GoalCards` implementation; no new financial or authorization logic is introduced.
+- `frontend/test/goals-route-budget-regression.test.js` protects the async boundary; only the **actual production build** followed by `node scripts/check-build-budget.mjs` can establish whether the 8 KiB gzip route budget passes. Do not increase the budget to hide regressions.
+- Smoke-check first load on mobile/desktop, slow network, cached revisit, empty list, completed-only list, and all action paths; the fallback must not leave a blank state or alter data.
+
 ## Soft Midnight Teal — dark theme consistency and build budget
 
 - Soft dark memiliki kenaikan luminansi berurutan dari canvas → surface → soft/raised → strong, bukan canvas hitam dengan warna kartu yang tidak terasa. Dark account mobile gradient harus kembali ke canvas pada midpoint, dan shell serta navigasi mobile memakai token tema bersama.
