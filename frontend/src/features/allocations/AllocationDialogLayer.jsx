@@ -164,7 +164,7 @@ const AllocationNeedEditorRow = ({ need, index, categories, updateNeed, removeNe
 };
 
 const AllocationNeedCompactRow = ({ need, category, onEdit, onRemove }) => <div className={needStyles.compactRow}>
-  <button type="button" className={needStyles.compactMain} onClick={onEdit}>
+  <button type="button" className={needStyles.compactMain} onClick={onEdit} aria-label={`Edit ${need.name || "kebutuhan tanpa nama"}`}>
     <span className={needStyles.compactCopy}><strong>{need.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(need.recording_mode) || "Pilih cara penggunaan"}{need.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(need)}` : ""}{need.shopping_enabled ? " · Daftar belanja" : ""}</small></span>
     <strong className={needStyles.compactAmount}>{formatRupiah(need.amount || 0)}</strong>
   </button>

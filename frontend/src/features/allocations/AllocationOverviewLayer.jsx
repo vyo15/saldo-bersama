@@ -73,14 +73,14 @@ const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, ca
 
 // Pintasan ini adalah destinasi, bukan tab atau filter kedua.
 const PLANNING_LINKS = Object.freeze([
-  { to: "/perencanaan/jadwal", label: "Tagihan rutin", description: "Pembayaran berkala", icon: FiCalendar },
-  { to: "/perencanaan/komitmen", label: "Cicilan & utang", description: "Termasuk KPR dan arisan", icon: FiFileText },
-  { to: "/target", label: "Target tabungan", description: "Tujuan menabung", icon: FiTarget },
+  { to: "/perencanaan/jadwal", label: "Tagihan rutin", description: "Pembayaran berkala", icon: FiCalendar, tone: "recurring" },
+  { to: "/perencanaan/komitmen", label: "Cicilan & utang", description: "Termasuk KPR dan arisan", icon: FiFileText, tone: "commitment" },
+  { to: "/target", label: "Target tabungan", description: "Tujuan menabung", icon: FiTarget, tone: "goal" },
 ]);
 
 const AllocationQuickLinks = () => <nav className={allocationClass("allocation-shortcuts")} aria-label="Akses cepat perencanaan">
-  {PLANNING_LINKS.map(({ to, label, description, icon: Icon }) => <Link key={to} to={to} className={allocationClass("allocation-shortcuts__link")} aria-label={`${label} — ${description}`}>
-    <Icon aria-hidden="true" />
+  {PLANNING_LINKS.map(({ to, label, description, icon: Icon, tone }) => <Link key={to} to={to} state={tone === "goal" ? { fromAturDana: true } : undefined} data-tone={tone} className={allocationClass("allocation-shortcuts__link")} aria-label={`${label} — ${description}`}>
+    <span className={allocationClass("allocation-shortcuts__icon")}><Icon aria-hidden="true" /></span>
     <span>{label}</span>
   </Link>)}
 </nav>;
@@ -128,7 +128,7 @@ const AllocationActiveRow = ({ row, attention, onOpen, actor }) => {
   return <button type="button" className={allocationClass(`planning-active-row${attention ? " planning-active-row--attention" : ""}`)} onClick={() => onOpen(item)} aria-label={`Buka detail ${item.name}, ${audienceText}`}>
     <span className={allocationClass("planning-active-row__icon")}><img src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /></span>
     <span className={allocationClass("planning-active-row__content")}>
-      <span className={allocationClass("planning-active-row__topline")}><span className={allocationClass("planning-active-row__name-group")}><span className={allocationClass("planning-active-row__title")}>{item.name}</span><span className={allocationClass("planning-active-row__audience")}>{audienceText}</span></span><UsageBadge item={item} usage={usage} /></span>
+      <span className={allocationClass("planning-active-row__topline")}><span className={allocationClass("planning-active-row__name-group")}><span className={allocationClass("planning-active-row__title")}>{item.name}</span><span className={allocationClass("planning-active-row__audience")} data-audience={audience}>{audienceText}</span></span><UsageBadge item={item} usage={usage} /></span>
       {linked ? <>
         <span className={allocationClass("planning-active-row__meta")}><Money value={linked.amount} />{linked.date ? ` · ${linked.date}` : ""}</span>
         <span className={allocationClass(`planning-active-row__sub${linked.warning ? " planning-active-row__sub--warning" : ""}`)}>{linked.secondary}</span>
@@ -165,6 +165,7 @@ const PlanningFilterDialog = ({ open, onClose, value, onChange }) => <Modal open
   <div className={allocationClass("allocation-audience-options")}>
     {ACTIVE_FILTERS.map((option) => <button key={option.value} type="button"
       className={allocationClass(`allocation-audience-options__item${value === option.value ? " is-selected" : ""}`)}
+      data-audience={option.value === "all" ? undefined : option.value}
       aria-pressed={value === option.value}
       onClick={() => { onChange(option.value); onClose(); }}>
       <span>{option.description}</span>
@@ -184,7 +185,7 @@ const PlanningToolbar = ({ query, setQuery, searchOpen, resultCount }) => !searc
 const AllocationListHeader = ({ showFilter, allocationFilter, onOpenFilter, searchOpen, onToggleSearch, hasItems }) => <div className={allocationClass("allocation-section-heading")}>
   <h2 id="allocation-active-title">Alokasi Dana</h2>
   <div className={allocationClass("allocation-section-heading__tools")}>
-    {showFilter ? <button type="button" className={allocationClass("allocation-audience-trigger")} onClick={onOpenFilter} aria-haspopup="dialog" aria-label={`Filter alokasi, untuk ${ACTIVE_FILTERS.find((option) => option.value === allocationFilter)?.label || "Semua"}`}>
+    {showFilter ? <button type="button" className={allocationClass("allocation-audience-trigger")} data-audience={allocationFilter === "all" ? undefined : allocationFilter} onClick={onOpenFilter} aria-haspopup="dialog" aria-label={`Filter alokasi, untuk ${ACTIVE_FILTERS.find((option) => option.value === allocationFilter)?.label || "Semua"}`}>
       <span>Untuk: {ACTIVE_FILTERS.find((option) => option.value === allocationFilter)?.label || "Semua"}</span><FiChevronDown aria-hidden="true" />
     </button> : null}
     {hasItems ? <button type="button" className={allocationClass("allocation-search-trigger")} onClick={onToggleSearch} aria-label={searchOpen ? "Tutup pencarian alokasi" : "Cari alokasi"} aria-expanded={searchOpen}>

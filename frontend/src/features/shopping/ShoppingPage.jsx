@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { FiArrowLeft, FiCheck, FiCheckCircle, FiEdit2, FiMoreHorizontal, FiPlus, FiShoppingCart, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiCheck, FiCheckCircle, FiEdit2, FiPlus, FiShoppingCart, FiTrash2, FiArchive, FiEye, FiEyeOff } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router";
 import Button from "../../components/common/Button.jsx";
+import ActionOverflowMenu from "../../components/common/ActionOverflowMenu.jsx";
 import Card from "../../components/common/Card.jsx";
+import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
 import Money from "../../components/common/Money.jsx";
 import MoneyInput from "../../components/common/MoneyInput.jsx";
@@ -17,7 +19,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useFinance } from "../../app/FinanceContext.jsx";
 import { useGuardedMutation } from "../../hooks/useGuardedMutation.js";
 import {
-  archiveShoppingList, restoreShoppingList, checkoutShoppingList, createShoppingList, invalidateShopping, removeShoppingItem, setShoppingItemState,
+  archiveShoppingList, restoreShoppingList, checkoutShoppingList, createShoppingList, invalidateShopping, removeShoppingItem, setShoppingItemState, isShoppingOutcomeUnknownError,
 } from "./shopping.api.js";
 import styles from "./ShoppingPage.module.css";
 import { setItemVisibility } from "../../services/visibility.js";
@@ -69,10 +71,15 @@ const ItemRow = ({ item, onToggle, onEdit, onRemove, onVisibility, disabled }) =
   const displayAmount = Number(item.actual_amount || item.estimated_amount || 0);
   return <div className={`${styles.itemRow} ${purchased ? styles.itemPurchased : ""}`}>
     <button type="button" className={styles.checkButton} disabled={disabled || purchased} onClick={() => onToggle(item)} aria-label={`${checked ? "Batalkan centang" : "Tandai masuk keranjang"} ${item.name}`} aria-pressed={checked}>{checked ? <FiCheck aria-hidden="true" /> : null}</button>
-    <button type="button" className={styles.itemBody} onClick={() => !purchased && onEdit(item)} disabled={purchased}>
+    <button type="button" className={styles.itemBody} onClick={() => !purchased && onEdit(item)} disabled={disabled || purchased} aria-label={`Edit ${item.name}`}>
       <strong>{item.name}</strong><span>{formatQty(item.quantity_milli)} {item.unit_key}{displayAmount ? <> · <Money value={displayAmount} /></> : null}</span>{item.note ? <small>{item.note}</small> : null}
     </button>
-    <details className={styles.itemMenu}><summary aria-label={`Pilihan ${item.name}`}><FiMoreHorizontal aria-hidden="true" /></summary><div>{!purchased ? <><button type="button" disabled={disabled} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onEdit(item); }}><FiEdit2 aria-hidden="true" />Edit</button><button type="button" disabled={disabled} className={styles.dangerAction} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onRemove(item); }}><FiTrash2 aria-hidden="true" />Hapus</button></> : <button type="button" disabled={disabled} className={styles.dangerAction} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onVisibility(item, !item.is_hidden); }}><FiTrash2 aria-hidden="true" />{item.is_hidden ? "Tampilkan lagi" : "Hapus dari tampilan"}</button>}</div></details>
+    <ActionOverflowMenu label={`Pilihan ${item.name}`} className={styles.itemMenu} panelClassName={styles.itemMenuPanel}>
+      {(closeMenu) => !purchased ? <>
+        <button type="button" disabled={disabled} onClick={() => { closeMenu(); onEdit(item); }}><FiEdit2 aria-hidden="true" />Edit barang</button>
+        <button type="button" disabled={disabled} className={styles.dangerAction} onClick={() => { closeMenu(); onRemove(item); }}><FiTrash2 aria-hidden="true" />Hapus</button>
+      </> : <button type="button" disabled={disabled} onClick={() => { closeMenu(); onVisibility(item, !item.is_hidden); }}>{item.is_hidden ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />}{item.is_hidden ? "Tampilkan lagi" : "Sembunyikan"}</button>}
+    </ActionOverflowMenu>
   </div>;
 };
 
@@ -160,21 +167,21 @@ const ShoppingListUnavailableView = ({ data, canManage, online, mutationError, o
   <ContextBack to="/perencanaan/kantong" label="Atur Dana" />
   <Card className={styles.emptyShell}><EmptyState title="Belum ada daftar belanja" description={`Buat daftar untuk ${data.budget.name}. Barang dapat disiapkan sekarang lalu dicentang saat belanja.`} action={canManage ? <Button variant="primary" icon={FiShoppingCart} onClick={onCreate} disabled={!online}>Buat daftar belanja</Button> : null} />
     {!canManage ? <p className={styles.inlineWarning}>Daftar ini hanya dapat dilihat. Kebutuhan tidak aktif atau dikelola anggota lain.</p> : !online ? <p className={styles.inlineWarning}>Kamu sedang offline. Sambungkan internet untuk membuat daftar.</p> : null}
-    {(data.archived_lists || []).length ? <div className={styles.archivedLists}><strong>Daftar yang dihapus</strong>{data.archived_lists.map((list) => <div key={list.shopping_list_id}><span>{list.name}</span>{canManage ? <button type="button" disabled={!online} onClick={() => onRestore(list)}>Pulihkan</button> : null}</div>)}</div> : null}
+    {(data.archived_lists || []).length ? <div className={styles.archivedLists}><strong>Daftar yang diarsipkan</strong>{data.archived_lists.map((list) => <div key={list.shopping_list_id}><span>{list.name}</span>{canManage ? <button type="button" disabled={!online} onClick={() => onRestore(list)}>Pulihkan</button> : null}</div>)}</div> : null}
     {mutationError ? <p className={styles.inlineError}>{mutationMessage(mutationError)}</p> : null}
   </Card>
 </div>;
 
 const CompletedListView = ({ data, canManage, online, onCreate, onArchive, navigate }) => <div className={styles.page}>
   <ContextBack to="/perencanaan/kantong" label="Atur Dana" />
-  <Card className={styles.emptyShell}><div className={styles.completedState}><span className={styles.successMark}><FiCheck aria-hidden="true" /></span><h1>{data.list.name}</h1><p>Daftar ini sudah selesai. {data.summary.purchased_items} barang tersimpan sebagai histori belanja.</p><Summary data={data} />{canManage ? <Button variant="primary" icon={FiShoppingCart} onClick={onCreate} disabled={!online}>Buat daftar belanja baru</Button> : null}<Button onClick={() => navigate("/transaksi", { state: { period: data.budget.period_key } })}>Lihat Transaksi</Button>{canManage ? <button className={styles.archiveListAction} type="button" disabled={!online} onClick={onArchive}><FiTrash2 aria-hidden="true" /> Hapus daftar dari tampilan</button> : null}</div></Card>
+  <Card className={styles.emptyShell}><div className={styles.completedState}><span className={styles.successMark}><FiCheck aria-hidden="true" /></span><h1>{data.list.name}</h1><p>Daftar ini sudah selesai. {data.summary.purchased_items} barang tersimpan sebagai histori belanja.</p><Summary data={data} />{canManage ? <Button variant="primary" icon={FiShoppingCart} onClick={onCreate} disabled={!online}>Buat daftar belanja baru</Button> : null}<Button onClick={() => navigate("/transaksi", { state: { period: data.budget.period_key } })}>Lihat Transaksi</Button>{canManage ? <button className={styles.archiveListAction} type="button" disabled={!online} onClick={onArchive}><FiArchive aria-hidden="true" /> Arsipkan daftar</button> : null}</div></Card>
 </div>;
 
-const ShoppingHeader = ({ data, mode, counts, online, canManage, onAdd, onArchive }) => <header className={styles.header}>
+const ShoppingHeader = ({ data, mode, counts, online, canManage, busyId, onAdd, onArchive }) => <header className={styles.header}>
   <div><ContextBack className={styles.mobileBack} to="/perencanaan/kantong" label="Atur Dana" ariaLabel="Kembali ke Atur Dana" /><span>{data.budget.name}</span><h1>{data.list.name}</h1>{counts.active ? <p>{mode === "shopping" ? `${counts.done} dari ${counts.active} barang` : `${counts.open} dari ${counts.active} barang belum selesai`}</p> : null}</div>
   <div className={styles.headerActions}>
     {mode === "planning" && counts.active ? <Button icon={FiPlus} onClick={onAdd} disabled={!online || !canManage}>Tambah barang</Button> : null}
-    {canManage ? <button type="button" className={styles.archiveListAction} disabled={!online} onClick={onArchive}><FiTrash2 aria-hidden="true" /> Hapus daftar</button> : null}
+    {canManage ? <button type="button" className={styles.archiveListAction} disabled={!online || Boolean(busyId)} onClick={onArchive}><FiArchive aria-hidden="true" /> Arsipkan daftar</button> : null}
   </div>
 </header>;
 
@@ -213,7 +220,7 @@ const ShoppingActiveView = ({ data, mode, shoppingFilter, online, canManage, bus
   const counts = { active: activeItems.length, done: cartItems.length + purchasedItems.length, open: pendingItems.length + cartItems.length };
   return <div className={styles.page} data-mode={mode}>
     <div className={styles.desktopBack}><ContextBack to="/perencanaan/kantong" label="Atur Dana" /></div>
-    <ShoppingHeader data={data} mode={mode} counts={counts} online={online} canManage={canManage} onAdd={onAdd} onArchive={onArchive} />
+    <ShoppingHeader data={data} mode={mode} counts={counts} online={online} canManage={canManage} busyId={busyId} onAdd={onAdd} onArchive={onArchive} />
     <ShoppingStatusNotices canManage={canManage} online={online} refreshError={resource.refreshError} onRetry={resource.reload} mutationError={mutationError} onDismissError={onDismissError} />
     {mode === "planning" ? <PlanningWorkspace data={data} activeItems={activeItems} purchasedItems={purchasedItems} showItems={showItems} online={online} canManage={canManage} busyId={busyId} onAdd={onAdd} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onVisibility={onVisibility} onStart={() => onMode("shopping")} /> : <ShoppingModeView activeItems={activeItems} cartItems={cartItems} purchasedItems={purchasedItems} pendingItems={pendingItems} showItems={showItems} progress={progress} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} onFilter={onFilter} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onVisibility={onVisibility} />}
     <ShoppingStickyAction mode={mode} activeItems={activeItems} cartItems={cartItems} data={data} online={online} canManage={canManage} onStart={() => onMode("shopping")} onCheckout={() => onMode("checkout")} />
@@ -243,6 +250,7 @@ const ShoppingPage = () => {
   const [busyId, setBusyId] = useState("");
   const [success, setSuccess] = useState(null);
   const [undoRemove, setUndoRemove] = useState(null);
+  const [archiveDialog, setArchiveDialog] = useState(false);
   useEffect(() => {
     if (!undoRemove || busyId === undoRemove.shopping_item_id) return undefined;
     const timer = window.setTimeout(() => setUndoRemove(null), 8000);
@@ -261,9 +269,8 @@ const ShoppingPage = () => {
   };
   const archiveList = async () => {
     if (!data?.list || !online || !canManage || busyId) return;
-    if (!window.confirm(`Hapus daftar ${data.list.name} dari tampilan? Histori belanja dan transaksi tetap disimpan.`)) return;
     setBusyId(data.list.shopping_list_id); setMutationError(null);
-    try { await archiveShoppingList({ shopping_list_id: data.list.shopping_list_id, row_version: data.list.row_version }, { rowVersion: data.list.row_version }); invalidateShopping(); await reload(); }
+    try { await archiveShoppingList({ shopping_list_id: data.list.shopping_list_id, row_version: data.list.row_version }, { rowVersion: data.list.row_version }); setArchiveDialog(false); invalidateShopping(); await reload(); }
     catch (error) { setMutationError(error); } finally { setBusyId(""); }
   };
   const restoreList = async (list) => {
@@ -291,7 +298,6 @@ const ShoppingPage = () => {
   };
   const toggleItemVisibility = async (item, hidden) => {
     if (!online || busyId) return;
-    if (hidden && !window.confirm(`Hapus ${item.name} dari tampilan? Riwayat checkout dan transaksi tetap aman.`)) return;
     setBusyId(item.shopping_item_id); setMutationError(null);
     try { await setItemVisibility("shopping_item", item.shopping_item_id, hidden); invalidateShopping(); await reload(); }
     catch (error) { setMutationError(error); } finally { setBusyId(""); }
@@ -315,12 +321,14 @@ const ShoppingPage = () => {
   if (mode === "checkout") return <CheckoutView data={data} onBack={() => setMode("shopping")} onDone={completeCheckout} online={online && canManage} />;
   if (mode === "success" && success) return <SuccessView result={success} data={data} onBackToList={backToList} navigate={navigate} />;
   if (!data.list) return <ShoppingListUnavailableView data={data} canManage={canManage} online={online} mutationError={mutationError} onCreate={createList} onRestore={restoreList} />;
-  if (data.list.status === "completed") return <CompletedListView data={data} canManage={canManage} online={online} onCreate={createList} onArchive={archiveList} navigate={navigate} />;
+  const archiveConfirmation = <ConfirmationModal open={archiveDialog} title="Arsipkan daftar belanja?" description={`${data.list.name} tidak lagi ditampilkan sebagai daftar aktif. Histori belanja dan transaksi tetap tersimpan dan daftar dapat dipulihkan.`} confirmLabel="Arsipkan daftar" busy={Boolean(busyId)} retryOnly={archiveDialog && isShoppingOutcomeUnknownError(mutationError)} error={archiveDialog ? mutationError : null} onCancel={() => { if (!busyId && !isShoppingOutcomeUnknownError(mutationError)) { setArchiveDialog(false); setMutationError(null); } }} onConfirm={archiveList} />;
+  if (data.list.status === "completed") return <><CompletedListView data={data} canManage={canManage} online={online} onCreate={createList} onArchive={() => { setMutationError(null); setArchiveDialog(true); }} navigate={navigate} />{archiveConfirmation}</>;
 
   return <>
     {undoRemove ? <div className={styles.undoNotice} role="status"><span><strong>{undoRemove.name}</strong> dihapus dari daftar.</span><button type="button" onClick={restoreRemoved} disabled={Boolean(busyId)}>Urungkan</button></div> : null}
     {data.items?.some((item) => item.is_hidden) ? <label className={styles.hiddenToggle}><input type="checkbox" checked={showHidden} onChange={(event) => setShowHidden(event.target.checked)} /> Tampilkan barang tersembunyi</label> : null}
-    <ShoppingActiveView data={data} mode={mode} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} mutationError={mutationError} resource={resource} collections={collections} onMode={setMode} onFilter={setShoppingFilter} onAdd={() => openEditor()} onArchive={archiveList} onToggle={toggle} onEdit={openEditor} onRemove={remove} onVisibility={toggleItemVisibility} onDismissError={() => setMutationError(null)} />
+    <ShoppingActiveView data={data} mode={mode} shoppingFilter={shoppingFilter} online={online} canManage={canManage} busyId={busyId} mutationError={mutationError} resource={resource} collections={collections} onMode={setMode} onFilter={setShoppingFilter} onAdd={() => openEditor()} onArchive={() => { setMutationError(null); setArchiveDialog(true); }} onToggle={toggle} onEdit={openEditor} onRemove={remove} onVisibility={toggleItemVisibility} onDismissError={() => setMutationError(null)} />
+    {archiveConfirmation}
     {editor.open ? <Suspense fallback={<div className={styles.editorLoading} role="status">Menyiapkan form barang…</div>}><ShoppingItemEditor open onClose={() => setEditor({ open: false, item: null })} data={data} list={data.list} item={editor.item} onSaved={reload} online={online && canManage} /></Suspense> : null}
   </>;
 };

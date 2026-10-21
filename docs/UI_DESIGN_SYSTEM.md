@@ -80,6 +80,23 @@ Aturan penerapan dark mode mobile/desktop:
 
 Browser `theme-color` runtime wajib membaca `--page` dari computed style setelah theme diterapkan; HTML/manifest hanya fallback boot dan nilainya harus mengikuti light `--page`. PWA background, sidebar rail, hero, focus ring, shadow, dan navigation surface wajib mengikuti token tema yang sama.
 
+### Soft Chroma — identitas kontekstual Atur Dana
+
+- **Netral tetap dominan.** Teal adalah brand/CTA utama. Tiga pintasan Atur Dana mempertahankan `--surface-section`; hanya wadah **ikon** berwarna ocean untuk **Tagihan rutin**, purple untuk **Cicilan & utang** (bukan danger), dan emerald untuk **Target tabungan**.
+- Warna kontekstual bersumber dari alias theme-aware `--planning-recurring(-soft)`, `--planning-commitment(-soft)`, `--planning-goal(-soft)` dalam `frontend/src/styles/tokens.css`. Primitive `--accent-purple` tidak berubah.
+- Penerima Alokasi memakai `--audience-self(-soft)` untuk `mine` (Saya), `--audience-partner(-soft)` untuk `partner` (Pasangan/anggota lain), dan `--audience-shared(-soft)` untuk `shared` (Bersama). **Jangan memakai `other`**: return aktual `planningRowAudience()` adalah `partner`. Label **Untuk saya / Untuk [anggota] / Untuk bersama** tetap tertulis, jadi warna hanya penunjang identitas.
+- Filter tetap **satu** tombol `Untuk: Semua/Saya/Pasangan/Bersama`; hanya scope spesifik mendapat tint, sedangkan `Semua` netral. Modal memakai kontrol native, `aria-pressed`, fokus canonical dan minimal tinggi kontrol 44px.
+- Metadata `data-tone` dan `data-audience` adalah **presentasi saja**: tidak boleh dipakai mengotorisasi siapa yang boleh melihat/mengubah alokasi. Progress bar tetap menunjukkan status finansial dengan token progress canonical, **bukan** warna identitas penerima.
+- Kontras chip dan ikon pada `--surface`, `--page`, dan `--surface-section` harus minimal **4.5:1** untuk normal text pada kedua tema. `frontend/test/theme-accessibility.test.js` mengunci pasangan alias dan `frontend/test/atur-dana-redesign.test.js` mengunci pemetaan literal JSX/CSS/rute.
+
+### Menu aksi kartu dan kembali ke asal
+
+- Aksi tiga titik di kartu/list Target, Transaksi, Shopping, Wishlist, Kewajiban, Keluarga memakai `components/common/ActionOverflowMenu.jsx`. Panel dirender lewat portal di lapisan di atas navigasi bawah, **dibalik ke atas** ketika ruang bawah sempit, dibatasi viewport dan tinggi scrollable. Tidak memakai `details` berisi popover `position:absolute` yang mudah terpotong oleh kartu/scroll/rail/bottom nav.
+- Pemicu tetap minimal 44×44px pada mobile, memiliki nama aksesibel dan `aria-expanded`. Saat dibuka, fokus pindah ke tindakan pertama; Escape mengembalikan fokus; klik luar/scroll konteks menutup menu tanpa memblokir aksi finansial utama. Konten panel tetap berupa tombol dan tautan semantik, tidak menggunakan warna sebagai satu-satunya indikator.
+- Tidak mengubah aksi `Modal` canonical untuk menu yang memang membutuhkan sheet/konfirmasi; jangan portal aksi di dalam Modal ke bawah lapisan modal/focus trap.
+- Pintasan Atur Dana → Target harus membawa konteks asal minimal (`fromAturDana: true`) dan Target menampilkan `ContextBack` deterministik **Atur Dana** hanya untuk asal tersebut. Navigasi langsung dari Lainnya/deep-link tetap mengikuti root biasa; jangan memakai `navigate(-1)` untuk page Back generik.
+- Contract/test: `frontend/test/action-overflow-navigation-regression.test.js` dan `frontend/test/hierarchical-navigation.test.js`; wajib validasi perangkat iOS PWA/320px serta aksi panjang dekat bagian bawah list.
+
 ## Struktur komponen
 
 Setiap shared component yang memiliki styling khusus memakai pasangan file:

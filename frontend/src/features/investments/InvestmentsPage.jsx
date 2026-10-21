@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { FiPlus, FiTrash2, FiRotateCcw } from "react-icons/fi";
+import { FiPlus, FiArchive, FiRotateCcw } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -126,7 +126,7 @@ const PortfolioLifecyclePanel = ({ portfolios, archived, actor, online, busyId, 
     <h2>Kelola portofolio</h2>
     {manageable.map((portfolio) => <div key={portfolio.portfolio_id} className={styles.portfolioLifecycleRow}>
       <span><strong>{portfolio.name}</strong><small>{portfolio.rdn_account_name} · Saldo RDN dan posisi harus nol untuk mengarsipkan</small></span>
-      <button type="button" disabled={!online || Boolean(busyId)} onClick={() => onArchive(portfolio)}><FiTrash2 aria-hidden="true" /> Hapus</button>
+      <button type="button" disabled={!online || Boolean(busyId)} onClick={() => onArchive(portfolio)}><FiArchive aria-hidden="true" /> Arsipkan</button>
     </div>)}
     {archived.map((portfolio) => <div key={portfolio.portfolio_id} className={styles.portfolioLifecycleRow}>
       <span><strong>{portfolio.name}</strong><small>Diarsipkan · Histori tetap tersimpan</small></span>
@@ -136,7 +136,7 @@ const PortfolioLifecyclePanel = ({ portfolios, archived, actor, online, busyId, 
 };
 
 const PortfolioArchiveConfirm = ({ portfolio, busy, error, onClose, onConfirm }) => <ConfirmationModal
-  open={Boolean(portfolio)} title="Hapus portofolio dari daftar?"
+  open={Boolean(portfolio)} title="Arsipkan portofolio?"
   description={portfolio ? `${portfolio.name} hanya dapat diarsipkan jika saldo RDN, posisi investasi, dan alokasi Target sudah kosong. Histori transaksi tidak dihapus.` : ""}
   confirmLabel="Arsipkan portofolio" tone="danger" busy={busy}
   acknowledgementLabel="Saya memahami bahwa portofolio yang masih memiliki dana atau posisi tidak dapat diarsipkan."

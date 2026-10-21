@@ -13,8 +13,6 @@ Gunakan index ini sebelum coding. Jangan membaca seluruh folder docs tanpa arah;
 - `DOCUMENT_LIFECYCLE.md` — lifecycle, authority, dan aturan current vs history.
 - `WORKFLOW.md` — workflow review, implementasi, validation, dan delivery.
 - `SMART_DELETE_FLOW.md` — lifecycle arsip/sembunyikan per pengguna dan batasan patch Smart Delete.
-- `SMART_DELETE_COVERAGE_2026-10-16.md` — cakupan Smart Delete pada source terbaru dan batasan fitur.
-- `SMART_DELETE_COVERAGE_MATRIX_2026-10-16.md` — matriks 46 unit data hasil audit/source terbaru.
 - `INVESTMENT_COMPACT_UX.md` — UX Investasi compact, akurasi preview, batasan Target, QA dan status histori.
 - `GIT_WORKFLOW.md` — commit/push canonical.
 - `templates/PATCH_MANIFEST_TEMPLATE.md` — metadata handoff patch paralel/final merge.
@@ -132,10 +130,6 @@ Jika perubahan menyentuh lebih dari satu area, gabungkan authority dan test dari
 
 Historical docs tidak boleh digunakan sebagai authority current behavior kecuali current canonical doc secara eksplisit merujuknya untuk alasan keputusan/recovery.
 
-## Catatan implementasi motion (13 Oktober 2026)
+## Historical regression log
 
-- `MOTION_UX_CHANGELOG_2026-10-13.md` — perubahan motion terpasang, batas parent kondisional, dan daftar uji penerimaan sebelum production.
-
-## Catatan konsistensi filter (13 Oktober 2026)
-
-- `FILTER_TEAL_STABLE_PATCH_2026-10-13.md` — catatan implementasi filter ownership stabil pada desain teal.
+- `history/COMPLETED_UI_REGRESSION_LOG.md` — ringkasan kejadian UI yang sudah ditangani, akar masalah, dan regression guard. Detail sebelum konsolidasi tetap di Git/CHANGELOG; bukan authority aktif.

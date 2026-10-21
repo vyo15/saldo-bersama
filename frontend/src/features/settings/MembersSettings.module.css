@@ -318,7 +318,7 @@
   flex: 0 0 auto;
 }
 
-.memberMenuTrigger {
+.memberMenuWrap > button {
   width: var(--control-height-md);
   height: var(--control-height-md);
   padding: 0;
@@ -332,33 +332,27 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .memberMenuTrigger:hover { border-color: var(--border); background: var(--surface-soft); color: var(--text); }
+  .memberMenuWrap > button:hover { border-color: var(--border); background: var(--surface-soft); color: var(--text); }
 }
-.memberMenuTrigger:active { background: var(--surface-soft); }
+.memberMenuWrap > button:active { background: var(--surface-soft); }
 
-.memberMenuTrigger:focus-visible {
+.memberMenuWrap > button:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-.memberMenuTrigger svg {
+.memberMenuWrap > button svg {
   width: 1.15rem;
   height: 1.15rem;
 }
 
 .memberMenu {
-  position: absolute;
-  top: calc(100% + .35rem);
-  inset-inline-end: 0;
-  z-index: 10;
   width: 12rem;
   padding: .35rem;
   display: grid;
   gap: .15rem;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-floating);
 }
 
 .memberMenu button {
@@ -569,9 +563,7 @@
     flex-basis: 3.25rem;
   }
 
-  .memberMenu {
-    width: min(12rem, calc(100vw - 3rem));
-  }
+  .memberMenu { width: min(12rem, calc(100vw - 3rem)); }
 
   .memberToolbar { gap: 8px; }
   .memberGrid { gap: 8px; }
@@ -633,7 +625,7 @@
   .memberDetailBadges { margin-top: 6px; gap: 5px; }
   .memberDetailBadges .memberRole { margin: 0; padding: 4px 7px; font-size: var(--font-size-xs); }
   .memberDetailBadges :global(.status-badge) { min-height: 24px; padding: 3px 7px; font-size: var(--font-size-xs); }
-  .memberDetailHero .memberMenuTrigger { border: 0; }
+  .memberDetailHero .memberMenuWrap > button { border: 0; }
 
   .memberDetailTabs { position: sticky; top: 0; z-index: 4; margin-inline: calc(var(--mobile-page-gutter) * -1); padding-inline: var(--mobile-page-gutter); background: color-mix(in srgb, var(--page) 94%, transparent); backdrop-filter: blur(12px); }
   .memberDetailTab,

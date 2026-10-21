@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
-import { FiArrowLeft, FiChevronRight, FiEdit2, FiInbox, FiMoreHorizontal, FiPieChart, FiPlus, FiRotateCcw, FiSearch, FiUserMinus } from "react-icons/fi";
+import { FiArrowLeft, FiChevronRight, FiEdit2, FiInbox, FiPieChart, FiPlus, FiRotateCcw, FiSearch, FiUserMinus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import ActionOverflowMenu from "../../components/common/ActionOverflowMenu.jsx";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { AccountIcon, AdminIcon, PersonIcon } from "../../components/common/FinanceChoiceIcons.jsx";
 import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
@@ -43,7 +44,17 @@ const DETAIL_TABS = Object.freeze([
 
 const MemberToolbar = ({ searchQuery, setSearchQuery, roleFilter, setRoleFilter }) => <div className={memberStyles.memberToolbar}><label className={memberStyles.memberSearch}><FiSearch aria-hidden="true" /><span className="sr-only">Cari anggota</span><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Cari nama atau email" /></label><SelectionField className="field--compact" label="Filter role anggota" hideLabel compact value={roleFilter} onChange={setRoleFilter} options={[{ value: "all", label: "Semua role" }, { value: "owner", label: "Pengelola" }, { value: "member", label: "Anggota" }]} /></div>;
 
-const MemberMenu = ({ member, menuOpen, activeMenuRef, menuTriggerRefs, setOpenMenuId, openAction }) => <div className={memberStyles.memberMenuWrap} ref={menuOpen ? activeMenuRef : undefined}><button ref={(node) => { if (node) menuTriggerRefs.current.set(member.user_id, node); else menuTriggerRefs.current.delete(member.user_id); }} type="button" className={memberStyles.memberMenuTrigger} aria-label={`Aksi untuk ${member.name || member.email}`} aria-haspopup="true" aria-expanded={menuOpen} onClick={(event) => { event.stopPropagation(); setOpenMenuId((current) => current === member.user_id ? "" : member.user_id); }}><FiMoreHorizontal aria-hidden="true" /></button>{menuOpen ? <div className={memberStyles.memberMenu}>{member.status === "active" ? <button type="button" onClick={() => openAction("edit", member)}><FiEdit2 aria-hidden="true" />Ubah akses</button> : null}{member.status === "active" && !member.is_current ? <button className={memberStyles.memberMenuDanger} type="button" onClick={() => openAction("deactivate", member)}><FiUserMinus aria-hidden="true" />Nonaktifkan</button> : null}{member.status === "inactive" ? <button type="button" onClick={() => openAction("reactivate", member)}><FiRotateCcw aria-hidden="true" />Aktifkan kembali</button> : null}</div> : null}</div>;
+// Member cards may end immediately above the mobile navigation. Use the same
+// viewport-aware menu as Target instead of card-local absolute positioning.
+const MemberMenu = ({ member, openAction }) => <ActionOverflowMenu
+  className={memberStyles.memberMenuWrap}
+  panelClassName={memberStyles.memberMenu}
+  label={`Aksi untuk ${member.name || member.email}`}
+>{(close) => <>
+  {member.status === "active" ? <button type="button" onClick={() => { close(); openAction("edit", member); }}><FiEdit2 aria-hidden="true" />Ubah akses</button> : null}
+  {member.status === "active" && !member.is_current ? <button className={memberStyles.memberMenuDanger} type="button" onClick={() => { close(); openAction("deactivate", member); }}><FiUserMinus aria-hidden="true" />Nonaktifkan</button> : null}
+  {member.status === "inactive" ? <button type="button" onClick={() => { close(); openAction("reactivate", member); }}><FiRotateCcw aria-hidden="true" />Aktifkan kembali</button> : null}
+</>}</ActionOverflowMenu>;
 
 const MemberStatusBadges = ({ member }) => <div className={memberStyles.memberMeta}><span className={`status-badge status-badge--${member.status === "active" ? "active" : "warning"}`}>{userStatusLabel(member.status)}</span>{member.status === "active" && member.identity_status === "pending" ? <span className="status-badge status-badge--warning">Menunggu login</span> : null}{member.is_current ? <span className="status-badge">Akun ini</span> : null}</div>;
 
@@ -74,7 +85,6 @@ const memberFinance = (member, accounts, envelopes) => ({
 
 const MemberCard = ({ member, user, menuProps, accounts, envelopes, onOpen }) => {
   const finance = memberFinance(member, accounts, envelopes);
-  const menuOpen = menuProps.openMenuId === member.user_id;
   const avatarUser = member.is_current ? { ...member, photoURL: user?.photoURL || user?.picture || member.photoURL || "" } : member;
   return <article className={memberStyles.compactMemberCard}>
     <div className={memberStyles.compactMemberMain}>
@@ -83,7 +93,7 @@ const MemberCard = ({ member, user, menuProps, accounts, envelopes, onOpen }) =>
         <span className={memberStyles.compactMemberCopy}><span className={memberStyles.compactMemberTitle}><strong>{member.name || member.email}</strong><span className={memberStyles.memberRole}>{roleLabel(member.role)}</span></span><small>{member.email}</small><span className={memberStyles.compactMemberFacts}><span><AccountIcon aria-hidden="true" />{finance.accounts.length} rekening</span><span><FiPieChart aria-hidden="true" />{finance.allocations.length} alokasi</span></span><MemberStatusBadges member={member} /></span>
         <FiChevronRight className={memberStyles.compactMemberArrow} aria-hidden="true" />
       </button>
-      <MemberMenu member={member} menuOpen={menuOpen} {...menuProps} />
+      <MemberMenu member={member} {...menuProps} />
     </div>
   </article>;
 };
@@ -105,17 +115,6 @@ const MemberFormModal = ({ open, close, editingMember, memberForm, setMemberForm
 
 const MemberActionModals = ({ target, actionState, setTarget, confirmUserAction }) => <><ConfirmationModal open={target?.action === "deactivate"} title="Nonaktifkan anggota?" description={target ? `${target.member.email} tidak lagi dapat memakai aplikasi. Data keuangan dan audit tidak dihapus.` : ""} confirmLabel="Nonaktifkan anggota" reasonLabel="Alasan penonaktifan" requireReason acknowledgementLabel="Saya sudah memastikan anggota ini tidak memiliki data personal aktif yang perlu dipindahkan." busy={actionState.status === "submitting"} retryOnly={actionState.status === "unknown"} error={actionState.error} onCancel={() => !["submitting", "unknown"].includes(actionState.status) && setTarget(null)} onConfirm={confirmUserAction} /><ConfirmationModal open={target?.action === "reactivate"} title="Aktifkan kembali anggota?" description={target ? `${target.member.email} akan memperoleh akses kembali dan dapat login dengan akun Google yang memakai email tersebut.` : ""} confirmLabel="Aktifkan kembali" reasonLabel="Alasan reaktivasi" requireReason tone="primary" busy={actionState.status === "submitting"} retryOnly={actionState.status === "unknown"} error={actionState.error} onCancel={() => !["submitting", "unknown"].includes(actionState.status) && setTarget(null)} onConfirm={confirmUserAction} /></>;
 
-const useMemberMenuDismiss = ({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId }) => {
-  useEffect(() => {
-    if (!openMenuId) return undefined;
-    const closeFromOutside = (event) => { if (!activeMenuRef.current?.contains(event.target)) setOpenMenuId(""); };
-    const closeFromKeyboard = (event) => { if (event.key !== "Escape") return; const trigger = menuTriggerRefs.current.get(openMenuId); setOpenMenuId(""); window.requestAnimationFrame(() => trigger?.focus()); };
-    document.addEventListener("pointerdown", closeFromOutside);
-    document.addEventListener("keydown", closeFromKeyboard);
-    return () => { document.removeEventListener("pointerdown", closeFromOutside); document.removeEventListener("keydown", closeFromKeyboard); };
-  }, [activeMenuRef, menuTriggerRefs, openMenuId, setOpenMenuId]);
-};
-
 const SummaryStat = ({ value, label }) => <div className={memberStyles.memberSummaryStat}><strong>{value}</strong><span>{label}</span></div>;
 
 const DetailSummary = ({ member, finance }) => <div className={`${memberStyles.memberDetailGrid} ${memberStyles.memberSummary}`}>
@@ -131,10 +130,9 @@ const DetailFinance = ({ finance, navigate }) => <div className={memberStyles.me
 const MemberDetail = ({ member, user, accounts, envelopes, tab, setTab, navigate, menuProps }) => {
   const finance = memberFinance(member, accounts, envelopes);
   const avatarUser = member.is_current ? { ...member, photoURL: user?.photoURL || user?.picture || member.photoURL || "" } : member;
-  const menuOpen = menuProps.openMenuId === member.user_id;
   return <section className={memberStyles.memberDetail}>
     <button type="button" className={memberStyles.memberBack} aria-label="Kembali ke Keluarga" onClick={() => navigate("/anggota")}><FiArrowLeft aria-hidden="true" />Detail anggota</button>
-    <div className={memberStyles.memberDetailHero}><UserAvatar user={avatarUser} className={memberStyles.memberDetailAvatar} /><div className={memberStyles.memberDetailIdentity}><h2>{member.name || member.email}</h2><p>{member.email}</p><div className={memberStyles.memberDetailBadges}><span className={memberStyles.memberRole}>{roleLabel(member.role)}</span><MemberStatusBadges member={member} /></div></div><MemberMenu member={member} menuOpen={menuOpen} {...menuProps} /></div>
+    <div className={memberStyles.memberDetailHero}><UserAvatar user={avatarUser} className={memberStyles.memberDetailAvatar} /><div className={memberStyles.memberDetailIdentity}><h2>{member.name || member.email}</h2><p>{member.email}</p><div className={memberStyles.memberDetailBadges}><span className={memberStyles.memberRole}>{roleLabel(member.role)}</span><MemberStatusBadges member={member} /></div></div><MemberMenu member={member} {...menuProps} /></div>
     <div className={memberStyles.memberDetailTabs} role="tablist" aria-label="Detail anggota" onKeyDown={(event) => handleRovingTabKeyDown(event, DETAIL_TABS.map((item) => item.key), tab, setTab)}>{DETAIL_TABS.map((item) => <button key={item.key} id={`member-tab-${item.key}`} aria-controls="member-tab-panel" tabIndex={tab === item.key ? 0 : -1} type="button" role="tab" aria-selected={tab === item.key} className={tab === item.key ? memberStyles.memberDetailTabActive : memberStyles.memberDetailTab} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
     <div id="member-tab-panel" className={memberStyles.memberDetailPanel} role="tabpanel" aria-labelledby={`member-tab-${tab}`} tabIndex={0}>
       {tab === "summary" ? <DetailSummary member={member} finance={finance} /> : null}
@@ -167,14 +165,11 @@ const MembersSettingsPage = () => {
   const [editingMember, setEditingMember] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [openMenuId, setOpenMenuId] = useState("");
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
   const [roleAcknowledged, setRoleAcknowledged] = useState(false);
   const [target, setTarget] = useState(null);
   const [actionState, setActionState] = useState({ status: "idle", error: null });
-  const activeMenuRef = useRef(null);
-  const menuTriggerRefs = useRef(new Map());
 
   const members = resource.data?.items || EMPTY_MEMBERS;
   const accounts = bootstrap?.accounts || [];
@@ -192,9 +187,8 @@ const MembersSettingsPage = () => {
   }, [members, roleFilter, searchQuery]);
 
   useEffect(() => { setDetailTab("summary"); }, [memberId]);
-  useMemberMenuDismiss({ openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId });
 
-  const openMemberForm = (member = null) => { setRoleAcknowledged(false); setEditingMember(member); setMemberForm(member ? { email: member.email || "", name: member.name || "", role: member.role || "member" } : { ...EMPTY_MEMBER_FORM }); setResult(null); setMemberFormOpen(true); setOpenMenuId(""); };
+  const openMemberForm = (member = null) => { setRoleAcknowledged(false); setEditingMember(member); setMemberForm(member ? { email: member.email || "", name: member.name || "", role: member.role || "member" } : { ...EMPTY_MEMBER_FORM }); setResult(null); setMemberFormOpen(true); };
   const closeMemberForm = () => { if (saving) return; setMemberFormOpen(false); setEditingMember(null); setMemberForm({ ...EMPTY_MEMBER_FORM }); };
   const saveMember = async (event) => {
     event.preventDefault();
@@ -224,10 +218,10 @@ const MembersSettingsPage = () => {
     try { const payload = { user_id: target.member.user_id, row_version: target.member.row_version, reason }; const options = { rowVersion: target.member.row_version }; if (target.action === "deactivate") await deactivateUser(payload, options); else await reactivateUser(payload, options); setResult({ status: "success", text: target.action === "deactivate" ? "Anggota berhasil dinonaktifkan." : "Anggota berhasil diaktifkan kembali." }); setTarget(null); setActionState({ status: "idle", error: null }); invalidate(invalidationActionsFor("users")); await Promise.allSettled([resource.reload(), refreshAll()]); }
     catch (error) { setActionState({ status: isSettingsOutcomeUnknownError(error) ? "unknown" : "error", error }); }
   };
-  const openAction = (action, member) => { setOpenMenuId(""); if (action === "edit") { openMemberForm(member); return; } setTarget({ action, member }); setActionState({ status: "idle", error: null }); };
+  const openAction = (action, member) => { if (action === "edit") { openMemberForm(member); return; } setTarget({ action, member }); setActionState({ status: "idle", error: null }); };
 
   const toolbarProps = { searchQuery, setSearchQuery, roleFilter, setRoleFilter };
-  const menuProps = { openMenuId, activeMenuRef, menuTriggerRefs, setOpenMenuId, openAction };
+  const menuProps = { openAction };
 
   if (memberId && resource.status === "ready" && !selectedMember) return <div className="page-stack"><PageHeader title="Keluarga" /><OwnerSettingsGuard returnTo="/" returnLabel="Kembali ke Beranda"><EmptyState title="Anggota tidak ditemukan" description="Anggota ini sudah tidak tersedia atau tautannya tidak lagi valid." action={<Button onClick={() => navigate("/anggota", { replace: true })}>Kembali ke Keluarga</Button>} /></OwnerSettingsGuard></div>;
 

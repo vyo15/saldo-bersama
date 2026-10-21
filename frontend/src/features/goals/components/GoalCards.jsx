@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
-import { FiArchive, FiBell, FiCheckCircle, FiEdit2, FiInfo, FiMoreHorizontal, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
+import { useState } from "react";
+import { FiArchive, FiBell, FiCheckCircle, FiEdit2, FiInfo, FiPlus, FiRotateCcw, FiShield, FiTarget } from "react-icons/fi";
 import Button from "../../../components/common/Button.jsx";
+import ActionOverflowMenu from "../../../components/common/ActionOverflowMenu.jsx";
 import ButtonLink from "../../../components/common/ButtonLink.jsx";
 import Card from "../../../components/common/Card.jsx";
 import Money from "../../../components/common/Money.jsx";
@@ -50,11 +51,6 @@ const FundingBreakdown = ({ goal }) => {
 
 // Primary and lifecycle actions are deliberately resolved in one place so every card follows the same policy.
 const GoalActions = ({ goal, detailId, detailsOpen, toggleDetails, openEdit, openArchive, openStatusChange, openReminder, openFunding }) => {
-  const menuRef = useRef(null);
-  const closeMenuThen = (action) => {
-    menuRef.current?.removeAttribute("open");
-    action();
-  };
   const canAdd = goal.status === "active" && (goal.can_deposit || goal.can_invest) && Number(goal.remaining_amount || 0) > 0;
   const primaryAction = canAdd
     ? <Button className={goalClass("goal-card__primary-action")} variant="primary" onClick={() => openFunding(goal)}>Tambah dana</Button>
@@ -66,16 +62,15 @@ const GoalActions = ({ goal, detailId, detailsOpen, toggleDetails, openEdit, ope
   const canRemind = goal.status === "active";
   return <div className={goalClass("goal-card__actions")}>
     {primaryAction}
-    <details className={goalClass("goal-action-menu")} ref={menuRef}>
-      <summary aria-label={`Aksi target ${goal.name}`} title="Aksi lainnya"><FiMoreHorizontal aria-hidden="true" /><span>Kelola</span></summary>
-      <div className={goalClass("goal-action-menu__items")}>
-        <Button icon={FiInfo} aria-expanded={detailsOpen} aria-controls={detailId} onClick={() => closeMenuThen(toggleDetails)}>{detailsOpen ? "Sembunyikan rincian" : "Lihat rincian"}</Button>
-        {canRemind ? <Button icon={FiBell} onClick={() => closeMenuThen(() => openReminder(goal))}>Pengingat</Button> : null}
-        {goal.can_complete && canAdd ? <Button icon={FiCheckCircle} onClick={() => closeMenuThen(() => openStatusChange(goal, "completed"))}>Selesaikan target</Button> : null}
-        {goal.can_update ? <Button icon={FiEdit2} onClick={() => closeMenuThen(() => openEdit(goal))}>Edit</Button> : null}
-        {goal.can_archive || goal.can_request_delete ? <Button icon={FiArchive} onClick={() => closeMenuThen(() => openArchive(goal))}>{goal.can_request_delete ? "Ajukan hapus target" : "Hapus dari daftar"}</Button> : null}
-      </div>
-    </details>
+    <ActionOverflowMenu label={`Aksi target ${goal.name}`} className={goalClass("goal-action-menu")} panelClassName={goalClass("goal-action-menu__items")}>
+      {(closeMenu) => <>
+        <Button icon={FiInfo} aria-expanded={detailsOpen} aria-controls={detailsOpen ? detailId : undefined} onClick={() => { closeMenu(); toggleDetails(); }}>{detailsOpen ? "Sembunyikan rincian" : "Lihat rincian"}</Button>
+        {canRemind ? <Button icon={FiBell} onClick={() => { closeMenu(); openReminder(goal); }}>Pengingat</Button> : null}
+        {goal.can_complete && canAdd ? <Button icon={FiCheckCircle} onClick={() => { closeMenu(); openStatusChange(goal, "completed"); }}>Selesaikan target</Button> : null}
+        {goal.can_update ? <Button icon={FiEdit2} onClick={() => { closeMenu(); openEdit(goal); }}>Edit</Button> : null}
+        {goal.can_archive || goal.can_request_delete ? <Button icon={FiArchive} onClick={() => { closeMenu(); openArchive(goal); }}>{goal.can_request_delete ? "Ajukan hapus target" : "Hapus dari daftar"}</Button> : null}
+      </>}
+    </ActionOverflowMenu>
   </div>;
 };
 

@@ -8,3 +8,5 @@ Dokumen di folder ini **bukan workflow aktif** dan tidak boleh dipakai sebagai a
 - `LEGACY_SHEETS_TO_TURSO_CUTOVER.md` — one-time cutover dari Google Sheets legacy ke Turso. Turso sekarang sudah menjadi source of truth; prosedur ini dipertahankan sebagai historical evidence.
 
 Jangan memperbarui historical document agar mengikuti UI/flow terbaru kecuali metadata/kejelasan status historis memang salah. History source/release utama tetap Git dan `../../CHANGELOG.md`.
+
+- `COMPLETED_UI_REGRESSION_LOG.md` — arsip ringkas regresi UI dan aturan pencegahan, menggantikan laporan patch terpisah yang telah disupersede.

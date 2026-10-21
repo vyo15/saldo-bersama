@@ -5,6 +5,14 @@
 > **Update when:** Behavior canonical, invariant, atau test coverage wajib berubah.  
 > **Rule:** Bukan jurnal patch; tanggal, nama hardening, dan hasil run berada di Git/CHANGELOG/CI.
 
+## Soft Chroma — Atur Dana presentation-only
+
+- Tiga pintasan tetap 1 ketuk ke route canonical Tagihan rutin, Cicilan & utang, Target tabungan; warna hanya pada wadah ikon (ocean/purple/emerald), permukaan netral dan CTA teal tidak bergeser.
+- Penerima memakai nilai canonical `mine`/`partner`/`shared` untuk chip teal/purple/ocean dengan teks tetap eksplisit; termasuk fallback penerima pribadi lama. Filter **Untuk: Semua** tetap satu pemicu, pilihan keyboard + dialog native, selected scope tidak mengubah ownership.
+- Semua pasangan `--planning-*` dan `--audience-*` diuji kontras light/dark minimal 4.5:1 pada page/surface/section; tidak boleh ada raw hex di feature CSS, dependency baru, atau reimplementasi ProgressBar.
+- Manual QA mencakup 320/360/390/430px, batas 820/821px, desktop, tema, 200% text, keyboard focus, reduced-motion, dan 2 actor berlawanan identitas penerima; browser/auth smoke wajib sebelum production.
+- Regression: `frontend/test/theme-accessibility.test.js`, `frontend/test/atur-dana-redesign.test.js`, `frontend/test/planning-active-model.test.js`, `frontend/test/information-density-regression.test.js`, `frontend/test/mobile-app-surface-governance.test.js`.
+
 ## Soft Midnight Teal — dark theme consistency and build budget
 
 - Soft dark memiliki kenaikan luminansi berurutan dari canvas → surface → soft/raised → strong, bukan canvas hitam dengan warna kartu yang tidak terasa. Dark account mobile gradient harus kembali ke canvas pada midpoint, dan shell serta navigasi mobile memakai token tema bersama.
@@ -19,6 +27,14 @@
 - Achievement Target milestone atau 100% menunggu tombol Tutup; setoran rutin boleh auto-hide namun saldo/progres aslinya tetap ada di daftar/detail Target. Dekorasi finite dan reduced motion aman.
 - Indikator navigasi mobile memakai transform; nominal editor tidak ditween ketika mengetik. Timer handoff Review transaksi mengikuti token modal dan dibersihkan saat unmount.
 - Uji manual pada parent yang me-*unmount* modal secara kondisional: exit dari komponen bersama tidak berlaku jika modal langsung dilepas oleh parent.
+
+## Overflow action visibility dan contextual return
+
+- Menu aksi kartu memakai panel viewport-aware: saat sisa ruang bawah kecil (termasuk di atas bottom navigation) muncul di atas pemicu, tidak menabrak tepi horizontal, dan daftar panjang bisa di-scroll. Aksi tetap memicu edit/archive/cancel/visibility yang sama, tanpa mutasi sebelum konfirmasi.
+- Outside click, Escape, scroll dan responsive resize menutup/menata menu dengan wajar; keyboard fokus pertama dan fokus kembali dari Escape. Wajib uji light/dark pada 320/360/390/430px dan mobile PWA iOS, posisi item terakhir, serta desktop 1024/1440px.
+- Target dari pintasan Atur Dana memiliki Back kontekstual langsung ke `/perencanaan/kantong`. Direct/deep-link tidak boleh menampilkan asal palsu. Halaman biasa tidak memakai `navigate(-1)`.
+- ESLint `complexity<=20` dan `--max-warnings 0` mengunci biaya pemeliharaan Wishlist; arsip tetap fail-closed pada status outcome unknown.
+- Automated regression: `frontend/test/action-overflow-navigation-regression.test.js`, `frontend/test/desktop-workspace-regression.test.js`, `frontend/test/hierarchical-navigation.test.js` dan lint.
 
 ## Hierarchical navigation & Back
 

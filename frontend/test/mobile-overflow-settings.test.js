@@ -290,7 +290,7 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.match(allocations, /<ConfirmationModal open=\{Boolean\(p.archiveTarget\)\}/); // Dialog memakai swipe close bawaan Modal.
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);
   assert.match(goals, /goalClass\("goal-action-menu"\)/);
-  assert.match(goals, /FiMoreHorizontal/);
+  assert.match(goals, /<ActionOverflowMenu/);
   assert.match(goals, /Lihat rincian/);
   assert.match(goals, /goal-card__details/);
   assert.doesNotMatch(goals, /goal-card__monthly/);

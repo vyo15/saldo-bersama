@@ -1,0 +1,18 @@
+.panel {
+  position: fixed;
+  z-index: calc(var(--layer-modal) - 5);
+  width: min(15rem, calc(100vw - 16px));
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-control);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-floating);
+}
+
+.panel :is(button, a):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}

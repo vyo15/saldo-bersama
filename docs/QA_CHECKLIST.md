@@ -27,6 +27,24 @@
 - [ ] Detail Rekening mobile menampilkan saldo utama, Dana tersedia, Dialokasikan (kecuali RDN), nomor yang bisa disalin, dan metadata sekunder bisa dibuka di 320–430px.
 - [ ] Detail Kebutuhan menampilkan Sisa, Rencana, dan Terpakai dengan status yang benar tanpa menyembunyikan jadwal/daftar belanja pada disclosure.
 
+## Soft Chroma — Atur Dana (visual acceptance)
+
+- [ ] Tiga pintasan tetap permukaan netral dengan ikon ocean/purple/emerald, tidak muncul kartu warna penuh/tab kedua.
+- [ ] Chip penerima Saya/Pasangan/Bersama mengikuti label tekstual dan perubahan actor (dua anggota), bukan mengubah kepemilikan data.
+- [ ] Scope **Semua** tetap netral; filter scope spesifik memiliki tint terarah dan `aria-pressed` benar.
+- [ ] Light/dark, no-color, viewport 320/360/390/430/820/821/1024, zoom teks 200%, keyboard, fokus, reduced motion tidak overflow/menutupi nominal atau aksi.
+- [ ] WCAG AA normal text 4.5:1 pada chip di kanvas/surface; tap target filter dan shortcut minimal 44px; progress dan status warning/danger tetap semantik.
+- [ ] Build budget dan browser smoke canonical lulus; tidak ada perubahan API, DB, guard role, atau calculation.
+
+## Menu overflow / Back kontekstual
+
+- [ ] Pada item **terakhir** Target, Transaksi, Kewajiban, Wishlist, dan Shopping, buka `···`: seluruh pilihan terlihat di atas bottom navigation, tanpa popover terpotong oleh kartu/viewport. Uji menu tinggi dan scroll internal.
+- [ ] Buka `···` dekat sisi kanan/atas dan pada 320, 360, 390, 430, 820/821, 1024, 1440px, light/dark dan iPhone PWA (safe area); posisi dan fokus benar.
+- [ ] Enter/Space membuka, Tab menjangkau aksi, Escape menutup dan mengembalikan fokus; klik di luar menutup, scroll konteks tidak meninggalkan panel mengambang.
+- [ ] Dari Atur Dana pilih **Target tabungan** lalu **Kembali ke Atur Dana**. Target yang dibuka dari Lainnya/deep-link tidak menampilkan return fiktif.
+- [ ] Buka Edit/Arsip/Hide/Cancel dari menu: tidak ada mutasi sampai konfirmasi tepat, status gagal/unknown dan izin tetap aman.
+- [ ] Jangan menandai *production-ready* tanpa build budget, browser smoke terautentikasi, dan pengujian navigasi di perangkat nyata.
+
 ## 3. Financial integrity dan security
 
 - [ ] Rupiah tetap integer; timezone/currency canonical tidak berubah diam-diam.

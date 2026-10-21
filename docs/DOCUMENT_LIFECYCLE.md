@@ -50,7 +50,7 @@ Dokumentasi Saldo Bersama dibagi berdasarkan fungsi, bukan berdasarkan umur file
 1. Source dan test aktual mengalahkan snapshot yang tertinggal; drift harus diperbaiki pada patch yang sama.
 2. `PROJECT_STATUS.md` menjawab **kondisi sekarang** dan bukan jurnal perubahan.
 3. `IMPLEMENTATION_MATRIX.md` hanya menyimpan status Implemented/Partial/Planned, evidence utama, dan remaining gap.
-4. `CHANGELOG.md` dan Git menyimpan history perubahan; history tidak ditempelkan ke current-state docs.
+4. `CHANGELOG.md` dan Git menyimpan history perubahan; history tidak ditempelkan ke current-state docs. Insiden UI yang sudah ditutup diringkas **satu baris akar sebab → regression guard** pada `history/COMPLETED_UI_REGRESSION_LOG.md`, bukan berkas tanggal baru.
 5. `TEST_PLAN.md` menyimpan regression contract/domain scenario evergreen; `QA_CHECKLIST.md` hanya checklist evergreen. Keduanya tidak boleh menjadi jurnal patch, baseline tanggal lama, atau daftar `[x]` dari pekerjaan sebelumnya.
 6. Dokumen canonical tidak boleh memakai heading tanggal patch atau nama seperti `Hardening vXX`. Versi schema boleh disebut bila merupakan **current runtime fact**, bukan nama konsep.
 7. Historical evidence tidak diedit hanya agar terlihat current. Beri label/index yang jelas sehingga tidak dianggap authority aktif.

@@ -23,3 +23,42 @@ test("Jadwal, Kewajiban, dan Target tetap punya rute sekali ketuk", async () => 
   assert.match(page, /setSearchOpen\(\(current\) => !current\)/);
   assert.match(page, /clearFilter=\{\(\) => \{ setAllocationFilter\("all"\); setQuery\(""\); \}\}/);
 });
+
+// Static contract: these exact route, tone and audience values cross the JSX/CSS boundary.
+test("Soft Chroma maps all three planning links and recipient scopes without adding navigation", async () => {
+  const [page, css, tokens] = await Promise.all([
+    read("features/allocations/AllocationOverviewLayer.jsx"),
+    read("features/allocations/AllocationOverview.module.css"),
+    read("styles/tokens.css"),
+  ]);
+  const destinations = [
+    ["/perencanaan/jadwal", "recurring"],
+    ["/perencanaan/komitmen", "commitment"],
+    ["/target", "goal"],
+  ];
+  for (const [route, tone] of destinations) {
+    assert.match(page, new RegExp(`to: "${route}"[^\n]+tone: "${tone}"`));
+    assert.match(css, new RegExp(`\\.allocation-shortcuts__link\\[data-tone="${tone}"\\]`));
+    assert.match(tokens, new RegExp(`--planning-${tone}:`));
+    assert.match(tokens, new RegExp(`--planning-${tone}-soft:`));
+  }
+  assert.match(page, /data-tone=\{tone\}/);
+  assert.match(page, /data-audience=\{audience\}/);
+  assert.match(page, /data-audience=\{allocationFilter === "all" \? undefined : allocationFilter\}/);
+  assert.match(page, /data-audience=\{option.value === "all" \? undefined : option.value\}/);
+  assert.match(page, /aria-pressed=\{value === option.value\}/);
+  assert.match(page, /const audience = planningRowAudience\(row, actor\)/);
+  assert.match(page, /"Untuk saya"/);
+  assert.match(page, /"Untuk bersama"/);
+  assert.match(page, /`Untuk \$\{recipientName \|\| "pasangan"\}`/);
+  for (const scope of ["mine", "partner", "shared"]) {
+    assert.match(css, new RegExp(`\\.planning-active-row__audience\\[data-audience="${scope}"\\]`));
+    assert.match(css, new RegExp(`\\.allocation-audience-trigger\\[data-audience="${scope}"\\]`));
+    assert.match(css, new RegExp(`\\.allocation-audience-options__item\\.is-selected\\[data-audience="${scope}"\\]`));
+  }
+  assert.doesNotMatch(css, /data-audience="other"/);
+  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/, "Feature CSS must reference theme tokens, not hardcoded colors");
+  assert.match(css, /\.allocation-shortcuts__link \{[^}]*background: var\(--surface-section\)/);
+  assert.match(css, /\.allocation-audience-trigger,\s*\.allocation-search-trigger \{[^}]*min-height: 44px/);
+  assert.doesNotMatch(page, /QuickSegmentedFilter|AllocationPlanningNav/);
+});

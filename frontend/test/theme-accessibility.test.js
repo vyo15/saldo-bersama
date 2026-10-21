@@ -134,6 +134,28 @@ test("semantic color contracts memenuhi WCAG AA pada light dan dark termasuk sof
   }
 });
 
+test("Soft Chroma semantic identity pairs retain WCAG AA contrast on both themes", () => {
+  const roles = [
+    ["--planning-recurring", "--planning-recurring-soft"],
+    ["--planning-commitment", "--planning-commitment-soft"],
+    ["--planning-goal", "--planning-goal-soft"],
+    ["--audience-self", "--audience-self-soft"],
+    ["--audience-partner", "--audience-partner-soft"],
+    ["--audience-shared", "--audience-shared-soft"],
+  ];
+  for (const [theme, values] of [["light", themeTokens(":root,")], ["dark", themeTokens(':root[data-theme="dark"]')]]) {
+    for (const [ink, wash] of roles) {
+      for (const host of ["--surface", "--page", "--surface-section"]) {
+        const ratio = contrastPair(values, ink, wash, host);
+        assert.ok(ratio >= 4.5, `Soft Chroma ${theme} ${ink}/${wash} on ${host}: ${ratio.toFixed(2)}:1`);
+      }
+    }
+    // The brand primitives stay untouched while contextual text uses safe semantic variants.
+    assert.equal(values["--accent-purple"], "#8670e8");
+    assert.equal(values["--brand-ocean-700"], "#007696");
+  }
+});
+
 test("danger hover canonical dan compatibility tetap memenuhi AA", async () => {
   const buttonModule = await readFile(new URL("../src/components/common/Button.module.css", import.meta.url), "utf8");
   assert.match(buttonModule, /color-mix\(in srgb, var\(--negative\) 88%, var\(--shadow-ink\)\)/);

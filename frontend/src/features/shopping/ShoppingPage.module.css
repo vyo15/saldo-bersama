@@ -43,12 +43,11 @@
 .itemBody span,.itemBody small { color:var(--text-soft); font-size: 12px; }
 .itemPurchased .itemBody strong { text-decoration:line-through; color:var(--text-soft); }
 .itemMenu { position:relative; justify-self:end; }
-.itemMenu summary { list-style:none; width:var(--mobile-hit-target); height:var(--mobile-hit-target); display:grid; place-items:center; border-radius:10px; cursor:pointer; }
-.itemMenu summary::-webkit-details-marker { display:none; }
-.itemMenu > div { position:absolute; right:0; z-index:20; width:160px; padding:5px; display:grid; gap:2px; border:1px solid var(--border); border-radius:12px; background:var(--surface-elevated); box-shadow:var(--shadow-md); }
-.itemMenu button { border:0; background:transparent; color:var(--text); font:inherit; font-size:12px; padding:9px; display:flex; align-items:center; gap:8px; border-radius:8px; cursor:pointer; }
-.itemMenu button:hover { background:var(--interactive-hover); }
-.itemMenu .dangerAction { color:var(--negative); }
+.itemMenu > button { border:0; background:transparent; color:var(--text); font:inherit; width:var(--mobile-hit-target); height:var(--mobile-hit-target); display:grid; place-items:center; border-radius:10px; cursor:pointer; }
+.itemMenuPanel { padding:5px; display:grid; gap:2px; border:1px solid var(--border); border-radius:12px; background:var(--surface-elevated); box-shadow:var(--shadow-md); }
+.itemMenuPanel button { min-height:var(--mobile-hit-target); border:0; background:transparent; color:var(--text); font:inherit; font-size:12px; padding:9px; display:flex; align-items:center; gap:8px; border-radius:8px; cursor:pointer; }
+.itemMenuPanel button:hover { background:var(--interactive-hover); }
+.itemMenuPanel .dangerAction { color:var(--negative); }
 .purchasedMark { justify-self:center; color:var(--positive); }
 .shoppingMode { max-width:720px; width:100%; margin-inline:auto; display:grid; gap:14px; border:1px solid transparent; background:var(--surface-section); border-radius:var(--radius-surface); padding:16px; box-shadow:var(--shadow-sm); }
 .progressBlock { display:grid; gap:7px; }
@@ -164,13 +163,13 @@
 
 /* Smart Delete: actions stay readable and reachable at mobile touch sizes. */
 .headerActions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
-.archiveListAction { border:0; border-radius:10px; background:var(--negative-soft); color:var(--negative); padding:10px 12px; min-height:var(--mobile-hit-target); display:inline-flex; align-items:center; justify-content:center; gap:7px; font:inherit; font-size:12.5px; font-weight:650; cursor:pointer; }
+.archiveListAction { border:0; border-radius:10px; background:var(--surface-soft); color:var(--text-soft); padding:10px 12px; min-height:var(--mobile-hit-target); display:inline-flex; align-items:center; justify-content:center; gap:7px; font:inherit; font-size:12.5px; font-weight:650; cursor:pointer; }
 .archiveListAction:disabled { opacity:.5; cursor:default; }
 .archiveListAction:focus-visible,.archivedLists button:focus-visible { outline:3px solid var(--focus-ring); outline-offset:2px; }
 .archivedLists { display:grid; gap:8px; margin-top:15px; text-align:left; }
 .archivedLists > div { display:flex; justify-content:space-between; align-items:center; gap:12px; background:var(--surface-soft); border-radius:10px; padding:8px 10px; }
-.archivedLists button { background:var(--primary-soft); border:0; border-radius:8px; color:var(--primary-strong); padding:8px 10px; min-height:40px; cursor:pointer; }
+.archivedLists button { background:var(--primary-soft); border:0; border-radius:8px; color:var(--primary-strong); padding:8px 10px; min-height:var(--mobile-hit-target); cursor:pointer; }
 @media(max-width:640px) { .headerActions { flex-direction:column; align-items:stretch; } .headerActions .archiveListAction { min-width:44px; } }
 
-.hiddenToggle { display:inline-flex; align-items:center; gap:9px; color:var(--text-soft); font-size:12.5px; cursor:pointer; }
+.hiddenToggle { min-height:var(--mobile-hit-target); display:inline-flex; align-items:center; gap:9px; color:var(--text-soft); font-size:12.5px; cursor:pointer; }
 .hiddenToggle input { accent-color:var(--primary); width:16px; height:16px; }

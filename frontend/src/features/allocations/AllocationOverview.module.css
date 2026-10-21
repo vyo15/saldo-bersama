@@ -773,11 +773,27 @@
   touch-action: manipulation;
   transition: background-color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing);
 }
-.allocation-shortcuts__link svg {
+.allocation-shortcuts__icon {
   flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--primary);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-icon);
+  display: grid;
+  place-items: center;
+}
+.allocation-shortcuts__icon svg { width: 18px; height: 18px; }
+/* Keep navigation objects neutral; only their identity icons receive color. */
+.allocation-shortcuts__link[data-tone="recurring"] .allocation-shortcuts__icon {
+  color: var(--planning-recurring);
+  background: var(--planning-recurring-soft);
+}
+.allocation-shortcuts__link[data-tone="commitment"] .allocation-shortcuts__icon {
+  color: var(--planning-commitment);
+  background: var(--planning-commitment-soft);
+}
+.allocation-shortcuts__link[data-tone="goal"] .allocation-shortcuts__icon {
+  color: var(--planning-goal);
+  background: var(--planning-goal-soft);
 }
 .allocation-shortcuts__link:active { transform: scale(.98); }
 .allocation-shortcuts__link:focus-visible,
@@ -816,7 +832,7 @@
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
 }
-.allocation-audience-trigger svg { width: 15px; height: 15px; color: var(--text-soft); }
+.allocation-audience-trigger svg { width: 15px; height: 15px; color: inherit; }
 .allocation-search-trigger { width: 44px; flex: none; }
 .allocation-search-trigger svg { width: 18px; height: 18px; }
 .allocation-audience-options {
@@ -845,6 +861,25 @@
   font-weight: var(--font-weight-semibold);
 }
 .allocation-audience-options__item svg { flex: none; width: 18px; height: 18px; }
+/* Audience tones reinforce the visible label; they never set permissions. */
+.planning-active-row__audience[data-audience="mine"],
+.allocation-audience-trigger[data-audience="mine"],
+.allocation-audience-options__item.is-selected[data-audience="mine"] {
+  color: var(--audience-self);
+  background: var(--audience-self-soft);
+}
+.planning-active-row__audience[data-audience="partner"],
+.allocation-audience-trigger[data-audience="partner"],
+.allocation-audience-options__item.is-selected[data-audience="partner"] {
+  color: var(--audience-partner);
+  background: var(--audience-partner-soft);
+}
+.planning-active-row__audience[data-audience="shared"],
+.allocation-audience-trigger[data-audience="shared"],
+.allocation-audience-options__item.is-selected[data-audience="shared"] {
+  color: var(--audience-shared);
+  background: var(--audience-shared-soft);
+}
 .planning-active-row__name-group {
   min-width: 0;
   display: flex;
@@ -853,8 +888,14 @@
   gap: 2px 7px;
 }
 .planning-active-row__audience {
-  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 20px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }

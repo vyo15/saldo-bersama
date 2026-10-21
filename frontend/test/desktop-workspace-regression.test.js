@@ -12,7 +12,7 @@ test("desktop transaksi meredam CTA per baris tanpa menghilangkan aksi detail", 
   ]);
   assert.match(actions, /const TransactionActionMenu/);
   assert.match(actions, /menuOnly/);
-  assert.match(actions, /<FiMoreHorizontal/);
+  assert.match(actions, /<ActionOverflowMenu/);
   assert.match(actions, /Pakai lagi/);
   assert.match(actions, /Edit transaksi/);
   assert.match(actions, /Batalkan transaksi/);
@@ -28,8 +28,8 @@ test("kartu kewajiban memakai Bayar sebagai CTA utama dan memindahkan aksi kelol
   ]);
   assert.match(page, />Bayar<\/ButtonLink>/);
   assert.match(page, />Buka Alokasi<\/ButtonLink>/);
-  assert.match(page, /<details className=\{styles\.manageMenu\}>/);
-  assert.match(page, /aria-label={`Kelola kewajiban \${item\.name}`}/);
+  assert.match(page, /<ActionOverflowMenu label=\{`Kelola kewajiban/);
+  assert.match(page, /label=\{`Kelola kewajiban \${item\.name}`\}/);
   assert.match(page, /Edit kewajiban/);
   assert.match(page, /Hentikan kewajiban/);
   assert.match(css, /\.manageMenuItems \{/);

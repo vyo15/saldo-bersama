@@ -130,6 +130,19 @@
   --warning-soft: #fff3d6;
   --info: #007696;
   --info-soft: #e1f5fb;
+  /* Soft Chroma: contextual identity is separate from financial status. */
+  --planning-recurring: var(--brand-ocean-700);
+  --planning-recurring-soft: var(--brand-ocean-100);
+  --planning-commitment: #6d5bd0;
+  --planning-commitment-soft: #f5f2ff;
+  --planning-goal: var(--positive);
+  --planning-goal-soft: var(--positive-soft);
+  --audience-self: var(--primary);
+  --audience-self-soft: var(--primary-soft);
+  --audience-partner: var(--planning-commitment);
+  --audience-partner-soft: var(--planning-commitment-soft);
+  --audience-shared: var(--planning-recurring);
+  --audience-shared-soft: var(--planning-recurring-soft);
   --chart-series-1: var(--primary);
   --chart-series-2: #f6a623;
   --chart-series-3: #2f8ef4;
@@ -351,6 +364,13 @@
   --warning-soft: rgba(246, 184, 74, 0.14);
   --info: #8acfe7;
   --info-soft: rgba(138, 207, 231, 0.10);
+  /* Theme-specific semantic accents; audience aliases inherit these roles. */
+  --planning-recurring: var(--brand-ocean-300);
+  --planning-recurring-soft: color-mix(in srgb, var(--planning-recurring) 10%, var(--surface));
+  --planning-commitment: #a594f0;
+  --planning-commitment-soft: color-mix(in srgb, var(--planning-commitment) 10%, var(--surface));
+  --planning-goal: var(--positive);
+  --planning-goal-soft: var(--positive-soft);
   --chart-series-1: var(--primary);
   --chart-series-2: #f6b84a;
   --chart-series-3: #91d4ee;

@@ -66,7 +66,8 @@
 .goal-card__primary-action { width: 100%; min-height: var(--mobile-control-height); border-radius: var(--control-radius) 0 0 var(--control-radius); }
 .goal-action-menu { position: relative; min-width: 0; }
 .goal-action-menu:only-child { grid-column: 2; }
-.goal-action-menu > summary {
+.goal-action-menu > button {
+  font: inherit;
   width: var(--mobile-control-height);
   min-width: var(--mobile-control-height);
   min-height: var(--mobile-control-height);
@@ -83,17 +84,10 @@
   cursor: pointer;
   list-style: none;
 }
-.goal-action-menu:only-child > summary { border-inline-start: 1px solid var(--border); border-radius: var(--control-radius); }
-.goal-action-menu > summary::-webkit-details-marker { display: none; }
-.goal-action-menu > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.goal-action-menu > summary svg { width: 18px; height: 18px; }
-.goal-action-menu > summary span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.goal-action-menu:only-child > button { border-inline-start: 1px solid var(--border); border-radius: var(--control-radius); }
+.goal-action-menu > button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.goal-action-menu > button svg { width: 18px; height: 18px; }
 .goal-action-menu__items {
-  position: absolute;
-  z-index: 12;
-  right: 0;
-  top: calc(100% + 8px);
-  width: min(15rem, calc(100vw - 2rem));
   padding: 8px;
   border: 1px solid transparent;
   border-radius: 14px;

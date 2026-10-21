@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { FiArchive, FiCheckCircle, FiEdit2, FiHome, FiMoreHorizontal, FiPlus, FiUsers } from "react-icons/fi";
+import { FiArchive, FiCheckCircle, FiEdit2, FiHome, FiPlus, FiUsers } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router";
 import Button from "../../components/common/Button.jsx";
+import ActionOverflowMenu from "../../components/common/ActionOverflowMenu.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import EmptyState from "../../components/feedback/EmptyState.jsx";
@@ -86,14 +87,13 @@ const CommitmentActions = ({ item, onEdit, onStop }) => {
   if (!active && !hasManagement) return null;
   return <div className={styles.actions}>
     {hasPayment ? <ButtonLink variant="primary" icon={FiCheckCircle} to="/perencanaan/jadwal" state={commitmentPaymentState(item)}>Bayar</ButtonLink> : null}
-    {(active || hasManagement) ? <details className={styles.manageMenu}>
-      <summary aria-label={`Kelola kewajiban ${item.name}`} title="Kelola kewajiban"><FiMoreHorizontal aria-hidden="true" /></summary>
-      <div className={styles.manageMenuItems}>
-        {active ? <ButtonLink to="/perencanaan/kantong" state={{ workflowSource: "commitment", workflowAction: "commitment-plan", commitmentId: item.commitment_id, budgetId: item.budget_id || "", sourceAccountId: item.default_account_id || "" }}>Buka Alokasi</ButtonLink> : null}
-        {item.can_manage && active ? <Button icon={FiEdit2} onClick={() => onEdit(item)}>Edit kewajiban</Button> : null}
-        {item.can_delete ? <Button icon={FiArchive} variant="danger" onClick={() => onStop(item)}>Hentikan kewajiban</Button> : null}
-      </div>
-    </details> : null}
+    {(active || hasManagement) ? <ActionOverflowMenu label={`Kelola kewajiban ${item.name}`} className={styles.manageMenu} panelClassName={styles.manageMenuItems}>
+      {(closeMenu) => <>
+        {active ? <ButtonLink to="/perencanaan/kantong" onClick={closeMenu} state={{ workflowSource: "commitment", workflowAction: "commitment-plan", commitmentId: item.commitment_id, budgetId: item.budget_id || "", sourceAccountId: item.default_account_id || "" }}>Buka Alokasi</ButtonLink> : null}
+        {item.can_manage && active ? <Button icon={FiEdit2} onClick={() => { closeMenu(); onEdit(item); }}>Edit kewajiban</Button> : null}
+        {item.can_delete ? <Button icon={FiArchive} variant="danger" onClick={() => { closeMenu(); onStop(item); }}>Hentikan kewajiban</Button> : null}
+      </>}
+    </ActionOverflowMenu> : null}
   </div>;
 };
 

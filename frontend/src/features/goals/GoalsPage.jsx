@@ -4,6 +4,7 @@ import { FiPlus } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
+import ContextBack from "../../components/navigation/ContextBack.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import LazyActionFallback from "../../components/feedback/LazyActionFallback.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
@@ -266,6 +267,7 @@ const GoalsPage = () => {
 
   return <div className="page-stack">
     <RefreshWarning error={resource.refreshError || investmentResource.error || investmentResource.refreshError || requestResource.refreshError} onRetry={() => Promise.allSettled([resource.reload(), investmentResource.reload(), ...(memberMode ? [requestResource.reload()] : [])])} />
+    {location.state?.fromAturDana === true ? <ContextBack to="/perencanaan/kantong" label="Atur Dana" /> : null}
     <PageHeader title="Target" help="Satu tujuan dapat berisi dana tunai, investasi, atau keduanya. Nilai investasi mengikuti catatan harga terakhir dan setiap kejadian uang dihitung satu kali." actions={headerActions} />
     {createdGoal ? <CompactNotice tone="success" title="Target sudah siap." role="status">Gunakan Tambah dana untuk menyimpan lewat rekening atau investasi sesuai cara menabung Target.</CompactNotice> : null}
     {createdGoal ? <div className="form-actions"><Button type="button" onClick={() => setCreatedGoal(null)}>Selesai</Button>{createdGoal?.goal_id ? <Button type="button" variant="primary" onClick={() => { openFunding(createdGoal); setCreatedGoal(null); }}>Tambah dana</Button> : null}</div> : null}

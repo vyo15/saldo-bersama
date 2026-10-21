@@ -1,3 +1,17 @@
+## 2026-10-21 — Perbaikan overflow action, Back Target, lint, dan konsolidasi catatan (candidate)
+
+- Overflow Target/Transaksi/Kewajiban/Shopping/Wishlist memakai menu berbasis portal dengan posisi adaptif (flip ke atas di dekat bottom navigation), fokus/Escape/outside-click, dan tinggi scrollable. Aksi bisnis tidak diubah.
+- Pintasan Atur Dana → Target kini punya kembali eksplisit ke Atur Dana tanpa bergantung pada browser history; direct Target tidak diberi parent palsu.
+- Warning lint `complexity` Wishlist ditangani dengan ekstraksi overlay/konfirmasi dan regresi outcome unknown. Test geometri/navigasi ditambahkan.
+- Dokumen patch lama yang superseded dikonsolidasikan ke satu `docs/history/COMPLETED_UI_REGRESSION_LOG.md`; governance, design system, QA/test plan, dan snapshot diselaraskan.
+
+## 2026-10-21 — Soft Chroma Atur Dana: aksen semantik tanpa ubah perilaku (candidate)
+
+- Menggunakan alias warna light/dark `--planning-*` dan `--audience-*` untuk warna kontekstual, bukan recolor massal. Primitive brand, status danger/warning, dan progress tidak berubah.
+- Tiga pintasan Atur Dana tetap netral, hanya ikon Tagihan rutin (ocean), Cicilan & utang (purple), Target tabungan (emerald) yang beraksen. Teks penerima tetap eksplisit dan kini berupa chip halus: Saya (teal), Pasangan/anggota lain (purple), Bersama (ocean).
+- Filter tunggal **Untuk: ...** menjadi tinted hanya saat scope tertentu dipilih. Pemetaan recipient menggunakan nilai source canonical `mine`/`partner`/`shared`, bukan contoh `other` di rancangan. Route, hasil filter, API, saldo, histori, permissions, schema, dan backend tidak berubah.
+- Kontrak regression semantic mapping serta kontras 4.5:1 lintas light/dark diperluas; dokumen QA/test plan/design system diselaraskan. Status candidate hingga full `npm run verify` dan browser smoke yang terautentikasi berhasil di environment resmi.
+
 ## 2026-10-21 — Merge final UI/UX minimalis + Atur Dana satu level (candidate)
 
 - Menggabungkan dua kandidat UI/UX pada source canonical terbaru: Atur Dana tetap satu level dengan tiga pintasan jelas, filter **Untuk: Semua**, dan label penerima Saya/Pasangan/Bersama; tidak menghidupkan kembali tab bertumpuk atau launcher **Tambah lainnya**.

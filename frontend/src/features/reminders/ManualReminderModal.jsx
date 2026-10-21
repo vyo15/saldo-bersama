@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiBell, FiTrash2 } from "react-icons/fi";
+import { FiBell, FiBellOff } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import CompactNotice from "../../components/common/CompactNotice.jsx";
 import Modal from "../../components/common/Modal.jsx";
@@ -139,7 +139,7 @@ const reminderMutationState = ({ saveMutation, cancelMutation, current, lastDisp
 });
 
 const ManualReminderFooter = ({ current, busy, ready, saveRetryOnly, cancelRetryOnly, retryOnly, deliveryPending, cancel, guard, saveBusy, cancelBusy }) => <>
-  {current ? <Button type="button" variant="danger" icon={FiTrash2} loading={cancelBusy} disabled={busy || !ready || saveRetryOnly} onClick={cancel}>{cancelRetryOnly ? "Coba lagi pembatalan" : "Batalkan pengingat"}</Button> : null}
+  {current ? <Button type="button" variant="secondary" icon={FiBellOff} loading={cancelBusy} disabled={busy || !ready || saveRetryOnly} onClick={cancel}>{cancelRetryOnly ? "Coba lagi pembatalan" : "Batalkan pengingat"}</Button> : null}
   <Button type="button" disabled={busy || retryOnly} onClick={guard.discardAndClose}>Tutup</Button>
   <Button type="submit" form="manual-reminder-form" variant="primary" icon={FiBell} loading={saveBusy} disabled={busy || !ready || deliveryPending || cancelRetryOnly}>{saveRetryOnly ? "Coba lagi data yang sama" : current ? "Ubah jadwal" : "Simpan pengingat"}</Button>
 </>;

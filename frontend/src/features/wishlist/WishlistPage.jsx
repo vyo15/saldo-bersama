@@ -1,8 +1,10 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { FiArrowRight, FiCheck, FiCheckCircle, FiChevronDown, FiEdit2, FiHeart, FiMoreHorizontal, FiPlus, FiShoppingBag, FiTrash2, FiTarget, FiList, FiUser, FiUsers, FiSliders, FiX, FiShoppingCart } from "react-icons/fi";
+import { FiArrowRight, FiCheck, FiCheckCircle, FiChevronDown, FiEdit2, FiHeart, FiPlus, FiShoppingBag, FiArchive, FiEye, FiEyeOff, FiTarget, FiList, FiUser, FiUsers, FiSliders, FiX, FiShoppingCart } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
+import ActionOverflowMenu from "../../components/common/ActionOverflowMenu.jsx";
 import Modal from "../../components/common/Modal.jsx";
+import ConfirmationModal from "../../components/common/ConfirmationModal.jsx";
 import PageHeader from "../../components/common/PageHeader.jsx";
 import ErrorState, { RefreshWarning } from "../../components/feedback/ErrorState.jsx";
 import NativePageSkeleton from "../../components/feedback/NativePageSkeleton.jsx";
@@ -42,15 +44,17 @@ const WishlistRowStatus = ({ item, busy, onActivate, onReopen }) => <>
   {isCancelled(item) ? <button className={styles.restoreAction} type="button" disabled={busy} onClick={() => onReopen(item)}>Buka rencana lagi</button> : null}
 </>;
 
-const WishlistRowMenu = ({ item, busy, onEdit, onArchive, onVisibility }) => <details className={styles.itemMenu}>
-  <summary aria-label={`Aksi lainnya untuk ${item.name}`}><FiMoreHorizontal aria-hidden="true" /></summary>
-  <div className={styles.menuPanel}>
-    {item.status === "active" ? <><button type="button" disabled={busy} onClick={() => onEdit(item)}><FiEdit2 aria-hidden="true" /> Edit wishlist</button><button type="button" disabled={busy} onClick={() => onArchive(item)}><FiTrash2 aria-hidden="true" /> Arsipkan</button></> : null}
-    {item.status === "purchased" ? <button type="button" disabled={busy} onClick={() => onVisibility(item, !item.is_hidden)}><FiTrash2 aria-hidden="true" /> {item.is_hidden ? "Tampilkan lagi" : "Hapus dari tampilan"}</button> : null}
-    {item.product_url ? <a href={item.product_url} target="_blank" rel="noopener noreferrer"><FiArrowRight aria-hidden="true" /> Marketplace</a> : null}
+const WishlistRowMenu = ({ item, busy, onEdit, onArchive, onVisibility }) => <ActionOverflowMenu label={`Aksi lainnya untuk ${item.name}`} className={styles.itemMenu} panelClassName={styles.menuPanel}>
+  {(closeMenu) => <>
+    {item.status === "active" ? <>
+      <button type="button" disabled={busy} onClick={() => { closeMenu(); onEdit(item); }}><FiEdit2 aria-hidden="true" /> Edit wishlist</button>
+      <button type="button" disabled={busy} onClick={() => { closeMenu(); onArchive(item); }}><FiArchive aria-hidden="true" /> Arsipkan</button>
+    </> : null}
+    {item.status === "purchased" ? <button type="button" disabled={busy} onClick={() => { closeMenu(); onVisibility(item, !item.is_hidden); }}>{item.is_hidden ? <FiEye aria-hidden="true" /> : <FiEyeOff aria-hidden="true" />} {item.is_hidden ? "Tampilkan lagi" : "Sembunyikan"}</button> : null}
+    {item.product_url ? <a href={item.product_url} onClick={closeMenu} target="_blank" rel="noopener noreferrer"><FiArrowRight aria-hidden="true" /> Marketplace</a> : null}
     {item.note ? <p className={styles.menuNote}>{item.note}</p> : null}
-  </div>
-</details>;
+  </>}
+</ActionOverflowMenu>;
 
 const WishlistRow = ({ item, simulationMode, selected, busy, onSelect, onBuy, onEdit, onArchive, onActivate, onReopen, onVisibility }) => <article className={styles.item}>
   {simulationMode && item.status === "active" ? <label className={styles.simIcon}>
@@ -163,7 +167,26 @@ const WishlistHiddenToggle = ({ items, showHidden, setShowHidden, setShowArchive
     setShowHidden(checked);
     if (checked) setShowArchive(true);
   };
-  return <label className={styles.hiddenToggle}><input type="checkbox" checked={showHidden} onChange={toggle} /> Tampilkan yang dihapus dari tampilan</label>;
+  return <label className={styles.hiddenToggle}><input type="checkbox" checked={showHidden} onChange={toggle} /> Tampilkan yang disembunyikan</label>;
+};
+
+const WishlistArchiveConfirmation = ({ target, attempted, mutation, feedback, onClose, onConfirm }) => {
+  const retryOnly = Boolean(target && attempted && mutation.outcomeUnknown);
+  return <ConfirmationModal open={Boolean(target)} title="Arsipkan keinginan?"
+    description={target ? `${target.name} akan dipindahkan ke arsip dan rencana dana tidak lagi dihitung. Kamu dapat mengaktifkannya kembali.` : ""}
+    confirmLabel="Arsipkan" busy={mutation.busy} retryOnly={retryOnly}
+    error={target && feedback ? new Error(feedback) : null}
+    onCancel={() => { if (!mutation.busy && !retryOnly) onClose(); }} onConfirm={onConfirm} />;
+};
+
+const WishlistDialogs = ({ simulationMode, showSimulator, selected, onCloseSimulator, editor, onCloseEditor, checkout, onCloseCheckout, onSaved }) => {
+  const showSimulation = simulationMode && showSimulator && selected.length > 0;
+  if (!showSimulation && !editor && !checkout) return null;
+  return <Suspense fallback={<LazyActionFallback surface="modal" title="Wishlist" label="Menyiapkan aksi Wishlist..." />}>
+    {showSimulation ? <WishlistDialogLayer mode="simulator" items={selected} onClose={onCloseSimulator} /> : null}
+    {editor ? <WishlistDialogLayer mode="editor" key={editor.wishlist_item_id || "new"} item={editor.wishlist_item_id ? editor : null} onSaved={onSaved} onClose={onCloseEditor} /> : null}
+    {checkout ? <WishlistDialogLayer mode="checkout" key={checkout.wishlist_item_id} item={checkout} onSaved={onSaved} onClose={onCloseCheckout} /> : null}
+  </Suspense>;
 };
 
 const WishlistPage = () => {
@@ -174,6 +197,8 @@ const WishlistPage = () => {
   const [editor, setEditor] = useState(null);
   const [checkout, setCheckout] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveAttempted, setArchiveAttempted] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -193,13 +218,11 @@ const WishlistPage = () => {
   const done = items.filter((item) => item.status === "purchased" && item.purchase_transaction_status === "active").length;
   const refresh = async () => { setEditor(null); setCheckout(null); setFeedback(""); setSelectedIds([]); await resource.reload(); };
   const changeState = async (item, status) => {
-    if (!window.confirm(status === "archived" ? `Arsipkan ${item.name}? Rencana dana tidak akan lagi dihitung.` : `Aktifkan kembali ${item.name}?`)) return;
     setFeedback("");
-    try { await mutation.run(() => changeWishlistState({ wishlist_item_id: item.wishlist_item_id, row_version: item.row_version, status })); invalidateWishlist(); await resource.reload(); setSelectedIds([]); }
+    try { await mutation.run(() => changeWishlistState({ wishlist_item_id: item.wishlist_item_id, row_version: item.row_version, status })); if (status === "archived") setArchiveTarget(null); invalidateWishlist(); await resource.reload(); setSelectedIds([]); }
     catch (error) { setFeedback(isOutcomeUnknownError(error) ? "Status perubahan belum pasti. Muat ulang sebelum mencoba lagi." : error.message); }
   };
   const toggleVisibility = async (item, hidden) => {
-    if (hidden && !window.confirm(`Hapus ${item.name} dari tampilan pribadi? Histori pembelian dan saldo tidak berubah.`)) return;
     setFeedback("");
     try { await mutation.run(() => setItemVisibility("wishlist_item", item.wishlist_item_id, hidden)); invalidateWishlist(); await resource.reload(); }
     catch (error) { setFeedback(isOutcomeUnknownError(error) ? "Status belum pasti. Muat ulang terlebih dahulu." : error.message); }
@@ -222,16 +245,15 @@ const WishlistPage = () => {
       selected={selected} setSelectedIds={setSelectedIds} setShowSimulator={setShowSimulator} />
     <WishlistBoard items={items} active={active} filtered={filtered} scope={scope} priority={priority} showArchive={showArchive} simulationMode={simulationMode}
       selectedIds={selectedIds} busy={mutation.busy} onSelect={toggleSelection} onBuy={setCheckout} onEdit={setEditor}
-      onArchive={(item) => changeState(item, "archived")} onActivate={(item) => changeState(item, "active")} onReopen={restoreCancelled} onVisibility={toggleVisibility}
+      onArchive={(item) => { setFeedback(""); setArchiveAttempted(false); setArchiveTarget(item); }} onActivate={(item) => changeState(item, "active")} onReopen={restoreCancelled} onVisibility={toggleVisibility}
       onReset={() => { setScope("all"); setPriority("all"); setShowArchive(false); }} onShowHistory={() => { setScope("all"); setPriority("all"); setShowArchive(true); }} onCreate={() => setEditor({})} />
+    <WishlistArchiveConfirmation target={archiveTarget} attempted={archiveAttempted} mutation={mutation} feedback={feedback}
+      onClose={() => { setArchiveTarget(null); setFeedback(""); }} onConfirm={() => { if (!archiveTarget) return; setArchiveAttempted(true); return changeState(archiveTarget, "archived"); }} />
     {filterOpen ? <WishlistFilterModal priority={priority} showArchive={showArchive} onClose={() => setFilterOpen(false)}
       onApply={(nextPriority, nextArchive) => { setPriority(nextPriority); setShowArchive(nextArchive); setFilterOpen(false); }} /> : null}
     <WishlistFooter hasItems={items.length > 0} showArchive={showArchive} setShowArchive={setShowArchive} />
-    {(simulationMode && showSimulator && selected.length > 0) || editor || checkout ? <Suspense fallback={<LazyActionFallback surface="modal" title="Wishlist" label="Menyiapkan aksi Wishlist..." />}>
-      {simulationMode && showSimulator && selected.length ? <WishlistDialogLayer mode="simulator" items={selected} onClose={() => setShowSimulator(false)} /> : null}
-      {editor ? <WishlistDialogLayer mode="editor" key={editor.wishlist_item_id || "new"} item={editor.wishlist_item_id ? editor : null} onSaved={refresh} onClose={() => setEditor(null)} /> : null}
-      {checkout ? <WishlistDialogLayer mode="checkout" key={checkout.wishlist_item_id} item={checkout} onSaved={refresh} onClose={() => setCheckout(null)} /> : null}
-    </Suspense> : null}
+    <WishlistDialogs simulationMode={simulationMode} showSimulator={showSimulator} selected={selected} onCloseSimulator={() => setShowSimulator(false)}
+      editor={editor} onCloseEditor={() => setEditor(null)} checkout={checkout} onCloseCheckout={() => setCheckout(null)} onSaved={refresh} />
   </div>;
 };
 export default WishlistPage;

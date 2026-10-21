@@ -312,13 +312,12 @@
 
 /* Desktop row actions stay discoverable without turning every ledger row into a button group. */
 .actionMenu { position: relative; width: 2.5rem; margin-left: auto; }
-.actionMenu > summary { width: 2.5rem; height: 2.5rem; border: 1px solid transparent; border-radius: .75rem; display: grid; place-items: center; color: var(--text-muted); background: transparent; cursor: pointer; list-style: none; }
-.actionMenu > summary::-webkit-details-marker { display: none; }
-.actionMenu > summary svg { width: 1.1rem; height: 1.1rem; }
-.actionMenu > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.actionMenu[open] > summary,
-.actionMenu > summary:hover { border-color: var(--border); background: var(--surface-soft); color: var(--text); }
-.actionMenuItems { position: absolute; inset: calc(100% + .3rem) 0 auto auto; z-index: 18; width: 12rem; padding: .4rem; border: 1px solid transparent; border-radius: .9rem; display: grid; gap: .1rem; background: var(--surface-elevated); box-shadow: var(--shadow-floating); }
+.actionMenu > button { font:inherit; width: 2.5rem; height: 2.5rem; border: 1px solid transparent; border-radius: .75rem; display: grid; place-items: center; color: var(--text-muted); background: transparent; cursor: pointer; list-style: none; }
+.actionMenu > button svg { width: 1.1rem; height: 1.1rem; }
+.actionMenu > button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.actionMenu > button[aria-expanded="true"],
+.actionMenu > button:hover { border-color: var(--border); background: var(--surface-soft); color: var(--text); }
+.actionMenuItems { width: 12rem; padding: .4rem; border: 1px solid transparent; border-radius: .9rem; display: grid; gap: .1rem; background: var(--surface-elevated); box-shadow: var(--shadow-floating); }
 .actionMenuItems button { min-height: 2.5rem; padding: 0 .65rem; border: 0; border-radius: .65rem; display: flex; align-items: center; gap: .55rem; background: transparent; color: var(--text); font: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-align: left; cursor: pointer; }
 .actionMenuItems button:hover { background: var(--surface-soft); }
 .actionMenuItems button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -1px; }

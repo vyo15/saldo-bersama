@@ -124,7 +124,7 @@ const BatchEditorRow = ({ row, index, categories, updateRow, removeRow, onCreate
 };
 
 const BatchCompactRow = ({ row, category, onEdit, onRemove }) => <div className={styles.compactRow}>
-  <button type="button" className={styles.compactMain} onClick={onEdit}>
+  <button type="button" className={styles.compactMain} onClick={onEdit} aria-label={`Edit ${row.name || "kebutuhan tanpa nama"}`}>
     <span className={styles.compactCopy}><strong>{row.name || "Kebutuhan tanpa nama"}</strong><small>{category?.name || "Pilih kategori"} · {budgetRecordingLabel(row.recording_mode) || "Pilih cara penggunaan"}{row.recording_mode === "recurring" ? ` · ${budgetBatchScheduleLabel(row)}` : ""}{row.shopping_enabled ? " · Daftar belanja" : ""}</small></span>
     <strong className={styles.compactAmount}>{formatRupiah(row.amount || 0)}</strong>
   </button>
