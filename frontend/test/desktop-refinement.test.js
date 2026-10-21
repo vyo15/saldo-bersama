@@ -44,7 +44,7 @@ test("dashboard desktop memprioritaskan hero saldo, shortcut, perhatian, aktivit
   const planning = dashboard.indexOf("<DashboardPlanning");
   const investment = dashboard.indexOf("<InvestmentWidget");
   assert.ok(header >= 0 && metrics > header && quickActions > metrics && attention > quickActions && transactions > attention && accounts > transactions && planning > accounts && investment > planning);
-  for (const label of ["Saldo Keluarga", "Dana bisa digunakan", "Aman untuk hari ini", "Sisa alokasi bulan ini", "Aksi Cepat", "Perlu dilakukan", "Rekening keluarga", "Target", "Investasi", "Aktivitas Terbaru", "Kebutuhan aktif", "Jadwal mendatang", "Target berjalan"]) assert.match(dashboard, new RegExp(label));
+  for (const label of ["Saldo Keluarga", "Dana yang bisa kamu gunakan", "Aman untuk hari ini", "Sisa alokasi bulan ini", "Jelajahi fitur", "Perlu dilakukan", "Rekening keluarga", "Target", "Investasi", "Aktivitas Terbaru", "Kebutuhan aktif", "Jadwal mendatang", "Target berjalan"]) assert.match(dashboard, new RegExp(label));
   assert.doesNotMatch(dashboard, /Masuk bulan ini|Keluar bulan ini|Arus uang bulan ini|Total pengeluaran bulan ini|desktop-analysis-section|StatisticsPanel/);
   assert.match(dashboard, /shared-investment-widget/);
   assert.doesNotMatch(dashboard, /Kondisi keuangan terkendali/);

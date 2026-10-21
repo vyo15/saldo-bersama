@@ -1,6 +1,7 @@
 import {
   FiAlertTriangle,
   FiBell,
+  FiChevronDown,
   FiChevronRight,
   FiEye,
   FiEyeOff,
@@ -12,15 +13,12 @@ import {
 import { useLayoutEffect, useRef } from "react";
 import { Link } from "react-router";
 import familyHero from "../../../assets/dashboard/family-hero.avif";
-import foliageLeft from "../../../assets/dashboard/foliage-left.avif";
-import foliageRight from "../../../assets/dashboard/foliage-right.avif";
 import { formatTransactionDate, transactionCategoryIcon, transactionSign, transactionTone } from "../../../shared/presentation/transaction.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { financialNotificationFact, financialNotificationTitle, mergeNotificationCenterItems, useFinancialNotificationReadState } from "../../../shared/workflows/financialNotifications.js";
 import { dashboardOwnershipBreakdown, dashboardSyncLabel, dashboardUrgentAlerts } from "../dashboardPresentation.js";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { prefersReducedMotion, semanticMotionDurationMs, semanticMotionEasing } from "../../../shared/motion.js";
-import DashboardQuickActions from "./DashboardQuickActions.jsx";
 import SensitiveMoney from "./SensitiveMoney.jsx";
 import { dashboardClass } from "../dashboardStyles.js";
 
@@ -65,31 +63,32 @@ const MobileFinanceHero = ({ overview, displayName, balanceVisible, onToggleBala
         </div>
 
         <div className={dashboardClass("mobile-family-hero__art")} aria-hidden="true">
-          <img className={dashboardClass("mobile-family-hero__foliage mobile-family-hero__foliage--left")} src={foliageLeft} width="900" height="675" decoding="async" alt="" />
-          <img className={dashboardClass("mobile-family-hero__foliage mobile-family-hero__foliage--right")} src={foliageRight} width="900" height="675" decoding="async" alt="" />
-          <img className={dashboardClass("mobile-family-hero__people")} src={familyHero} width="980" height="735" decoding="async" alt="" />
+          <img className={dashboardClass("mobile-family-hero__people")} src={familyHero} width="980" height="735" loading="eager" fetchPriority="high" decoding="async" alt="" />
         </div>
       </section>
 
-      <nav className={dashboardClass("mobile-ownership-summary mobile-reference-ownership")} aria-label="Rincian Saldo Keluarga">
-        {ownershipItems.map((item) => {
-          const Icon = ownershipIcon(item.key);
-          return (
-            <Link key={item.key} className={dashboardClass(`mobile-owner-card mobile-owner-card--${item.key}`)} to="/rekening" state={{ ownershipFilter: item.key }} aria-label={`${item.label}, buka rekening ${item.label.toLocaleLowerCase("id-ID")}`}>
-              <span className={dashboardClass("mobile-owner-card__icon")}><Icon aria-hidden="true" /></span>
-              <span className={dashboardClass("mobile-owner-card__copy")}>
-                <small>{item.label}</small>
-                <strong><SensitiveMoney visible={balanceVisible} value={item.amount} compact /></strong>
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+      <details className={dashboardClass("mobile-balance-details")}>
+        <summary>Rincian saldo dan dana <FiChevronDown aria-hidden="true" /></summary>
+        <nav className={dashboardClass("mobile-ownership-summary mobile-reference-ownership")} aria-label="Rincian Saldo Keluarga">
+          {ownershipItems.map((item) => {
+            const Icon = ownershipIcon(item.key);
+            return (
+              <Link key={item.key} className={dashboardClass(`mobile-owner-card mobile-owner-card--${item.key}`)} to="/rekening" state={{ ownershipFilter: item.key }} aria-label={`${item.label}, buka rekening ${item.label.toLocaleLowerCase("id-ID")}`}>
+                <span className={dashboardClass("mobile-owner-card__icon")}><Icon aria-hidden="true" /></span>
+                <span className={dashboardClass("mobile-owner-card__copy")}>
+                  <small>{item.label}</small>
+                  <strong><SensitiveMoney visible={balanceVisible} value={item.amount} compact /></strong>
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      <div className={dashboardClass("mobile-finance-summary mobile-reference-summary")} aria-label="Ringkasan dana harian">
-        <div><span>Aman dipakai / hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
-        <div><span>Sisa di Alokasi</span><SensitiveMoney visible={balanceVisible} value={overview.allocatedRemaining || 0} /></div>
-      </div>
+        <div className={dashboardClass("mobile-finance-summary mobile-reference-summary")} aria-label="Ringkasan dana harian">
+          <div><span>Aman dipakai / hari</span><SensitiveMoney visible={balanceVisible} value={overview.dailySafeToSpend || 0} /></div>
+          <div><span>Sisa di Alokasi</span><SensitiveMoney visible={balanceVisible} value={overview.allocatedRemaining || 0} /></div>
+        </div>
+      </details>
     </header>
   );
 };
@@ -176,10 +175,6 @@ const MobileFinanceDashboard = ({ overview, viewModel, user, displayName, balanc
     <MobileFinanceHero overview={overview} displayName={displayName} balanceVisible={balanceVisible} onToggleBalance={onToggleBalance} notificationCount={notificationState.unreadCount} />
     <div className={dashboardClass("mobile-finance-content mobile-reference-content")}>
       <MobileNextAction alerts={urgentAlerts} />
-      <section className={dashboardClass("mobile-quick-section")} aria-labelledby="mobile-quick-title">
-        <h2 id="mobile-quick-title">Aksi Cepat</h2>
-        <DashboardQuickActions />
-      </section>
       <MobileTransactions recentTransactions={recentTransactions} categoryLookup={categoryLookup} transactionAccountLabel={transactionAccountLabel} transactionCreatorLabel={transactionCreatorLabel} balanceVisible={balanceVisible} onOpenTransactionDetail={onOpenTransactionDetail} />
       <div className={dashboardClass("mobile-reference-setup")}>{setupContent}</div>
     </div>

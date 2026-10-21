@@ -30,7 +30,7 @@ test("metode pembayaran tetap opsional dan mobile menaruhnya di disclosure catat
   assert.match(text, /payment_method: ""/);
   assert.match(text, /\{ value: "", label: "Belum dipilih" \}/);
   assert.match(text, /SelectionControl id="payment-method"[\s\S]*form\.payment_method/);
-  assert.match(text, /Catatan & metode pembayaran/);
+  assert.match(text, /Detail lainnya/);
   assert.match(text, /aria-controls="transaction-additional-details"/);
   assert.match(text, /Berapa yang dikeluarkan\?/);
   assert.match(text, /Masuk ke rekening/);
@@ -196,17 +196,17 @@ test("composer mobile memakai picker inline canonical untuk rekening, kategori, 
   assert.doesNotMatch(form, /MobileTransactionSelectionView|mobileSelection|openMobileSelection|closeMobileSelection/);
   assert.match(form, /closeIcon: FiChevronLeft/);
   assert.match(mobile, /styles\.detailStack/);
-  assert.match(mobile, /Catatan & metode pembayaran/);
-  assert.match(mobile, /label="Penggunaan dana"/);
-  assert.match(mobile, /Pilih penggunaan dana/);
+  assert.match(mobile, /Detail lainnya/);
+  assert.match(mobile, /label="Pakai dana dari"/);
+  assert.match(mobile, /Pilih Kebutuhan atau Dana Tersedia/);
   assert.doesNotMatch(mobile, /Pilih Alokasi manual|Tutup pilihan Alokasi manual|Alokasi Dana · manual/);
   assert.match(mobile, /lockPlanningSelection/);
   assert.match(mobile, /Dari Alokasi/);
-  assert.match(mobile, /<strong>Dana Tersedia<\/strong>/);
-  assert.match(mobile, /transaksi dicatat tanpa Alokasi/);
+  assert.match(mobile, /if \(!p\.allocationCandidates\.length\) return null/);
+  assert.doesNotMatch(mobile, /transaksi dicatat tanpa Alokasi/);
   assert.match(mobile, /label: "Dana Tersedia"/);
   assert.match(mobile, /Tanpa Alokasi · Kebutuhan tidak berubah/);
-  assert.match(mobile, /placeholder=\{ambiguous \? "Pilih penggunaan dana" : "Pilih Kebutuhan"\}/);
+  assert.match(mobile, /placeholder=\{ambiguous \? "Pilih Kebutuhan atau Dana Tersedia" : "Pilih Kebutuhan"\}/);
 
   assert.match(mobile, /<InlineSelectionPicker/);
   assert.match(mobile, /sourceAccountPicker/);
@@ -322,8 +322,8 @@ test("validasi transaksi memfokuskan field wajib dan expense tanpa kandidat mema
   assert.doesNotMatch(form, /unallocatedConfirmed|setUnallocatedConfirmed|code: "UNALLOCATED_EXPENSE"/);
   assert.match(form, /allocationCandidates\.length > 1[\s\S]*allocationMode !== "manual"/);
   assert.match(fields, /<strong>Dana Tersedia\.<\/strong>/);
-  assert.match(mobile, /<strong>Dana Tersedia<\/strong>/);
-  assert.match(mobile, /Belum ada Kebutuhan yang cocok · transaksi dicatat tanpa Alokasi/);
+  assert.match(mobile, /if \(!p\.allocationCandidates\.length\) return null/);
+  assert.doesNotMatch(mobile, /Belum ada Kebutuhan yang cocok · transaksi dicatat tanpa Alokasi/);
   assert.match(fields, /transactionValidationMessages\(errors\)/);
   assert.match(fields, /Data belum lengkap/);
   assert.doesNotMatch(fields, /Object\.values\(errors\)/, "metadata API tidak boleh langsung dirender sebagai validasi field");

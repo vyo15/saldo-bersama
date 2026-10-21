@@ -18,8 +18,6 @@ import { scrollIntoViewWithMotionPreference } from "../../../shared/motion.js";
 import { financialAlertGuidance } from "../../../shared/workflows/financialAlerts.js";
 import { AccountVisual } from "../../accounts/components/AccountFinancialCard.jsx";
 import familyHero from "../../../assets/dashboard/family-hero.avif";
-import foliageLeft from "../../../assets/dashboard/foliage-left.avif";
-import foliageRight from "../../../assets/dashboard/foliage-right.avif";
 import { dashboardOwnershipBreakdown, dashboardSyncLabel } from "../dashboardPresentation.js";
 import { dashboardClass } from "../dashboardStyles.js";
 import SensitiveMoney from "./SensitiveMoney.jsx";
@@ -66,15 +64,11 @@ export const PrimaryMetrics = ({ overview, model, balanceVisible, onToggleBalanc
             </button>
           </div>
           <SensitiveMoney visible={balanceVisible} value={overview.familyBalance ?? nonInvestmentBalance} />
-          <span className={dashboardClass("desktop-family-hero__usable")}><small>Dana bisa digunakan</small><strong><SensitiveMoney visible={balanceVisible} value={overview.usableFunds ?? overview.safeToSpend ?? 0} /></strong></span>
+          <span className={dashboardClass("desktop-family-hero__usable")}><small>Dana yang bisa kamu gunakan</small><strong><SensitiveMoney visible={balanceVisible} value={overview.usableFunds ?? overview.safeToSpend ?? 0} /></strong></span>
         </div>
 
         <div className={dashboardClass("desktop-family-hero__art")} aria-hidden="true">
-          <div className={dashboardClass("desktop-family-hero__foliage-frame")}>
-            <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--left")} src={foliageLeft} width="900" height="675" decoding="async" alt="" />
-            <img className={dashboardClass("desktop-family-hero__foliage desktop-family-hero__foliage--right")} src={foliageRight} width="900" height="675" decoding="async" alt="" />
-          </div>
-          <img className={dashboardClass("desktop-family-hero__people")} src={familyHero} width="980" height="735" decoding="async" alt="" />
+          <img className={dashboardClass("desktop-family-hero__people")} src={familyHero} width="980" height="735" loading="eager" fetchPriority="high" decoding="async" alt="" />
         </div>
       </section>
 

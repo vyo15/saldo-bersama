@@ -1,3 +1,19 @@
+## 2026-10-21 — Merge final UI/UX minimalis + Atur Dana satu level (candidate)
+
+- Menggabungkan dua kandidat UI/UX pada source canonical terbaru: Atur Dana tetap satu level dengan tiga pintasan jelas, filter **Untuk: Semua**, dan label penerima Saya/Pasangan/Bersama; tidak menghidupkan kembali tab bertumpuk atau launcher **Tambah lainnya**.
+- Beranda mobile lebih ringkas: rincian saldo/penerima dan metrik harian tersedia melalui disclosure aksesibel, shortcut yang sudah tersedia di navigasi tidak diduplikasi. Dashboard desktop memakai label **Jelajahi fitur** dan hero yang lebih tenang tanpa foliage tambahan.
+- Composer transaksi mobile menaruh tanggal, metode pembayaran, dan catatan di **Detail lainnya** dengan ringkasan tanggal non-default dan fokus error; pilihan Dana Tersedia otomatis tidak menampilkan picker jika tidak ada Kebutuhan cocok.
+- Setelah simpan server, pengeluaran/refund cukup notifikasi singkat, sedangkan pemasukan/transfer mempertahankan langkah lanjutan; idempotency, hasil tidak pasti, saldo, schema, dan hak akses tidak diubah.
+- Menghapus launcher Atur Dana tidak terpakai dan dua ilustrasi foliage yang tidak lagi direferensikan. Tes, desain sistem, daftar QA, dan kontrak istilah diperbarui. Status candidate sampai verifikasi build dan browser pada environment Development berhasil.
+
+## 2026-10-21 — Atur Dana satu level, filter penerima compact (candidate)
+
+- Menyatukan hierarki UI Atur Dana: tab Alokasi/Jadwal/Kewajiban/Target dan segmented filter kedua dihapus, diganti tiga pintasan **Tagihan rutin / Cicilan & utang / Target tabungan** langsung ke route asli. Hero hanya satu CTA **Alokasikan dana** atau **Buat Alokasi** saat kosong.
+- Daftar utama **Alokasi Dana** fokus pada wadah aktif. Jadwal/Kewajiban yang terkait tetap sebagai sinyal pada row/detail Alokasi; item standalone di halaman fiturnya sendiri. Nama penerima **Untuk saya / Untuk bersama / Untuk [nama anggota]** selalu terlihat; filter **Untuk: Semua** membuka pilihan Saya/Pasangan/Bersama hanya bila data perlu dibedakan.
+- Fallback penerima Alokasi pribadi lama memakai `owner_user_id` ketika `assignee_user_id` kosong. Pemilihan filter tidak memutasi saldo, ownership, atau permission backend.
+- Membersihkan launcher, gaya CSS, dan handler row standalone yang tak lagi dipakai; memperbarui regresi serta dokumentasi current-state. Tidak ada perubahan API, schema, atau migration.
+- Validasi source canonical/Node syntax, parser JSX/CSS, dan 666 regression backend (stub Web Push sementara) lulus. 480 frontend test lulus; 8 terblokir dependensi React/react-icons. Build, lint penuh, dan browser login belum terverifikasi tanpa `npm ci` di lingkungan ini. Status candidate sampai full `npm run verify` di Development.
+
 ## 2026-10-20 — Candidate persetujuan hapus Target Bersama untuk Member
 
 - Member dapat mengajukan penghapusan Target Bersama melalui menu `···`; setelah server menerima, hanya pemohon yang menyembunyikan Target dari daftar (persisten lintas sesi dari pengajuan `pending`).

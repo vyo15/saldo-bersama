@@ -62,3 +62,8 @@ Daftar barang operasional yang terhubung ke satu Kebutuhan. Menandai barang tida
 
 ### Checkout Belanja
 Konfirmasi satu sesi belanja yang mencatat total aktual sebagai satu transaksi canonical dan menandai barang di keranjang sebagai sudah dibeli.
+
+### Penerapan teks ringkas pada UI transaksi
+
+- Pada formulir pengeluaran, label **Pakai dana dari** menunjuk pilihan Dana Tersedia atau Kebutuhan di dalam Alokasi Dana, **bukan rekening pembayaran**. Rekening tetap dipilih terpisah. Jika tidak ada Kebutuhan cocok, transaksi otomatis menggunakan Dana Tersedia tanpa menampilkan pilihan tambahan.
+- **Detail lainnya** memuat tanggal (default hari ini), metode pembayaran, dan catatan; rincian yang berbeda dari default tidak boleh disembunyikan tanpa petunjuk di ringkasan.

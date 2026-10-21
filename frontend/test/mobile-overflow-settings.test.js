@@ -283,9 +283,9 @@ test("mobile finance forms dan planning memakai hierarchy yang compact tanpa tek
   assert.doesNotMatch(allocations, /aria-label="Muat ulang Alokasi Dana"/);
   assert.match(allocations, /PageHeader title="Alokasi Dana"/);
   assert.match(allocations, /allocation-funding-summary/);
-  assert.match(allocations, /QuickSegmentedFilter/);
+  assert.match(allocations, /PlanningFilterDialog/);
   assert.match(allocations, /planning-active-row/);
-  assert.match(allocations, /aria-label=\{`Buka detail \$\{item\.name\}`\}/);
+  assert.match(allocations, /aria-label=\{`Buka detail \$\{item\.name\}, \$\{audienceText\}`\}/);
   assert.doesNotMatch(allocations, /allocation-card__expand|allocation-card__fund/);
   assert.match(allocations, /<ConfirmationModal open=\{Boolean\(p.archiveTarget\)\}/); // Dialog memakai swipe close bawaan Modal.
   assert.match(goals, /goalClass\("goal-card__primary-action"\)/);

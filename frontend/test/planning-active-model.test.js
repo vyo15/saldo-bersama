@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPlanningActiveItems, filterPlanningActiveItems, filterPlanningActiveItemsByQuery, planningActiveOwnership } from "../src/features/planning/planningActiveModel.js";
+import { buildPlanningActiveItems, filterPlanningActiveItems, filterPlanningActiveItemsByQuery, planningActiveOwnership, planningRowAudience } from "../src/features/planning/planningActiveModel.js";
 
 test("Atur Dana menyatukan Alokasi, jadwal pengeluaran, dan Kewajiban tanpa duplikasi link", () => {
   const allocation = { envelope_rule_id: "env-1", envelope_period_id: "period-1", status: "active", name: "Rumah", scope: "shared", owner_user_id: null };
@@ -54,4 +54,29 @@ test("legacy recurring hanya ditautkan jika relasi kategori dan rekening menghas
   const rows = buildPlanningActiveItems({ allocations, budgets, recurringItems });
   assert.equal(rows.length, 1);
   assert.equal(rows[0].recurring[0].occurrence_id, "occ-legacy");
+});
+
+test("filter penerima Alokasi membedakan Saya Pasangan Bersama tanpa membaca pemilik rekening", () => {
+  const actor = { user_id: "saya" };
+  const rows = [
+    { id: "for-me", kind: "allocation", scope: "shared", owner_user_id: "admin", assignee_user_id: "saya" },
+    { id: "for-partner", kind: "allocation", scope: "shared", owner_user_id: "admin", assignee_user_id: "pasangan" },
+    { id: "for-us", kind: "allocation", scope: "shared", owner_user_id: "admin", assignee_user_id: null },
+    { id: "personal-legacy", kind: "allocation", scope: "personal", owner_user_id: "saya", assignee_user_id: null },
+    { id: "partner-legacy", kind: "allocation", scope: "personal", owner_user_id: "pasangan", assignee_user_id: null },
+  ];
+  assert.deepEqual(rows.map((row) => planningRowAudience(row, actor)), ["mine", "partner", "shared", "mine", "partner"]);
+  assert.deepEqual(filterPlanningActiveItems(rows, "mine", actor).map((row) => row.id), ["for-me", "personal-legacy"]);
+  assert.deepEqual(filterPlanningActiveItems(rows, "partner", actor).map((row) => row.id), ["for-partner", "partner-legacy"]);
+  assert.deepEqual(filterPlanningActiveItems(rows, "shared", actor).map((row) => row.id), ["for-us"]);
+  assert.deepEqual(filterPlanningActiveItems(rows, "all", actor), rows);
+  assert.equal(planningActiveOwnership(rows, actor).showFilter, true);
+  assert.equal(planningActiveOwnership(rows.slice(0, 1), actor).showFilter, false);
+  assert.equal(planningActiveOwnership(rows.slice(1, 2), actor).hasPartner, true);
+});
+
+test("persetujuan audience tidak menampilkan daftar yang lebih luas tanpa identitas aktor", () => {
+  const rows = [{ id: "mine", kind: "allocation", scope: "personal", owner_user_id: "u1" }];
+  assert.equal(planningActiveOwnership(rows, null).showFilter, false);
+  assert.deepEqual(filterPlanningActiveItems(rows, "mine", null), rows);
 });

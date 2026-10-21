@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink } from "react-router";
-import { FiArrowRight, FiHome, FiInbox, FiPlus, FiRepeat, FiSearch, FiUsers } from "react-icons/fi";
+import { Link } from "react-router";
+import { FiArrowRight, FiCalendar, FiCheck, FiChevronDown, FiFileText, FiInbox, FiPlus, FiSearch, FiTarget, FiX } from "react-icons/fi";
 import Button from "../../components/common/Button.jsx";
 import ButtonLink from "../../components/common/ButtonLink.jsx";
-import QuickSegmentedFilter from "../../components/common/QuickSegmentedFilter.jsx";
+import Modal from "../../components/common/Modal.jsx";
 import Card from "../../components/common/Card.jsx";
 import Money from "../../components/common/Money.jsx";
 import ProgressBar from "../../components/common/ProgressBar.jsx";
@@ -13,16 +13,16 @@ import { allocationUsage } from "./allocationPresentation.js";
 import { allocationAvailableBalance, allocationSourceAccounts, planningFundingAccounts } from "./allocationFundingModel.js";
 import { allocationClass } from "./allocationStyles.js";
 import { allocationDecoration } from "./allocationDecorations.js";
-import { buildPlanningActiveItems, filterPlanningActiveItems, filterPlanningActiveItemsByQuery, planningActiveOwnership } from "../planning/planningActiveModel.js";
-import PlanningCreateLauncher from "./PlanningCreateLauncher.jsx";
+import { buildPlanningActiveItems, filterPlanningActiveItems, filterPlanningActiveItemsByQuery, planningActiveOwnership, planningRowAudience } from "../planning/planningActiveModel.js";
 import { allocationArt } from "./allocationArt.js";
 import { compactPlanningDate, planningDueState } from "../../shared/presentation/dueDate.js";
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 
 const ACTIVE_FILTERS = Object.freeze([
-  { value: "all", label: "Semua" },
-  { value: "shared", label: "Bersama" },
-  { value: "mine", label: "Saya" },
+  { value: "all", label: "Semua", description: "Semua alokasi" },
+  { value: "mine", label: "Saya", description: "Untuk saya" },
+  { value: "partner", label: "Pasangan", description: "Untuk pasangan atau anggota lain" },
+  { value: "shared", label: "Bersama", description: "Untuk kebutuhan bersama" },
 ]);
 
 const FundingSourceRow = ({ account }) => <div className={allocationClass("allocation-funding-summary__source-row")}>
@@ -30,7 +30,7 @@ const FundingSourceRow = ({ account }) => <div className={allocationClass("alloc
   <Money value={allocationAvailableBalance(account)} />
 </div>;
 
-const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, canCreate, onOpenFunding, onOpenCreateLauncher, onCreateAllocation }) => {
+const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, canCreate, onOpenFunding, onCreateAllocation }) => {
   const hasAllocations = items.length > 0;
   const sources = hasAllocations ? allocationSourceAccounts(accounts) : planningFundingAccounts(accounts, items);
   const total = sources.reduce((sum, account) => sum + allocationAvailableBalance(account), 0);
@@ -44,10 +44,7 @@ const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, ca
   </Card>;
 
   const action = hasAllocations
-    ? <>
-      <Button variant="primary" icon={FiPlus} disabled={!canFund && !canCreate} onClick={() => onOpenFunding?.({ chooseDestination: true })}>Alokasikan dana</Button>
-      <Button className={allocationClass("allocation-funding-summary__secondary-action")} icon={FiPlus} disabled={!canCreate} onClick={onOpenCreateLauncher}>Tambah lainnya</Button>
-    </>
+    ? <Button variant="primary" icon={FiPlus} disabled={!canFund && !canCreate} onClick={() => onOpenFunding?.({ chooseDestination: true })}>Alokasikan dana</Button>
     : <Button variant="primary" icon={FiPlus} disabled={!canCreate} onClick={onCreateAllocation}>Buat Alokasi</Button>;
 
   return <Card surface="object" className={allocationClass(`allocation-funding-summary${hasActiveItems ? " allocation-funding-summary--filled" : " allocation-funding-summary--empty"}`)} aria-labelledby="allocation-funding-summary-title">
@@ -74,21 +71,18 @@ const AllocationFundingSummary = ({ accounts, items, hasActiveItems, canFund, ca
   </Card>;
 };
 
+// Pintasan ini adalah destinasi, bukan tab atau filter kedua.
 const PLANNING_LINKS = Object.freeze([
-  { to: "/perencanaan/jadwal", label: "Jadwal" },
-  { to: "/perencanaan/komitmen", label: "Kewajiban" },
-  { to: "/target", label: "Target" },
+  { to: "/perencanaan/jadwal", label: "Tagihan rutin", description: "Pembayaran berkala", icon: FiCalendar },
+  { to: "/perencanaan/komitmen", label: "Cicilan & utang", description: "Termasuk KPR dan arisan", icon: FiFileText },
+  { to: "/target", label: "Target tabungan", description: "Tujuan menabung", icon: FiTarget },
 ]);
 
-const AllocationPlanningNav = () => <nav className={allocationClass("allocation-planning-nav")} aria-label="Kelola rencana">
-  <span className={allocationClass("allocation-planning-nav__label")} aria-current="page">Alokasi</span>
-  {PLANNING_LINKS.map((item) => <NavLink
-    key={item.to}
-    to={item.to}
-    className={({ isActive }) => allocationClass(`allocation-planning-nav__link${isActive ? " is-active" : ""}`)}
-  >
-    <span>{item.label}</span>
-  </NavLink>)}
+const AllocationQuickLinks = () => <nav className={allocationClass("allocation-shortcuts")} aria-label="Akses cepat perencanaan">
+  {PLANNING_LINKS.map(({ to, label, description, icon: Icon }) => <Link key={to} to={to} className={allocationClass("allocation-shortcuts__link")} aria-label={`${label} — ${description}`}>
+    <Icon aria-hidden="true" />
+    <span>{label}</span>
+  </Link>)}
 </nav>;
 
 const allocationLinkedSignal = (row) => {
@@ -123,15 +117,18 @@ const UsageBadge = ({ item, usage }) => {
   return <span className={allocationClass("planning-active-row__status")}>{percent}%</span>;
 };
 
-const AllocationActiveRow = ({ row, attention, onOpen }) => {
+const AllocationActiveRow = ({ row, attention, onOpen, actor }) => {
   const item = row.allocation;
   const usage = allocationUsage(item);
   const decoration = allocationDecoration({ decorationKey: item.decoration_key, name: item.name, id: item.envelope_rule_id });
   const linked = allocationLinkedSignal(row);
-  return <button type="button" className={allocationClass(`planning-active-row${attention ? " planning-active-row--attention" : ""}`)} onClick={() => onOpen(item)} aria-label={`Buka detail ${item.name}`}>
+  const audience = planningRowAudience(row, actor);
+  const recipientName = String(item.assignee_name || "").trim();
+  const audienceText = audience === "mine" ? "Untuk saya" : audience === "shared" ? "Untuk bersama" : `Untuk ${recipientName || "pasangan"}`;
+  return <button type="button" className={allocationClass(`planning-active-row${attention ? " planning-active-row--attention" : ""}`)} onClick={() => onOpen(item)} aria-label={`Buka detail ${item.name}, ${audienceText}`}>
     <span className={allocationClass("planning-active-row__icon")}><img src={decoration.asset} width="512" height="512" alt="" aria-hidden="true" draggable="false" decoding="async" /></span>
     <span className={allocationClass("planning-active-row__content")}>
-      <span className={allocationClass("planning-active-row__topline")}><span className={allocationClass("planning-active-row__title")}>{item.name}</span><UsageBadge item={item} usage={usage} /></span>
+      <span className={allocationClass("planning-active-row__topline")}><span className={allocationClass("planning-active-row__name-group")}><span className={allocationClass("planning-active-row__title")}>{item.name}</span><span className={allocationClass("planning-active-row__audience")}>{audienceText}</span></span><UsageBadge item={item} usage={usage} /></span>
       {linked ? <>
         <span className={allocationClass("planning-active-row__meta")}><Money value={linked.amount} />{linked.date ? ` · ${linked.date}` : ""}</span>
         <span className={allocationClass(`planning-active-row__sub${linked.warning ? " planning-active-row__sub--warning" : ""}`)}>{linked.secondary}</span>
@@ -140,42 +137,6 @@ const AllocationActiveRow = ({ row, attention, onOpen }) => {
         <span className={allocationClass("planning-active-row__sub")}>Sisa <Money value={item.remaining_amount} /></span>
         {Number(item.remaining_amount || 0) > 0 ? <span className={allocationClass("planning-active-row__progress")}><ProgressBar value={usage.committed} max={usage.allocated} label={`Pemakaian ${item.name}`} /></span> : null}
       </>}
-    </span>
-    <FiArrowRight className={allocationClass("planning-active-row__arrow")} aria-hidden="true" />
-  </button>;
-};
-
-const CommitmentActiveRow = ({ row, onOpen, highlighted = false }) => {
-  const item = row.commitment;
-  const arisan = item.commitment_type === "arisan";
-  const amount = Number(item.next_due_remaining || item.installment_amount || 0);
-  const due = planningDueState(item.next_due_date, { completed: item.status === "completed" });
-  return <button type="button" className={allocationClass(`planning-active-row${highlighted ? " planning-active-row--attention" : ""}`)} onClick={() => onOpen(item)} aria-label={`Buka detail ${item.name}`}>
-    <span className={allocationClass("planning-active-row__icon planning-active-row__icon--plain")}>{arisan ? <FiUsers aria-hidden="true" /> : <FiHome aria-hidden="true" />}</span>
-    <span className={allocationClass("planning-active-row__content")}>
-      <span className={allocationClass("planning-active-row__topline")}><span className={allocationClass("planning-active-row__title")}>{item.name}</span></span>
-      <span className={allocationClass("planning-active-row__meta")}><Money value={amount} />{item.next_due_date ? ` · ${compactPlanningDate(item.next_due_date)}` : ""}</span>
-      <span className={allocationClass(`planning-active-row__sub${due.warning ? " planning-active-row__sub--warning" : ""}`)}>{due.state !== "scheduled" ? due.label : <>{arisan ? "Sisa setoran" : "Sisa kewajiban"} <Money value={item.current_balance || 0} /></>}</span>
-    </span>
-    <FiArrowRight className={allocationClass("planning-active-row__arrow")} aria-hidden="true" />
-  </button>;
-};
-
-const recurringStatusLabel = (item) => {
-  if (["paid", "received"].includes(item.status)) return "Sudah tercatat";
-  if (item.status === "partial") return "Belum selesai";
-  if (item.status === "cancelled") return "Dilewati";
-  return planningDueState(item.due_date).label;
-};
-
-const RecurringActiveRow = ({ row, onOpen, highlighted = false }) => {
-  const item = row.recurring;
-  return <button type="button" className={allocationClass(`planning-active-row${highlighted ? " planning-active-row--attention" : ""}`)} onClick={() => onOpen(item)} aria-label={`Buka pembayaran rutin ${item.name}`}>
-    <span className={allocationClass("planning-active-row__icon planning-active-row__icon--plain")}><FiRepeat aria-hidden="true" /></span>
-    <span className={allocationClass("planning-active-row__content")}>
-      <span className={allocationClass("planning-active-row__topline")}><span className={allocationClass("planning-active-row__title")}>{item.name}</span></span>
-      <span className={allocationClass("planning-active-row__meta")}><Money value={item.expected_amount || 0} />{item.due_date ? ` · ${compactPlanningDate(item.due_date)}` : ""}</span>
-      <span className={allocationClass(`planning-active-row__sub${planningDueState(item.due_date).warning ? " planning-active-row__sub--warning" : ""}`)}>{recurringStatusLabel(item)}</span>
     </span>
     <FiArrowRight className={allocationClass("planning-active-row__arrow")} aria-hidden="true" />
   </button>;
@@ -191,25 +152,44 @@ const EmptyAllocationState = ({ totalItems, clearFilter }) => <EmptyState
   action={totalItems ? <Button onClick={clearFilter}>Hapus filter</Button> : null}
 />;
 
-const PlanningActiveList = ({ rows, totalItems, attentionEnvelopeId, highlightedRowId, onOpenDetail, onOpenCommitmentDetail, onOpenRecurringDetail, clearFilter }) => {
+const PlanningActiveList = ({ rows, totalItems, attentionEnvelopeId, highlightedRowId, onOpenDetail, clearFilter, actor }) => {
   if (!rows.length) return <EmptyAllocationState totalItems={totalItems} clearFilter={clearFilter} />;
   return <div className={allocationClass("planning-active-list")} role="list">
     {rows.map((row) => <div key={row.id} id={`planning-active-${row.id}`} role="listitem">
-      {row.kind === "allocation" ? <AllocationActiveRow row={row} attention={row.allocation.envelope_period_id === attentionEnvelopeId || row.id === highlightedRowId} onOpen={onOpenDetail} /> : null}
-      {row.kind === "commitment" ? <CommitmentActiveRow row={row} highlighted={row.id === highlightedRowId} onOpen={onOpenCommitmentDetail} /> : null}
-      {row.kind === "recurring" ? <RecurringActiveRow row={row} highlighted={row.id === highlightedRowId} onOpen={onOpenRecurringDetail} /> : null}
+      <AllocationActiveRow row={row} attention={row.allocation.envelope_period_id === attentionEnvelopeId || row.id === highlightedRowId} onOpen={onOpenDetail} actor={actor} />
     </div>)}
   </div>;
 };
 
-const PlanningToolbar = ({ query, setQuery, ownership, allocationFilter, setAllocationFilter, resultCount }) => <div className={allocationClass("allocation-toolbar")}>
+const PlanningFilterDialog = ({ open, onClose, value, onChange }) => <Modal open={open} onClose={onClose} size="sm" title="Untuk siapa?">
+  <div className={allocationClass("allocation-audience-options")}>
+    {ACTIVE_FILTERS.map((option) => <button key={option.value} type="button"
+      className={allocationClass(`allocation-audience-options__item${value === option.value ? " is-selected" : ""}`)}
+      aria-pressed={value === option.value}
+      onClick={() => { onChange(option.value); onClose(); }}>
+      <span>{option.description}</span>
+      {value === option.value ? <FiCheck aria-hidden="true" /> : null}
+    </button>)}
+  </div>
+</Modal>;
+
+const PlanningToolbar = ({ query, setQuery, searchOpen, resultCount }) => !searchOpen ? null : <div className={allocationClass("allocation-toolbar")}>
   <label className={allocationClass("allocation-toolbar__search")}>
     <FiSearch aria-hidden="true" />
-    <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Cari alokasi, jadwal, kewajiban" aria-label="Cari rencana aktif" />
+    <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Cari alokasi atau kebutuhan" aria-label="Cari alokasi dana" />
   </label>
-  <div className={allocationClass("allocation-toolbar__meta")}>
-    {ownership.showFilter ? <QuickSegmentedFilter label="Filter dana aktif" options={ACTIVE_FILTERS} value={allocationFilter} onChange={setAllocationFilter} /> : null}
-    <span className={allocationClass("allocation-toolbar__count")} aria-live="polite">{resultCount} hasil</span>
+  <span className={allocationClass("allocation-toolbar__count")} aria-live="polite">{resultCount} hasil</span>
+</div>;
+
+const AllocationListHeader = ({ showFilter, allocationFilter, onOpenFilter, searchOpen, onToggleSearch, hasItems }) => <div className={allocationClass("allocation-section-heading")}>
+  <h2 id="allocation-active-title">Alokasi Dana</h2>
+  <div className={allocationClass("allocation-section-heading__tools")}>
+    {showFilter ? <button type="button" className={allocationClass("allocation-audience-trigger")} onClick={onOpenFilter} aria-haspopup="dialog" aria-label={`Filter alokasi, untuk ${ACTIVE_FILTERS.find((option) => option.value === allocationFilter)?.label || "Semua"}`}>
+      <span>Untuk: {ACTIVE_FILTERS.find((option) => option.value === allocationFilter)?.label || "Semua"}</span><FiChevronDown aria-hidden="true" />
+    </button> : null}
+    {hasItems ? <button type="button" className={allocationClass("allocation-search-trigger")} onClick={onToggleSearch} aria-label={searchOpen ? "Tutup pencarian alokasi" : "Cari alokasi"} aria-expanded={searchOpen}>
+      {searchOpen ? <FiX aria-hidden="true" /> : <FiSearch aria-hidden="true" />}
+    </button> : null}
   </div>
 </div>;
 
@@ -217,45 +197,47 @@ const workflowResultRowId = (rows, workflowResult) => {
   const commitmentId = String(workflowResult?.commitmentId || "");
   const recurringRuleId = String(workflowResult?.recurringRuleId || "");
   if (!commitmentId && !recurringRuleId) return "";
-  const row = rows.find((candidate) => candidate.kind === "commitment"
-    ? String(candidate.commitment?.commitment_id || "") === commitmentId
-    : candidate.kind === "recurring"
-      ? String(candidate.recurring?.recurring_rule_id || "") === recurringRuleId
-      : (candidate.commitments || []).some((item) => String(item.commitment_id || "") === commitmentId)
-        || (candidate.recurring || []).some((item) => String(item.recurring_rule_id || "") === recurringRuleId));
+  const row = rows.find((candidate) => (candidate.commitments || []).some((item) => String(item.commitment_id || "") === commitmentId)
+    || (candidate.recurring || []).some((item) => String(item.recurring_rule_id || "") === recurringRuleId));
   return row?.id || "";
 };
 
 const AllocationOverviewLayer = ({
   activeItems, allocationFilter, setAllocationFilter, attentionEnvelopeId, budgets, recurringItems, commitments,
-  onOpenDetail, onOpenRecurringDetail, onOpenCommitmentDetail, canCreate, canFund, openCreate, onOpenFunding, accounts, actor,
-  onCreateRecurring, onCreateCommitment, workflowResult, onWorkflowResultConsumed,
+  onOpenDetail, canCreate, canFund, openCreate, onOpenFunding, accounts, actor,
+  workflowResult, onWorkflowResultConsumed,
 }) => {
-  const [createLauncherOpen, setCreateLauncherOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rows = buildPlanningActiveItems({ allocations: activeItems, budgets, recurringItems, commitments });
-  const ownership = planningActiveOwnership(rows, actor);
-  const highlightedRowId = workflowResultRowId(rows, workflowResult);
+  const allocationRows = rows.filter((row) => row.kind === "allocation");
+  const ownership = planningActiveOwnership(allocationRows, actor);
+  const highlightedRowId = workflowResultRowId(allocationRows, workflowResult);
   useEffect(() => {
-    if (!highlightedRowId) return undefined;
+    if (!highlightedRowId) {
+      if (workflowResult?.commitmentId || workflowResult?.recurringRuleId) onWorkflowResultConsumed?.();
+      return undefined;
+    }
     const frame = window.requestAnimationFrame(() => {
       scrollIntoViewWithMotionPreference(document.getElementById(`planning-active-${highlightedRowId}`), { block: "center" });
       onWorkflowResultConsumed?.();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [highlightedRowId, onWorkflowResultConsumed]);
-  const visibleItems = ownership.showFilter ? filterPlanningActiveItems(rows, allocationFilter, actor) : rows;
+  }, [highlightedRowId, onWorkflowResultConsumed, workflowResult?.commitmentId, workflowResult?.recurringRuleId]);
+  const visibleItems = ownership.showFilter ? filterPlanningActiveItems(allocationRows, allocationFilter, actor) : allocationRows;
   const filteredItems = useMemo(() => filterPlanningActiveItemsByQuery(visibleItems, query), [visibleItems, query]);
+  const toggleSearch = () => { setSearchOpen((current) => !current); setQuery(""); };
 
   return <>
-    <AllocationFundingSummary accounts={accounts} items={activeItems} hasActiveItems={Boolean(rows.length)} canFund={canFund} canCreate={canCreate} onOpenFunding={onOpenFunding} onOpenCreateLauncher={() => setCreateLauncherOpen(true)} onCreateAllocation={openCreate} />
-    <AllocationPlanningNav />
+    <AllocationFundingSummary accounts={accounts} items={activeItems} hasActiveItems={Boolean(rows.length)} canFund={canFund} canCreate={canCreate} onOpenFunding={onOpenFunding} onCreateAllocation={openCreate} />
+    <AllocationQuickLinks />
     <section className={allocationClass("allocation-active")} aria-labelledby="allocation-active-title">
-      <div className={allocationClass("allocation-section-heading")}><h2 id="allocation-active-title">Aktif</h2></div>
-      {rows.length ? <PlanningToolbar query={query} setQuery={setQuery} ownership={ownership} allocationFilter={allocationFilter} setAllocationFilter={setAllocationFilter} resultCount={filteredItems.length} /> : null}
-      <PlanningActiveList rows={filteredItems} totalItems={rows.length} attentionEnvelopeId={attentionEnvelopeId} highlightedRowId={highlightedRowId} onOpenDetail={onOpenDetail} onOpenCommitmentDetail={onOpenCommitmentDetail} onOpenRecurringDetail={onOpenRecurringDetail} clearFilter={() => { setAllocationFilter("all"); setQuery(""); }} />
+      <AllocationListHeader hasItems={allocationRows.length > 0} showFilter={ownership.showFilter} allocationFilter={allocationFilter} onOpenFilter={() => setFilterOpen(true)} searchOpen={searchOpen} onToggleSearch={toggleSearch} />
+      {allocationRows.length ? <PlanningToolbar query={query} setQuery={setQuery} searchOpen={searchOpen} resultCount={filteredItems.length} /> : null}
+      <PlanningActiveList rows={filteredItems} totalItems={allocationRows.length} attentionEnvelopeId={attentionEnvelopeId} highlightedRowId={highlightedRowId} onOpenDetail={onOpenDetail} actor={actor} clearFilter={() => { setAllocationFilter("all"); setQuery(""); }} />
     </section>
-    <PlanningCreateLauncher open={createLauncherOpen} onClose={() => setCreateLauncherOpen(false)} onCreateAllocation={openCreate} onCreateRecurring={onCreateRecurring} onCreateCommitment={onCreateCommitment} />
+    <PlanningFilterDialog open={filterOpen} onClose={() => setFilterOpen(false)} value={allocationFilter} onChange={setAllocationFilter} />
   </>;
 };
 

@@ -286,7 +286,8 @@ test("editorial app theme keeps tonal depth and rule-based mobile hierarchy in b
   assert.match(tokens, /--surface-soft:\s*#edf7f5;/);
   assert.match(tokens, /:root\[data-theme="dark"\][\s\S]*--surface-section:/);
   assert.match(dashboard, /\.mobile-family-hero[\s\S]*box-shadow:\s*var\(--shadow-hero\)/);
-  assert.match(dashboard, /\.mobile-quick-section > h2::after[\s\S]*background:\s*var\(--divider-soft\)/);
+  assert.match(dashboard, /\.mobile-balance-details > summary[\s\S]*min-height:\s*44px/);
+  assert.match(dashboard, /\.mobile-balance-details > summary:focus-visible[\s\S]*var\(--focus-ring\)/);
   assert.match(dashboard, /\.mobile-finance-summary\.mobile-reference-summary[\s\S]*background:\s*var\(--surface-section-strong\)/);
   assert.match(dashboard, /\.mobile-finance-section\.mobile-reference-panel[\s\S]*border:\s*0[\s\S]*background:\s*transparent/);
   assert.match(responsive, /\.mobile-navigation \{[^}]*border-top:\s*1px solid var\(--divider-soft\);[^}]*box-shadow:\s*var\(--shadow-role-navigation\);/s);
@@ -537,12 +538,14 @@ test("dashboard mobile memakai akses cepat fitur non-transaksi, alert prioritas,
   assert.match(mobile, /dashboardSyncLabel\(overview\.lastSyncedAt\)/);
   assert.doesNotMatch(mobile, /formatPeriod\(overview\.periodKey\)/);
   assert.match(mobile, /mobile-ownership-summary/);
+  assert.match(mobile, /<details className=\{dashboardClass\("mobile-balance-details"\)\}>/);
+  assert.doesNotMatch(mobile, /<DashboardQuickActions/);
   assert.match(mobile, /dashboardOwnershipBreakdown\(overview\.familyBalanceBreakdown\)/);
   for (const label of ["Saya", "Pasangan", "Bersama", "Bisa digunakan", "Hanya dilihat", "Dipakai bersama"]) assert.match(presentation, new RegExp(label));
   assert.doesNotMatch(mobile, /ThemeToggle|theme-toggle/);
-  const order = ["<MobileFinanceHero", "<MobileNextAction", "<DashboardQuickActions", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
+  const order = ["<MobileFinanceHero", "<MobileNextAction", "<MobileTransactions"].map((marker) => mobile.indexOf(marker));
   assert.ok(order.every((index) => index >= 0), "Semua blok dashboard mobile decision-first harus tetap ada.");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan hero saldo → perhatian → akses cepat → aktivitas.");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "Dashboard mobile harus mengikuti urutan hero saldo → perhatian → aktivitas.");
   assert.doesNotMatch(mobile, /MobileUpcomingPlan|Rencana terdekat|MobileInvestment|Total investasi tercatat/, "Beranda mobile tidak boleh menduplikasi domain Atur Dana atau Investasi yang sudah punya route khusus.");
   assert.doesNotMatch(mobile, /const MobileFinancialInsight\b|const MobileBudgetPlan\b|const MobileUpcomingSchedule\b/);
   assert.match(mobile, /Aman dipakai[\s\S]{0,180}\/ hari/);

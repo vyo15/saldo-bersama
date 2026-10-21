@@ -42,7 +42,7 @@ const DesktopFinanceDashboard = ({
       />
 
       <section className={dashboardClass("desktop-reference-actions-section")} aria-labelledby="dashboard-quick-actions-title">
-        <h2 id="dashboard-quick-actions-title">Aksi Cepat</h2>
+        <h2 id="dashboard-quick-actions-title">Jelajahi fitur</h2>
         <DashboardQuickActions variant="desktop" />
       </section>
 

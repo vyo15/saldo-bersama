@@ -9,12 +9,12 @@ test("Atur Dana preserves active search and scope filters for mobile when items 
     source("features/allocations/AllocationOverviewLayer.jsx"),
     source("features/allocations/AllocationOverview.module.css"),
   ]);
-  assert.match(overview, /rows\.length \? <PlanningToolbar/);
+  assert.match(overview, /allocationRows\.length \? <PlanningToolbar/);
   assert.match(overview, /filterPlanningActiveItemsByQuery\(visibleItems, query\)/);
   assert.match(overview, /type="search"/);
-  assert.match(overview, /ownership\.showFilter \? <QuickSegmentedFilter/);
+  assert.match(overview, /showFilter=\{ownership\.showFilter\}/);
   const mobile = css.match(/@media \(max-width: 820px\)\s*\{([\s\S]*?)\n\}\s*\n@media \(max-width: 360px\)/)?.[1] || "";
-  assert.match(mobile, /\.allocation-toolbar\s*\{\s*display: grid/);
+  assert.match(mobile, /\.allocation-toolbar\s*\{\s*gap: 8px/);
   assert.doesNotMatch(mobile, /\.allocation-toolbar\s*\{\s*display:\s*none/);
 });
 

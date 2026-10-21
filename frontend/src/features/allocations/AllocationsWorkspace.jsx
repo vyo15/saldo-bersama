@@ -217,7 +217,7 @@ const useAllocationAttentionNavigation = ({ resourceStatus, budgetStatus, attent
 
 const AllocationMainContent = ({ detailItem, detailProps, overviewProps }) => {
   if (detailItem) return <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat detail Alokasi Dana…" />}><AllocationPlanningDetail item={detailItem} {...detailProps} /></Suspense>;
-  return <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat Alokasi Dana…" />}><AllocationOverviewLayer {...overviewProps} /></Suspense>;
+  return <Suspense fallback={<NativePageSkeleton kind="planning" variant="panel" label="Memuat Atur Dana…" />}><AllocationOverviewLayer {...overviewProps} /></Suspense>;
 };
 
 const AllocationResourceState = ({ resources, children }) => {
@@ -264,10 +264,6 @@ const resolveFundingResult = (result, closeFunding, setFundingError) => {
   else setFundingError(result.error || new Error("Dana belum berhasil ditambahkan. Periksa pesan lalu coba lagi."));
 };
 
-const planningCreateNavigation = (navigate) => ({
-  openRecurringCreate: () => navigate("/perencanaan/jadwal", { state: { workflowSource: "planning-overview", workflowAction: "create-recurring" } }),
-  openCommitmentCreate: (commitmentType) => navigate("/perencanaan/komitmen", { state: { workflowSource: "planning-overview", workflowAction: "create-commitment", commitmentType } }),
-});
 
 const allocationDetailCanMove = ({ detailItem, movableItems, administratorMode }) => {
   if (!detailItem?.can_move) return false;
@@ -380,15 +376,12 @@ const AllocationsWorkspace = ({ embedded = false }) => {
   const openReminder = (item) => setReminderTarget({ entityType: "envelope_period", entityId: item.envelope_period_id, name: item.name, suggestedDate: item.period_end });
   const openBudgetReminder = (budget) => setReminderTarget({ entityType: "budget", entityId: budget.budget_id, name: budget.name || "Kebutuhan" });
   const openDetail = (item, action = "") => { setLegacyBudgetAttention(false); setDetailAction(action); setDetailRuleId(item.envelope_rule_id); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
-  const openRecurringDetail = (item) => navigate("/perencanaan/jadwal", { state: { workflowSource: "planning-overview", workflowAction: "view-recurring", occurrenceId: item.occurrence_id || "", period: String(item.due_date || "").slice(0, 7) } });
-  const openCommitmentDetail = (item) => navigate("/perencanaan/komitmen", { state: { planningCommitmentId: item.commitment_id || "" } });
-  const { openRecurringCreate, openCommitmentCreate } = planningCreateNavigation(navigate);
   const closeDetail = () => { setDetailRuleId("", { replace: true }); setDetailAction(""); window.requestAnimationFrame(() => scrollWindowToWithMotionPreference({ top: 0 })); };
   const modalProps = { closeTarget, setCloseTarget, closeState, closeReuseNeeds, setCloseReuseNeeds, closeNeedsCount: closePlanning.needsCount, closeCanReuseNeeds: closePlanning.canReuseNeeds, archiveTarget, setArchiveTarget, archiveState, reverseTarget, setReverseTarget, reverseState, ...lifecycle };
 
   const noticesProps = { resource, budgetResource, recurringResource, commitmentResource, administratorMode, usersResource, legacyBudgetAttention, unlinkedBudgets: view.unlinkedBudgets, hasUnboundAllocation: view.hasUnboundAllocation, releasedFunds, hasActiveGoal, onDismissReleasedFunds: () => setReleasedFunds(null) };
   const detailProps = { ...detail, budgets: view.budgets, canLifecycle: administratorMode, period, notify, refreshBudgetPlanning, expenseCategories: view.expenseCategories, accounts: view.accounts, users: view.activeUsers, usersStatus, initialAction: detailAction, onInitialActionConsumed: () => setDetailAction(""), onBack: closeDetail, onBudgetReminder: openBudgetReminder, onAllocationReminder: openReminder, onOpenAllocationActions: startLifecycle, allocationLifecycleState: archiveState, allocationLifecycleTarget: archiveTarget, canAdjustAllocation: allocationDetailCanAdjust(detailItem), onAdjustAllocation: (item, amount) => openAdjust(item, "fund", amount), canMoveAllocation: detailCanMove, onMoveAllocation: openMoveForItem };
-  const overviewProps = { activeItems: view.activeItems, allocationFilter, setAllocationFilter, attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, commitments: view.commitments, onOpenDetail: openDetail, onOpenRecurringDetail: openRecurringDetail, onOpenCommitmentDetail: openCommitmentDetail, onCreateRecurring: openRecurringCreate, onCreateCommitment: openCommitmentCreate, canCreate, canFund, accounts: view.accounts, actor: allocationActor, onOpenFunding: openFunding, openCreate, workflowResult, onWorkflowResultConsumed: () => navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null }) };
+  const overviewProps = { activeItems: view.activeItems, allocationFilter, setAllocationFilter, attentionEnvelopeId, budgets: view.budgets, recurringItems: view.recurringItems, commitments: view.commitments, onOpenDetail: openDetail, canCreate, canFund, accounts: view.accounts, actor: allocationActor, onOpenFunding: openFunding, openCreate, workflowResult, onWorkflowResultConsumed: () => navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null }) };
   const dialogsOpen = hasAllocationOverlay([createOpen, moveOpen, adjustTarget, closeTarget, archiveTarget, reverseTarget]);
   const showOverlay = hasAllocationOverlay([showSecondaryLayer, fundingIntent, reminderTarget, dialogsOpen]);
   const overlayProps = { dialogsOpen, dialogProps: { createOpen, closeCreate, createForm, setCreateForm, createNeeds, setCreateNeeds, expenseCategories: view.expenseCategories, accounts: view.accounts, activeUsers: view.activeUsers, usersStatus, createEnvelope: createMove.createEnvelope, createMutation, message, moveOpen, closeMove, move, setMove, movableItems: view.movableItems, destinations: view.destinations, submitMove: createMove.submitMove, moveMutation, adjustTarget, closeAdjust, adjustForm, setAdjustForm, submitAdjustment: adjustment.submitAdjustment, adjustMutation, modalProps }, showSecondaryLayer, secondaryProps: { historicalItems: view.historicalItems, recentMovements: view.recentMovements, setReverseTarget, setReverseState }, fundingIntent, fundingProps: { accounts: view.accounts, items: view.activeItems.filter((item) => canAdjustAllocation(item) && item.source_account_id), initialSourceAccountId: fundingInitialState.sourceAccountId, initialEnvelopePeriodId: fundingInitialState.envelopePeriodId, suggestedAmount: fundingInitialState.suggestedAmount, lockSelection: fundingInitialState.lockSelection, chooseDestination: fundingInitialState.chooseDestination, busy: adjustMutation.busy, retryOnly: adjustMutation.outcomeUnknown, error: fundingError, onClose: closeFunding, onSubmit: submitFunding, onCreateNew: createFromFunding }, reminderTarget, onCloseReminder: () => setReminderTarget(null) };

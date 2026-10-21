@@ -13,7 +13,7 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
     read("src/features/allocations/AllocationOverview.module.css"),
   ]);
   assert.match(planning, /title="Atur Dana"/);
-  assert.match(planning, /satu daftar Aktif/);
+  assert.match(planning, /Gunakan pintasan Tagihan rutin/);
   assert.match(planning, /Pemasukan yang sudah tercatat otomatis menambah dana rekening/);
   assert.doesNotMatch(planning, /role="tablist"|planning-tab-/);
   assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
@@ -24,10 +24,10 @@ test("Atur dana memakai konteks multi rekening tanpa membuat pool virtual baru",
   assert.match(overview, /planningFundingAccounts\(accounts, items\)/);
   assert.match(overview, /Lihat rekening sumber/);
   assert.match(overview, /icon=\{FiInbox\}/);
-  assert.match(overview, /totalItems=\{rows\.length\}/);
+  assert.match(overview, /totalItems=\{allocationRows\.length\}/);
   assert.doesNotMatch(overview, /<div className=\{allocationClass\("allocation-empty-state"\)\}>/);
   assert.match(overviewStyles, /\.allocation-empty-state > svg \{/);
-  assert.doesNotMatch(overviewStyles, /@media \(max-width: 820px\) \{[\s\S]*?\.allocation-empty-state \{[\s\S]*?border:\s*0;/);
+  assert.doesNotMatch(overviewStyles, /\.allocation-empty-state \{[^{}]*border:\s*0;/);
   assert.match(planningStyles, /\.page > \.mobileHeader \{[\s\S]*?width:\s*calc\(100% \+ \(var\(--mobile-page-gutter\) \* 2\)\);[\s\S]*?max-width:\s*none;/);
   assert.doesNotMatch(overview, /wallet\.webp/);
 });
@@ -79,35 +79,32 @@ test("create Alokasi mengikuti ownership rekening dan menyimpan opsi lanjutan se
   assert.match(dialog, /Buat dengan \$\{formatRupiah\(fundedNow\)\}/);
 });
 
-test("overview menyatukan objek aktif dan hanya menampilkan filter ownership ketika dataset membutuhkannya", async () => {
-  const [overview, overviewStyles, launcher, workspace] = await Promise.all([
+test("overview fokus Alokasi dengan pintasan fitur dan filter penerima compact", async () => {
+  const [overview, overviewStyles, workspace] = await Promise.all([
     read("src/features/allocations/AllocationOverviewLayer.jsx"),
     read("src/features/allocations/AllocationOverview.module.css"),
-    read("src/features/allocations/PlanningCreateLauncher.jsx"),
     read("src/features/allocations/AllocationsWorkspace.jsx"),
   ]);
   assert.match(overview, /buildPlanningActiveItems/);
   assert.match(overview, /planningActiveOwnership/);
   assert.match(overview, /filterPlanningActiveItems/);
-  assert.match(overview, /ownership\.showFilter \? <QuickSegmentedFilter/);
-  assert.match(overview, />Aktif<\/h2>/);
+  assert.match(overview, /showFilter=\{ownership\.showFilter\}/);
+  assert.match(overview, />Alokasi Dana<\/h2>/);
   assert.match(overview, /Alokasikan dana/);
   assert.match(overview, /onOpenFunding\?\.\(\{ chooseDestination: true \}\)/);
-  assert.match(overview, />Tambah lainnya<\/Button>/);
+  assert.doesNotMatch(overview, />Tambah lainnya<\/Button>/);
   assert.match(overview, /onClick=\{onCreateAllocation\}>Buat Alokasi<\/Button>/);
   assert.equal((overview.match(/>Buat Alokasi<\/Button>/g) || []).length, 1);
   assert.doesNotMatch(overview, /Tambah rencana/);
-  assert.match(overview, /rows\.length \? <PlanningToolbar/);
+  assert.match(overview, /allocationRows\.length \? <PlanningToolbar/);
   assert.match(overviewStyles, /\.allocation-section-heading \{ display: flex; \}/);
   assert.match(overviewStyles, /\.allocation-toolbar__search:focus-within/);
-  assert.match(overview, /PlanningCreateLauncher/);
-  assert.match(launcher, /Tambah di Atur Dana/);
-  assert.match(launcher, /title="Buat Alokasi"/);
-  assert.match(launcher, /title="Kewajiban"/);
-  assert.match(launcher, /title="Jadwal rutin"/);
-  assert.match(launcher, /value: "mortgage", label: "KPR"/);
-  assert.match(workspace, /workflowAction: "create-commitment"/);
-  assert.match(workspace, /workflowAction: "create-recurring"/);
+  assert.match(overview, /<AllocationQuickLinks \/>/);
+  assert.match(overview, /to: "\/perencanaan\/jadwal", label: "Tagihan rutin"/);
+  assert.match(overview, /to: "\/perencanaan\/komitmen", label: "Cicilan & utang"/);
+  assert.match(overview, /to: "\/target", label: "Target tabungan"/);
+  assert.doesNotMatch(overview, /AllocationPlanningNav|PlanningCreateLauncher/);
+  assert.doesNotMatch(workspace, /planningCreateNavigation/);
 });
 
 test("attention kekurangan dana mengunci Alokasi yang sudah diketahui", async () => {

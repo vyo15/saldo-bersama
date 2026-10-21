@@ -13,6 +13,7 @@ import { transactionFieldErrorsFromApiError } from "./transactionErrorPresentati
 import { scrollIntoViewWithMotionPreference } from "../../shared/motion.js";
 import { isInvestmentAccount } from "../../shared/presentation/account.js";
 import { planningIntentMatchesForm } from "./transactionPlanningIntent.js";
+import { requiresPostSaveDecision } from "./transactionPostSavePolicy.js";
 
 export const createTransactionIntentKey = () => createIdempotencyKey();
 
@@ -176,20 +177,16 @@ const buildPostSaveState = ({ saved, form, continuation, refreshedOverview }) =>
   };
 };
 
-const supportsPostSavePresentation = (transactionType) => [
-  TRANSACTION_TYPES.INCOME,
-  TRANSACTION_TYPES.EXPENSE,
-  TRANSACTION_TYPES.TRANSFER,
-  TRANSACTION_TYPES.REFUND,
-].includes(transactionType);
-
 const shouldKeepTransactionFormOpen = ({ transaction, notifyOnSuccess, transactionType }) => (
-  !transaction && notifyOnSuccess && supportsPostSavePresentation(transactionType)
+  !transaction && notifyOnSuccess && requiresPostSaveDecision(transactionType)
 );
 
-const transactionSuccessMessage = (transaction) => transaction
-  ? "Perubahan transaksi berhasil disimpan."
-  : "Transaksi berhasil disimpan.";
+const transactionSuccessMessage = (transaction, transactionType) => {
+  if (transaction) return "Perubahan transaksi berhasil disimpan.";
+  if (transactionType === TRANSACTION_TYPES.EXPENSE) return "Pengeluaran berhasil dicatat.";
+  if (transactionType === TRANSACTION_TYPES.REFUND) return "Refund berhasil dicatat.";
+  return "Transaksi berhasil disimpan.";
+};
 
 const finalizeTransactionSave = async ({ saved, transaction, form, continuation, refreshOverview, invalidate, onSaved, notify, notifyOnSuccess, setPostSave, setters }) => {
   invalidate(["transactions.list", "accounts.list", "envelopes.list", "budgets.list", "reports.monthly", "dashboard.overview", "investments.overview", "app.initialState"]);
@@ -202,7 +199,7 @@ const finalizeTransactionSave = async ({ saved, transaction, form, continuation,
     return true;
   }
 
-  if (notifyOnSuccess) notify({ message: transactionSuccessMessage(transaction) });
+  if (notifyOnSuccess) notify({ message: transactionSuccessMessage(transaction, form.transaction_type) });
   return false;
 };
 

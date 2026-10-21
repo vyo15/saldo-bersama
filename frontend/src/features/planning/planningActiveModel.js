@@ -1,7 +1,5 @@
 import { buildPlanningRelationshipResolver, planningBudgetsForAllocation } from "../../shared/workflows/planningRelationships.js";
 
-const ownerKey = (item) => `${String(item?.scope || "shared")}|${String(item?.owner_user_id || "")}`;
-
 const groupByAllocation = (items = [], allocationForItem) => {
   const grouped = new Map();
   for (const item of items || []) {
@@ -83,22 +81,31 @@ export const filterPlanningActiveItemsByQuery = (rows = [], query = "") => {
   return rows.filter((row) => planningActiveSearchText(row).toLocaleLowerCase("id-ID").includes(normalized));
 };
 
-export const planningActiveOwnership = (rows = [], actor = null) => {
+// Penerima Alokasi berbeda dari pemilik rekening sumber. Data pribadi lama bisa
+// belum memiliki assignee_user_id, sehingga owner_user_id menjadi fallback.
+export const planningRowAudience = (row, actor = null) => {
   const actorId = String(actor?.user_id || "");
-  if (!actorId) return { showFilter: false, hasShared: false, hasMine: false };
-  const hasShared = rows.some((row) => row.kind === "allocation" ? !row.assignee_user_id : ownerKey(row) === "shared|");
-  const hasMine = rows.some((row) => row.kind === "allocation"
-    ? String(row.assignee_user_id || "") === actorId
-    : String(row.owner_user_id || "") === actorId);
-  return { showFilter: hasShared && hasMine, hasShared, hasMine };
+  const recipientId = row.kind === "allocation"
+    ? String(row.assignee_user_id || (row.scope === "personal" ? row.owner_user_id || "" : ""))
+    : String(row.scope === "personal" ? row.owner_user_id || "" : "");
+  if (!recipientId) return "shared";
+  if (!actorId) return "partner";
+  return recipientId === actorId ? "mine" : "partner";
+};
+
+export const planningActiveOwnership = (rows = [], actor = null) => {
+  if (!actor?.user_id) return { showFilter: false, hasShared: false, hasMine: false, hasPartner: false };
+  const groups = new Set(rows.map((row) => planningRowAudience(row, actor)));
+  return {
+    showFilter: groups.size > 1,
+    hasShared: groups.has("shared"),
+    hasMine: groups.has("mine"),
+    hasPartner: groups.has("partner"),
+  };
 };
 
 export const filterPlanningActiveItems = (rows = [], filter = "all", actor = null) => {
-  if (filter === "all") return rows;
-  const actorId = String(actor?.user_id || "");
-  if (filter === "shared") return rows.filter((row) => row.kind === "allocation" ? !row.assignee_user_id : ownerKey(row) === "shared|");
-  if (filter === "mine" && actorId) return rows.filter((row) => row.kind === "allocation"
-    ? String(row.assignee_user_id || "") === actorId
-    : String(row.owner_user_id || "") === actorId);
-  return rows;
+  if (filter === "all" || !["shared", "mine", "partner"].includes(filter)) return rows;
+  if (!actor?.user_id && filter !== "shared") return rows;
+  return rows.filter((row) => planningRowAudience(row, actor) === filter);
 };

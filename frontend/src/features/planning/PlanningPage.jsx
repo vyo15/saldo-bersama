@@ -19,7 +19,7 @@ const PlanningDetailShell = ({ children }) => <>
   {children}
 </>;
 
-const PLANNING_HELP = "Atur penggunaan dana untuk pengeluaran dari satu tempat. Alokasi, jadwal, kewajiban, dan target tetap saling terhubung di belakang layar dan tampil sebagai satu daftar Aktif yang ringkas. Pemasukan yang sudah tercatat otomatis menambah dana rekening dan tidak perlu direncanakan ulang di sini.";
+const PLANNING_HELP = "Atur dana dari rekening untuk tiap Alokasi dan Kebutuhan. Gunakan pintasan Tagihan rutin, Cicilan & utang, atau Target tabungan untuk melihat fitur lainnya. Kegiatan yang terkait Alokasi tetap bisa dibuka dari detail Alokasi. Pemasukan yang sudah tercatat otomatis menambah dana rekening dan tidak perlu direncanakan ulang di sini.";
 
 const allocationListLocation = (location) => {
   const params = new URLSearchParams(location.search);

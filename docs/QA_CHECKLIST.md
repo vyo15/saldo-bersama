@@ -52,7 +52,7 @@
 - [ ] Detail Kebutuhan di dalam Alokasi tetap compact pada mobile: kebutuhan aktif memuat ikon + nama + pola/status dan Sisa/total/persentase + progress; `fixed_once` tepat 100% berubah menjadi row ringkas `✓ Selesai` tanpa progress/quick-add; `flexible`/`recurring` tepat 100% menjadi `Dana habis` dengan warning tone dan tanpa aksi pencatatan baru; overspend tetap danger. `Terpakai`, waktu selesai, dan Jadwal tersedia di **Detail kebutuhan**; Edit/Lihat jadwal berada di overflow; target sentuh minimal 44px; filter `Semua / Perhatian / Belum dipakai` muncul saat item banyak; `Tambah kebutuhan` tetap setelah daftar.
 - [ ] **Daftar belanja** hanya tampil pada Kebutuhan yang mengaktifkan `Gunakan daftar belanja`; contoh Listrik default tidak memiliki CTA shopping, sedangkan Belanja bulanan yang opt-in memakai `Buat daftar belanja` atau `Daftar belanja · N item`. CTA tidak diduplikasi di overflow.
 - [ ] Detail Alokasi tidak memiliki section permanen `Kelola dana`; aksi administratif **Pindahkan dana / Pengingat / Hapus dari daftar** berada di menu overflow `•••`, sedangkan aksi transaksi/kebutuhan tetap berada dekat konteksnya.
-- [ ] Beranda mobile compact: **Saldo Keluarga** menjadi nominal utama, **Dana yang bisa kamu gunakan** tampil tepat di hero, **Saya / Pasangan / Bersama** tetap satu baris sebagai flat stats ber-divider lembut, sementara Aman/hari dan Sisa di Alokasi tetap terlihat dalam satu tonal band tanpa outer card.
+- [ ] Beranda mobile compact: **Saldo Keluarga** menjadi nominal utama, **Dana yang bisa kamu gunakan** tampil tepat di hero; **Rincian saldo dan dana** membuka breakdown Saya/Pasangan/Bersama dan metrik Aman/hari serta Sisa di Alokasi tanpa kehilangan tautan filter Rekening. Jangan tampilkan lagi tautan Rekening/Target/Investasi di body Beranda yang sudah tersedia pada navigasi.
 - [ ] Bottom navigation mobile berurutan **Beranda · Atur Dana · CATAT · Transaksi · Lainnya** dan route sekunder seperti Laporan menandai `Lainnya` sebagai aktif.
 - [ ] `Lainnya` hanya memakai empat kelompok canonical (Rencana & Insight, Keuangan, Keluarga & Akses, Aplikasi); owner-only tidak bocor ke Member.
 - [ ] Laporan tidak menggandakan KPI hero lewat summary strip kedua; Analisis lengkap tetap membuka planning/Kewajiban/rekening/pencatat.
@@ -264,3 +264,13 @@
 - [ ] Persetujuan Target Rp0 yang belum dipakai menghapus record; Target dengan histori mengarsipkan tanpa menghapus mutasi ataupun transaksi.
 - [ ] Target dengan investasi yang masih teralokasi gagal diarsipkan secara aman dan memberi jalan keluar; dua pengajuan bersamaan tidak berakhir konflik/saldo ganda; versi Target stale gagal tanpa aksi keuangan.
 - [ ] Cek mobile iPhone/Android pada light/dark, notifikasi, swipe/navigasi, fokus keyboard, back, dan ukuran tombol 44px; verifikasi langsung dengan dua akun pada database Development yang terisolasi.
+
+## QA penyederhanaan flow utama
+
+- [ ] Atur Dana memakai nama workspace konsisten pada desktop/mobile; detail Alokasi Dana tetap berlabel Alokasi Dana. Route lama masih bisa diakses. Jadwal Rutin tidak disebut Pembayaran rutin pada judul halaman.
+- [ ] Disclosure Rincian saldo dan dana: default tertutup, bisa dibuka dengan keyboard/VoiceOver, ikon state tepat, nominal terproteksi oleh privacy toggle, dan ketiga filter kepemilikan tetap membuka Rekening. Uji layar 320/360/390/430px serta dark mode.
+- [ ] Beranda mobile tidak menduplikasi shortcut dari Lainnya, tombol Catat bottom navigation tetap bisa dipakai, dan peringatan mendesak tetap mendahului Aktivitas terbaru.
+- [ ] Form pengeluaran: nominal/kategori/rekening tetap cepat; jika tidak ada Kebutuhan cocok, tidak tampil picker tambahan. Jika kandidat beberapa, pemilihan Kebutuhan wajib; form tanggal hari ini default berada di Detail lainnya.
+- [ ] Tanggal tidak default, deskripsi/metode terisi pada mode edit, serta error tanggal/deskripsi membuka Detail lainnya dan fokus berpindah ke field yang salah. Enter/Escape/submit/Back tetap berfungsi.
+- [ ] Setelah server mengonfirmasi expense/refund: toast ringkas dan modal tertutup; setelah income/transfer: modal tindak lanjut tetap muncul, termasuk Top Up RDN dan Alokasikan Dana. `OUTCOME_UNKNOWN` tidak boleh menampilkan status sukses atau membuat retry dengan key baru.
+- [ ] Tombol Urungkan tidak diperkenalkan untuk transaksi karena butuh pembatalan ledger berizin; lakukan dari detail Transaksi menggunakan flow pembatalan canonical.

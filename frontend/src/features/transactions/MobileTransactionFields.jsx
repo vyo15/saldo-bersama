@@ -16,7 +16,7 @@ import MoneyInput from "../../components/common/MoneyInput.jsx";
 import { accountOptionVisual } from "../../components/common/selectionOptionVisuals.js";
 import VisualChoiceGroup from "../../components/common/VisualChoiceGroup.jsx";
 import { TRANSACTION_TYPES } from "../../domain/constants.js";
-import { formatDateLongIndonesia } from "../../domain/dates.js";
+import { formatDateLongIndonesia, todayInJakarta } from "../../domain/dates.js";
 import { formatRupiah } from "../../domain/money.js";
 import { accountDisplayLabel } from "../../shared/presentation/account.js";
 import MobileTransactionCategoryField from "./MobileTransactionCategoryField.jsx";
@@ -200,20 +200,8 @@ const NeedField = (p) => {
     </div>;
   }
 
-  if (!p.allocationCandidates.length) {
-    return (
-      <div className={styles.needField}>
-        <span className={styles.sectionLabel}>Penggunaan dana</span>
-        <div className={styles.needEmpty} role="status">
-          <FiLayers aria-hidden="true" />
-          <span>
-            <strong>Dana Tersedia</strong>
-            <small>Belum ada Kebutuhan yang cocok · transaksi dicatat tanpa Alokasi.</small>
-          </span>
-        </div>
-      </div>
-    );
-  }
+  // Tanpa Kebutuhan cocok, Dana Tersedia dipakai otomatis tanpa kontrol tambahan.
+  if (!p.allocationCandidates.length) return null;
 
   const automatic = p.allocationCandidates.length === 1
     && p.allocationMode === "auto"
@@ -239,11 +227,11 @@ const NeedField = (p) => {
   return (
     <div className={styles.needField}>
       <InlineSelectionPicker
-        label="Penggunaan dana"
+        label="Pakai dana dari"
         value={value}
         onChange={p.onNeedChange}
         options={options}
-        placeholder={ambiguous ? "Pilih penggunaan dana" : "Pilih Kebutuhan"}
+        placeholder={ambiguous ? "Pilih Kebutuhan atau Dana Tersedia" : "Pilih Kebutuhan"}
         placeholderMeta={ambiguous ? `${p.allocationCandidates.length} Kebutuhan cocok · pilih salah satu atau Dana Tersedia` : ""}
         placeholderOption={{ icon: FiLayers }}
         searchable={options.length > 8}
@@ -272,7 +260,6 @@ const PrimaryDetails = (p) => (
         label={categoryFieldLabel(p.form.transaction_type)}
       />}
       <NeedField {...p} />
-      <DateRow form={p.form} update={p.update} errors={p.errors} min={p.planningDateMin} max={p.planningDateMax} />
     </div>
   </section>
 );
@@ -316,19 +303,23 @@ const NotesField = ({ form, update, errors }) => (
 );
 
 const AdditionalDetails = (p) => {
-  const shouldOpen = p.isEditing || Boolean(p.form.payment_method || p.form.description) || Boolean(p.errors.description);
+  const shouldOpen = p.isEditing || p.form.transaction_date !== todayInJakarta()
+    || Boolean(p.form.payment_method || p.form.description || p.errors.description || p.errors.transaction_date);
   const [open, setOpen] = useState(shouldOpen);
   useEffect(() => {
-    if (p.errors.description) setOpen(true);
-  }, [p.errors.description]);
+    if (p.errors.description || p.errors.transaction_date) setOpen(true);
+  }, [p.errors.description, p.errors.transaction_date]);
+  // Render invalid fields in the same commit as their errors so focusFirstTransactionError can find them.
+  const expanded = open || Boolean(p.errors.description || p.errors.transaction_date);
   return (
     <section className={styles.additionalDetails}>
-      <button type="button" className={styles.additionalToggle} aria-expanded={open} aria-controls="transaction-additional-details" onClick={() => setOpen((current) => !current)}>
-        <span><strong>Catatan & metode pembayaran</strong><small>Opsional</small></span>
-        {open ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}
+      <button type="button" className={styles.additionalToggle} aria-expanded={expanded} aria-controls="transaction-additional-details" onClick={() => setOpen((current) => !current)}>
+        <span><strong>Detail lainnya</strong><small>{p.form.transaction_date === todayInJakarta() ? "Hari ini" : formatDateLongIndonesia(p.form.transaction_date) || "Pilih tanggal"} · catatan & pembayaran</small></span>
+        {expanded ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}
       </button>
-      {open ? (
+      {expanded ? (
         <div id="transaction-additional-details" className={styles.additionalBody}>
+          <DateRow form={p.form} update={p.update} errors={p.errors} min={p.planningDateMin} max={p.planningDateMax} />
           <PaymentMethods form={p.form} update={p.update} />
           <NotesField form={p.form} update={p.update} errors={p.errors} />
         </div>

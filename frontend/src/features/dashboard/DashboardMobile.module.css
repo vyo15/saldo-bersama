@@ -93,9 +93,7 @@
     overflow: hidden;
     border: 1px solid transparent;
     border-radius: var(--mobile-radius-hero);
-    background:
-      radial-gradient(circle at 82% 4%, color-mix(in srgb, var(--secondary) 13%, transparent), transparent 38%),
-      linear-gradient(125deg, color-mix(in srgb, var(--surface-strong) 82%, var(--surface)) 0%, color-mix(in srgb, var(--surface-tint) 72%, var(--surface)) 56%, var(--surface) 100%);
+    background: var(--surface-section-strong);
     box-shadow: var(--shadow-hero);
     isolation: isolate;
   }
@@ -103,7 +101,7 @@
   .mobile-family-hero__copy {
     position: relative;
     z-index: 4;
-    width: 64%;
+    width: 75%;
     min-width: 0;
     padding: 15px 0 14px 14px;
     display: grid;
@@ -199,7 +197,6 @@
     pointer-events: none;
   }
 
-  .mobile-family-hero__foliage,
   .mobile-family-hero__people {
     position: absolute;
     max-width: none;
@@ -207,39 +204,37 @@
     pointer-events: none;
   }
 
-  .mobile-family-hero__foliage {
-    z-index: 1;
-    width: 148px;
-    height: auto;
-    opacity: .22;
-    filter: saturate(1.02);
-  }
-
-  .mobile-family-hero__foliage--left {
-    left: auto;
-    right: 22px;
-    bottom: -20px;
-    width: 126px;
-    opacity: .18;
-    transform: none;
-  }
-
-  .mobile-family-hero__foliage--right {
-    right: -16px;
-    bottom: -27px;
-    width: 162px;
-    opacity: .22;
-    transform: none;
-  }
-
   .mobile-family-hero__people {
     z-index: 3;
     right: -6px;
     bottom: -7px;
-    width: 154px;
+    width: 120px;
     height: auto;
-    filter: drop-shadow(0 8px 16px rgba(3, 98, 76, .18));
+    opacity: .87;
   }
+
+  .mobile-balance-details {
+    margin-top: 6px;
+  }
+
+  .mobile-balance-details > summary {
+    min-height: 44px;
+    padding: 7px 3px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    list-style: none;
+    cursor: pointer;
+    color: var(--text-soft);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .mobile-balance-details > summary::-webkit-details-marker { display: none; }
+  .mobile-balance-details > summary svg { width: 16px; height: 16px; transition: transform var(--motion-control) var(--ease-standard); }
+  .mobile-balance-details[open] > summary svg { transform: rotate(180deg); }
+  .mobile-balance-details > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: 8px; }
 
   .mobile-ownership-summary.mobile-reference-ownership {
     position: relative;
@@ -344,71 +339,6 @@
     padding: 0 var(--mobile-page-gutter) 22px;
     background: transparent;
   }
-
-  .mobile-quick-section {
-    padding-top: 7px;
-  }
-
-  .mobile-quick-section > h2 {
-    margin: 0;
-    min-height: 30px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: var(--text);
-    font-size: 14px;
-    font-weight: var(--font-weight-bold);
-    letter-spacing: -.02em;
-  }
-
-  .mobile-quick-section > h2::after {
-    content: "";
-    height: 1px;
-    flex: 1 1 auto;
-    background: var(--divider-soft);
-  }
-
-  .mobile-quick-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
-    padding: 2px 0 7px;
-    border-bottom: 0;
-  }
-
-  .mobile-quick-action {
-    min-height: 60px;
-    padding: 3px 1px;
-    align-content: start;
-    gap: 5px;
-    color: var(--text-soft);
-  }
-
-  .mobile-quick-action > span {
-    width: 42px;
-    height: 42px;
-    border-radius: var(--mobile-radius-control);
-    color: var(--primary);
-    background: var(--surface-section-strong);
-    box-shadow: none;
-  }
-
-  .mobile-quick-action--goal > span {
-    color: var(--primary);
-    background: color-mix(in srgb, var(--primary-soft) 82%, var(--surface));
-  }
-
-  .mobile-quick-action--investment > span {
-    color: var(--positive);
-    background: color-mix(in srgb, var(--positive-soft) 82%, var(--surface));
-  }
-
-  .mobile-quick-action--account > span {
-    color: var(--accent-purple);
-    background: color-mix(in srgb, var(--accent-purple) 14%, var(--surface));
-  }
-
-  .mobile-quick-action svg { width: 18px; height: 18px; }
-  .mobile-quick-action strong { color: var(--text-soft); font-size: var(--type-meta); }
 
   .mobile-finance-section.mobile-reference-panel {
     margin-top: 8px;
@@ -565,28 +495,11 @@
     color: var(--on-hero-muted);
   }
 
-  :global(:root[data-theme="dark"]) .mobile-family-hero__foliage { opacity: .16; filter: saturate(.9) brightness(1.05); }
-  :global(:root[data-theme="dark"]) .mobile-family-hero__foliage--left { opacity: .13; }
   :global(:root[data-theme="dark"]) .mobile-family-hero__people { filter: brightness(.94) saturate(.94) drop-shadow(0 10px 18px rgba(0, 0, 0, .28)); }
 
   :global(:root[data-theme="dark"]) .mobile-owner-card--partner .mobile-owner-card__icon {
     color: var(--accent-rose);
     background: color-mix(in srgb, var(--accent-rose) 15%, transparent);
-  }
-
-  :global(:root[data-theme="dark"]) .mobile-quick-action--goal > span {
-    color: var(--primary);
-    background: var(--primary-soft);
-  }
-
-  :global(:root[data-theme="dark"]) .mobile-quick-action--investment > span {
-    color: var(--positive);
-    background: var(--positive-soft);
-  }
-
-  :global(:root[data-theme="dark"]) .mobile-quick-action--account > span {
-    color: color-mix(in srgb, var(--accent-purple) 74%, white);
-    background: color-mix(in srgb, var(--accent-purple) 14%, transparent);
   }
 
   .mobile-family-hero {
@@ -643,11 +556,8 @@
 
 @media (max-width: 370px) {
   .mobile-family-hero { min-height: 144px; }
-  .mobile-family-hero__copy { width: 66%; padding-left: 12px; }
-  .mobile-family-hero__people { right: -14px; bottom: -7px; width: 146px; }
-  .mobile-family-hero__foliage { width: 126px; }
-  .mobile-family-hero__foliage--left { right: 14px; bottom: -22px; width: 110px; }
-  .mobile-family-hero__foliage--right { right: -18px; bottom: -26px; width: 138px; }
+  .mobile-family-hero__copy { width: 77%; padding-left: 12px; }
+  .mobile-family-hero__people { right: -14px; bottom: -7px; width: 105px; }
   .mobile-reference-ownership .mobile-owner-card { grid-template-columns: 25px minmax(0, 1fr); gap: 4px; padding-inline: 5px; }
   .mobile-owner-card__icon { width: 25px; height: 25px; border-radius: 9px; }
   .mobile-reference-ownership .mobile-owner-card__copy strong,

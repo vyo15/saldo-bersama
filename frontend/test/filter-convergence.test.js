@@ -23,7 +23,7 @@ test("filter scopes and status remain domain-owned after visual convergence", as
     source("features/settings/AuditPage.jsx"),
   ]);
   assert.match(accounts, /\["partner", "Pasangan"\]/);
-  assert.match(allocation, /\{ value: "mine", label: "Saya" \}/);
+  assert.match(allocation, /\{ value: "mine", label: "Saya"/);
   assert.match(shopping, /value: "pending", label: "Belum"/);
   assert.match(investment, /overviewTabs\.map/);
   assert.match(investment, /setActiveTab\(tab\.value\)/);

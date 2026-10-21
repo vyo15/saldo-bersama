@@ -73,7 +73,7 @@ test("UI canonical entry points tidak menduplikasi fungsi yang sama", async () =
     assert.match(dashboardQuickActions, new RegExp(`to: "${path.replaceAll("/", "\\/")}", label: "${label}"`));
   }
   assert.doesNotMatch(dashboardQuickActions, /label: "Atur Dana"|label: "Kategori"|label: "Jadwal Rutin"|\/rekonsiliasi|Cocokkan/);
-  assert.match(dashboard, /<DashboardQuickActions \/>/);
+  assert.doesNotMatch(dashboard, /<DashboardQuickActions \/>/);
   assert.match(dashboard, /Belum ada aktivitas/);
   assert.doesNotMatch(dashboard, /onClick=\{onOpenTransaction\}/);
   assert.match(mobileNavigation, /aria-label="Catat aktivitas"/);

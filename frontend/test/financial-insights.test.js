@@ -302,7 +302,8 @@ test("dashboard desktop dan mobile berbagi view model, sementara filter lengkap 
   assert.match(setupChecklist, /Siapkan dasar pencatatan/);
   assert.match(mobile, /<MobileNextAction alerts=\{urgentAlerts\} \/>/);
   assert.match(mobile, /\{setupContent\}/);
-  assert.match(mobile, /<DashboardQuickActions \/>/);
+  assert.doesNotMatch(mobile, /<DashboardQuickActions \/>/);
+  assert.match(mobile, /Rincian saldo dan dana/);
   assert.doesNotMatch(mobile, /mobile-finance-cash-strip/);
   assert.doesNotMatch(setupChecklist, /usableEnvelopes|sharedAccounts|planningStep/);
   assert.doesNotMatch(setupChecklist, /localStorage|sessionStorage/);

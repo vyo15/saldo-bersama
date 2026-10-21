@@ -73,7 +73,7 @@ test("detail Alokasi Dana menampilkan Kebutuhan dan Jadwal terkait tanpa membuat
     read("src/features/planning/PlanningPage.jsx"),
     read("src/features/allocations/AllocationDetail.module.css"),
   ]);
-  assert.match(planning, /satu daftar Aktif/);
+  assert.match(planning, /Gunakan pintasan Tagihan rutin/);
   assert.match(planning, /<AllocationsPage embedded \/>/);
   assert.match(planning, /<RecurringPage embedded expenseOnly \/>/);
   assert.doesNotMatch(planning, /role="tablist"|planning-tab-/);

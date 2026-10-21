@@ -1041,12 +1041,10 @@
     display: grid;
     grid-template-columns: minmax(330px, .9fr) minmax(0, 1.35fr);
     align-items: center;
-    border: 1px solid color-mix(in srgb, var(--secondary) 24%, var(--border));
+    border: 1px solid transparent;
     border-radius: 22px;
-    background:
-      radial-gradient(circle at 76% 22%, color-mix(in srgb, var(--secondary) 15%, transparent), transparent 36%),
-      linear-gradient(112deg, color-mix(in srgb, var(--secondary-soft) 68%, var(--surface)) 0%, color-mix(in srgb, var(--primary-soft) 64%, var(--surface)) 43%, color-mix(in srgb, var(--info-soft) 56%, var(--surface)) 100%);
-    box-shadow: var(--shadow-sm);
+    background: linear-gradient(112deg, var(--surface-section-strong), var(--surface-tint));
+    box-shadow: none;
   }
 
   .desktop-family-hero__copy {
@@ -1142,37 +1140,11 @@
     pointer-events: none;
   }
 
-  .desktop-family-hero__foliage-frame {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    border-radius: inherit;
-    pointer-events: none;
-  }
 
-  .desktop-family-hero__foliage,
   .desktop-family-hero__people {
     position: absolute;
     display: block;
     user-select: none;
-  }
-
-  .desktop-family-hero__foliage {
-    z-index: 1;
-    width: 54%;
-    height: auto;
-    opacity: .44;
-    filter: saturate(.95);
-  }
-
-  .desktop-family-hero__foliage--left {
-    left: 0;
-    bottom: -58%;
-  }
-
-  .desktop-family-hero__foliage--right {
-    right: -5%;
-    bottom: -58%;
   }
 
   .desktop-family-hero__people {
@@ -1726,10 +1698,8 @@
 
 :root[data-theme="dark"] .desktop-family-hero {
   border-color: color-mix(in srgb, var(--secondary) 22%, var(--border));
-  background:
-    radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--secondary) 15%, transparent), transparent 34%),
-    linear-gradient(118deg, var(--hero-start) 0%, var(--hero-mid) 48%, var(--hero-end) 100%);
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(118deg, var(--hero-start), var(--hero-mid));
+  box-shadow: none;
 }
 
 :root[data-theme="dark"] .desktop-family-hero__label,
@@ -1744,11 +1714,6 @@
 
 :root[data-theme="dark"] .desktop-family-hero__visibility {
   color: var(--on-hero-soft);
-}
-
-:root[data-theme="dark"] .desktop-family-hero__foliage {
-  opacity: .24;
-  filter: saturate(.9) brightness(1.08);
 }
 
 :root[data-theme="dark"] .desktop-family-hero__people {
