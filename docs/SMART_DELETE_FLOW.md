@@ -1,7 +1,7 @@
 # Smart Delete — aturan UI pengelolaan data
 
-> **Status:** Canonical — batas UI dan kontrak lifecycle data.  
-> **Purpose:** Menentukan kapan memakai Hapus, Arsipkan, Sembunyikan, Batalkan, dan Pulihkan.  
+> **Status:** Canonical — batas UI dan kontrak lifecycle data.
+> **Purpose:** Menentukan kapan memakai Hapus, Arsipkan, Sembunyikan, Batalkan, dan Pulihkan.
 > **Update when:** Action registry/authorization/feedback/lifecycle berubah.
 
 - **Hapus permanen** hanya untuk entitas yang dinyatakan *unused* oleh lifecycle preview backend; jangan menghapus histori keuangan, saldo, audit atau transaksi yang masih terkait.
