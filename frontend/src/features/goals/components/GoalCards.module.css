@@ -172,3 +172,11 @@
   .goal-summary__content { width: 68%; }
   .goal-summary__art { right: -3%; width: min(7.2rem, 29%); }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Target tabungan keeps the emerald family, including its subdued artwork. */
+.goal-summary { background: var(--tonal-gradient-green); border-color: transparent; box-shadow: none; }
+.goal-grid__empty::before { filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--shadow-ink) 10%, transparent)) var(--tonal-hero-art-filter); }
+.goal-summary__art { filter: var(--tonal-hero-art-filter); opacity: var(--tonal-hero-art-opacity); }
+.goal-card { background: var(--tonal-neutral); border-color: transparent; box-shadow: none; }
+.goal-card__icon { background: var(--tonal-gradient-green); color: var(--planning-goal); }

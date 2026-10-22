@@ -673,3 +673,8 @@
     transition: none;
   }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Never recolor bank-card art or logos; only the balance summary is tonal. */
+.mobileBalanceSummary { background: var(--tonal-gradient-brand); border-color: transparent; box-shadow: none; }
+.mobileTotalBalance { background: var(--tonal-neutral); }

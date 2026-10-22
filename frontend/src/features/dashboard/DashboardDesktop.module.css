@@ -1861,3 +1861,10 @@
     box-shadow: none;
   }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Desktop keeps its analytical layout; the main financial object shares mobile's mint. */
+.desktop-balance-card { background: var(--tonal-gradient-brand); border-color: transparent; box-shadow: none; }
+.desktop-quick-action--account { background: var(--tonal-gradient-ocean); }
+.desktop-quick-action--goal { background: var(--tonal-gradient-green); }
+.desktop-quick-action--investment { background: var(--tonal-gradient-green); }

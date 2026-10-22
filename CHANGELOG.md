@@ -1,3 +1,9 @@
+## 2026-10-22 — Approved Tonal Color V3 dan harmonisasi ilustrasi (candidate)
+
+- Menerapkan desain Warna V3 pada token CSS light/dark dan 20 CSS Modules fitur asli; bukan inject preview global yang rawan selector drift. Hero saldo, tagihan, cicilan, target, laporan, kategori, wishlist, dan empty state memiliki identitas tonal yang jelas.
+- Menyetel brightness/contrast/saturation ilustrasi dekoratif sesuai tema tanpa menyentuh foto anggota, logo bank, gambar rekening, atau nilai finansial. Status income/expense, warning/danger, focus input, serta navigasi/permissions/route tetap canonical.
+- Kontrak otomatis aksesibilitas gradient dan ruang lingkup modul ditambahkan pada `frontend/test/tonal-color-v3.test.js`, docs design dan test plan diselaraskan. Status candidate hingga lint/verify/build/browser smoke penuh berhasil pada environment lengkap.
+
 ## 2026-10-21 — Remediasi route Target melewati build budget (candidate)
 
 - Memisahkan presentasi ringkasan dan kartu Target dari route utama menjadi satu chunk lazy yang langsung dipreload saat modul route dibuka; fallback skeleton mempertahankan keadaan memuat saat chunk belum siap.

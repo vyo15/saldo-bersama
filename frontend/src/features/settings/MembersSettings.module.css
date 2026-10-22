@@ -692,3 +692,9 @@
   .memberInfoCard dd { text-align: left; }
   .detailRow { align-items: flex-start; }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Members use quiet neutral rows and lavender icon islands. */
+.membersPageHeader { background: var(--tonal-gradient-brand); border-color: transparent; }
+.compactMemberCard { background: var(--tonal-neutral); border-color: transparent; box-shadow: none; }
+.memberAvatar { background: var(--tonal-gradient-purple); }

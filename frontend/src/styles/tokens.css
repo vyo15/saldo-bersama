@@ -91,7 +91,28 @@
   --font-sans: "Manrope Variable", Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --page: #edf5f6;
+  /* Approved V3: semantic, single-hue tonal surfaces shared by financial pages. */
+  --tonal-brand-start: #b8e9da;
+  --tonal-brand-end: #e8f8ed;
+  --tonal-ocean-start: #d5edf9;
+  --tonal-ocean-end: #f0faff;
+  --tonal-purple-start: #e7ddfb;
+  --tonal-purple-end: #f6f2ff;
+  --tonal-green-start: #d2f3df;
+  --tonal-green-end: #f0fbf4;
+  --tonal-sand-start: #fff0d4;
+  --tonal-sand-end: #fff9ee;
+  --tonal-neutral: #f5fbf9;
+  --tonal-accent-ink: #065f63;
+  --tonal-hero-art-filter: saturate(.94) contrast(.98) brightness(.98);
+  --tonal-hero-art-opacity: .98;
   --surface: #ffffff;
+  /* Endpoints are theme-specific; component selectors never encode light/dark hex values. */
+  --tonal-gradient-brand: linear-gradient(122deg, var(--tonal-brand-start), var(--tonal-brand-end));
+  --tonal-gradient-ocean: linear-gradient(140deg, var(--tonal-ocean-start), var(--tonal-ocean-end));
+  --tonal-gradient-purple: linear-gradient(140deg, var(--tonal-purple-start), var(--tonal-purple-end));
+  --tonal-gradient-green: linear-gradient(140deg, var(--tonal-green-start), var(--tonal-green-end));
+  --tonal-gradient-sand: linear-gradient(140deg, var(--tonal-sand-start), var(--tonal-sand-end));
   --surface-soft: #edf7f5;
   --surface-strong: #dff1ed;
   --surface-elevated: #ffffff;
@@ -326,6 +347,20 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --page: #10232e;
+  --tonal-brand-start: #1b5550;
+  --tonal-brand-end: #1b3f44;
+  --tonal-ocean-start: #1a4052;
+  --tonal-ocean-end: #182f41;
+  --tonal-purple-start: #392f59;
+  --tonal-purple-end: #272d44;
+  --tonal-green-start: #204e41;
+  --tonal-green-end: #1a3938;
+  --tonal-sand-start: #4b3c2b;
+  --tonal-sand-end: #302f30;
+  --tonal-neutral: #1b3741;
+  --tonal-accent-ink: #78e3d7;
+  --tonal-hero-art-filter: saturate(.90) contrast(.95) brightness(1.05);
+  --tonal-hero-art-opacity: .96;
   --surface: #162e39;
   --surface-soft: #1b3944;
   --surface-strong: #244752;

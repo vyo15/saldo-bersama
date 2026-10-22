@@ -73,12 +73,20 @@ Status pada light mode memakai varian yang lebih gelap dari accent referensi aga
 Aturan penerapan dark mode mobile/desktop:
 
 - **Canvas dan shell:** `--page` dipakai oleh body/kanvas dan shell terautentikasi dark; header, navigasi mobile, input, modal, list, dan shared primitive memakai `--surface-*` / `--navigation-surface` tanpa latar hampir hitam baru per-route. Kontras dan tebal border harus tetap semantik, bukan outline dekoratif bertingkat.
-- **Atur Dana:** hero menggunakan `--surface-elevated` menuju `--surface`; list kebutuhan tetap flat di atas canvas. Dashboard hero memakai surface semantik `--surface-section-strong` (mobile) atau kombinasi tipis `--surface-section-strong` dan `--surface-tint` (desktop), dengan foreground `--text*` dan override kontras dark yang tetap diuji. Jangan duplikasi palet inline pada halaman.
+- **Atur Dana:** hero menggunakan `--tonal-gradient-brand`; list kebutuhan tetap flat di atas canvas. Dashboard memakai gradasi brand yang sama pada hero mobile/desktop, dengan foreground `--text*` dan kontras dark yang tetap diuji. Jangan duplikasi palet inline pada halaman.
 - **Rekening mobile:** boleh memakai gradien immersive dari `--account-mobile-bg-*`, tetapi titik tengah harus menyatu dengan `--page` dark; permukaan kartu rekening/ilustrasi bank, `--account-card-overlay`, dan warna teks di atas artwork rekening sengaja terisolasi supaya branding dan kontrasnya terjaga.
 - **Aksesibilitas:** soft dark lebih terang berarti aksen di atas `--surface-elevated` bisa kehilangan rasio AA; setiap perubahan wajib menguji primary/primary-soft, foreground status/status-soft, focus ring, border kuat, hero endpoints, dan perpindahan light/dark di desktop/mobile. Kontrak di `frontend/test/theme-accessibility.test.js` + depth/ownership guard di `frontend/test/soft-dark-theme.test.js`.
 - **Performance:** kode notifikasi perangkat hanya dimuat saat session cleanup/notifikasi dipakai. Jangan menarik service notifikasi statis melalui AuthContext ke bootstrap bundle; proses disable pada logout, missing session, dan unauthorized tetap wajib dipertahankan. Anggaran build tetap fail-closed.
 
 Browser `theme-color` runtime wajib membaca `--page` dari computed style setelah theme diterapkan; HTML/manifest hanya fallback boot dan nilainya harus mengikuti light `--page`. PWA background, sidebar rail, hero, focus ring, shadow, dan navigation surface wajib mengikuti token tema yang sama.
+
+### Approved V3 — tonal color & illustration harmonization
+
+- `--tonal-gradient-brand/ocean/purple/green/sand` adalah layer **presentation** dari `--tonal-*-start/end`, bukan status keuangan, bukan pengganti `--positive/negative/warning` atau warna kepemilikan. Light/dark harus menggunakan endpoint berbeda. Hero Saldo memakai mint; Jadwal/Tagihan ocean; Cicilan/Kewajiban lavender; Target tabungan emerald; empty Belanja sand. Daftar, input, transaksi, modal, dan grafik tetap mempertahankan visual semantics/capability masing-masing. Jangan memberi setiap row gradient baru.
+- Seluruh gradient endpoint yang memuat teks wajib mencapai WCAG AA 4.5:1 terhadap `--text`; focus ring `--focus-ring` wajib ≥3:1 terhadap setiap endpoint yang dibubuhi elemen interaktif. Komponen baru tidak boleh memakai teks putih generik pada light gradient ataupun menyembunyikan boundary/focus input.
+- Ilustrasi dekoratif pada hero (pasangan, target, jadwal, kategori, onboarding investasi) memakai `--tonal-hero-art-filter` (saturation, contrast, brightness halus) dan `--tonal-hero-art-opacity`. Berbeda di dark/light dan hanya pada illustration asset yang memang dekoratif. **Jangan** memfilter logo bank, foto/identitas anggota, foto produk, ikon status, nilai uang atau grafik.
+- Implementasi mengikuti CSS Modules lokal, bukan `[class*=...]`, `body.is-after`, `!important`, CSS global produksi, ataupun penggantian gambar. Aset asli, ukuran, markup, breakpoint, Back/navigation, panel tindakan, dan seluruh kontrak finansial tetap dipakai.
+- Manual QA: mobile 320/360/390/430/820px dan desktop 821/1024/1440px; Light/Dark, reduced motion, 200% text, illustration opacity, fallback/no-art, status warning/negative, focus-visible, gradient paling terang/gelap, dialog, dropdown, dan empty states. Kontrak otomatis `frontend/test/tonal-color-v3.test.js`.
 
 ### Soft Chroma — identitas kontekstual Atur Dana
 

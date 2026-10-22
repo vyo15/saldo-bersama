@@ -912,3 +912,7 @@
   .typeSelector label > span,
   .quickAmounts button { transition: none; }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Amount input is a named focal surface; keyboard/error outlines are unchanged. */
+.amountVisual { background: var(--tonal-gradient-brand); border-color: transparent; box-shadow: none; }

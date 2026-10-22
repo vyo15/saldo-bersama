@@ -841,3 +841,10 @@
   .categorySectionChevron,
   .iconOption { transition: none; }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Categories: balanced source illustration and semantic income/expense tints. */
+.categoryVisualIntro { background: var(--tonal-gradient-brand); border-color: transparent; }
+.categoryVisualIntro img { filter: drop-shadow(0 8px 13px color-mix(in srgb, var(--shadow-ink) 12%, transparent)) var(--tonal-hero-art-filter); opacity: var(--tonal-hero-art-opacity); }
+.categoryIconExpense { background: var(--tonal-gradient-sand); }
+.categoryIconIncome { background: var(--tonal-gradient-green); }

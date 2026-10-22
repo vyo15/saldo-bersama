@@ -648,3 +648,7 @@
     transition: none;
   }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Tonal amount entry only; every editable field keeps its focus/validation boundary. */
+.amountVisual { background: var(--tonal-gradient-brand); border-color: transparent; box-shadow: none; }

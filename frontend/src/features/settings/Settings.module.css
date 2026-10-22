@@ -1763,3 +1763,11 @@ button.serviceTile:disabled { cursor: default; opacity: 1; }
 .sessionMore summary { min-height: var(--mobile-control-height); display: flex; align-items: center; color: var(--text-soft); font-size: var(--font-size-xs); cursor: pointer; }
 .sessionMore summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-radius: .5rem; }
 .sessionMore small { display: block; padding-bottom: .4rem; overflow-wrap: anywhere; }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* One account hero and functional icon tints, not individual card borders. */
+.settingsAccountCard { background: var(--tonal-gradient-brand); border-color: transparent; box-shadow: none; }
+.settingsGroup .settingsList { background: var(--tonal-neutral); border-color: transparent; box-shadow: none; }
+.settingsListRow:nth-child(3n + 1) .settingsListIcon { background: var(--tonal-gradient-ocean); }
+.settingsListRow:nth-child(3n + 2) .settingsListIcon { background: var(--tonal-gradient-purple); }
+.settingsListRow:nth-child(3n) .settingsListIcon { background: var(--tonal-gradient-green); }

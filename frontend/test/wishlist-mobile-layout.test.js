@@ -22,7 +22,8 @@ test("Wishlist mobile merges summary into a compact surface and uses the shell b
     read("src/styles/responsive.css"),
   ]);
   assert.match(css, /\.page\{gap:12px;padding-bottom:16px;min-width:0\}/);
-  assert.match(css, /\.overview\{[^}]*padding:12px 14px;[^}]*background:var\(--surface-section\)/s);
+  assert.match(css, /\.overview\{[^}]*padding:12px 14px;[^}]*background:var\(--tonal-gradient-purple\)/s);
+  assert.match(css, /\.overview>div\{[^}]*padding:0;[^}]*background:transparent/s);
   assert.match(css, /\.overview>\.overviewPrimary\{flex:1\.3/);
   assert.match(css, /\.overview>div:not\(\.overviewPrimary\) small\{display:none\}/);
   assert.match(css, /\.empty\{min-height:160px;/);

@@ -149,3 +149,8 @@
   .swipeCollapse, .row, .clearButton, .filters::before, .filter { transition: none; }
   .swipeItem { animation: none; }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Empty notification state is informational, not an unread or danger alert. */
+.empty { background: var(--tonal-gradient-ocean); border-radius: var(--radius-surface); }
+.emptyIcon { background: var(--tonal-gradient-green); }

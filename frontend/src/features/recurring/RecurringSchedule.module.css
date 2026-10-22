@@ -619,3 +619,7 @@
 .scheduleDisclosure[open] > summary::after { transform:rotate(180deg); padding-right:8px; padding-left:0; }
 .scheduleDisclosure > summary:focus-visible { outline:2px solid var(--focus-ring); outline-offset:1px; border-radius:4px; }
 .scheduleDisclosure .metaGrid { padding-top:5px; }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Scheduled rows remain neutral; due-state labels keep their semantic colors. */
+.scheduleCard { background: var(--tonal-neutral); border-color: transparent; box-shadow: none; }

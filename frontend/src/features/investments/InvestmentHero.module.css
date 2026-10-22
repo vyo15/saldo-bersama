@@ -232,3 +232,7 @@
   .heroReturn { min-height: 1.6rem; padding: .22rem .5rem; }
   .heroMeta { display: none; }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Portfolio value is an emerald object; gain/loss numbers keep semantic colors. */
+.hero { background: var(--tonal-gradient-green); border-color: transparent; box-shadow: none; }

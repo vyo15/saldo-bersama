@@ -295,3 +295,9 @@
 .cardDetails[open] > summary::after { transform:rotate(180deg); padding-left:0; padding-right:8px; }
 .cardDetails > summary:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
 .cardDetails .meta { margin-top:8px; }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Lavender is a section identity, not a danger or overdue signal. */
+.summary { background: var(--tonal-gradient-purple); border-color: transparent; }
+.card { background: var(--tonal-neutral); border-color: transparent; box-shadow: none; }
+.cardIcon { background: var(--tonal-gradient-purple); color: var(--planning-commitment); }

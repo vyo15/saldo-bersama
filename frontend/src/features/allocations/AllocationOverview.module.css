@@ -899,3 +899,23 @@
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* V3 tonal identity: one financial hero, contextual shortcuts, flat allocation rows. */
+.allocation-funding-summary {
+  background: var(--tonal-gradient-brand);
+  border-color: transparent;
+  box-shadow: none;
+}
+.allocation-funding-summary__eyebrow { color: var(--tonal-accent-ink); }
+.allocation-funding-summary__art img {
+  filter: drop-shadow(0 4px 7px color-mix(in srgb, var(--shadow-ink) 12%, transparent)) var(--tonal-hero-art-filter);
+  opacity: var(--tonal-hero-art-opacity);
+}
+.allocation-shortcuts__link[data-tone="recurring"] { background: var(--tonal-gradient-ocean); border-color: transparent; box-shadow: none; }
+.allocation-shortcuts__link[data-tone="commitment"] { background: var(--tonal-gradient-purple); border-color: transparent; box-shadow: none; }
+.allocation-shortcuts__link[data-tone="goal"] { background: var(--tonal-gradient-green); border-color: transparent; box-shadow: none; }
+.allocation-shortcuts__link[data-tone="recurring"] .allocation-shortcuts__icon { background: var(--planning-recurring-soft); color: var(--planning-recurring); }
+.allocation-shortcuts__link[data-tone="commitment"] .allocation-shortcuts__icon { background: var(--planning-commitment-soft); color: var(--planning-commitment); }
+.allocation-shortcuts__link[data-tone="goal"] .allocation-shortcuts__icon { background: var(--planning-goal-soft); color: var(--planning-goal); }
+.planning-active-row__icon { background: var(--tonal-neutral); }

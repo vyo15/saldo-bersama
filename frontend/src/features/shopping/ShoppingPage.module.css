@@ -173,3 +173,8 @@
 
 .hiddenToggle { min-height:var(--mobile-hit-target); display:inline-flex; align-items:center; gap:9px; color:var(--text-soft); font-size:12.5px; cursor:pointer; }
 .hiddenToggle input { accent-color:var(--primary); width:16px; height:16px; }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Warm, non-destructive empty state. Keep existing responsive padding rules. */
+.emptyShell { background: var(--tonal-gradient-sand); border-color: transparent; box-shadow: none; }
+@media (max-width: 820px) { .emptyShell { background: var(--tonal-gradient-sand); } }

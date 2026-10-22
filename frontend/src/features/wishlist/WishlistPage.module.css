@@ -152,7 +152,7 @@
   .page :global(.page-header__actions .button){width:var(--mobile-hit-target);min-width:var(--mobile-hit-target);height:var(--mobile-hit-target);min-height:var(--mobile-hit-target);padding:0;border-radius:var(--control-radius);background:var(--primary-soft);color:var(--primary-strong);box-shadow:none}
   .addAction>span{display:none}
   .addAction>svg{width:19px;height:19px}
-  .overview{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--mobile-card-radius);background:var(--surface-section);overflow:hidden}
+  .overview{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--mobile-card-radius);background:var(--tonal-gradient-purple);overflow:hidden}
   .overview>div{min-width:0;flex:1;padding:0;border-radius:0;background:transparent;gap:3px}
   .overview>.overviewPrimary{flex:1.3;min-width:120px;padding:0;border-radius:0;background:transparent}
   .overview>div:not(.overviewPrimary){padding-left:12px;border-left:1px solid var(--divider-soft)}
@@ -204,3 +204,10 @@
 
 .hiddenToggle { min-height:44px; display:inline-flex; align-items:center; gap:9px; color:var(--text-soft); font-size:12.5px; padding:8px 2px; cursor:pointer; }
 .hiddenToggle input { accent-color:var(--primary); width:16px; height:16px; }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Wishlist summary has one purple wash on both mobile and desktop. */
+.overview { background: var(--tonal-gradient-purple); }
+.overview .overviewPrimary { background: transparent; }
+.itemIcon { background: var(--tonal-gradient-purple); }
+

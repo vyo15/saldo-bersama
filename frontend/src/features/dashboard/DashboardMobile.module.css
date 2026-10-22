@@ -552,6 +552,17 @@
     word-break: break-word;
   }
 
+  /* Approved V3 tonal surfaces — scoped to this feature module. */
+
+  .mobile-family-hero { background: var(--tonal-gradient-brand); border-color: transparent; box-shadow: none; }
+  .mobile-family-hero__art img { filter: var(--tonal-hero-art-filter); opacity: var(--tonal-hero-art-opacity); }
+  .mobile-reference-ownership .mobile-owner-card { border-color: transparent; box-shadow: none; }
+  .mobile-reference-ownership .mobile-owner-card:not(.mobile-owner-card--partner):not(.mobile-owner-card--shared) { background: var(--tonal-gradient-green); }
+  .mobile-reference-ownership .mobile-owner-card--partner { background: var(--tonal-gradient-purple); }
+  .mobile-reference-ownership .mobile-owner-card--shared { background: var(--tonal-gradient-ocean); }
+  .mobile-finance-summary.mobile-reference-summary { background: var(--tonal-neutral); border-color: transparent; box-shadow: none; }
+  /* End approved V3 mobile surfaces. */
+
 }
 
 @media (max-width: 370px) {
@@ -571,4 +582,3 @@
 
 
 /* Dashboard primary identity and attention copy stay readable; metadata can use natural multi-line flow. */
-

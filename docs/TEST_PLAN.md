@@ -5,9 +5,15 @@
 > **Update when:** Behavior canonical, invariant, atau test coverage wajib berubah.  
 > **Rule:** Bukan jurnal patch; tanggal, nama hardening, dan hasil run berada di Git/CHANGELOG/CI.
 
+## Warna tonal V3 — asset harmonization
+
+- Kontrak visual `--tonal-gradient-*` wajib punya versi light/dark dengan kontras teks 4.5:1 di endpoint terburuk dan focus-visible 3:1. Token status tidak diubah. Uji browser dan compare screenshot original sebelum/after, bukan mengandalkan preview statis.
+- Ilustrasi yang ditune terbatas ke gambar dekoratif; periksa bahwa logo rekening/bank, foto anggota dan ikon/angka keuangan tidak berubah. Daftar tetap compact/flat, form tetap bisa dikenali, dan dropdown/action sheet tidak terpotong.
+- Regression otomatis `node --test frontend/test/tonal-color-v3.test.js`; lanjut `npm run lint`, `npm run verify` (production build + browser smoke + frontend/backend tests) pada Node supported dan dependency lengkap. Browser smoke production perlu data/auth Development canonical bila wajib.
+
 ## Soft Chroma — Atur Dana presentation-only
 
-- Tiga pintasan tetap 1 ketuk ke route canonical Tagihan rutin, Cicilan & utang, Target tabungan; warna hanya pada wadah ikon (ocean/purple/emerald), permukaan netral dan CTA teal tidak bergeser.
+- Tiga pintasan tetap 1 ketuk ke route canonical Tagihan rutin, Cicilan & utang, Target tabungan; V3 memperluas wash ocean/purple/emerald ke latar pintasan, sementara CTA teal, label, dan route tidak bergeser.
 - Penerima memakai nilai canonical `mine`/`partner`/`shared` untuk chip teal/purple/ocean dengan teks tetap eksplisit; termasuk fallback penerima pribadi lama. Filter **Untuk: Semua** tetap satu pemicu, pilihan keyboard + dialog native, selected scope tidak mengubah ownership.
 - Semua pasangan `--planning-*` dan `--audience-*` diuji kontras light/dark minimal 4.5:1 pada page/surface/section; tidak boleh ada raw hex di feature CSS, dependency baru, atau reimplementasi ProgressBar.
 - Manual QA mencakup 320/360/390/430px, batas 820/821px, desktop, tema, 200% text, keyboard focus, reduced-motion, dan 2 actor berlawanan identitas penerima; browser/auth smoke wajib sebelum production.
@@ -350,6 +356,7 @@ Evidence manual dicatat pada release/operational record yang relevan, **bukan** 
 
 ### Wishlist compact V2 — regression frontend
 - `frontend/test/wishlist-mobile-layout.test.js`: tab pemilik segmented yang aksesibel, advanced filter dalam modal, simulasi opt-in, dan mobile safe area.
+- Setelah approved Tonal V3, summary Wishlist mobile tetap **satu surface compact** dengan `--tonal-gradient-purple`, sementara blok angka di dalamnya transparan. Jangan mengembalikan kontrak test ke `--surface-section` lama hanya untuk meloloskan gate; pertahankan ukuran dan safe area shell.
 - `frontend/test/wishlist-mobile-layout.test.js` juga mengunci lazy boundary `WishlistDialogLayer` dan fallback modal sehingga daftar tidak memuat komponen finansial sebelum diperlukan; cek route chunk gzip tetap <=8 KiB pada build budget canonical.
 - `frontend/test/motion-system.test.js`: validasi properti transition per CSS declaration (bukan konkatenasi file), tanpa animasi width/height, serta menghormati prefers-reduced-motion.
 - Manual smoke viewport 320–430px + desktop, light/dark, filter yang diganti cepat, simulasi lintas filter, daftar kosong, menu aksesibel, checkout yang tetap terpisah.

@@ -739,3 +739,8 @@
   .healthFooter { display: grid; gap: 7px; }
   .healthInsight { max-width: none; text-align: left; }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Report chart still owns data colors and labels; hero is informational ocean. */
+.heroPanel { background: var(--tonal-gradient-ocean); border-color: transparent; box-shadow: none; }
+.categoryPanel { background: var(--tonal-neutral); }

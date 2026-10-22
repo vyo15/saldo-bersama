@@ -500,3 +500,9 @@
 .portfolioLifecycleRow button:disabled { opacity:.5; cursor:default; }
 .portfolioLifecycleError { color:var(--negative); background:var(--negative-soft); padding:10px 12px; border-radius:10px; font-size:13px; }
 @media(max-width:640px) { .portfolioLifecycleRow { align-items:flex-start; } .portfolioLifecycleRow button { align-self:center; } }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Investment onboarding: preserve canonical illustration but soften its contrast. */
+.emptyInvestmentHero { background: linear-gradient(175deg, var(--tonal-green-start), var(--tonal-neutral) 65%); border-color: transparent; box-shadow: none; }
+.emptyInvestmentArtwork { filter: drop-shadow(0 8px 12px color-mix(in srgb, var(--shadow-ink) 12%, transparent)) var(--tonal-hero-art-filter); opacity: var(--tonal-hero-art-opacity); }
+.firstInvestment { background: var(--tonal-neutral); border-color: transparent; box-shadow: none; }

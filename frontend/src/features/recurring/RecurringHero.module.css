@@ -311,3 +311,8 @@ button.heroStatus {
     transition: none;
   }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Tagihan rutin: ocean identity without introducing extra elevation. */
+.heroCard { background: var(--tonal-gradient-ocean); border-color: transparent; box-shadow: none; }
+.heroArt { filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--shadow-ink) 12%, transparent)) var(--tonal-hero-art-filter); opacity: var(--tonal-hero-art-opacity); }

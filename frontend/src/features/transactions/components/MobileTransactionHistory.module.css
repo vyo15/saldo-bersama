@@ -349,3 +349,7 @@
   .typeScroller::before, .typeChip, .typeChipActive { transition: none; }
   .chartSkeleton { animation: none; }
 }
+
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Financial direction (in/out) retains semantic colors; only period grouping is tonal. */
+.overview { background: var(--tonal-gradient-ocean); border-radius: var(--mobile-radius-object); padding: 12px; }

@@ -1058,3 +1058,7 @@
   justify-content: flex-start;
 }
 
+/* Approved V3 tonal surfaces — scoped to this feature module. */
+/* Match the overview's tonal hero; never retint financial status or action menus. */
+.allocation-detail-hero { background: var(--tonal-gradient-brand); border-color: transparent; box-shadow: none; }
+.allocation-detail-hero__metrics > div { background: transparent; box-shadow: none; border-color: transparent; }
